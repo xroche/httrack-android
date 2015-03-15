@@ -1,0 +1,3 @@
+[submodule "jni/coffeecatch"]
+	path = jni/coffeecatch
+	url = git@github.com:xroche/coffeecatch.git
