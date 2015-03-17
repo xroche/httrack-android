@@ -45,9 +45,14 @@ include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libhttrack
-# set to yes, yes
+# set to yes to have prebuilt binaries
 ifeq ($(PREBUILT_LIBHTTRACK),yes)
 LOCAL_SRC_FILES := ../prebuild/libhttrack.so
+include $(PREBUILT_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE    := libhtsjava
+LOCAL_SRC_FILES := ../prebuild/libhtsjava.so
 include $(PREBUILT_SHARED_LIBRARY)
 else
 LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
@@ -69,8 +74,34 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 LOCAL_LDLIBS := -ldl -lssl -lz -lcrypto
 LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
 LOCAL_SHARED_LIBRARIES := libiconv
-# Note: using -fvisibility=hidden causing issues, to be investigated
-# (immediate crashes when starting a mirror, arm-linux-androideabi-4.6)
+# Note: using -fvisibility=hidden is causing issues, to be investigated
+# (immediate crash when starting a mirror, tested @arm-linux-androideabi-4.6)
+LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
+	-fstrict-aliasing														\
+	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
+	-Wcast-align -Wstrict-prototypes -Wmissing-prototypes					\
+	-Wmissing-declarations -Wdeclaration-after-statement -Wpointer-arith	\
+	-Wsequence-point -Wnested-externs -Wparentheses -Winit-self				\
+	-Wunused-but-set-parameter -Waddress -Wuninitialized -Wformat=2			\
+	-Wformat-nonliteral -Wmissing-parameter-type -Wold-style-definition		\
+	-Wignored-qualifiers -Wstrict-aliasing -Wno-sign-compare				\
+	-Wno-type-limits -Wno-missing-field-initializers -Wno-cast-align		\
+	-Wno-nested-externs														\
+	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6			\
+	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
+	-DHTS_CRASH_TEST														\
+	-Wl,--no-merge-exidx-entries -Wl,-O1
+LOCAL_CPPFLAGS += -pthread
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE    := libhtsjava
+LOCAL_SRC_FILES := httrack/src/htsjava.c
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
+	$(LOCAL_PATH)/httrack/src/coucal			\
+	$(LOCAL_PATH)/../include
+LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
+LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
 	-fstrict-aliasing														\
 	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
@@ -89,11 +120,6 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
 endif
-
-include $(CLEAR_VARS)
-LOCAL_MODULE    := libhtsjava
-LOCAL_SRC_FILES := ../prebuild/libhtsjava.so
-include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := htslibjni
