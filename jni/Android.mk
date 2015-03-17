@@ -13,7 +13,8 @@
 # limitations under the License.
 #
 
-# HTTrack library build: see prebuild/build.txt
+# Prebuilt libhttrack.so ?
+PREBUILT_LIBHTTRACK=no
 
 LOCAL_PATH := $(call my-dir)
 
@@ -44,8 +45,50 @@ include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libhttrack
+# set to yes, yes
+ifeq ($(PREBUILT_LIBHTTRACK),yes)
 LOCAL_SRC_FILES := ../prebuild/libhttrack.so
 include $(PREBUILT_SHARED_LIBRARY)
+else
+LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
+	httrack/src/htsback.c httrack/src/htscache.c httrack/src/htscatchurl.c 	\
+	httrack/src/htsfilters.c httrack/src/htsftp.c httrack/src/htshash.c 	\
+	httrack/src/coucal/coucal.c httrack/src/htshelp.c httrack/src/htslib.c 	\
+	httrack/src/htscoremain.c httrack/src/htsname.c httrack/src/htsrobots.c	\
+	httrack/src/htstools.c httrack/src/htswizard.c httrack/src/htsalias.c 	\
+	httrack/src/htsthread.c httrack/src/htsindex.c httrack/src/htsbauth.c 	\
+	httrack/src/htsmd5.c httrack/src/htszlib.c httrack/src/htswrap.c 		\
+	httrack/src/htsconcat.c httrack/src/htsmodules.c 						\
+	httrack/src/htscharset.c httrack/src/punycode.c 						\
+	httrack/src/htsencoding.c httrack/src/md5.c httrack/src/minizip/ioapi.c	\
+	httrack/src/minizip/mztools.c httrack/src/minizip/unzip.c				\
+	httrack/src/minizip/zip.c
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
+	$(LOCAL_PATH)/httrack/src/coucal			\
+	$(LOCAL_PATH)/../include
+LOCAL_LDLIBS := -ldl -lssl -lz -lcrypto
+LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
+LOCAL_SHARED_LIBRARIES := libiconv
+# Note: using -fvisibility=hidden causing issues, to be investigated
+# (immediate crashes when starting a mirror, arm-linux-androideabi-4.6)
+LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
+	-fstrict-aliasing														\
+	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
+	-Wcast-align -Wstrict-prototypes -Wmissing-prototypes					\
+	-Wmissing-declarations -Wdeclaration-after-statement -Wpointer-arith	\
+	-Wsequence-point -Wnested-externs -Wparentheses -Winit-self				\
+	-Wunused-but-set-parameter -Waddress -Wuninitialized -Wformat=2			\
+	-Wformat-nonliteral -Wmissing-parameter-type -Wold-style-definition		\
+	-Wignored-qualifiers -Wstrict-aliasing -Wno-sign-compare				\
+	-Wno-type-limits -Wno-missing-field-initializers -Wno-cast-align		\
+	-Wno-nested-externs														\
+	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6			\
+	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
+	-DHTS_CRASH_TEST														\
+	-Wl,--no-merge-exidx-entries -Wl,-O1
+LOCAL_CPPFLAGS += -pthread
+include $(BUILD_SHARED_LIBRARY)
+endif
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libhtsjava
@@ -55,8 +98,13 @@ include $(PREBUILT_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE    := htslibjni
 LOCAL_SRC_FILES := htslibjni.c coffeecatch/coffeecatch.c coffeecatch/coffeejni.c
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src $(LOCAL_PATH)/coffeecatch $(LOCAL_PATH)/../include
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
+	$(LOCAL_PATH)/httrack/src/coucal			\
+	$(LOCAL_PATH)/coffeecatch					\
+	$(LOCAL_PATH)/../include
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
-LOCAL_CFLAGS := -O3 -g -funwind-tables -Wl,--no-merge-exidx-entries -Wl,-O1 -W -Wall -Wextra -Werror -Wno-unused-parameter
+LOCAL_CFLAGS := -O3 -g -funwind-tables \
+	-Wl,--no-merge-exidx-entries -Wl,-O1 \
+	-W -Wall -Wextra -Werror -Wno-unused-parameter
 include $(BUILD_SHARED_LIBRARY)
