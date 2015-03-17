@@ -1,5 +1,5 @@
 # sources and settings (do modify)
-HTTRACK_SVN=/temp/httrack-*
+HTTRACK_GIT=/temp/httrack-*
 ICONV_TAR=/temp/android/libiconv-1.14.tar.gz
 ANDROID_SDK=/home/${USER}/bin/android-ndk-r9d
 TMP_DIR=/tmp/build_httrack_android
@@ -15,7 +15,7 @@ SAVE_BUILD=/temp/android/builds
 objcopy=${ANDROID_SDK}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/arm-linux-androideabi/bin/objcopy
 
 # cleanup
-rm -rf ${TMP_DIR} && cp -ax ${HTTRACK_SVN} ${TMP_DIR} && cd ${TMP_DIR}
+rm -rf ${TMP_DIR} && cp -ax ${HTTRACK_GIT} ${TMP_DIR} && cd ${TMP_DIR}
 rm -rf ${DEST_DIR}
 
 # valid build cache ?
@@ -144,11 +144,14 @@ cd ${TMP_DIR}
  CC="${ANDROID_SDK}/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/bin/arm-linux-androideabi-gcc --sysroot=${ANDROID_SDK}/platforms/android-5/arch-arm -I${ANDROID_SDK}/platforms/android-5/arch-arm/usr/include -L${ANDROID_SDK}/platforms/android-5/arch-arm/usr/lib" \
  CFLAGS="-O3 -g3 -funwind-tables -Wl,--no-merge-exidx-entries -DANDROID -D_ANDROID -DLIBICONV_PLUG -DHTS_CRASH_TEST -I${DEST_DIR}/include -L${DEST_DIR}/lib" \
  LDFLAGS="-Wl,-O1" \
- && sed -i -e 's/CPPFLAGS = .*/CPPFLAGS =/' Makefile \
- && sed -i -e 's/CPPFLAGS = .*/CPPFLAGS =/' src/Makefile \
  && find . -name Makefile -exec sed -i -e "s/\(.*LDFLAGS = \)-version-info .*/\1 -avoid-version/" {} \; \
  && make -j8 && make install DESTDIR=${DEST_DIR} \
  && make install
+
+# && sed -i -e 's/CPPFLAGS = .*/CPPFLAGS =/' Makefile \
+# && sed -i -e 's/CPPFLAGS = .*/CPPFLAGS =/' src/Makefile \
+
+test ! -n "${NOINST}" || exit 0
 
 # split debugging information so that we can addr2line later
 # example: 
@@ -161,7 +164,7 @@ if test -n "$SAVE_BUILD"; then
 	dest="${SAVE_BUILD}/${md5}"
 	mkdir -p "$dest"
 	echo "$md5" > ${dest}/libhttrack.so.md5.txt
-	svnversion $HTTRACK_SVN > "${dest}/revision.txt"
+	(cd $HTTRACK_GIT && git rev-parse HEAD ) > "${dest}/revision.txt"
 	rm -f "${SAVE_BUILD}/latest"
 	ln -s ${dest} "${SAVE_BUILD}/latest"
 	cp -ax "$0" "${dest}/build.txt"
