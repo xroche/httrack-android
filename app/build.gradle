@@ -1,0 +1,39 @@
+apply plugin: 'com.android.application'
+android {
+    compileSdkVersion 11
+    buildToolsVersion "25.0.2"
+
+    defaultConfig {
+        applicationId "com.httrack.android"
+        minSdkVersion 9
+        targetSdkVersion 25
+
+        ndk {
+            moduleName "libhtsjni"
+            abiFilters = [ "armeabi-v7a" ]
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+        }
+    }
+
+    dependencies {
+        // ContextCompat.checkSelfPermission needs version 23
+        compile 'com.android.support:support-v4:23.0.0'
+    }
+
+    productFlavors {
+    }
+    externalNativeBuild {
+        ndkBuild {
+            path 'src/main/jni/Android.mk'
+        }
+    }
+}
+
+dependencies {
+}

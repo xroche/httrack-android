@@ -1,0 +1,11 @@
+# See <https://wiki.openssl.org/index.php/Android>
+
+cd /tmp
+tar xvfz openssl-1.0.2k.tar.gz
+cd openssl-1.0.2k/
+. ~/bin/setenv-android.sh
+perl -pi -e 's/install: all install_docs install_sw/install: install_docs install_sw/g' Makefile.org
+./config no-shared no-engine no-hw && make depend && make all
+# make install CC=$ANDROID_TOOLCHAIN/arm-linux-androideabi-gcc RANLIB=$ANDROID_TOOLCHAIN/arm-linux-androideabi-ranlib DESTDIR=/tmp/inst
+
+# Copy *.a and include dir with dereferenced links
