@@ -24,34 +24,66 @@ package com.httrack.android.jni;
 import java.io.File;
 import java.io.IOException;
 
+import android.content.Context;
+import android.os.Build;
+import android.util.Log;
+
 public class HTTrackLib {
-  /** Opaque native context. **/
+  private static final String TAG = HTTrackLib.class.getName();
+
+  /**
+   * Opaque native context.
+   **/
   private long nativeObject;
 
-  /** Statistics. **/
+  /**
+   * Statistics.
+   **/
   protected final HTTrackCallbacks callbacks;
 
   /**
+   * Load of native libraries tried
+   **/
+  protected static boolean loadDone = false;
+
+  /**
+   * Exception during startup.
+   **/
+  protected static Throwable exception;
+
+  /**
+   * Check whether the library initialized successfully or not (ie. link error)
+   */
+  public static boolean loadedSuccessfully() {
+    return HTTrackLib.exception == null;
+  }
+
+  /**
+   * Return the error encounted while loading this library, if any
+   */
+  public static Throwable loadError() {
+    return HTTrackLib.exception;
+  }
+
+  /**
    * Get the current library version, as MAJOR.MINOR.SUBRELEASE string.
-   * 
+   *
    * @return the current library version
    */
   public static native String getVersion();
 
   /**
    * Get the current library features, as a string of [+-]tag.
-   * 
+   *
    * @return the current library features.
    */
   public static native String getFeatures();
 
   /**
    * Build the top-level index.
-   * 
-   * @param path
-   *          The target path;
-   * @param templatesPath
-   *          The templates path directory.
+   *
+   * @param path          The target path;
+   * @param templatesPath The templates path directory.
    * @return 1 upon success
    */
   public static int buildTopIndex(final File path, final File templatesPath) {
@@ -62,20 +94,18 @@ public class HTTrackLib {
 
   /**
    * Start the engine.
-   * 
-   * @param args
-   *          main() arguments.
+   *
+   * @param args main() arguments.
    * @return The exit code upon completion.
-   * @throws IOException
-   *           upon error
+   * @throws IOException upon error
    */
   public native int main(String[] args) throws IOException;
 
   /**
    * Stop the engine.
-   * 
+   *
    * @return true if the engine was stopped (or at least a request was sent),
-   *         false if it has already stopped.
+   * false if it has already stopped.
    */
   public native boolean stop(boolean force);
 
@@ -121,7 +151,23 @@ public class HTTrackLib {
 
   protected static native int buildTopIndex(String path, String templatesPath);
 
-  static {
+  public static String getLibraryDirectory(final Context context) {
+    final int sdk_level = android.os.Build.VERSION.SDK_INT;
+
+    if (sdk_level >= Build.VERSION_CODES.GINGERBREAD) {
+      return context.getApplicationInfo().nativeLibraryDir;
+    } else if (sdk_level >= Build.VERSION_CODES.DONUT) {
+      return context.getApplicationInfo().dataDir + "/lib";
+    }
+
+    return "/data/data/" + context.getPackageName() + "/lib";
+  }
+
+  public static boolean loadLibraries() {
+    if (loadDone)
+      return loadedSuccessfully();
+    loadDone = true;
+
     /**
      * Load needed native libraries. Remember that we do not have our library
      * path in the standard library path, and therefore loading "htslibjni" will
@@ -140,26 +186,27 @@ public class HTTrackLib {
      * application-cached-library using some dirty magic (ie. giving the
      * explicit full path and .so) For now, we do not ship the libraries, which
      * will spare some space, and hope the ABI won't change too much.
+     * EDIT: crypto and ssl are now statically linked
      */
-    System.loadLibrary("crypto");
-    System.loadLibrary("ssl");
 
-    /** Iconv (Unicode). **/
-    System.loadLibrary("iconv");
+    try {
+      /** Load all libraries. **/
+      final String[] libraries = { "iconv", "httrack", "htsjava", "htslibjni" };
+      for (final String lib : libraries) {
+        Log.d(TAG, "Loading native library " + lib);
+        System.loadLibrary(lib);
+      }
 
-    /** HTTrack core engine. **/
-    System.loadLibrary("httrack");
+      /** Static initialization. Throws RuntimeException upon error. **/
+      Log.d(TAG, "Initializing static library");
+      initStatic();
 
-    /**
-     * HTTrack Java plugin (note: dlopen()'ed by HTTrack, has symbol
-     * dependencies to libhttrack.so).
-     **/
-    System.loadLibrary("htsjava");
+      Log.d(TAG, "Done initializing native libraries successfullt");
 
-    /** HTTrack Android JNI layer. **/
-    System.loadLibrary("htslibjni");
-
-    /** Static initialization. Throws RuntimeException upon error. **/
-    initStatic();
+      return true;
+    } catch (final Throwable e) {
+      exception = e;
+      return false;
+    }
   }
 }
