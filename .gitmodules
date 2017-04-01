@@ -1,6 +1,6 @@
-[submodule "jni/coffeecatch"]
-	path = jni/coffeecatch
+[submodule "app/src/main/jni/coffeecatch"]
+	path = app/src/main/jni/coffeecatch
 	url = https://github.com/xroche/coffeecatch.git
-[submodule "jni/httrack"]
-	path = jni/httrack
+[submodule "app/src/main/jni/httrack"]
+	path = app/src/main/jni/httrack
 	url = https://github.com/xroche/httrack.git
