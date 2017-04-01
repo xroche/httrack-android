@@ -36,6 +36,7 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -45,6 +46,7 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Notification;
@@ -55,6 +57,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.net.Uri;
@@ -63,10 +66,12 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Parcelable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.ContextCompat;
 import android.text.Editable;
 import android.text.Html;
 import android.text.TextUtils;
@@ -250,8 +255,10 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     // Set root path for logs
-    HTTrackLib.initRootPath(projectPath.getAbsolutePath());
-    
+    if (HTTrackLib.loadedSuccessfully()) {
+      HTTrackLib.initRootPath(projectPath.getAbsolutePath());
+    }
+
     // Change ?
     final View view = findViewById(R.id.fieldBasePath);
     if (view != null) {
@@ -355,6 +362,70 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /*
+   * Ensure we can connect to the Internet.
+   */
+  protected void ensureInternetIsAvailable() {
+    final boolean hasPermissionNetwork = (ContextCompat.checkSelfPermission(this,
+            Manifest.permission.INTERNET) == PackageManager.PERMISSION_GRANTED);
+    if (!hasPermissionNetwork) {
+      Log.d("httrack", "Requesting access to Internet");
+      ActivityCompat.requestPermissions(this,
+              new String[]{Manifest.permission.INTERNET},
+              REQUEST_INTERNET);
+    } else {
+      Log.d("httrack", "Access to Internet is allowed");
+    }
+  }
+
+  /*
+  * Ensure "hard" permissions are requested properly from user.
+  * This is a new Android 6 required step, sheesh.
+  * See <http://stackoverflow.com/questions/33139754/android-6-0-marshmallow-cannot-write-to-sd-card>
+  * and especially szedjani's insightful reply.
+  */
+  private static final int REQUEST_WRITE_STORAGE = 1;
+  private static final int REQUEST_INTERNET = 2;
+
+  protected void ensureMediaIsAllowedHardPermissions() {
+    final boolean hasPermissionStorage = (ContextCompat.checkSelfPermission(this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
+    if (!hasPermissionStorage) {
+      Log.d("httrack", "Requesting access to storage");
+      ActivityCompat.requestPermissions(this,
+              new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+              REQUEST_WRITE_STORAGE);
+    } else {
+      Log.d("httrack", "Access to storage is allowed");
+    }
+  }
+
+  /*
+   * Callback to receive ensureMediaIsAllowedHardPermissions() permission feedback.
+   */
+  @Override
+  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    switch (requestCode) {
+      case REQUEST_WRITE_STORAGE: {
+        if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+          Toast.makeText(this, "The app was not allowed to write to your storage. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
+        } else {
+          Log.d("httrack", "Permission to storage is granted");
+        }
+      }
+      break;
+      case REQUEST_INTERNET: {
+        if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+          Toast.makeText(this, "The app was not allowed to access the Internet. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
+        } else {
+          Log.d("httrack", "Permission to access Internet is granted");
+        }
+      }
+      break;
+    }
+  }
+
+  /*
    * Ensure the "Websites" directory exists.
    * 
    * Note: calls computeStorageTarget().
@@ -363,6 +434,8 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d("httrack", "called ensureExternalStorage");
     
     computeStorageTarget();
+    ensureMediaIsAllowedHardPermissions();
+    ensureInternetIsAvailable();
 
     final File root = getProjectRootFile();
     if (root != null && mkdirsRetry(root)) {
@@ -398,8 +471,12 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Attempt to load the native library.
     // Fetch httrack engine version
-    version = HTTrackLib.getVersion();
-    versionFeatures = HTTrackLib.getFeatures();
+    if (HTTrackLib.loadLibraries()) {
+      version = HTTrackLib.getVersion();
+      versionFeatures = HTTrackLib.getFeatures();
+    } else {
+      new AlertDialog.Builder(this).setTitle("Fatal Error").setMessage(HTTrackLib.loadError().getMessage()).show();
+    }
 
     // Android package version code
     try {
@@ -820,7 +897,7 @@ public class HTTrackActivity extends FragmentActivity {
    * The runner fragment class.<br />
    * Thanks to Alex Lockwood for the useful hints regarding fragments!
    */
-  protected static class RunnerFragment extends Fragment {
+  public static class RunnerFragment extends Fragment {
     protected Runner runner;
 
     public RunnerFragment() {

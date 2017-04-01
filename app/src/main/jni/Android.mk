@@ -13,15 +13,32 @@
 # limitations under the License.
 #
 
-# Prebuilt libhttrack.so ?
-PREBUILT_LIBHTTRACK=no
-
 LOCAL_PATH := $(call my-dir)
+TARGET_ARCH := arm
 
+# <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libiconv
-LOCAL_SRC_FILES := ../prebuild/libiconv.so
-include $(PREBUILT_SHARED_LIBRARY)
+LOCAL_CFLAGS := \
+  -Wno-multichar \
+  -DANDROID \
+  -DLIBDIR="\"c\"" \
+  -DBUILDING_LIBICONV \
+  -DIN_LIBRARY \
+  -DLIBICONV_PLUG
+LOCAL_SRC_FILES := \
+  libiconv-1.15/libcharset/lib/localcharset.c \
+  libiconv-1.15/lib/iconv.c \
+  libiconv-1.15/lib/relocatable.c
+LOCAL_C_INCLUDES += \
+  $(LOCAL_PATH)/include/iconv \
+  $(LOCAL_PATH)/libiconv-1.15/include \
+  $(LOCAL_PATH)/libiconv-1.15/libcharset \
+  $(LOCAL_PATH)/libiconv-1.15/lib \
+  $(LOCAL_PATH)/libiconv-1.15/libcharset/include \
+  $(LOCAL_PATH)/libiconv-1.15/srclib
+LOCAL_EXPORT_C_INCLUDES       := $(LOCAL_PATH)/libiconv-1.15/include
+include $(BUILD_SHARED_LIBRARY)
 
 # TODO FIXME: INVESTIGATE THIS
 # Android seems to have both /system/lib/libcrypto.so and
@@ -33,28 +50,18 @@ include $(PREBUILT_SHARED_LIBRARY)
 # For now, we do not ship the libraries, which will spare some space, and
 # hope the ABI won't change too much.
 
-# include $(CLEAR_VARS)
-# LOCAL_MODULE    := libcrypto
-# LOCAL_SRC_FILES := ../prebuild/libcrypto.so
-# include $(PREBUILT_SHARED_LIBRARY)
+include $(CLEAR_VARS)
+LOCAL_MODULE    := libcrypto
+LOCAL_SRC_FILES := ../prebuild/libcrypto.a
+include $(PREBUILT_STATIC_LIBRARY)
 
-# include $(CLEAR_VARS)
-# LOCAL_MODULE    := libssl
-# LOCAL_SRC_FILES := ../prebuild/libssl.so
-# include $(PREBUILT_SHARED_LIBRARY)
+include $(CLEAR_VARS)
+LOCAL_MODULE    := libssl
+LOCAL_SRC_FILES := ../prebuild/libssl.a
+include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libhttrack
-# set to yes to have prebuilt binaries
-ifeq ($(PREBUILT_LIBHTTRACK),yes)
-LOCAL_SRC_FILES := ../prebuild/libhttrack.so
-include $(PREBUILT_SHARED_LIBRARY)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE    := libhtsjava
-LOCAL_SRC_FILES := ../prebuild/libhtsjava.so
-include $(PREBUILT_SHARED_LIBRARY)
-else
 LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsback.c httrack/src/htscache.c httrack/src/htscatchurl.c 	\
 	httrack/src/htsfilters.c httrack/src/htsftp.c httrack/src/htshash.c 	\
@@ -70,10 +77,11 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/minizip/zip.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/httrack/src/coucal			\
-	$(LOCAL_PATH)/../include
-LOCAL_LDLIBS := -ldl -lssl -lz -lcrypto
+	$(LOCAL_PATH)/include
+LOCAL_LDLIBS := -ldl -lz
 LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
 LOCAL_SHARED_LIBRARIES := libiconv
+LOCAL_STATIC_LIBRARIES := libssl libcrypto
 # Note: using -fvisibility=hidden is causing issues, to be investigated
 # (immediate crash when starting a mirror, tested @arm-linux-androideabi-4.6)
 LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
@@ -99,7 +107,7 @@ LOCAL_MODULE    := libhtsjava
 LOCAL_SRC_FILES := httrack/src/htsjava.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/httrack/src/coucal			\
-	$(LOCAL_PATH)/../include
+	$(LOCAL_PATH)/include
 LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
@@ -119,7 +127,6 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
 	-Wl,--no-merge-exidx-entries -Wl,-O1
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
-endif
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := htslibjni
@@ -127,7 +134,7 @@ LOCAL_SRC_FILES := htslibjni.c coffeecatch/coffeecatch.c coffeecatch/coffeejni.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/httrack/src/coucal			\
 	$(LOCAL_PATH)/coffeecatch					\
-	$(LOCAL_PATH)/../include
+	$(LOCAL_PATH)/include
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -O3 -g -funwind-tables \
