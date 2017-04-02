@@ -5,3 +5,6 @@ workspace.xml
 /build
 /gradle
 /.idea/libraries
+/app/.externalNativeBuild
+/app/build
+/app/src/main/jniLibs
