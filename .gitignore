@@ -4,3 +4,4 @@ workspace.xml
 /local.properties
 /build
 /gradle
+/.idea/libraries
