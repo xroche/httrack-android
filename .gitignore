@@ -1,0 +1,6 @@
+workspace.xml
+*.iml
+/.gradle
+/local.properties
+/build
+/gradle
