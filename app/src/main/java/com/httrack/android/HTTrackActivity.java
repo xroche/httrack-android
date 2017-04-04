@@ -36,7 +36,6 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -72,6 +71,7 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.Html;
 import android.text.TextUtils;
@@ -134,6 +134,7 @@ public class HTTrackActivity extends FragmentActivity {
     public static final int FROYO = 0x00000008;
     public static final int HONEYCOMB = 0x0000000b;
     public static final int KITKAT = 0x00000013;
+    public static final int NOUGAT = 24;
   };
 
   // Fields to restore/save state (Note: might be read-only fields)
@@ -2315,14 +2316,39 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /** Browser a specific index. **/
-  public static Intent getBrowseIntent(final File index) {
+  private static final int FLAG_GRANT_PREFIX_URI_PERMISSION = 0x00000080;
+
+  /**
+   * Browser a specific index.
+   **/
+  public Intent getBrowseIntent(final File index) {
     if (index != null && index.exists()) {
       final Intent intent = new Intent();
       intent.setAction(android.content.Intent.ACTION_VIEW);
-      // Note: won't work on certain Android releases if the project name has
-      // spaces :(
-      final Uri uri = Uri.fromFile(index);
+
+      // Starting from Nougat, we need to add this boilerplate :(
+      Uri uri;
+      if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.NOUGAT) {
+        final Context context = getApplicationContext();
+
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | FLAG_GRANT_PREFIX_URI_PERMISSION);
+        Log.d(getClass().getSimpleName(), "getting content provider for " + index.getAbsolutePath());
+        uri = FileProvider.getUriForFile(context,
+          BuildConfig.APPLICATION_ID + ".fileprovider",
+          index);
+        Log.d(getClass().getSimpleName(), "content provider for " + index.getAbsolutePath() + " is " + uri);
+
+        final Uri parentContent = FileProvider.getUriForFile(context,
+          BuildConfig.APPLICATION_ID + ".fileprovider",
+          index.getParentFile());
+        Log.d(getClass().getSimpleName(), "allowing " + intent.getPackage() + " uri " + parentContent);
+        context.grantUriPermission(getPackageName(), parentContent, Intent.FLAG_GRANT_READ_URI_PERMISSION | FLAG_GRANT_PREFIX_URI_PERMISSION);
+      } else {
+        // Note: won't work on certain Android releases if the project name has
+        // spaces :(
+        uri = Uri.fromFile(index);
+      }
+
       // Without the MIME, Android tend to crash with a NPE (!)
       intent.setDataAndType(uri, "text/html");
       return intent;
@@ -2358,6 +2384,7 @@ public class HTTrackActivity extends FragmentActivity {
    * "Browse All Websites"
    */
   public void onBrowseAll(final View view) {
+    buildTopIndex();
     browse(getProjectRootIndexFile());
   }
 
