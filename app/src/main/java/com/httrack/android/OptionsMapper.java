@@ -209,7 +209,7 @@ public class OptionsMapper {
       new Pair<String, String>("UserID",
           "Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)"),
       new Pair<String, String>("Footer",
-          "<!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&CO'2013], %s -->"),
+          "<!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&CO'2017], %s -->"),
       new Pair<String, String>("AcceptLanguage", "en,*"),
       new Pair<String, String>("OtherHeaders", ""),
       new Pair<String, String>("DefaultReferer", ""),

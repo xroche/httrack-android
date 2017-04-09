@@ -78,7 +78,7 @@
     <string name="browser_identity">Browser identity</string>
     <string name="html_footer">HTML footer</string>
     <string name="default_browser_id">Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)</string>
-    <string name="default_html_footer" formatted="false">&lt;!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&amp;CO\'2013], %s --&gt;</string>
+    <string name="default_html_footer" formatted="false">&lt;!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&amp;CO\'2017], %s --&gt;</string>
     <string name="accept_cookies">Accept cookies</string>
     <string name="check_document_type">Check document type</string>
     <string name="parse_java_files">Parse java files</string>
@@ -98,7 +98,7 @@
     <string name="hint_proxy_address">proxy.example.com</string>
     <string name="hint_proxy_port">8080</string>
     <string name="hint_browser_identity">Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)</string>
-    <string name="hint_footer" formatted="false">&lt;!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&amp;CO\'2013], %s --&gt;</string>
+    <string name="hint_footer" formatted="false">&lt;!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&amp;CO\'2017], %s --&gt;</string>
     <string name="use_proxy_for_ftp">Use proxy for ftp transfers</string>
     <string name="store_all_files_in_cache">Store ALL files in cache</string>
     <string name="do_not_redownload_locally_erased_files">Do not re-download locally erased files</string>
@@ -168,7 +168,7 @@
     <string name="no_index_html_in_xx">No \'index.html\' file in %s!</string>
     <string name="info_recreated_resources">Recreated HTTrack internal cached resources</string>
     <string name="info_could_not_create_resources">Could not create internal cached resources</string>
-    <string name="about_credits">\n(Please notify us of any bug or problem)\n\nDevelopment:\nInterface (Windows): Xavier Roche\nSpider: Xavier Roche\nJavaParserClasses: Yann Philippot\n\n&#169;1998-2013 Xavier Roche and other contributors\nMANY THANKS for translation tips to:\nRobert Lagadec (rlagadec@yahoo.fr)</string>
+    <string name="about_credits">\n(Please notify us of any bug or problem)\n\nDevelopment:\nInterface (Windows): Xavier Roche\nSpider: Xavier Roche\nJavaParserClasses: Yann Philippot\n\n&#169;1998-2017 Xavier Roche and other contributors\nMANY THANKS for translation tips to:\nRobert Lagadec (rlagadec@yahoo.fr)</string>
     <string name="could_not_get_external_directory">Could not get the system external storage directory</string>
     <string name="could_not_write_to">Could not write to:</string>
     <string name="read_only_storage_media">Read-only media (SDCARD)</string>
