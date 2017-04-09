@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -65,6 +66,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Parcelable;
+import android.os.StrictMode;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -2318,6 +2320,30 @@ public class HTTrackActivity extends FragmentActivity {
 
   private static final int FLAG_GRANT_PREFIX_URI_PERMISSION = 0x00000080;
 
+  /* Attempt to disable strict file:// URI check, that appear to have been
+   * introduced in Nougat without too much thinking, especially for
+   * applications like HTTrack producing recurse content.
+   * Thanks to stackoverflow's user Pointer Null for this hack;
+   * See <http://stackoverflow.com/questions/38200282/android-os-fileuriexposedexception-file-storage-emulated-0-test-txt-exposed>
+   */
+  private boolean allowUriSchemes() {
+    if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.NOUGAT) {
+      // Regular file:// is disabled
+      try {
+        final Method m = StrictMode.class.getMethod("disableDeathOnFileUriExposure");
+        m.invoke(null);
+        Log.d(getClass().getSimpleName(), "called disableDeathOnFileUriExposure() successfully");
+        return true;
+      } catch (final Exception e) {
+        Log.d(getClass().getSimpleName(), "could not call disableDeathOnFileUriExposure()", e);
+        return false;
+      }
+    } else {
+      // Regular file:// works before Nougat
+      return true;
+    }
+  }
+
   /**
    * Browser a specific index.
    **/
@@ -2327,30 +2353,36 @@ public class HTTrackActivity extends FragmentActivity {
       intent.setAction(android.content.Intent.ACTION_VIEW);
 
       // Starting from Nougat, we need to add this boilerplate :(
-      Uri uri;
-      if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.NOUGAT) {
+      // Unfortunately this insanity won't work recursively, and the only
+      // thing you'll get is the first HTML page of the downloaded mirror,
+      // which is rather useless. Dear Android developers, could you think
+      // a bit forward before breaking applications please ?
+      if (!allowUriSchemes()) {
         final Context context = getApplicationContext();
 
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | FLAG_GRANT_PREFIX_URI_PERMISSION);
         Log.d(getClass().getSimpleName(), "getting content provider for " + index.getAbsolutePath());
-        uri = FileProvider.getUriForFile(context,
+        final Uri uri = FileProvider.getUriForFile(context,
           BuildConfig.APPLICATION_ID + ".fileprovider",
           index);
         Log.d(getClass().getSimpleName(), "content provider for " + index.getAbsolutePath() + " is " + uri);
 
-        final Uri parentContent = FileProvider.getUriForFile(context,
-          BuildConfig.APPLICATION_ID + ".fileprovider",
-          index.getParentFile());
-        Log.d(getClass().getSimpleName(), "allowing " + intent.getPackage() + " uri " + parentContent);
-        context.grantUriPermission(getPackageName(), parentContent, Intent.FLAG_GRANT_READ_URI_PERMISSION | FLAG_GRANT_PREFIX_URI_PERMISSION);
+        // Set URI and type
+        intent.setDataAndType(uri, "text/html");
+
+        // Allow content to be read by third-party (ie. the browser)
+        // The stupid FLAG_GRANT_PREFIX_URI_PERMISSION flag is totally useless
+        // unfortunately, as it won't allow directory-prefix URI, sheesh.
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | FLAG_GRANT_PREFIX_URI_PERMISSION);
+
       } else {
         // Note: won't work on certain Android releases if the project name has
         // spaces :(
-        uri = Uri.fromFile(index);
+        final Uri uri = Uri.fromFile(index);
+
+        // Without the MIME, Android tend to crash with a NPE (!)
+        intent.setDataAndType(uri, "text/html");
       }
 
-      // Without the MIME, Android tend to crash with a NPE (!)
-      intent.setDataAndType(uri, "text/html");
       return intent;
     } else {
       return null;
