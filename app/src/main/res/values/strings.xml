@@ -204,5 +204,6 @@
     <string name="save_default">Save default options</string>
     <string name="reset_default">Reset to default options</string>
     <string name="default_storage">Select default storage</string>
+    <string name="directory_does_not_exist">Directory does not exist</string>
 
 </resources>

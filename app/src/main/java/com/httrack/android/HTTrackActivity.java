@@ -52,6 +52,7 @@ import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -215,32 +216,50 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /* Get the root storage. */
-  private File getExternalStorage() {
+  /* Get the SDCard directory, or @c null upon error (ie. no sdcard). */
+  private File getSDCardStorage() {
     final String state = Environment.getExternalStorageState();
     if (Environment.MEDIA_MOUNTED.equals(state)) {
-      if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.FROYO) {
-        return Environment
-            .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-      } else {
-        return Environment.getExternalStorageDirectory();
-      }
+      return Environment.getExternalStorageDirectory();
     } else {
-      // Fallback.
-      return getFilesDir();
+      return null;
     }
   }
 
-  /* Get the default root external storage. */
-  private File getDefaultHTTrackPath() {
-    final File rootPath = getExternalStorage();
+  /* Get the root storage: SDCard, ExternalStoragePublicDirectory, ExternalStorageDirectory, or fallback to FilesDir */
+  private File getExternalStorage() {
+    final File f = getSDCardStorage();
+    if (f != null) {
+      return f;
+    } else {
+      if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.FROYO) {
+        return Environment
+          .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+      } else {
+        // Fallback.
+        return getFilesDir();
+      }
+    }
+  }
 
+  private File getHTTrackDirectoryFromBaseDirectory(final File rootPath) {
     // Naming
     final File httrackBasePath = new File(rootPath, "HTTrack");
     final File httrackPath = new File(httrackBasePath, "Websites");
 
-    // Take newest form unless old one exists.
     return httrackPath;
+  }
+
+  /* Get the default root external storage. */
+  private File getDefaultHTTrackPath() {
+    return getHTTrackDirectoryFromBaseDirectory(getExternalStorage());
+  }
+
+  /* Get the alternate root external storage. */
+  private File getSDCardHTTrackPath() {
+    final File rootPath = getSDCardStorage();
+
+    return rootPath != null ? getHTTrackDirectoryFromBaseDirectory(rootPath) : null;
   }
 
   /*
@@ -249,9 +268,14 @@ public class HTTrackActivity extends FragmentActivity {
   private void computeStorageTarget() {
     final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
     final String base = settings.getString(BASE_NAME, null);
-    if (base != null) {
-      final File path = new File(base);
-      projectPath = path;
+    final File baseFile = base != null ? new File(base) : null;
+
+    if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
+      showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
+    }
+
+    if (baseFile != null && baseFile.exists() && baseFile.isDirectory()) {
+      projectPath = baseFile;
     } else if (projectPath == null || !projectPath.exists()) {
       final File path = getDefaultHTTrackPath();
       projectPath = path;
@@ -2182,8 +2206,16 @@ public class HTTrackActivity extends FragmentActivity {
     // Start new activity
     final Intent intent = new Intent(this, FileChooserActivity.class);
     fillExtra(intent);
+
+    final File defaultPath = getDefaultHTTrackPath();
     intent.putExtra("com.httrack.android.defaultHTTrackPath",
-        getDefaultHTTrackPath());
+      defaultPath);
+
+    final File f = getSDCardHTTrackPath();
+    if (f != null && !f.equals(defaultPath)) {
+      intent.putExtra("com.httrack.android.sdcardHTTrackPath",
+        f);
+    }
     startActivityForResult(intent, ACTIVITY_FILE_CHOOSER);
   }
 
@@ -2347,10 +2379,17 @@ public class HTTrackActivity extends FragmentActivity {
   /**
    * Browser a specific index.
    **/
-  public Intent getBrowseIntent(final File index) {
+  public Intent getBrowseIntent(final File index, final boolean safe) {
     if (index != null && index.exists()) {
       final Intent intent = new Intent();
       intent.setAction(android.content.Intent.ACTION_VIEW);
+
+      // Attempt to set the default navigator. However, this will raise an
+      // ActivityNotFoundException on some devices.
+      if (!safe) {
+        intent.addCategory(Intent.CATEGORY_BROWSABLE);
+        intent.setClassName("com.android.browser", "com.android.browser.BrowserActivity");
+      }
 
       // Starting from Nougat, we need to add this boilerplate :(
       // Unfortunately this insanity won't work recursively, and the only
@@ -2389,19 +2428,40 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /** Browser a specific web page. **/
+  public Intent getBrowseIntent(final File index) {
+    return getBrowseIntent(index, false);
+  }
+
+    /** Browser a specific web page. **/
   private void browse(final Uri uri) {
-    final Intent intent = new Intent();
-    intent.setAction(android.content.Intent.ACTION_VIEW);
-    intent.setData(uri);
-    startActivity(intent);
+    try {
+      final Intent intent = new Intent();
+      intent.setAction(android.content.Intent.ACTION_VIEW);
+      intent.setData(uri);
+      startActivity(intent);
+    } catch (final Exception e) {
+      showNotification(e.getLocalizedMessage());
+    }
   }
 
   /** Browser a specific index. **/
   private void browse(final File index) {
-    final Intent intent = getBrowseIntent(index);
-    if (intent != null) {
-      startActivity(intent);
+    try {
+      final Intent intent = getBrowseIntent(index);
+      if (intent != null) {
+        try {
+          startActivity(intent);
+        } catch(final ActivityNotFoundException nfe) {
+          Log.d(getClass().getSimpleName(),
+            "browse with browser refused, fallbacking to simple mode", nfe);
+          final Intent safe_intent = getBrowseIntent(index, true);
+          if (safe_intent != null) {
+            startActivity(safe_intent);
+          }
+        }
+      }
+   } catch(final Exception e) {
+      showNotification(e.getLocalizedMessage());
     }
   }
 
