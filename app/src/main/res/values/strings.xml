@@ -203,5 +203,6 @@
     <string name="load_default">Load default options</string>
     <string name="save_default">Save default options</string>
     <string name="reset_default">Reset to default options</string>
+    <string name="default_storage">Select default storage</string>
 
 </resources>

@@ -8,6 +8,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.app.Activity;
 import android.content.Intent;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
 import android.view.View;
@@ -24,6 +27,8 @@ public class FileChooserActivity extends Activity implements
 
   protected File projectRootFile;
   protected File defaultRootFile;
+  protected File sdcardRootFile;
+
   protected final List<Pair<String, File>> files = new ArrayList<Pair<String, File>>();
 
   // Handler to execute code in UI thread
@@ -38,30 +43,41 @@ public class FileChooserActivity extends Activity implements
     return px;
   }
 
+  // Set file directory
+  private void setFile(final File file) {
+    final EditText base = EditText.class.cast(findViewById(R.id.fieldBasePath));
+    final String path = file.getAbsolutePath();
+    base.setText(path);
+    base.setSelection(path.length());
+  }
+
   /*
    * Create all tabs for main options menu.
    */
   private void refreshDir() {
-    // Set text
-    final EditText base = EditText.class.cast(findViewById(R.id.fieldBasePath));
-    final String path = projectRootFile.getAbsolutePath();
-    base.setText(projectRootFile.getAbsolutePath());
-    base.setSelection(path.length());
+    // Clear list
+    files.clear();
+
+    // Find parent
+    final File parent = projectRootFile != null && projectRootFile.exists() ? projectRootFile.getParentFile() : null;
+    if (parent != null && projectRootFile != null && !parent.getAbsolutePath().equals(projectRootFile.getAbsolutePath())) {
+      files.add(new Pair<String, File>(getString(R.string.ellipsis), parent));
+      Log.d("httrack", "found parent of " + projectRootFile.getAbsolutePath() + ": " + parent.getAbsolutePath());
+    } else {
+      files.add(new Pair<String, File>(getString(R.string.ellipsis), new File("/")));
+      Log.d("httrack", "could not find found parent of " + projectRootFile.getAbsolutePath() + ", using /");
+    }
 
     // List directory
     final File[] list = projectRootFile != null && projectRootFile.exists() ? projectRootFile
         .listFiles() : defaultRootFile.listFiles();
     if (list != null) {
-      files.clear();
-      final File parent = projectRootFile.getParentFile();
-      if (parent != null) {
-        files.add(new Pair<String, File>(getString(R.string.ellipsis), parent));
-      }
       for (final File file : list) {
         if (file.isDirectory() && !file.isHidden() /* && file.canWrite() */) {
           files.add(new Pair<String, File>(file.getName(), file));
         }
       }
+
     }
 
     if (files != null) {
@@ -125,15 +141,43 @@ public class FileChooserActivity extends Activity implements
     // Fetch args from parent
     final Bundle extras = getIntent().getExtras();
     projectRootFile = File.class.cast(extras
-        .get("com.httrack.android.rootFile"));
+      .get("com.httrack.android.rootFile"));
     defaultRootFile = File.class.cast(extras
-        .get("com.httrack.android.defaultHTTrackPath"));
+      .get("com.httrack.android.defaultHTTrackPath"));
+    sdcardRootFile = File.class.cast(extras
+      .get("com.httrack.android.sdcardHTTrackPath"));
     if (projectRootFile == null || defaultRootFile == null) {
       throw new RuntimeException("internal error");
     }
 
     // Initial dir
+    setFile(projectRootFile);
     refreshDir();
+
+    final EditText base = EditText.class.cast(findViewById(R.id.fieldBasePath));
+    base.addTextChangedListener(new TextWatcher() {
+      @Override
+      public void afterTextChanged(final Editable s) {
+        // Refresh in realtime
+        final File f = new File(s.toString());
+        if (f.exists() && f.isDirectory() && !f.equals(projectRootFile)) {
+          projectRootFile = f;
+          refreshDir();
+        }
+      }
+
+      // NOOP
+      @Override
+      public void onTextChanged(final CharSequence s, final int start,
+                                final int before, final int count) {
+      }
+
+      // NOOP
+      @Override
+      public void beforeTextChanged(final CharSequence s, final int start,
+                                    final int count, final int after) {
+      }
+    });
   }
 
   @Override
@@ -146,10 +190,12 @@ public class FileChooserActivity extends Activity implements
 
     if (position >= 0 && files != null && position < files.size()) {
       projectRootFile = files.get(position).second;
+      Log.d("httrack", "clicked " + projectRootFile.getAbsolutePath());
     }
     handlerUI.post(new Runnable() {
       @Override
       public void run() {
+        setFile(projectRootFile);
         refreshDir();
       }
     });
@@ -164,8 +210,14 @@ public class FileChooserActivity extends Activity implements
     final Intent intent = new Intent();
     intent.putExtra("com.httrack.android.rootFile", path);
     setResult(Activity.RESULT_OK, intent);
+    Log.d("httrack", "applied " + projectRootFile.getAbsolutePath());
 
     // Finish activity
     finish();
+  }
+
+  public void onClickDefaultStorage(final View v) {
+    setFile(defaultRootFile);
+    refreshDir();
   }
 }
