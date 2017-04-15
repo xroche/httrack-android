@@ -1,0 +1,3 @@
+openssl/
+	OpenSSL headers
+	See app/src/main/prebuild/openssl.txt
