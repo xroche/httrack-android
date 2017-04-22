@@ -46,6 +46,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "coffeejni.h"
 #endif
 
+#include "htslibjni.h"
+#include "htslibjni-private.h"
+
 /* fine-grained stats */
 #define GENERATE_FINE_STATS 1
 
@@ -83,24 +86,6 @@ static void assert_failure(const char* exp, const char* file, int line) {
 #undef assert
 #define assert(EXP) (void)( (EXP) || (assert_failure(#EXP, __FILE__, __LINE__), 0) )
 
-/* httrack-to-android error level dispatch */
-static int get_android_prio(const int type) {
-  switch(type & 0xff) {
-  case LOG_PANIC:
-    return ANDROID_LOG_ERROR;
-  case LOG_ERROR:
-    return ANDROID_LOG_INFO;
-  case LOG_WARNING:
-  case LOG_NOTICE:
-  case LOG_INFO:
-  case LOG_DEBUG:
-    return ANDROID_LOG_DEBUG;
-  case LOG_TRACE:
-  default:
-    return ANDROID_LOG_VERBOSE;
-  }
-}
-
 /* our own debugging log callabck */
 static void httrackLogCallback(httrackp *opt, int type, 
                                const char *format, va_list args) {
@@ -125,59 +110,8 @@ static void error(const char *format, ...) {
   va_end(args);
 }
 
-/** Context for HTTrackLib. **/
-typedef struct HTTrackLib_context {
-  pthread_mutex_t lock;
-  httrackp * opt;
-  int stop;
-} HTTrackLib_context;
-
-#define MUTEX_LOCK(MUTEX) do {                  \
-    if (pthread_mutex_lock(&MUTEX) != 0) {      \
-      assert(! "pthread_mutex_lock failed");    \
-    }                                           \
-  } while(0)
-
-#define MUTEX_UNLOCK(MUTEX) do {                \
-    if (pthread_mutex_unlock(&MUTEX) != 0) {    \
-      assert(! "pthread_mutex_unlock failed");  \
-    }                                           \
-  } while(0)
-
-#define UNUSED(VAR) (void) VAR
-
-/**
- * Thread-specific context.
- */
-typedef struct thread_context_t {
-  char *buffer;
-  size_t capa;
-} thread_context_t;
-
 /* Thread variable holding context. */
 static pthread_key_t thread_variables;
-
-static void thread_variables_dtor(void *arg) {
-  thread_context_t *const context = (thread_context_t*) arg;
-  if (context != NULL) {
-    if (context->buffer != NULL) {
-      free(context->buffer);
-      context->buffer = NULL;
-    }
-    free(context);
-  }
-}
-
-static thread_context_t* thread_get_variables(void) {
-  void *arg = pthread_getspecific(thread_variables);
-  if (arg == NULL) {
-    arg = calloc(sizeof(thread_context_t), 1);
-    if (pthread_setspecific(thread_variables, arg) != 0) {
-      assert(! "pthread_setspecific() failed");
-    }
-  }
-  return (thread_context_t*) arg;
-}
 
 /* HTTrackLib global class pointer. */
 static jclass cls_HTTrackLib = NULL;
@@ -253,25 +187,6 @@ LIST_OF_FIELDS();
 LIST_OF_FIELDS_ELT();
 #undef DECLARE_FIELD
 
-static jclass findClass(JNIEnv *env, const char *name) {
-  jclass localClass = (*env)->FindClass(env, name);
-  /* "Note however that the jclass is a class reference and must be protected
-   * with a call to NewGlobalRef " -- DARN! */
-  if (localClass != NULL) {
-    jclass globalClass = (*env)->NewGlobalRef(env, localClass);
-    (*env)->DeleteLocalRef(env, localClass);
-    return globalClass;
-  }
-  return NULL;
-}
-
-static void releaseClass(JNIEnv *env, jclass *cls) {
-  if (cls != NULL) {
-    (*env)->DeleteGlobalRef(env, *cls);
-    *cls = NULL;
-  }
-}
-
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   union {
     void *ptr;
@@ -292,13 +207,17 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   return JNI_VERSION_1_6;
 }
 
+static void httrackAssertFailure(const char* exp, const char* file, int line) {
+  assert_failure(exp, file, line);
+}
+
 /* We are supposed to keep the error message string when throwing an
  * exception, because Java does not copy it and just keeps the UTF-8 buffer
  * reference. We do it thread-safely at least, but every new exception is
  * crushing the buffer. */
 static char *getSafeCopy(const char *message) {
   const size_t size = strlen(message) + 1;
-  thread_context_t*const context = thread_get_variables();
+  thread_context_t*const context = thread_get_variables(thread_variables);
 
   if (context->capa < size) {
     for(context->capa = 16 ; context->capa < size ; context->capa <<= 1) ;
@@ -329,12 +248,8 @@ static void throwNPException(JNIEnv* env, const char *message) {
   throwException(env, "java/lang/NullPointerException", message);
 }
 
-static void httrackAssertFailure(const char* exp, const char* file, int line) {
-  assert_failure(exp, file, line);
-}
-
 /* Static initialization. */
-void Java_com_httrack_android_jni_HTTrackLib_initStatic(JNIEnv* env, jclass clazz) {
+JNICALL void Java_com_httrack_android_jni_HTTrackLib_initStatic(JNIEnv* env, jclass clazz) {
 #define L_(X) #X
 #define L(X) L_(X)
 #define ASSERT_THROWS(EXP)                                          \
@@ -427,9 +342,10 @@ void Java_com_httrack_android_jni_HTTrackLib_initStatic(JNIEnv* env, jclass claz
   hts_set_log_vprint_callback(httrackLogCallback);
 }
 
-void Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env, 
-                                                          jclass clazz, 
-                                                          jstring opath) {
+JNICALL void
+Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
+                                                     jclass clazz,
+                                                     jstring opath) {
   if (opath != NULL) {
     const char* path = (*env)->GetStringUTFChars(env, opath, NULL);
 
@@ -514,60 +430,21 @@ static HTTrackLib_context* getNativeOpt(JNIEnv* env, jobject object) {
       (*env)->GetLongField(env, object, field_nativeObject);
 }
 
-jstring Java_com_httrack_android_jni_HTTrackLib_getVersion(JNIEnv* env, jclass clazz) {
+JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getVersion(JNIEnv* env, jclass clazz) {
   const char *version = hts_version();
   assert(version != NULL);
   UNUSED(clazz);
   return (*env)->NewStringUTF(env, version);
 }
 
-jstring Java_com_httrack_android_jni_HTTrackLib_getFeatures(JNIEnv* env, jclass clazz) {
+JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getFeatures(JNIEnv* env, jclass clazz) {
   const char *features = hts_is_available();
   assert(features != NULL);
   UNUSED(clazz);
   return (*env)->NewStringUTF(env, features);
 }
 
-typedef struct jni_context_t {
-  JNIEnv *env;
-  /* HTTrackCallbacks object */
-  jobject callbacks; 
-  /* Context */
-  HTTrackLib_context *context;
-} jni_context_t;
-
-typedef enum hts_state_id_t {
-  STATE_NONE = 0,
-  STATE_RECEIVE,
-  STATE_CONNECTING,
-  STATE_DNS,
-  STATE_FTP,
-  STATE_READY,
-  STATE_MAX
-} hts_state_id_t;
-
-typedef struct hts_state_t {
-  size_t index;
-  hts_state_id_t state;
-  int code;
-  const char *message;
-} hts_state_t;
-
-/* NewStringUTF, but ignore invalid UTF-8 or NULL input. */
-static jobject newStringSafe(JNIEnv *env, const char *s) {
-  if (s != NULL) {
-    const int ne = ! (*env)->ExceptionOccurred(env);
-    jobject str = (*env)->NewStringUTF(env, s);
-    /* Silently ignore UTF-8 exception. */
-    if (str == NULL && (*env)->ExceptionOccurred(env) && ne) {
-      (*env)->ExceptionClear(env);
-    }
-    return str;
-  }
-  return NULL;
-}
-
-void Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject object) {
+JNICALL void Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject object) {
   HTTrackLib_context *const context = (HTTrackLib_context*)
       calloc(sizeof(HTTrackLib_context), 1);
 
@@ -584,7 +461,7 @@ void Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject object) {
   setNativeOpt(env, object, context);
 }
 
-void Java_com_httrack_android_jni_HTTrackLib_free(JNIEnv* env, jobject object) {
+JNICALL void Java_com_httrack_android_jni_HTTrackLib_free(JNIEnv* env, jobject object) {
   HTTrackLib_context *const context = getNativeOpt(env, object);
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_free");
@@ -867,8 +744,9 @@ static int htsshow_loop(t_hts_callbackarg * carg, httrackp * opt,
       lien_n, lien_tot, stat_time, stats);
 }
 
-jboolean Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
-    jboolean force) {
+JNICALL jboolean
+Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
+                                             jboolean force) {
   HTTrackLib_context *const context = getNativeOpt(env, object);
   jboolean stopped = JNI_FALSE;
 
@@ -889,8 +767,9 @@ jboolean Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject objec
   return stopped;
 }
 
-jint Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
-    jstring opath, jstring otemplates) {
+JNICALL jint
+Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
+                                                      jstring opath, jstring otemplates) {
   if (opath != NULL && otemplates != NULL) {
     const char* path = (*env)->GetStringUTFChars(env, opath, NULL);
     const char* templates = (*env)->GetStringUTFChars(env, otemplates, NULL);
@@ -1009,8 +888,9 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
   }
 }
 
-jint Java_com_httrack_android_jni_HTTrackLib_main(JNIEnv* env, jobject object,
-    jobjectArray stringArray) {
+JNICALL jint
+Java_com_httrack_android_jni_HTTrackLib_main(JNIEnv* env, jobject object,
+                                             jobjectArray stringArray) {
 #ifdef USE_COFFEECATCH
   volatile jint code = -1;
   COFFEE_TRY_JNI(env, code = HTTrackLib_main(env, object, stringArray));

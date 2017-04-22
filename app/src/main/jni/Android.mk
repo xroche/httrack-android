@@ -82,10 +82,8 @@ LOCAL_LDLIBS := -ldl -lz
 LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
 LOCAL_SHARED_LIBRARIES := libiconv
 LOCAL_STATIC_LIBRARIES := libssl libcrypto
-# Note: using -fvisibility=hidden is causing issues, to be investigated
-# (immediate crash when starting a mirror, tested @arm-linux-androideabi-4.6)
 LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
-	-fstrict-aliasing														\
+	-fstrict-aliasing -fvisibility=hidden									\
 	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
 	-Wcast-align -Wstrict-prototypes -Wmissing-prototypes					\
 	-Wmissing-declarations -Wdeclaration-after-statement -Wpointer-arith	\
@@ -111,7 +109,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
-	-fstrict-aliasing														\
+	-fstrict-aliasing -fvisibility=hidden									\
 	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
 	-Wcast-align -Wstrict-prototypes -Wmissing-prototypes					\
 	-Wmissing-declarations -Wdeclaration-after-statement -Wpointer-arith	\
