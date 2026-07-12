@@ -42,7 +42,8 @@ jobs:
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: ${{ env.NDK_VERSION }}
-          local-cache: true
+          # No local-cache: its restore can yield an NDK missing the clang
+          # binaries ("clang: No such file or directory"); download fresh each run.
       - name: Cache OpenSSL statics
         id: ssl-cache
         uses: actions/cache@v4

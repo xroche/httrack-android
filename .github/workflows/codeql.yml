@@ -56,7 +56,7 @@ jobs:
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: ${{ env.NDK_VERSION }}
-          local-cache: true
+          # No local-cache: its restore can drop the NDK clang binaries.
       - name: Build native (c-cpp)
         if: matrix.language == 'c-cpp'
         env:
