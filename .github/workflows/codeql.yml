@@ -1,6 +1,10 @@
 # CodeQL static analysis: the Java app AND the JNI/C glue. Mirrors the httrack
 # repo's codeql.yml (security-extended). c-cpp is scoped to htslibjni*.c via
 # .github/codeql/codeql-config.yml so the vendored engine isn't double-scanned.
+#
+# java-kotlin uses build-mode: none (the app doesn't build under modern Gradle
+# until the AGP 8 migration in Phase 3 — no build needed to analyze the source).
+# c-cpp builds the JNI glue via a self-contained NDK setup (no pre-published image).
 name: CodeQL
 
 on:
@@ -17,6 +21,10 @@ concurrency:
   group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NDK_VERSION: r26d
+  OPENSSL_VERSION: "3.0.15"
+
 jobs:
   analyze:
     name: analyze (${{ matrix.language }})
@@ -27,12 +35,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [java-kotlin, c-cpp]
-    container:
-      image: ghcr.io/xroche/httrack-android-build:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        include:
+          - { language: java-kotlin, build-mode: none }
+          - { language: c-cpp,       build-mode: manual }
     steps:
       - uses: actions/checkout@v6
         with:
@@ -40,16 +45,26 @@ jobs:
       - uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
           queries: security-extended
           config-file: ./.github/codeql/codeql-config.yml
-      # c-cpp: CodeQL must observe the native compile (autobuild can't guess the
-      # ndk-build invocation). java-kotlin: autobuild is fine.
+
+      # c-cpp only: CodeQL must observe the native compile (arm64-v8a is enough).
+      - name: Set up NDK ${{ env.NDK_VERSION }}
+        if: matrix.language == 'c-cpp'
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          local-cache: true
       - name: Build native (c-cpp)
         if: matrix.language == 'c-cpp'
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: |
+          OUT=/tmp/openssl-android ABIS=arm64-v8a OPENSSL_VERSION="${OPENSSL_VERSION}" bash docker/build-openssl.sh
           tools/ci/vendor-libiconv.sh
-          ABIS=arm64-v8a tools/ci/fetch-openssl-statics.sh
-          ( cd app/src/main/jni && ndk-build APP_ABI=arm64-v8a APP_PLATFORM=android-24 -j"$(nproc)" )
-      - uses: github/codeql-action/autobuild@v3
-        if: matrix.language == 'java-kotlin'
+          OPENSSL_ANDROID_ROOT=/tmp/openssl-android ABIS=arm64-v8a tools/ci/fetch-openssl-statics.sh
+          ( cd app/src/main && "${ANDROID_NDK_ROOT}/ndk-build" APP_ABI=arm64-v8a APP_PLATFORM=android-24 -j"$(nproc)" )
+
       - uses: github/codeql-action/analyze@v3

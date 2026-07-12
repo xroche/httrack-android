@@ -1,7 +1,9 @@
 # Android build + test for httrack-android.
 # Style follows the httrack repo (least-privilege, concurrency cancel, submodules
-# recursive). Uses the toolchain image published by docker-image.yml (JDK17 + SDK
-# + NDK + OpenSSL statics) so PRs skip the OpenSSL cross-compile.
+# recursive). Phase A is self-contained: it sets up the NDK, cross-compiles OpenSSL
+# (cached), vendors libiconv, and ndk-builds the native libs — no pre-published
+# image needed. (The docker/ toolchain image + docker-image.yml exist for the later
+# Gradle/assemble phase, which needs the full SDK.)
 name: Android
 
 on:
@@ -17,33 +19,48 @@ concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NDK_VERSION: r26d
+  OPENSSL_VERSION: "3.0.15"
+
 jobs:
-  # Native-only: proves recursive submodules (incl. the nested coucal), libiconv
-  # vendoring, OpenSSL 3.x, and 64-bit multi-ABI ndk-build — independently of the
-  # Gradle/AGP migration. Validated locally (arm64-v8a + armeabi-v7a).
-  # x86_64 is intentionally omitted until coffeecatch gains an x86_64 ucontext
-  # branch (its legacy fallback #errors on x86_64); needed for emulator-smoke.
+  # Native-only: proves recursive submodules (incl. nested coucal), libiconv
+  # vendoring, OpenSSL 3.x, and 64-bit multi-ABI ndk-build. Validated locally for
+  # arm64-v8a + armeabi-v7a. x86_64 is added once the coffeecatch x86_64 fix lands
+  # (xroche/coffeecatch#46) — its legacy ucontext block #errors on x86_64.
   native:
     name: native (ndk-build)
     runs-on: ubuntu-24.04
-    container:
-      image: ghcr.io/xroche/httrack-android-build:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      ABIS: arm64-v8a armeabi-v7a
     steps:
       - uses: actions/checkout@v6
         with:
           submodules: recursive          # MUST be recursive: coucal is nested in httrack
+      - name: Set up NDK ${{ env.NDK_VERSION }}
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: ${{ env.NDK_VERSION }}
+          local-cache: true
+      - name: Cache OpenSSL statics
+        id: ssl-cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/openssl-android
+          key: openssl-${{ env.OPENSSL_VERSION }}-ndk-${{ env.NDK_VERSION }}-${{ env.ABIS }}
+      - name: Build OpenSSL (cache miss)
+        if: steps.ssl-cache.outputs.cache-hit != 'true'
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
+        run: OUT=/tmp/openssl-android OPENSSL_VERSION="${OPENSSL_VERSION}" bash docker/build-openssl.sh
       - name: Vendor libiconv
         run: tools/ci/vendor-libiconv.sh
-      - name: Stage prebuilt OpenSSL statics (from image)
-        run: tools/ci/fetch-openssl-statics.sh   # reads $OPENSSL_ANDROID_ROOT in the image
-        env:
-          ABIS: arm64-v8a armeabi-v7a
+      - name: Stage OpenSSL statics into prebuild/
+        run: OPENSSL_ANDROID_ROOT=/tmp/openssl-android tools/ci/fetch-openssl-statics.sh
       - name: ndk-build
-        working-directory: app/src/main      # contains jni/ — ndk-build auto-discovers Android.mk + Application.mk
-        run: ndk-build APP_ABI="arm64-v8a armeabi-v7a" APP_PLATFORM=android-24 -j"$(nproc)"
+        working-directory: app/src/main    # contains jni/ — ndk-build auto-discovers Android.mk + Application.mk
+        run: ${{ steps.ndk.outputs.ndk-path }}/ndk-build APP_ABI="${ABIS}" APP_PLATFORM=android-24 -j"$(nproc)"
       - uses: actions/upload-artifact@v4
         with:
           name: native-libs
@@ -53,7 +70,7 @@ jobs:
   # --- Phases below land with the app modernization (see the plan) ---
   #
   # assemble: ./gradlew assembleDebug assembleRelease lint — needs the AGP 8 /
-  #   AndroidX migration (Phase 3). Add when it lands.
+  #   AndroidX migration (Phase 3), and can use the GHCR toolchain image.
   #
   # emulator-smoke: reactivecircus/android-emulator-runner (x86_64, api 21/29/34),
   #   installs the APK and runs an instrumented crawl against a local fixture
