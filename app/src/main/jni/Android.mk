@@ -14,7 +14,15 @@
 #
 
 LOCAL_PATH := $(call my-dir)
-TARGET_ARCH := arm
+
+# The exidx-merge linker flag is armv7-only (ARM EXIDX sections exist only on
+# 32-bit ARM); emitting it on arm64-v8a/x86_64 breaks the link. Gate it per-ABI.
+# ndk-build re-includes this file once per ABI with TARGET_ARCH_ABI set.
+ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
+  HTS_ARMV7_LDFLAGS := -Wl,--no-merge-exidx-entries
+else
+  HTS_ARMV7_LDFLAGS :=
+endif
 
 # <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
@@ -27,17 +35,17 @@ LOCAL_CFLAGS := \
   -DIN_LIBRARY \
   -DLIBICONV_PLUG
 LOCAL_SRC_FILES := \
-  libiconv-1.15/libcharset/lib/localcharset.c \
-  libiconv-1.15/lib/iconv.c \
-  libiconv-1.15/lib/relocatable.c
+  libiconv-1.17/libcharset/lib/localcharset.c \
+  libiconv-1.17/lib/iconv.c \
+  libiconv-1.17/lib/relocatable.c
 LOCAL_C_INCLUDES += \
   $(LOCAL_PATH)/include/iconv \
-  $(LOCAL_PATH)/libiconv-1.15/include \
-  $(LOCAL_PATH)/libiconv-1.15/libcharset \
-  $(LOCAL_PATH)/libiconv-1.15/lib \
-  $(LOCAL_PATH)/libiconv-1.15/libcharset/include \
-  $(LOCAL_PATH)/libiconv-1.15/srclib
-LOCAL_EXPORT_C_INCLUDES       := $(LOCAL_PATH)/libiconv-1.15/include
+  $(LOCAL_PATH)/libiconv-1.17/include \
+  $(LOCAL_PATH)/libiconv-1.17/libcharset \
+  $(LOCAL_PATH)/libiconv-1.17/lib \
+  $(LOCAL_PATH)/libiconv-1.17/libcharset/include \
+  $(LOCAL_PATH)/libiconv-1.17/srclib
+LOCAL_EXPORT_C_INCLUDES       := $(LOCAL_PATH)/libiconv-1.17/include
 include $(BUILD_SHARED_LIBRARY)
 
 # TODO FIXME: INVESTIGATE THIS
@@ -52,12 +60,12 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libcrypto
-LOCAL_SRC_FILES := ../prebuild/libcrypto.a
+LOCAL_SRC_FILES := ../prebuild/$(TARGET_ARCH_ABI)/libcrypto.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libssl
-LOCAL_SRC_FILES := ../prebuild/libssl.a
+LOCAL_SRC_FILES := ../prebuild/$(TARGET_ARCH_ABI)/libssl.a
 include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -72,14 +80,18 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsmd5.c httrack/src/htszlib.c httrack/src/htswrap.c 		\
 	httrack/src/htsconcat.c httrack/src/htsmodules.c 						\
 	httrack/src/htscharset.c httrack/src/punycode.c 						\
-	httrack/src/htsencoding.c httrack/src/md5.c httrack/src/minizip/ioapi.c	\
+	httrack/src/htsencoding.c httrack/src/md5.c								\
+	httrack/src/htssniff.c httrack/src/htsselftest.c						\
+	httrack/src/htscache_selftest.c httrack/src/htsdns_selftest.c			\
+	httrack/src/minizip/ioapi.c												\
 	httrack/src/minizip/mztools.c httrack/src/minizip/unzip.c				\
 	httrack/src/minizip/zip.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/httrack/src/coucal			\
+	$(LOCAL_PATH)/../prebuild/$(TARGET_ARCH_ABI)/include	\
 	$(LOCAL_PATH)/include
 LOCAL_LDLIBS := -ldl -lz
-LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
+LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild/$(TARGET_ARCH_ABI)
 LOCAL_SHARED_LIBRARIES := libiconv
 LOCAL_STATIC_LIBRARIES := libssl libcrypto
 LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
@@ -96,35 +108,14 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
 	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6			\
 	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
 	-DHTS_CRASH_TEST														\
-	-Wl,--no-merge-exidx-entries -Wl,-O1
+	$(HTS_ARMV7_LDFLAGS) -Wl,-O1
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
 
-include $(CLEAR_VARS)
-LOCAL_MODULE    := libhtsjava
-LOCAL_SRC_FILES := httrack/src/htsjava.c
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
-	$(LOCAL_PATH)/httrack/src/coucal			\
-	$(LOCAL_PATH)/include
-LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild
-LOCAL_SHARED_LIBRARIES := libhttrack
-LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
-	-fstrict-aliasing -fvisibility=hidden									\
-	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
-	-Wcast-align -Wstrict-prototypes -Wmissing-prototypes					\
-	-Wmissing-declarations -Wdeclaration-after-statement -Wpointer-arith	\
-	-Wsequence-point -Wnested-externs -Wparentheses -Winit-self				\
-	-Wunused-but-set-parameter -Waddress -Wuninitialized -Wformat=2			\
-	-Wformat-nonliteral -Wmissing-parameter-type -Wold-style-definition		\
-	-Wignored-qualifiers -Wstrict-aliasing -Wno-sign-compare				\
-	-Wno-type-limits -Wno-missing-field-initializers -Wno-cast-align		\
-	-Wno-nested-externs														\
-	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6			\
-	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
-	-DHTS_CRASH_TEST														\
-	-Wl,--no-merge-exidx-entries -Wl,-O1
-LOCAL_CPPFLAGS += -pthread
-include $(BUILD_SHARED_LIBRARY)
+# NOTE: the old `libhtsjava` module (httrack/src/htsjava.c) was dropped — the
+# engine removed htsjava.c (the desktop Java-applet parser bridge) after 3.49-2,
+# and nothing on Android used it. "htsjava" is likewise removed from
+# HTTrackLib.loadLibraries().
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := htslibjni
@@ -132,10 +123,11 @@ LOCAL_SRC_FILES := htslibjni.c coffeecatch/coffeecatch.c coffeecatch/coffeejni.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/httrack/src/coucal			\
 	$(LOCAL_PATH)/coffeecatch					\
+	$(LOCAL_PATH)/../prebuild/$(TARGET_ARCH_ABI)/include	\
 	$(LOCAL_PATH)/include
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -O3 -g -funwind-tables \
-	-Wl,--no-merge-exidx-entries -Wl,-O1 \
+	$(HTS_ARMV7_LDFLAGS) -Wl,-O1 \
 	-W -Wall -Wextra -Werror -Wno-unused-parameter
 include $(BUILD_SHARED_LIBRARY)
