@@ -1,0 +1,60 @@
+# Android build + test for httrack-android.
+# Style follows the httrack repo (least-privilege, concurrency cancel, submodules
+# recursive). Uses the toolchain image published by docker-image.yml (JDK17 + SDK
+# + NDK + OpenSSL statics) so PRs skip the OpenSSL cross-compile.
+name: Android
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Native-only: proves recursive submodules (incl. the nested coucal), libiconv
+  # vendoring, OpenSSL 3.x, and 64-bit multi-ABI ndk-build — independently of the
+  # Gradle/AGP migration. Validated locally (arm64-v8a + armeabi-v7a).
+  # x86_64 is intentionally omitted until coffeecatch gains an x86_64 ucontext
+  # branch (its legacy fallback #errors on x86_64); needed for emulator-smoke.
+  native:
+    name: native (ndk-build)
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/xroche/httrack-android-build:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive          # MUST be recursive: coucal is nested in httrack
+      - name: Vendor libiconv
+        run: tools/ci/vendor-libiconv.sh
+      - name: Stage prebuilt OpenSSL statics (from image)
+        run: tools/ci/fetch-openssl-statics.sh   # reads $OPENSSL_ANDROID_ROOT in the image
+        env:
+          ABIS: arm64-v8a armeabi-v7a
+      - name: ndk-build
+        working-directory: app/src/main      # contains jni/ — ndk-build auto-discovers Android.mk + Application.mk
+        run: ndk-build APP_ABI="arm64-v8a armeabi-v7a" APP_PLATFORM=android-24 -j"$(nproc)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-libs
+          path: app/src/main/libs/**/*.so
+          if-no-files-found: warn
+
+  # --- Phases below land with the app modernization (see the plan) ---
+  #
+  # assemble: ./gradlew assembleDebug assembleRelease lint — needs the AGP 8 /
+  #   AndroidX migration (Phase 3). Add when it lands.
+  #
+  # emulator-smoke: reactivecircus/android-emulator-runner (x86_64, api 21/29/34),
+  #   installs the APK and runs an instrumented crawl against a local fixture
+  #   server. Needs Phase 4 (storage) + the coffeecatch x86_64 fix.

@@ -1,0 +1,55 @@
+# CodeQL static analysis: the Java app AND the JNI/C glue. Mirrors the httrack
+# repo's codeql.yml (security-extended). c-cpp is scoped to htslibjni*.c via
+# .github/codeql/codeql-config.yml so the vendored engine isn't double-scanned.
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    - cron: "31 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [java-kotlin, c-cpp]
+    container:
+      image: ghcr.io/xroche/httrack-android-build:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+          config-file: ./.github/codeql/codeql-config.yml
+      # c-cpp: CodeQL must observe the native compile (autobuild can't guess the
+      # ndk-build invocation). java-kotlin: autobuild is fine.
+      - name: Build native (c-cpp)
+        if: matrix.language == 'c-cpp'
+        run: |
+          tools/ci/vendor-libiconv.sh
+          ABIS=arm64-v8a tools/ci/fetch-openssl-statics.sh
+          ( cd app/src/main/jni && ndk-build APP_ABI=arm64-v8a APP_PLATFORM=android-24 -j"$(nproc)" )
+      - uses: github/codeql-action/autobuild@v3
+        if: matrix.language == 'java-kotlin'
+      - uses: github/codeql-action/analyze@v3
