@@ -105,11 +105,12 @@
 /* Check for setuid */
 #define SETUID 1
 
-/* The size of `long', as computed by sizeof. */
-#define SIZEOF_LONG 4
+/* The size of `long'/`long long', as computed by sizeof. This config.h is
+   hand-maintained and shared across ABIs, so DON'T hardcode 4 here: sizeof(long)
+   is 8 on arm64-v8a and x86_64. Derive it from the compiler instead. */
+#define SIZEOF_LONG (sizeof(long))
 
-/* The size of `long long', as computed by sizeof. */
-#define SIZEOF_LONG_LONG 8
+#define SIZEOF_LONG_LONG (sizeof(long long))
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1

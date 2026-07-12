@@ -191,7 +191,7 @@ public class HTTrackLib {
 
     try {
       /** Load all libraries. **/
-      final String[] libraries = { "iconv", "httrack", "htsjava", "htslibjni" };
+      final String[] libraries = { "iconv", "httrack", "htslibjni" };
       for (final String lib : libraries) {
         Log.d(TAG, "Loading native library " + lib);
         System.loadLibrary(lib);

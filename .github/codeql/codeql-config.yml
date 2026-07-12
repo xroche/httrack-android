@@ -1,0 +1,19 @@
+# Scope the c-cpp CodeQL analysis to httrack-android's OWN native code (the JNI
+# glue). The vendored httrack engine, coucal, coffeecatch, and libiconv are scanned
+# by their own repos, so excluding them here avoids duplicate findings/build time.
+name: httrack-android CodeQL config
+
+# NOTE: `paths` applies to ALL languages. Include the Java app sources (for the
+# java-kotlin analysis) AND httrack-android's own JNI C (for c-cpp). The vendored
+# engine/coffeecatch/libiconv are scanned by their own repos, so exclude them via
+# paths-ignore to avoid duplicate findings.
+paths:
+  - app/src/main/java
+  - app/src/main/jni/htslibjni.c
+  - app/src/main/jni/htslibjni.h
+  - app/src/main/jni/htslibjni-private.h
+
+paths-ignore:
+  - app/src/main/jni/httrack
+  - app/src/main/jni/coffeecatch
+  - app/src/main/jni/libiconv-1.17
