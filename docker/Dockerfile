@@ -3,7 +3,7 @@
 #   - JDK 17            (required by AGP 8.x)
 #   - Android cmdline-tools + platform 35 + build-tools 35
 #   - NDK r26d          (Clang, unified toolchain — replaces the r14/GCC hack)
-#   - OpenSSL 3.x static libs cross-compiled for arm64-v8a/armeabi-v7a/x86_64
+#   - OpenSSL 3.x static libs cross-compiled for arm64-v8a/x86_64
 #
 # Build:  docker build -t httrack-android-build docker/
 # Use:    docker run --rm -v "$PWD":/src -w /src httrack-android-build \
