@@ -31,6 +31,7 @@ import com.httrack.android.HTTrackActivity.VERSION_CODES;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
@@ -349,8 +350,11 @@ public class OptionsActivity extends Activity implements View.OnClickListener {
     mapper.resetMap();
 
     // Load map
-    mapper.unserialize(getIntent()
-        .getParcelableExtra("com.httrack.android.map"));
+    // Pinned to Parcelable: left inline, T would infer as File & Parcelable and match
+    // unserialize(File) just as well, which javac rejects as ambiguous.
+    final Parcelable savedMap =
+        getIntent().getParcelableExtra("com.httrack.android.map");
+    mapper.unserialize(savedMap);
     Log.d(getClass().getSimpleName(), "map size: " + mapper.size());
 
     // Create tabs

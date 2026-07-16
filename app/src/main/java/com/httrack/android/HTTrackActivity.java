@@ -68,13 +68,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.os.StrictMode;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.Html;
 import android.text.TextUtils;
@@ -95,6 +88,14 @@ import android.widget.ProgressBar;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.FragmentManager;
 
 import com.httrack.android.jni.HTTrackCallbacks;
 import com.httrack.android.jni.HTTrackLib;

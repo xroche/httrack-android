@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.httrack.android"
-    android:installLocation="auto"
-    android:versionCode="63"
-    android:versionName="3.49.02.63" >
-
-    <uses-sdk
-        android:minSdkVersion="8"
-        android:targetSdkVersion="25" />
+    android:installLocation="auto" >
 
     <!-- We need to read/write copied Websites to the SD card. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -27,7 +20,8 @@
         android:theme="@style/AppTheme" >
         <activity
             android:name="com.httrack.android.HTTrackActivity"
-            android:label="@string/title_activity_startup" >
+            android:label="@string/title_activity_startup"
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -40,10 +34,6 @@
         </activity>
         <activity
             android:name="com.httrack.android.OptionsActivity"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.HelpActivity"
             android:label="@string/title_activity_options" >
         </activity>
         <activity
@@ -91,7 +81,7 @@
             android:label="@string/title_activity_file_chooser" >
         </activity>
         <provider
-            android:name="android.support.v4.content.FileProvider"
+            android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">

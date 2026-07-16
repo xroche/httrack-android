@@ -21,7 +21,8 @@
     </style>
 
     <!-- Custom styles -->
-    <style name="ButtonStyle" parent="@android:attr/buttonStyle" />
+    <!-- No parent: buttons already pick the theme's buttonStyle up as their default style. -->
+    <style name="ButtonStyle" />
 
     <style name="DividerLineVertical">
         <item name="android:layout_width">0dip</item>

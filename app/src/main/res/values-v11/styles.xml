@@ -4,7 +4,8 @@
     <style name="AppBaseTheme" parent="@android:style/Theme.Holo.Light" />
 
     <!-- Custom styles -->
-    <style name="ButtonStyle" parent="@android:attr/buttonStyle">
+    <!-- No parent: buttons already pick the theme's buttonStyle up as their default style. -->
+    <style name="ButtonStyle">
         <item name="android:background">?android:attr/selectableItemBackground</item>
     </style>
 
