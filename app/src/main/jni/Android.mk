@@ -15,15 +15,6 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# The exidx-merge linker flag is armv7-only (ARM EXIDX sections exist only on
-# 32-bit ARM); emitting it on arm64-v8a/x86_64 breaks the link. Gate it per-ABI.
-# ndk-build re-includes this file once per ABI with TARGET_ARCH_ABI set.
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
-  HTS_ARMV7_LDFLAGS := -Wl,--no-merge-exidx-entries
-else
-  HTS_ARMV7_LDFLAGS :=
-endif
-
 # <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libiconv
@@ -83,6 +74,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsencoding.c httrack/src/md5.c								\
 	httrack/src/htssniff.c httrack/src/htsselftest.c						\
 	httrack/src/htscache_selftest.c httrack/src/htsdns_selftest.c			\
+	httrack/src/htscodec.c httrack/src/htsproxy.c							\
 	httrack/src/minizip/ioapi.c												\
 	httrack/src/minizip/mztools.c httrack/src/minizip/unzip.c				\
 	httrack/src/minizip/zip.c
@@ -108,7 +100,7 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
 	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6			\
 	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
 	-DHTS_CRASH_TEST														\
-	$(HTS_ARMV7_LDFLAGS) -Wl,-O1
+	-Wl,-O1
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
 
@@ -128,6 +120,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -O3 -g -funwind-tables \
-	$(HTS_ARMV7_LDFLAGS) -Wl,-O1 \
+	-Wl,-O1 \
 	-W -Wall -Wextra -Werror -Wno-unused-parameter
 include $(BUILD_SHARED_LIBRARY)
