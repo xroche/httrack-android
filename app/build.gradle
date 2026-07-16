@@ -12,8 +12,9 @@ android {
     defaultConfig {
         applicationId "com.httrack.android"
         minSdk 24
-        // 28 keeps legacy storage, which the still File-based crawl needs.
-        targetSdk 28
+        // Left at master's value: 26 would silently drop the channel-less notifications,
+        // and 29 would take legacy storage away from the still File-based crawl.
+        targetSdk 25
         versionCode 63
         versionName "3.49.02.63"
 
