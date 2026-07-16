@@ -68,10 +68,38 @@ jobs:
           path: app/src/main/libs/**/*.so
           if-no-files-found: warn
 
+  # Gradle build of the app itself. Runs in the toolchain image, which already has
+  # JDK 17, SDK platform/build-tools 35, NDK r26d and the OpenSSL statics baked in
+  # at $OPENSSL_ANDROID_ROOT. AGP drives ndk-build via externalNativeBuild, so the
+  # native inputs must be staged before ./gradlew — same two scripts the native job
+  # uses (Gradle itself never fetches them, so a dev build stays offline-clean).
+  assemble:
+    name: assemble (AGP 8)
+    runs-on: ubuntu-24.04
+    container: ghcr.io/xroche/httrack-android-build:latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive          # MUST be recursive: coucal is nested in httrack
+      - name: Vendor libiconv
+        run: tools/ci/vendor-libiconv.sh
+      - name: Stage OpenSSL statics into prebuild/
+        run: tools/ci/fetch-openssl-statics.sh    # picks up $OPENSSL_ANDROID_ROOT from the image
+      - name: Gradle assemble + lint
+        run: ./gradlew --no-daemon assembleDebug assembleRelease lint
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()                     # the report is most useful when lint is unhappy
+        with:
+          name: lint-report
+          path: app/build/reports/lint-results-*.*
+          if-no-files-found: warn
+
   # --- Phases below land with the app modernization (see the plan) ---
-  #
-  # assemble: ./gradlew assembleDebug assembleRelease lint — needs the AGP 8 /
-  #   AndroidX migration (Phase 3), and can use the GHCR toolchain image.
   #
   # emulator-smoke: reactivecircus/android-emulator-runner (x86_64, api 21/29/34),
   #   installs the APK and runs an instrumented crawl against a local fixture
