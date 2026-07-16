@@ -25,9 +25,28 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 cd "$work"
 echo "=== fetching libiconv ${VERSION} ==="
-wget -q "https://ftp.gnu.org/gnu/libiconv/libiconv-${VERSION}.tar.gz"
-echo "${SHA256}  libiconv-${VERSION}.tar.gz" | sha256sum -c -
-tar xf "libiconv-${VERSION}.tar.gz"
+# ftp.gnu.org on its own is a single point of failure: when it stalls, wget exits 4 and
+# every job that needs libiconv goes red. Try the GNU redirector and a mirror as well.
+# Fetching from a mirror is only safe because of the sha256 gate below.
+tarball="libiconv-${VERSION}.tar.gz"
+fetched=0
+for base in "https://ftpmirror.gnu.org/libiconv" \
+  "https://ftp.gnu.org/gnu/libiconv" \
+  "https://mirrors.kernel.org/gnu/libiconv"; do
+  if wget -q --tries=3 --timeout=30 --retry-connrefused -O "$tarball" "${base}/${tarball}"; then
+    echo "  fetched from ${base}"
+    fetched=1
+    break
+  fi
+  echo "  ${base} failed, trying next mirror"
+  rm -f "$tarball"
+done
+if [ "$fetched" -ne 1 ]; then
+  echo "all libiconv mirrors failed" >&2
+  exit 1
+fi
+echo "${SHA256}  ${tarball}" | sha256sum -c -
+tar xf "$tarball"
 
 echo "=== configure (host) to generate iconv.h + config.h ==="
 ( cd "libiconv-${VERSION}" && ./configure --enable-static --disable-shared >/dev/null )
