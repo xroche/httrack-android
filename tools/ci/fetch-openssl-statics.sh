@@ -12,7 +12,7 @@ set -euo pipefail
 
 JNI_DIR="$(cd "$(dirname "$0")/../../app/src/main/jni" && pwd)"
 PREBUILD="$JNI_DIR/../prebuild"
-ABIS="${ABIS:-arm64-v8a armeabi-v7a x86_64}"
+ABIS="${ABIS:-arm64-v8a x86_64}"
 SRC="${OPENSSL_ANDROID_ROOT:-}"
 
 if [ -z "$SRC" ] || [ ! -d "$SRC" ]; then
