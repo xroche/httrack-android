@@ -68,11 +68,8 @@ jobs:
           path: app/src/main/libs/**/*.so
           if-no-files-found: warn
 
-  # Gradle build of the app itself. Runs in the toolchain image, which already has
-  # JDK 17, SDK platform/build-tools 35, NDK r26d and the OpenSSL statics baked in
-  # at $OPENSSL_ANDROID_ROOT. AGP drives ndk-build via externalNativeBuild, so the
-  # native inputs must be staged before ./gradlew — same two scripts the native job
-  # uses (Gradle itself never fetches them, so a dev build stays offline-clean).
+  # AGP drives ndk-build, so the native inputs must be staged before ./gradlew (keeping
+  # that here rather than in a preBuild hook leaves Gradle offline-clean for local builds).
   assemble:
     name: assemble (AGP 8)
     runs-on: ubuntu-24.04

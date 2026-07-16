@@ -12,8 +12,7 @@ android {
     defaultConfig {
         applicationId "com.httrack.android"
         minSdk 24
-        // targetSdk stays at 28 to keep legacy storage: the crawl is still File-based.
-        // Bumping it to 35 is Phase 4, together with the scoped-storage rework.
+        // 28 keeps legacy storage, which the still File-based crawl needs.
         targetSdk 28
         versionCode 63
         versionName "3.49.02.63"
@@ -53,9 +52,7 @@ android {
 }
 
 dependencies {
-    // AndroidX drags in kotlin-stdlib 1.8.22 but leaves the jdk7/jdk8 shims at the 1.6.21
-    // coroutines asks for; 1.8.22 folded those classes into stdlib, so the stale shims
-    // collide with it. The BOM aligns every Kotlin artifact on 1.8.22, emptying the shims.
+    // Without this, coroutines' stale jdk7/jdk8 shims collide with the stdlib that absorbed them.
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
 
     implementation 'androidx.core:core:1.13.1'

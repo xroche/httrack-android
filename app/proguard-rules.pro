@@ -1,3 +1,2 @@
-# The JNI layer calls back into these from native code, so they have no reachable
-# Java caller for R8 to trace. Only consulted if minifyEnabled is turned on.
+# Native code resolves these reflectively, leaving R8 no Java caller to trace.
 -keep class com.httrack.android.jni.** { *; }

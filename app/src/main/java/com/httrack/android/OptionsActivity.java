@@ -350,8 +350,8 @@ public class OptionsActivity extends Activity implements View.OnClickListener {
     mapper.resetMap();
 
     // Load map
-    // Pinned to Parcelable: left inline, T would infer as File & Parcelable and match
-    // unserialize(File) just as well, which javac rejects as ambiguous.
+    // Pinned to Parcelable: inlined, T infers as File & Parcelable and unserialize(File)
+    // matches just as well, which javac rejects as ambiguous.
     final Parcelable savedMap =
         getIntent().getParcelableExtra("com.httrack.android.map");
     mapper.unserialize(savedMap);
