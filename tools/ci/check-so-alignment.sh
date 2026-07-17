@@ -23,12 +23,19 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 unzip -q -o "$APK" 'lib/*' -d "$tmp"
 
+# Cross-check the walk against the archive listing. find's exit status is invisible to set -e
+# from inside a process substitution, so a truncated walk would silently check a subset and
+# still report success; comparing counts asserts completeness, not merely non-emptiness.
+listed="$(unzip -Z1 "$APK" 'lib/*.so' | wc -l)" ||
+    {
+        echo "check-so-alignment: cannot list $APK" >&2
+        exit 1
+    }
 mapfile -t sos < <(find "$tmp/lib" -name '*.so' | sort)
-# An empty list would otherwise "pass" every check below.
-[ "${#sos[@]}" -gt 0 ] || {
-    echo "check-so-alignment: no .so inside $APK" >&2
+if [ "$listed" -le 0 ] || [ "${#sos[@]}" -ne "$listed" ]; then
+    echo "check-so-alignment: $APK lists $listed .so, walked ${#sos[@]}" >&2
     exit 1
-}
+fi
 
 rc=0
 for so in "${sos[@]}"; do
