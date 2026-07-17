@@ -120,6 +120,9 @@ public class HTTrackActivity extends FragmentActivity {
   // Preferences
   protected static final String PREFS_NAME = "HTTrackPreferences";
   protected static final String BASE_NAME = "BasePath";
+  // Whether POST_NOTIFICATIONS was ever asked for. Has to outlive the activity: pane_id is
+  // restored on rotation, and a second refusal is the one that sticks for good.
+  protected static final String NOTIFY_ASKED_NAME = "NotificationPermissionAsked";
 
   // <br /> Pattern
   protected static final Pattern brHtmlPattern = Pattern.compile(Pattern
@@ -442,16 +445,22 @@ public class HTTrackActivity extends FragmentActivity {
     if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
       return;
     }
-    final boolean hasPermissionNotify = (ContextCompat.checkSelfPermission(this,
-            Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED);
-    if (!hasPermissionNotify) {
-      Log.d("httrack", "Requesting permission to post notifications");
-      ActivityCompat.requestPermissions(this,
-              new String[]{Manifest.permission.POST_NOTIFICATIONS},
-              REQUEST_POST_NOTIFICATIONS);
-    } else {
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            == PackageManager.PERMISSION_GRANTED) {
       Log.d("httrack", "Posting notifications is allowed");
+      return;
     }
+    // Once only: the user's refusal stands until they revisit it in the system settings.
+    final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+    if (settings.getBoolean(NOTIFY_ASKED_NAME, false)) {
+      Log.d("httrack", "Permission to post notifications was already declined");
+      return;
+    }
+    settings.edit().putBoolean(NOTIFY_ASKED_NAME, true).apply();
+    Log.d("httrack", "Requesting permission to post notifications");
+    ActivityCompat.requestPermissions(this,
+            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+            REQUEST_POST_NOTIFICATIONS);
   }
 
   /*
@@ -549,9 +558,6 @@ public class HTTrackActivity extends FragmentActivity {
     } catch (final NameNotFoundException e) {
       throw new RuntimeException(e);
     }
-
-    // Register before anything can post: a notification sent to an unknown channel is dropped.
-    createNotificationChannel();
 
     // Compute target directory on external storage
     ensureExternalStorage();
@@ -2710,8 +2716,10 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Register the channel every notification below is posted to. Mandatory from API 26 on,
+   * Register the channel the notifications below are posted to. Mandatory from API 26 on,
    * where a channel-less notification is dropped with nothing but a log line; a no-op before.
+   * Idempotent, and called at post time rather than at startup: creating a channel is what
+   * makes the system prompt an app targeting 32 or lower, and launch is too early to ask.
    */
   protected void createNotificationChannel() {
     final NotificationChannelCompat channel = new NotificationChannelCompat.Builder(
@@ -2741,6 +2749,8 @@ public class HTTrackActivity extends FragmentActivity {
   /** Send a notification with a specific Intent. **/
   protected void sendSystemNotification(final Intent intent,
       final CharSequence title, final CharSequence text) {
+
+    createNotificationChannel();
 
     // Create notification
     final long when = System.currentTimeMillis();
