@@ -21,18 +21,26 @@ fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-unzip -q -o "$APK" 'lib/*' -d "$tmp"
+mkdir -p "$tmp/lib"
+# 11 is "nothing matched", which the count check below reports in its own words.
+rc=0
+unzip -q -o "$APK" 'lib/*' -d "$tmp" || rc=$?
+if [ "$rc" -ne 0 ] && [ "$rc" -ne 11 ]; then
+    echo "check-so-alignment: cannot extract $APK (unzip rc=$rc)" >&2
+    exit 1
+fi
 
 # Cross-check the walk against the archive listing. find's exit status is invisible to set -e
 # from inside a process substitution, so a truncated walk would silently check a subset and
 # still report success; comparing counts asserts completeness, not merely non-emptiness.
-listed="$(unzip -Z1 "$APK" 'lib/*.so' | wc -l)" ||
-    {
-        echo "check-so-alignment: cannot list $APK" >&2
-        exit 1
-    }
-mapfile -t sos < <(find "$tmp/lib" -name '*.so' | sort)
-if [ "$listed" -le 0 ] || [ "${#sos[@]}" -ne "$listed" ]; then
+# unzip -Z1 exits 11 when the pattern matches nothing, which is the likely regression here
+# (a build shipping no native libs at all), so name that case rather than blame the archive.
+listed="$(unzip -Z1 "$APK" 'lib/*.so' | wc -l)" || {
+    echo "check-so-alignment: no lib/*.so in $APK, or it is unreadable" >&2
+    exit 1
+}
+mapfile -t sos < <(find "$tmp/lib" -type f -name '*.so' | sort)
+if [ "${#sos[@]}" -ne "$listed" ]; then
     echo "check-so-alignment: $APK lists $listed .so, walked ${#sos[@]}" >&2
     exit 1
 fi
