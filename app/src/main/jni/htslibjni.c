@@ -62,15 +62,13 @@ static char *rootPath = NULL;
 /* log assertion failure. */
 static void log_assert_failure(const char* exp, const char* file, int line) {
   __android_log_print(ANDROID_LOG_VERBOSE, "httrack", "assertion '%s' failed at %s:%d", exp, file, line);
-#define MKDIR_MODE (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
-  /* FIXME TODO: pass the getExternalStorageDirectory() in init. */
-  FILE *dumpFile;
-  const char *const filename = emergencyLog != NULL ? emergencyLog
-    : "/mnt/sdcard/Download/HTTrack/error.txt";
-  dumpFile = fopen(filename, "wb");
-  if (dumpFile != NULL) {
-    fprintf(dumpFile, "assertion '%s' failed at %s:%d\n", exp, file, line);
-    fclose(dumpFile);
+  /* Nothing is writable before initRootPath(); logcat above carries it either way. */
+  if (emergencyLog != NULL) {
+    FILE *const dumpFile = fopen(emergencyLog, "wb");
+    if (dumpFile != NULL) {
+      fprintf(dumpFile, "assertion '%s' failed at %s:%d\n", exp, file, line);
+      fclose(dumpFile);
+    }
   }
 }
 

@@ -891,18 +891,25 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Emergency dump.
+   * Emergency dump, into storage of our own: this runs on a crash path, so it must not depend
+   * on a permission, nor on a volume being mounted.
+   *
+   * @param context
+   *          null while the activity is being torn down, in which case nothing is written
+   * @param e
+   *          the throwable to record
    */
-  protected static void emergencyDump(final Throwable e) {
-    try {
-      final File dumpFile = new File(new File(
-          Environment.getExternalStorageState(), "HTTrack"), "error.txt");
-      final FileWriter writer = new FileWriter(dumpFile);
-      final PrintWriter print = new PrintWriter(writer);
+  protected static void emergencyDump(final Context context, final Throwable e) {
+    if (context == null) {
+      return;
+    }
+    final File external = context.getExternalFilesDir(null);
+    final File dumpFile = new File(
+        external != null ? external : context.getFilesDir(), "error.txt");
+    try (final PrintWriter print = new PrintWriter(new FileWriter(dumpFile))) {
       e.printStackTrace(print);
-      writer.close();
-      HTTrackActivity.setFileReadWrite(dumpFile);
     } catch (final IOException io) {
+      Log.w(HTTrackActivity.class.getSimpleName(), "could not write " + dumpFile, io);
     }
   }
 
@@ -1106,7 +1113,7 @@ public class HTTrackActivity extends FragmentActivity {
       try {
         runInternal();
       } catch (final RuntimeException e) {
-        HTTrackActivity.emergencyDump(e);
+        HTTrackActivity.emergencyDump(parent, e);
         throw e;
       } finally {
         ended = true;
