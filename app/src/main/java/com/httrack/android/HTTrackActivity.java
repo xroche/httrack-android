@@ -217,7 +217,6 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /* Get the SDCard directory, or @c null upon error (ie. no sdcard). */
   /*
    * The only place mirrors may live under scoped storage: our own external directory, which
    * needs no permission at any target. The engine takes a POSIX path either way.
@@ -230,24 +229,11 @@ public class HTTrackActivity extends FragmentActivity {
 
   /*
    * Guards the persisted BasePath, which may name a public directory from an older build:
-   * from API 30 on, mkdirs() there merely fails without saying why.
+   * from API 30 on, mkdirs() there merely fails without saying why. Null means undecided,
+   * never refused; see StoragePaths.isWritable.
    */
-  private boolean isWritableProjectPath(final File path) {
-    final File external = getExternalFilesDir(null);
-    for (final File root : new File[] { external, getFilesDir() }) {
-      if (root == null) {
-        continue;
-      }
-      try {
-        final String prefix = root.getCanonicalPath() + File.separator;
-        if ((path.getCanonicalPath() + File.separator).startsWith(prefix)) {
-          return true;
-        }
-      } catch (final IOException e) {
-        Log.w(getClass().getSimpleName(), "could not canonicalize " + path, e);
-      }
-    }
-    return false;
+  private Boolean isWritableProjectPath(final File path) {
+    return StoragePaths.isWritable(path, getExternalFilesDir(null), getFilesDir());
   }
 
   /*
@@ -258,12 +244,18 @@ public class HTTrackActivity extends FragmentActivity {
     final String base = settings.getString(BASE_NAME, null);
     File baseFile = base != null ? new File(base) : null;
 
-    // Drop a base path we may no longer write to; the mirrors it names stay on disk, out of
-    // reach until imported.
-    if (baseFile != null && !isWritableProjectPath(baseFile)) {
-      Log.i(getClass().getSimpleName(), "dropping unusable base path " + base);
-      settings.edit().remove(BASE_NAME).apply();
-      baseFile = null;
+    if (baseFile != null) {
+      final Boolean writable = isWritableProjectPath(baseFile);
+      if (Boolean.FALSE.equals(writable)) {
+        // Known foreign: the mirrors it names stay on disk, out of reach until imported.
+        Log.i(getClass().getSimpleName(), "dropping unusable base path " + base);
+        settings.edit().remove(BASE_NAME).apply();
+        baseFile = null;
+      } else if (writable == null) {
+        // Undecided: fall back for this run, but keep the setting for when the volume returns.
+        Log.i(getClass().getSimpleName(), "cannot vet base path yet: " + base);
+        baseFile = null;
+      }
     }
 
     if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
@@ -293,7 +285,8 @@ public class HTTrackActivity extends FragmentActivity {
    * Set the base path.
    */
   private void setBasePath(final String path) {
-    if (!isWritableProjectPath(new File(path))) {
+    // Only a decided yes: an unvettable path must not be persisted.
+    if (!Boolean.TRUE.equals(isWritableProjectPath(new File(path)))) {
       showNotification(getString(R.string.directory_does_not_exist) + ": " + path);
       return;
     }
