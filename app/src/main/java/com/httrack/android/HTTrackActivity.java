@@ -218,49 +218,36 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /* Get the SDCard directory, or @c null upon error (ie. no sdcard). */
-  private File getSDCardStorage() {
-    final String state = Environment.getExternalStorageState();
-    if (Environment.MEDIA_MOUNTED.equals(state)) {
-      return Environment.getExternalStorageDirectory();
-    } else {
-      return null;
-    }
+  /*
+   * The only place mirrors may live under scoped storage: our own external directory, which
+   * needs no permission at any target. The engine takes a POSIX path either way.
+   */
+  private File getDefaultHTTrackPath() {
+    final File external = getExternalFilesDir(null);
+    // Null while the volume is unmounted; internal storage keeps the engine writable.
+    return new File(external != null ? external : getFilesDir(), "Websites");
   }
 
-  /* Get the root storage: SDCard, ExternalStoragePublicDirectory, ExternalStorageDirectory, or fallback to FilesDir */
-  private File getExternalStorage() {
-    final File f = getSDCardStorage();
-    if (f != null) {
-      return f;
-    } else {
-      if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.FROYO) {
-        return Environment
-          .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-      } else {
-        // Fallback.
-        return getFilesDir();
+  /*
+   * Guards the persisted BasePath, which may name a public directory from an older build:
+   * from API 30 on, mkdirs() there merely fails without saying why.
+   */
+  private boolean isWritableProjectPath(final File path) {
+    final File external = getExternalFilesDir(null);
+    for (final File root : new File[] { external, getFilesDir() }) {
+      if (root == null) {
+        continue;
+      }
+      try {
+        final String prefix = root.getCanonicalPath() + File.separator;
+        if ((path.getCanonicalPath() + File.separator).startsWith(prefix)) {
+          return true;
+        }
+      } catch (final IOException e) {
+        Log.w(getClass().getSimpleName(), "could not canonicalize " + path, e);
       }
     }
-  }
-
-  private File getHTTrackDirectoryFromBaseDirectory(final File rootPath) {
-    // Naming
-    final File httrackBasePath = new File(rootPath, "HTTrack");
-    final File httrackPath = new File(httrackBasePath, "Websites");
-
-    return httrackPath;
-  }
-
-  /* Get the default root external storage. */
-  private File getDefaultHTTrackPath() {
-    return getHTTrackDirectoryFromBaseDirectory(getExternalStorage());
-  }
-
-  /* Get the alternate root external storage. */
-  private File getSDCardHTTrackPath() {
-    final File rootPath = getSDCardStorage();
-
-    return rootPath != null ? getHTTrackDirectoryFromBaseDirectory(rootPath) : null;
+    return false;
   }
 
   /*
@@ -269,7 +256,15 @@ public class HTTrackActivity extends FragmentActivity {
   private void computeStorageTarget() {
     final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
     final String base = settings.getString(BASE_NAME, null);
-    final File baseFile = base != null ? new File(base) : null;
+    File baseFile = base != null ? new File(base) : null;
+
+    // Drop a base path we may no longer write to; the mirrors it names stay on disk, out of
+    // reach until imported.
+    if (baseFile != null && !isWritableProjectPath(baseFile)) {
+      Log.i(getClass().getSimpleName(), "dropping unusable base path " + base);
+      settings.edit().remove(BASE_NAME).apply();
+      baseFile = null;
+    }
 
     if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
       showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
@@ -298,6 +293,10 @@ public class HTTrackActivity extends FragmentActivity {
    * Set the base path.
    */
   private void setBasePath(final String path) {
+    if (!isWritableProjectPath(new File(path))) {
+      showNotification(getString(R.string.directory_does_not_exist) + ": " + path);
+      return;
+    }
     final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
     final SharedPreferences.Editor editor = settings.edit();
     editor.putString(BASE_NAME, path);
@@ -405,43 +404,15 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /*
-  * Ensure "hard" permissions are requested properly from user.
-  * This is a new Android 6 required step, sheesh.
-  * See <http://stackoverflow.com/questions/33139754/android-6-0-marshmallow-cannot-write-to-sd-card>
-  * and especially szedjani's insightful reply.
-  */
-  private static final int REQUEST_WRITE_STORAGE = 1;
   private static final int REQUEST_INTERNET = 2;
 
-  protected void ensureMediaIsAllowedHardPermissions() {
-    final boolean hasPermissionStorage = (ContextCompat.checkSelfPermission(this,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED);
-    if (!hasPermissionStorage) {
-      Log.d("httrack", "Requesting access to storage");
-      ActivityCompat.requestPermissions(this,
-              new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-              REQUEST_WRITE_STORAGE);
-    } else {
-      Log.d("httrack", "Access to storage is allowed");
-    }
-  }
-
   /*
-   * Callback to receive ensureMediaIsAllowedHardPermissions() permission feedback.
+   * Callback to receive permission feedback.
    */
   @Override
   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
     super.onRequestPermissionsResult(requestCode, permissions, grantResults);
     switch (requestCode) {
-      case REQUEST_WRITE_STORAGE: {
-        if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-          Toast.makeText(this, "The app was not allowed to write to your storage. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
-        } else {
-          Log.d("httrack", "Permission to storage is granted");
-        }
-      }
-      break;
       case REQUEST_INTERNET: {
         if (grantResults.length == 0 || grantResults[0] != PackageManager.PERMISSION_GRANTED) {
           Toast.makeText(this, "The app was not allowed to access the Internet. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
@@ -462,7 +433,6 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d("httrack", "called ensureExternalStorage");
     
     computeStorageTarget();
-    ensureMediaIsAllowedHardPermissions();
     ensureInternetIsAvailable();
 
     final File root = getProjectRootFile();
@@ -2208,15 +2178,10 @@ public class HTTrackActivity extends FragmentActivity {
     final Intent intent = new Intent(this, FileChooserActivity.class);
     fillExtra(intent);
 
-    final File defaultPath = getDefaultHTTrackPath();
+    // Only our own directory is left to browse, so there is no second root to offer.
     intent.putExtra("com.httrack.android.defaultHTTrackPath",
-      defaultPath);
+      getDefaultHTTrackPath());
 
-    final File f = getSDCardHTTrackPath();
-    if (f != null && !f.equals(defaultPath)) {
-      intent.putExtra("com.httrack.android.sdcardHTTrackPath",
-        f);
-    }
     startActivityForResult(intent, ACTIVITY_FILE_CHOOSER);
   }
 
