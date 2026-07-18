@@ -2270,17 +2270,24 @@ public class HTTrackActivity extends FragmentActivity {
       showNotification(getString(R.string.import_mirrors_running));
       return;
     }
-    showNotification(getString(R.string.import_mirrors_running));
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          deliverImportOutcome(appContext, runImport(appContext, resolver, treeUri, dest));
-        } finally {
-          importInProgress.set(false);
+    // Release the process-wide guard if the worker never starts (e.g. OOM at thread creation);
+    // otherwise a failed launch would wedge it true for the rest of the process.
+    try {
+      showNotification(getString(R.string.import_mirrors_running));
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            deliverImportOutcome(appContext, runImport(appContext, resolver, treeUri, dest));
+          } finally {
+            importInProgress.set(false);
+          }
         }
-      }
-    }, "legacy-import").start();
+      }, "legacy-import").start();
+    } catch (final Throwable t) {
+      importInProgress.set(false);
+      throw t;
+    }
   }
 
   /** The copy itself, on the worker thread; returns the message to show. **/
