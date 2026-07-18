@@ -5,6 +5,9 @@
     <!-- We need to connect to the Internet. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- We tell the user when a mirror ends while the app sits in the background. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- We need to check the Internet connection (IPv6 enabled ?). -->
     <!-- NetworkInterface.getNetworkInterfaces() does not need that apparently, so let's remove the permission. -->
     <!-- uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" -->
