@@ -2267,6 +2267,7 @@ public class HTTrackActivity extends FragmentActivity {
 
   // Process-wide: a rotation recreates the activity, but the detached worker keeps copying.
   private static final AtomicBoolean importInProgress = new AtomicBoolean();
+  private volatile boolean browseAllInProgress;
 
   /**
    * Copy the picked tree into our Websites directory, entirely off the UI thread: even walking
@@ -2649,8 +2650,31 @@ public class HTTrackActivity extends FragmentActivity {
    * "Browse All Websites"
    */
   public void onBrowseAll(final View view) {
-    buildTopIndex();
-    browse(getProjectRootIndexFile());
+    if (browseAllInProgress) {
+      return;
+    }
+    // Regenerating the aggregate index walks every project's cache; keep it off the click handler.
+    final File index = getProjectRootIndexFile();
+    browseAllInProgress = true;
+    showNotification(getString(R.string.browse_all_building));
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          buildTopIndex();
+        } finally {
+          browseAllInProgress = false;
+        }
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+          @Override
+          public void run() {
+            if (!isFinishing() && !isDestroyed()) {
+              browse(index);
+            }
+          }
+        });
+      }
+    }, "browse-all-index").start();
   }
 
   /*
