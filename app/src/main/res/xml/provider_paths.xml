@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="external_path" path="."/>
+    <!-- Mirrors: getExternalFilesDir(). -->
     <external-files-path name="external_files_path" path="." />
+    <!-- Mirrors again, on the internal fallback taken while the volume is unmounted. -->
     <files-path name="files_path" path="." />
+    <!-- Unpacked help and license pages: getExternalCacheDir(). Browsing either throws
+         "Failed to find configured root" without this, once the file:// hack stops working. -->
+    <external-cache-path name="external_cache_path" path="." />
 </paths>
