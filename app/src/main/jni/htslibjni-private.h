@@ -137,16 +137,56 @@ typedef struct hts_state_t {
   const char *message;
 } hts_state_t;
 
-/* NewStringUTF, but ignore invalid UTF-8 or NULL input. */
+/* Sanitize server-controlled bytes to well-formed modified UTF-8 (invalid sequences, including
+   4-byte forms, become '?'), so hostile input cannot reach NewStringUTF, which aborts under
+   CheckJNI. Caller frees the result. */
+static char *sanitizeModifiedUtf8(const char *s) {
+  const size_t len = strlen(s);
+  char *const out = malloc(len + 1);
+  if (out != NULL) {
+    const unsigned char *const in = (const unsigned char *) s;
+    size_t i = 0, j = 0;
+    while (i < len) {
+      const unsigned char c = in[i];
+      unsigned int seq = 0;
+      if (c <= 0x7F) {
+        seq = 1;
+      } else if (c >= 0xC2 && c <= 0xDF) {
+        if (i + 1 < len && (in[i + 1] & 0xC0) == 0x80) {
+          seq = 2;
+        }
+      } else if (c >= 0xE0 && c <= 0xEF) {
+        /* Reject overlong E0 80..9F; surrogate halves (ED A0..BF) stay, they are valid here. */
+        const unsigned char lo = (c == 0xE0) ? 0xA0 : 0x80;
+        if (i + 2 < len && in[i + 1] >= lo && (in[i + 1] & 0xC0) == 0x80
+            && (in[i + 2] & 0xC0) == 0x80) {
+          seq = 3;
+        }
+      }
+      if (seq != 0) {
+        for (unsigned int k = 0; k < seq; k++) {
+          out[j++] = (char) in[i++];
+        }
+      } else {
+        out[j++] = '?';
+        i++;
+      }
+    }
+    out[j] = '\0';
+  }
+  return out;
+}
+
+/* NewStringUTF over sanitized bytes, so hostile input cannot reach it; NULL input yields NULL. */
 static jobject newStringSafe(JNIEnv *env, const char *s) {
   if (s != NULL) {
-    const int ne = ! (*env)->ExceptionOccurred(env);
-    jobject str = (*env)->NewStringUTF(env, s);
-    /* Silently ignore UTF-8 exception. */
-    if (str == NULL && (*env)->ExceptionOccurred(env) && ne) {
-      (*env)->ExceptionClear(env);
+    char *const safe = sanitizeModifiedUtf8(s);
+    /* On OOM, a null field beats feeding raw (possibly hostile) bytes to NewStringUTF. */
+    if (safe != NULL) {
+      jobject str = (*env)->NewStringUTF(env, safe);
+      free(safe);
+      return str;
     }
-    return str;
   }
   return NULL;
 }

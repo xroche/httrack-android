@@ -40,4 +40,26 @@ final class StoragePaths {
     }
     return external != null ? Boolean.FALSE : null;
   }
+
+  /**
+   * Whether {@code name} is safe to append to a root as one directory. File does not fold "..", so
+   * a crafted winprofile.ini name like "../../sdcard/evil" would otherwise steer the engine's -O
+   * outside the Websites tree. Rejects empty, ".", ".." and anything carrying a path separator.
+   *
+   * @param name
+   *          the project name, already whitespace-collapsed
+   * @return true if it denotes a single, in-root directory segment
+   */
+  static boolean isValidProjectName(final String name) {
+    if (name == null || name.isEmpty() || name.equals(".") || name.equals("..")) {
+      return false;
+    }
+    for (int i = 0; i < name.length(); i++) {
+      final char c = name.charAt(i);
+      if (c == '/' || c == '\\' || c == '\0') {
+        return false;
+      }
+    }
+    return true;
+  }
 }
