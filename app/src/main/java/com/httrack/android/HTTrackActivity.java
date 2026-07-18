@@ -920,7 +920,7 @@ public class HTTrackActivity extends FragmentActivity {
    * on a permission, nor on a volume being mounted.
    *
    * @param context
-   *          null while the activity is being torn down, in which case nothing is written
+   *          an app context; null is tolerated (nothing is written)
    * @param e
    *          the throwable to record
    */
@@ -993,27 +993,26 @@ public class HTTrackActivity extends FragmentActivity {
       runner.execute();
     }
 
+    // Is a live (non-ended) crawl still attached to this fragment?
+    public boolean hasLiveRunner() {
+      return runner != null && !runner.isEnded();
+    }
+
     // Attach activity
     @Override
     public void onAttach(final Activity activity) {
       super.onAttach(activity);
       final HTTrackActivity parent = HTTrackActivity.class.cast(activity);
-      // We expect the runner not to be null at this point.
       if (runner != null) {
+        // Reclaimed across a configuration change: hand the live task its new activity.
         runner.setParent(parent);
       } else {
-        // We have to create the runner. Should not happen ?
-        Throwable trace;
-        try {
-          throw new RuntimeException();
-        } catch (final RuntimeException re) {
-          trace = re;
-        }
-        Log.w(
-            this.getClass().getSimpleName(),
-            "empty fragment attached to an activity, creating the associated runner",
-            trace);
-        setParent(parent);
+        // Restored empty after process death (setRetainInstance is a no-op there): the crawl is
+        // gone, so drop this stale fragment rather than auto-starting one the user never asked for.
+        Log.w(this.getClass().getSimpleName(),
+            "empty runner fragment restored after process death; discarding");
+        getParentFragmentManager().beginTransaction().remove(this)
+            .commitAllowingStateLoss();
       }
     }
 
@@ -1021,7 +1020,10 @@ public class HTTrackActivity extends FragmentActivity {
     @Override
     public void onDetach() {
       super.onDetach();
-      runner.detach();
+      // Null after a discarded process-death restore, where no runner was ever created.
+      if (runner != null) {
+        runner.detach();
+      }
     }
 
     public boolean stopMirror(final boolean force) {
@@ -1041,6 +1043,8 @@ public class HTTrackActivity extends FragmentActivity {
     private final HTTrackLib engine = new HTTrackLib(this);
     final private StringBuilder str = new StringBuilder();
     private HTTrackActivity parent;
+    // Application context, captured once and never detached, so a crash after detach() still dumps.
+    private final Context appContext;
     private final List<Runnable> pendingParentActions = new ArrayList<Runnable>();
     private boolean mirrorRefresh;
     protected HTTrackStats lastStats;
@@ -1070,6 +1074,7 @@ public class HTTrackActivity extends FragmentActivity {
      *          the parent activity.
      */
     public Runner(final HTTrackActivity parent) {
+      appContext = parent.getApplicationContext();
       setParent(parent);
     }
 
@@ -1138,7 +1143,7 @@ public class HTTrackActivity extends FragmentActivity {
       try {
         runInternal();
       } catch (final RuntimeException e) {
-        HTTrackActivity.emergencyDump(parent, e);
+        HTTrackActivity.emergencyDump(appContext, e);
         throw e;
       } finally {
         ended = true;
@@ -1725,6 +1730,15 @@ public class HTTrackActivity extends FragmentActivity {
   protected void unserialize() throws IOException {
     final File profile = getProfileFile();
     mapper.unserialize(profile);
+  }
+
+  /**
+   * Is a crawl still actually running? True only for a fragment reclaimed across a configuration
+   * change with a live, non-ended runner; false after process death (fragment restored empty).
+   */
+  protected boolean hasLiveRunner() {
+    final Fragment f = getSupportFragmentManager().findFragmentByTag(sessionID);
+    return f instanceof RunnerFragment && ((RunnerFragment) f).hasLiveRunner();
   }
 
   /**
@@ -2922,8 +2936,13 @@ public class HTTrackActivity extends FragmentActivity {
       // Load map settings
       loadParcelable(data);
 
+      // The progress pane means a live crawl; after process death none exists, so land on the
+      // setup pane instead, where isInterruptedProfile() defaults the action to Continue.
+      final int paneId = (id == LAYOUT_MIRROR_PROGRESS && !hasLiveRunner())
+          ? LAYOUT_PROJECT_SETUP : id;
+
       // Switch pane id (0 by default)
-      setPane(id);
+      setPane(paneId);
 
       // Set focus
       setCurrentFocusId(focus_ids);
