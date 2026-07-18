@@ -181,9 +181,12 @@ static char *sanitizeModifiedUtf8(const char *s) {
 static jobject newStringSafe(JNIEnv *env, const char *s) {
   if (s != NULL) {
     char *const safe = sanitizeModifiedUtf8(s);
-    jobject str = (*env)->NewStringUTF(env, safe != NULL ? safe : s);
-    free(safe);
-    return str;
+    /* On OOM, a null field beats feeding raw (possibly hostile) bytes to NewStringUTF. */
+    if (safe != NULL) {
+      jobject str = (*env)->NewStringUTF(env, safe);
+      free(safe);
+      return str;
+    }
   }
   return NULL;
 }

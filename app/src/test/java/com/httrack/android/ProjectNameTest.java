@@ -22,12 +22,6 @@ public class ProjectNameTest {
     assertFalse(StoragePaths.isValidProjectName(".."));
   }
 
-  /** The discriminating case: no separator, yet still a traversal a naive '/'-only check would miss. */
-  @Test
-  public void refusesABareParentSegment() {
-    assertFalse(StoragePaths.isValidProjectName(".."));
-  }
-
   @Test
   public void refusesAnyPathSeparator() {
     assertFalse(StoragePaths.isValidProjectName("../../../../sdcard/Android/data/evil"));
