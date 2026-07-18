@@ -2,9 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     android:installLocation="auto" >
 
-    <!-- We need to read/write copied Websites to the SD card. -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
     <!-- We need to connect to the Internet. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
