@@ -67,6 +67,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Parcelable;
 import android.os.StrictMode;
 import android.text.Editable;
@@ -554,8 +555,9 @@ public class HTTrackActivity extends FragmentActivity {
       restoreInstanceState(extras);
     }
 
-    // First launch only, so a rotation does not bring the offer back.
-    if (savedInstanceState == null) {
+    // First launch only, so a rotation does not bring the offer back; and not stacked on top
+    // of the native-load failure dialog.
+    if (savedInstanceState == null && HTTrackLib.loadedSuccessfully()) {
       offerLegacyMirrorImportOnce();
     }
   }
@@ -2237,56 +2239,84 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
+  private volatile boolean importInProgress;
+
   /**
-   * Copy the picked tree into our Websites directory, off the UI thread. If the pick holds a
-   * "Websites" subfolder (the user chose the HTTrack folder), descend into it so project
-   * directories do not end up one level too deep. The source is only read, never changed.
+   * Copy the picked tree into our Websites directory, entirely off the UI thread: even walking
+   * the tree to find "Websites" is one IPC per entry, too much for the main thread. The source
+   * is only read, never changed. Guarded against a second run while one is going, whose two
+   * threads would race on the same temp files.
    */
   private void importMirrorsFrom(final Uri treeUri) {
-    final ContentResolver resolver = getContentResolver();
-    resolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-    DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
-    if (root == null) {
-      showNotification(getString(R.string.import_mirrors_none));
+    if (importInProgress) {
+      showNotification(getString(R.string.import_mirrors_running));
       return;
     }
+    final ContentResolver resolver = getContentResolver();
+    resolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    final Context appContext = getApplicationContext();
+    final File dest = getProjectRootFile();
+    importInProgress = true;
+    showNotification(getString(R.string.import_mirrors_running));
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        String outcome;
+        try {
+          outcome = runImport(appContext, resolver, treeUri, dest);
+        } finally {
+          importInProgress = false;
+        }
+        deliverImportOutcome(appContext, outcome);
+      }
+    }, "legacy-import").start();
+  }
+
+  /** The copy itself, on the worker thread; returns the message to show. **/
+  private String runImport(final Context context, final ContentResolver resolver,
+      final Uri treeUri, final File dest) {
+    DocumentFile root = DocumentFile.fromTreeUri(context, treeUri);
+    if (root == null) {
+      return getString(R.string.import_mirrors_none);
+    }
+    // A picked "HTTrack" folder holds "Websites"; descend so project dirs keep their depth.
     final DocumentFile websites = root.findFile("Websites");
     if (websites != null && websites.isDirectory()) {
       root = websites;
     }
     final LegacyMirrorImport.Source source =
         new LegacyMirrorImport.DocumentFileSource(resolver, root);
-    final File dest = getProjectRootFile();
-    showNotification(getString(R.string.import_mirrors_running));
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        final LegacyMirrorImport.Result result = LegacyMirrorImport.copyTree(source, dest);
-        runOnUiThread(new Runnable() {
-          @Override
-          public void run() {
-            onImportFinished(result);
-          }
-        });
-      }
-    }, "legacy-import").start();
-  }
-
-  /** Report the outcome and surface any freshly imported projects. **/
-  private void onImportFinished(final LegacyMirrorImport.Result result) {
+    if (LegacyMirrorImport.totalSize(source) > dest.getUsableSpace()) {
+      return getString(R.string.import_mirrors_no_space);
+    }
+    final LegacyMirrorImport.Result result = LegacyMirrorImport.copyTree(source, dest);
     if (result.firstError() != null) {
       Log.w(getClass().getSimpleName(), "import: " + result.firstError());
     }
-    refreshprojectNameSuggests();
-    final String message;
     if (!result.isComplete()) {
-      message = getString(R.string.import_mirrors_partial, result.copied, result.failed);
-    } else if (result.copied == 0 && result.skipped == 0) {
-      message = getString(R.string.import_mirrors_none);
-    } else {
-      message = getString(R.string.import_mirrors_done, result.copied, result.skipped);
+      return getString(R.string.import_mirrors_partial, result.copied, result.failed);
     }
-    showNotification(message);
+    if (result.copied == 0 && result.skipped == 0) {
+      return getString(R.string.import_mirrors_none);
+    }
+    return getString(R.string.import_mirrors_done, result.copied, result.skipped);
+  }
+
+  /**
+   * Report the outcome on the main thread. Uses the application context and its own handler so
+   * the toast still shows if the activity was rotated away during a long copy; the project list
+   * is refreshed only when an activity is still around to hold it.
+   */
+  private void deliverImportOutcome(final Context appContext, final String message) {
+    new Handler(Looper.getMainLooper()).post(new Runnable() {
+      @Override
+      public void run() {
+        Toast.makeText(appContext, message, Toast.LENGTH_LONG).show();
+        if (!isFinishing() && !isDestroyed()) {
+          refreshprojectNameSuggests();
+        }
+      }
+    });
   }
 
   /**

@@ -146,6 +146,7 @@
     <string name="import_mirrors_done">Imported %1$d files (%2$d already present).</string>
     <string name="import_mirrors_partial">Imported %1$d files; %2$d could not be copied. You can run the import again.</string>
     <string name="import_mirrors_none">Nothing to import from that folder.</string>
+    <string name="import_mirrors_no_space">Not enough free space to import these mirrors.</string>
     <string name="import_mirrors_offer">Mirrors from an older version can no longer be reached directly. Import them into this app now?</string>
     <string name="import_mirrors_offer_yes">Import</string>
     <string name="import_mirrors_offer_later">Not now</string>

@@ -156,6 +156,183 @@ public class LegacyMirrorImportTest {
     assertFalse(new File(dest.getParentFile(), "escape.html").exists());
   }
 
+  /** A file whose stream yields some bytes and then throws, to model a copy killed mid-write. */
+  private static final class HalfThenThrow implements LegacyMirrorImport.Source {
+    private final String name;
+
+    HalfThenThrow(final String name) {
+      this.name = name;
+    }
+
+    @Override
+    public String getName() {
+      return name;
+    }
+
+    @Override
+    public boolean isDirectory() {
+      return false;
+    }
+
+    @Override
+    public long length() {
+      return 100;
+    }
+
+    @Override
+    public List<LegacyMirrorImport.Source> children() {
+      return new ArrayList<LegacyMirrorImport.Source>();
+    }
+
+    @Override
+    public InputStream openStream() {
+      return new InputStream() {
+        private int served;
+
+        @Override
+        public int read() throws IOException {
+          if (served++ < 50) {
+            return 'x';
+          }
+          throw new IOException("stream died mid-file");
+        }
+      };
+    }
+  }
+
+  @Test
+  public void aMidWriteFailureLeavesNoFileThatLooksComplete() throws Exception {
+    final FakeNode root = FakeNode.dir("HTTrack").with(new HalfThenThrow("truncated.html"));
+    final File dest = tmp.newFolder("dest");
+
+    final LegacyMirrorImport.Result r = LegacyMirrorImport.copyTree(root, dest);
+
+    assertEquals(1, r.failed);
+    assertEquals(0, r.copied);
+    // Neither the final name nor the temp may survive: a re-run must see it as missing, not done.
+    assertFalse(new File(dest, "truncated.html").exists());
+    assertFalse(new File(dest, "truncated.html.part").exists());
+  }
+
+  /**
+   * The real point of the temp-then-rename: a file only ever appears under its final name once
+   * whole, so a run killed mid-copy cannot leave a truncated file that a re-run trusts. We cannot
+   * kill the process here, but we can observe that while bytes are flowing they are NOT at the
+   * final name. A direct-to-destination copy fails this.
+   */
+  @Test
+  public void bytesAreNotVisibleUnderTheFinalNameUntilComplete() throws Exception {
+    final File dest = tmp.newFolder("dest");
+    final boolean[] finalNameSeenMidWrite = { false };
+    final LegacyMirrorImport.Source watcher = new LegacyMirrorImport.Source() {
+      @Override
+      public String getName() {
+        return "HTTrack";
+      }
+
+      @Override
+      public boolean isDirectory() {
+        return true;
+      }
+
+      @Override
+      public long length() {
+        return 0;
+      }
+
+      @Override
+      public List<LegacyMirrorImport.Source> children() {
+        final List<LegacyMirrorImport.Source> kids = new ArrayList<LegacyMirrorImport.Source>();
+        kids.add(new LegacyMirrorImport.Source() {
+          @Override
+          public String getName() {
+            return "page.html";
+          }
+
+          @Override
+          public boolean isDirectory() {
+            return false;
+          }
+
+          @Override
+          public long length() {
+            return 10;
+          }
+
+          @Override
+          public List<LegacyMirrorImport.Source> children() {
+            return new ArrayList<LegacyMirrorImport.Source>();
+          }
+
+          @Override
+          public InputStream openStream() {
+            return new InputStream() {
+              private int served;
+
+              @Override
+              public int read() {
+                if (new File(dest, "page.html").exists()) {
+                  finalNameSeenMidWrite[0] = true;
+                }
+                return served++ < 10 ? 'x' : -1;
+              }
+            };
+          }
+        });
+        return kids;
+      }
+
+      @Override
+      public InputStream openStream() {
+        throw new UnsupportedOperationException();
+      }
+    };
+
+    LegacyMirrorImport.copyTree(watcher, dest);
+
+    assertFalse("bytes appeared under the final name before the copy finished",
+        finalNameSeenMidWrite[0]);
+    assertEquals("xxxxxxxxxx", read(new File(dest, "page.html")));
+  }
+
+  /**
+   * DocumentFile.getName() may return null, and "."/".." are meaningless as entries. The null is
+   * the load-bearing case: without the guard, new File(dir, null) throws and takes the whole
+   * import down mid-run. The good sibling must still arrive, and copyTree must not throw.
+   */
+  @Test
+  public void aNullOrDotEntryIsRefusedWithoutDeraillingTheRest() throws Exception {
+    final FakeNode root = FakeNode.dir("HTTrack").with(
+        FakeNode.file(null, "no-name"),
+        FakeNode.file("..", "parent"),
+        FakeNode.file(".", "self"),
+        FakeNode.file("", "empty"),
+        FakeNode.file("keep.html", "ok"));
+    final File dest = tmp.newFolder("dest");
+
+    final LegacyMirrorImport.Result r = LegacyMirrorImport.copyTree(root, dest);
+
+    assertEquals(1, r.copied);
+    assertEquals(4, r.failed);
+    assertTrue(new File(dest, "keep.html").exists());
+    // Nothing escaped to the destination's parent via "..".
+    assertFalse(new File(dest.getParentFile(), "parent").exists());
+  }
+
+  @Test
+  public void doesNotDropAFileWhereADirectoryAlreadyStands() throws Exception {
+    final File dest = tmp.newFolder("dest");
+    assertTrue(new File(dest, "clash").mkdir());
+    final FakeNode root = FakeNode.dir("HTTrack").with(FakeNode.file("clash", "would-be-lost"));
+
+    final LegacyMirrorImport.Result r = LegacyMirrorImport.copyTree(root, dest);
+
+    // The name collision is reported, not silently counted as skipped.
+    assertEquals(1, r.failed);
+    assertEquals(0, r.skipped);
+    assertTrue(new File(dest, "clash").isDirectory());
+  }
+
   @Test
   public void totalSizeSumsEveryFile() {
     final FakeNode root = FakeNode.dir("HTTrack").with(

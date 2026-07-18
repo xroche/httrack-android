@@ -48,10 +48,12 @@ final class LegacyMirrorImport {
     int copied;
     int skipped;
     int failed;
+    // Set by the caller when the tree does not fit; nothing is copied in that case.
+    boolean outOfSpace;
     final List<String> errors = new ArrayList<String>();
 
     boolean isComplete() {
-      return failed == 0;
+      return failed == 0 && !outOfSpace;
     }
 
     String firstError() {
@@ -86,6 +88,9 @@ final class LegacyMirrorImport {
       final File dest = new File(destDir, name);
       if (child.isDirectory()) {
         copyInto(child, dest, result);
+      } else if (dest.isDirectory()) {
+        // A directory already sits where this file would go; skipping would drop it silently.
+        record(result, "name clash at " + dest);
       } else if (dest.exists()) {
         result.skipped++;
       } else {
