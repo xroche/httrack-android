@@ -90,7 +90,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
@@ -118,6 +120,9 @@ public class HTTrackActivity extends FragmentActivity {
   // Preferences
   protected static final String PREFS_NAME = "HTTrackPreferences";
   protected static final String BASE_NAME = "BasePath";
+  // Whether POST_NOTIFICATIONS was ever asked for. Has to outlive the activity: pane_id is
+  // restored on rotation, and a second refusal is the one that sticks for good.
+  protected static final String NOTIFY_ASKED_NAME = "NotificationPermissionAsked";
 
   // <br /> Pattern
   protected static final Pattern brHtmlPattern = Pattern.compile(Pattern
@@ -125,6 +130,10 @@ public class HTTrackActivity extends FragmentActivity {
   
   // ".nomedia" ; prevents media scanner from reading media files
   public static final String NOMEDIA_FILE = ".nomedia";
+
+  // Channel carrying every notification we post. Never rename: the user's sound/importance
+  // choices are keyed on it, and a new id silently resets them.
+  protected static final String NOTIFICATION_CHANNEL_ID = "mirror";
 
   // Running instances of HTTrack (based on winprofile.ini path)
   protected static final HashSet<String> runningInstances = new HashSet<String>();
@@ -413,6 +422,7 @@ public class HTTrackActivity extends FragmentActivity {
   */
   private static final int REQUEST_WRITE_STORAGE = 1;
   private static final int REQUEST_INTERNET = 2;
+  private static final int REQUEST_POST_NOTIFICATIONS = 3;
 
   protected void ensureMediaIsAllowedHardPermissions() {
     final boolean hasPermissionStorage = (ContextCompat.checkSelfPermission(this,
@@ -425,6 +435,32 @@ public class HTTrackActivity extends FragmentActivity {
     } else {
       Log.d("httrack", "Access to storage is allowed");
     }
+  }
+
+  /*
+   * Only a runtime permission from Android 13 on; below that the manifest entry is enough.
+   * Targeting 33+ also drops the automatic prompt, so without this the app posts nothing.
+   */
+  protected void ensureNotificationsAreAllowed() {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+      return;
+    }
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            == PackageManager.PERMISSION_GRANTED) {
+      Log.d("httrack", "Posting notifications is allowed");
+      return;
+    }
+    // Ask once: a refusal stands until the user revisits it in the system settings. The latch
+    // is set from the result below, not here, so dismissing the dialog (which Android does not
+    // count as a refusal) leaves it to be offered again rather than silently lost.
+    if (getSharedPreferences(PREFS_NAME, 0).getBoolean(NOTIFY_ASKED_NAME, false)) {
+      Log.d("httrack", "Permission to post notifications was already answered");
+      return;
+    }
+    Log.d("httrack", "Requesting permission to post notifications");
+    ActivityCompat.requestPermissions(this,
+            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+            REQUEST_POST_NOTIFICATIONS);
   }
 
   /*
@@ -447,6 +483,16 @@ public class HTTrackActivity extends FragmentActivity {
           Toast.makeText(this, "The app was not allowed to access the Internet. Hence, it cannot function properly. Please consider granting it this permission", Toast.LENGTH_LONG).show();
         } else {
           Log.d("httrack", "Permission to access Internet is granted");
+        }
+      }
+      break;
+      // No Toast unlike the two above: a refusal costs only the end-of-mirror notice.
+      case REQUEST_POST_NOTIFICATIONS: {
+        // An empty result is a dismissal, not an answer, so leave the latch clear and re-offer.
+        if (grantResults.length != 0) {
+          getSharedPreferences(PREFS_NAME, 0).edit().putBoolean(NOTIFY_ASKED_NAME, true).apply();
+          Log.d("httrack", "Permission to post notifications is "
+                  + (grantResults[0] == PackageManager.PERMISSION_GRANTED ? "granted" : "denied"));
         }
       }
       break;
@@ -1849,6 +1895,8 @@ public class HTTrackActivity extends FragmentActivity {
       break;
     case R.layout.activity_mirror_progress:
       setProgressLinesInternal(new String[] { getString(R.string.starting_worker_thread) });
+      // Asked at crawl start, not at launch: a refusal is permanent after two of them.
+      ensureNotificationsAreAllowed();
       startRunner();
       if (runner != null) {
         ProgressBar.class.cast(findViewById(R.id.progressMirror))
@@ -2669,6 +2717,19 @@ public class HTTrackActivity extends FragmentActivity {
     return intent;
   }
 
+  /**
+   * Register the channel the notifications below are posted to. Mandatory from API 26 on,
+   * where a channel-less notification is dropped with nothing but a log line; a no-op before.
+   * Idempotent, and called at post time rather than at startup: creating a channel is what
+   * makes the system prompt an app targeting 32 or lower, and launch is too early to ask.
+   */
+  protected void createNotificationChannel() {
+    final NotificationChannelCompat channel = new NotificationChannelCompat.Builder(
+        NOTIFICATION_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+        .setName(getString(R.string.app_name)).build();
+    NotificationManagerCompat.from(this).createNotificationChannel(channel);
+  }
+
   /** Send a notification. **/
   protected void sendAbortNotification() {
     final String title = getString(R.string.mirror_xxx_stopped).replace("%s",
@@ -2691,14 +2752,17 @@ public class HTTrackActivity extends FragmentActivity {
   protected void sendSystemNotification(final Intent intent,
       final CharSequence title, final CharSequence text) {
 
+    createNotificationChannel();
+
     // Create notification
     final long when = System.currentTimeMillis();
-    final PendingIntent pintent = PendingIntent.getActivity(this, 0, intent, 0);
-    final Notification notification = new NotificationCompat.Builder(this)
-        .setContentTitle(title).setContentText(text).setTicker(title)
-        .setSmallIcon(R.drawable.ic_launcher).setWhen(when)
-        .setContentInfo(getString(R.string.start)).setContentIntent(pintent)
-        .setAutoCancel(true).build();
+    // FLAG_IMMUTABLE: mandatory from API 31 on, and the extras are only ever read back by us.
+    final PendingIntent pintent = PendingIntent.getActivity(this, 0, intent,
+        PendingIntent.FLAG_IMMUTABLE);
+    final Notification notification = new NotificationCompat.Builder(this,
+        NOTIFICATION_CHANNEL_ID).setContentTitle(title).setContentText(text)
+        .setTicker(title).setSmallIcon(R.drawable.ic_launcher).setWhen(when)
+        .setContentIntent(pintent).setAutoCancel(true).build();
 
     // Send
     final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
