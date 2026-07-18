@@ -82,13 +82,19 @@ jobs:
         run: tools/ci/vendor-libiconv.sh
       - name: Stage OpenSSL statics into prebuild/
         run: tools/ci/fetch-openssl-statics.sh    # picks up $OPENSSL_ANDROID_ROOT from the image
-      - name: Gradle assemble + lint
-        run: ./gradlew --no-daemon assembleDebug assembleRelease lint
+      - name: Gradle assemble + test + lint
+        run: ./gradlew --no-daemon assembleDebug assembleRelease testDebugUnitTest lint
       - name: Check 16 KB .so alignment
         run: |
           for apk in app/build/outputs/apk/*/*.apk; do
             tools/ci/check-so-alignment.sh "$apk"
           done
+      - uses: actions/upload-artifact@v4
+        if: always()                     # the report is what says which case broke
+        with:
+          name: test-results
+          path: app/build/reports/tests/**
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: apk
