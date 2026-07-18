@@ -143,6 +143,7 @@
     <string name="action_import_mirrors">Import existing mirrors</string>
     <string name="import_mirrors_prompt">Pick the folder that holds your older HTTrack mirrors (for example HTTrack on the internal storage). Their contents will be copied into this app\'s storage; the originals are left untouched.</string>
     <string name="import_mirrors_running">Importing mirrors…</string>
+    <string name="browse_all_building">Building index…</string>
     <string name="import_mirrors_done">Imported %1$d files (%2$d already present).</string>
     <string name="import_mirrors_partial">Imported %1$d files; %2$d could not be copied. You can run the import again.</string>
     <string name="import_mirrors_none">Nothing to import from that folder.</string>

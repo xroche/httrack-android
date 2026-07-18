@@ -37,6 +37,8 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
@@ -45,6 +47,7 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
+import android.widget.Toast;
 
 import com.httrack.android.jni.HTTrackLib;
 
@@ -59,6 +62,7 @@ public class CleanupActivity extends ListActivity {
   private String[] projects;
   private int action;
   private final HashSet<Integer> toBeDeleted = new HashSet<Integer>();
+  private volatile boolean deleteInProgress;
 
   public static final int ACTION_CLEANUP = 1;
   public static final int ACTION_SELECT = 2;
@@ -208,66 +212,89 @@ public class CleanupActivity extends ListActivity {
     }
   }
 
-  protected boolean deleteProjects() {
-    boolean success = true;
-    for (final int position : toBeDeleted) {
-      // Delete project.
-      final String name = projects[position];
-      final File target = new File(projectRootFile, name);
-      if (deleteRecursively(target)) {
-        // Mark item as disabled.
-        final View item = list.getChildAt(position);
-        final View o = item.findViewById(R.id.blocCheck);
-        o.setBackgroundResource(R.color.gray);
-        final CheckBox cb = (CheckBox) item.findViewById(R.id.check);
-        cb.setClickable(false);
-        cb.setEnabled(false);
-      } else {
-        success = false;
-      }
-
+  /**
+   * Delete the selected projects off the UI thread: one delete() per file over a whole mirror
+   * plus a native index rebuild blows past the ANR budget. The selection is snapshotted here and
+   * the result posted back to finish the activity; a second run while one is going is ignored.
+   */
+  protected void deleteProjects() {
+    if (deleteInProgress) {
+      return;
     }
-    // Everything was deleted
+    final HashSet<Integer> positions = new HashSet<Integer>(toBeDeleted);
     toBeDeleted.clear();
-
-    // Root path can be deleted ?
-    final boolean deleteRootPath = pathIsEmpty(projectRootFile);
-    if (deleteRootPath) {
-      if (deleteRecursively(projectRootFile)) {
-        Log.d(getClass().getSimpleName(), "successfully deleted root path: "
-            + projectRootFile);
-      } else {
-        Log.w(getClass().getSimpleName(), "could not delet root path: "
-            + projectRootFile);
-      }
-
-      // Delete top-level parent if a "HTTrack" folder was found. This ensure
-      // that we fully cleanup user-data.
-      final File parentRoot = projectRootFile.getParentFile();
-      if (parentRoot != null && parentRoot.getName().equals("HTTrack")
-          && pathIsEmpty(parentRoot)) {
-        if (deleteRecursively(parentRoot)) {
-          Log.d(getClass().getSimpleName(), "successfully deleted root path: "
-              + parentRoot);
-        } else {
-          Log.w(getClass().getSimpleName(), "could not delet root path: "
-              + parentRoot);
+    deleteInProgress = true;
+    Toast.makeText(this, "Deleting projects…", Toast.LENGTH_SHORT).show();
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        final HashSet<Integer> deleted = new HashSet<Integer>();
+        for (final int position : positions) {
+          if (deleteRecursively(new File(projectRootFile, projects[position]))) {
+            deleted.add(position);
+          }
         }
+
+        // Root path can be deleted ?
+        final boolean deleteRootPath = pathIsEmpty(projectRootFile);
+        if (deleteRootPath) {
+          if (deleteRecursively(projectRootFile)) {
+            Log.d(getClass().getSimpleName(), "successfully deleted root path: "
+                + projectRootFile);
+          } else {
+            Log.w(getClass().getSimpleName(), "could not delet root path: "
+                + projectRootFile);
+          }
+
+          // Delete top-level parent if a "HTTrack" folder was found. This ensure
+          // that we fully cleanup user-data.
+          final File parentRoot = projectRootFile.getParentFile();
+          if (parentRoot != null && parentRoot.getName().equals("HTTrack")
+              && pathIsEmpty(parentRoot)) {
+            if (deleteRecursively(parentRoot)) {
+              Log.d(getClass().getSimpleName(), "successfully deleted root path: "
+                  + parentRoot);
+            } else {
+              Log.w(getClass().getSimpleName(), "could not delet root path: "
+                  + parentRoot);
+            }
+          }
+        } else {
+          // Rebuild top index
+          HTTrackLib.buildTopIndex(projectRootFile, resourceFile);
+        }
+
+        deliverDeleteOutcome(deleted, deleteRootPath);
       }
-    } else {
-      // Rebuild top index
-      HTTrackLib.buildTopIndex(projectRootFile, resourceFile);
-    }
+    }, "cleanup-delete").start();
+  }
 
-    // Push result
-    final Intent intent = new Intent();
-    intent.putExtra("com.httrack.android.rootPathWasDeleted", deleteRootPath);
-    setResult(Activity.RESULT_OK, intent);
+  /** Finish with the result on the main thread; touch the list only if we still own it. */
+  private void deliverDeleteOutcome(final HashSet<Integer> deleted,
+      final boolean rootPathWasDeleted) {
+    new Handler(Looper.getMainLooper()).post(new Runnable() {
+      @Override
+      public void run() {
+        deleteInProgress = false;
+        if (!isFinishing() && !isDestroyed()) {
+          for (final int position : deleted) {
+            final View item = list.getChildAt(position);
+            if (item == null) {
+              continue;
+            }
+            item.findViewById(R.id.blocCheck).setBackgroundResource(R.color.gray);
+            final CheckBox cb = (CheckBox) item.findViewById(R.id.check);
+            cb.setClickable(false);
+            cb.setEnabled(false);
+          }
+        }
 
-    // Finish
-    finish();
-
-    return success;
+        final Intent intent = new Intent();
+        intent.putExtra("com.httrack.android.rootPathWasDeleted", rootPathWasDeleted);
+        setResult(Activity.RESULT_OK, intent);
+        finish();
+      }
+    });
   }
 
   public void onClickDelete(final View v) {
