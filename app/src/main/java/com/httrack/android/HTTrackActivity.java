@@ -2756,9 +2756,14 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Create notification
     final long when = System.currentTimeMillis();
-    // FLAG_IMMUTABLE: mandatory from API 31 on, and the extras are only ever read back by us.
-    final PendingIntent pintent = PendingIntent.getActivity(this, 0, intent,
-        PendingIntent.FLAG_IMMUTABLE);
+    // One request code per notification, so each keeps its own extras. Request code 0 shared a
+    // single PendingIntent across notifications, and filterEquals() ignores extras, so tapping a
+    // later notification restored an earlier one's project. UPDATE_CURRENT refreshes on a
+    // same-millisecond collision; IMMUTABLE is mandatory from API 31 on, and right, since we
+    // read the extras back ourselves.
+    final int id = (int) when;
+    final PendingIntent pintent = PendingIntent.getActivity(this, id, intent,
+        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     final Notification notification = new NotificationCompat.Builder(this,
         NOTIFICATION_CHANNEL_ID).setContentTitle(title).setContentText(text)
         .setTicker(title).setSmallIcon(R.drawable.ic_launcher).setWhen(when)
@@ -2766,7 +2771,7 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Send
     final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-    manager.notify((int) System.currentTimeMillis(), notification);
+    manager.notify(id, notification);
   }
 
   /** Send a notification with a blank Intent. **/
