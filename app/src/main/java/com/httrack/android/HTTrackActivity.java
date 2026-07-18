@@ -450,13 +450,13 @@ public class HTTrackActivity extends FragmentActivity {
       Log.d("httrack", "Posting notifications is allowed");
       return;
     }
-    // Once only: the user's refusal stands until they revisit it in the system settings.
-    final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
-    if (settings.getBoolean(NOTIFY_ASKED_NAME, false)) {
-      Log.d("httrack", "Permission to post notifications was already declined");
+    // Ask once: a refusal stands until the user revisits it in the system settings. The latch
+    // is set from the result below, not here, so dismissing the dialog (which Android does not
+    // count as a refusal) leaves it to be offered again rather than silently lost.
+    if (getSharedPreferences(PREFS_NAME, 0).getBoolean(NOTIFY_ASKED_NAME, false)) {
+      Log.d("httrack", "Permission to post notifications was already answered");
       return;
     }
-    settings.edit().putBoolean(NOTIFY_ASKED_NAME, true).apply();
     Log.d("httrack", "Requesting permission to post notifications");
     ActivityCompat.requestPermissions(this,
             new String[]{Manifest.permission.POST_NOTIFICATIONS},
@@ -488,10 +488,12 @@ public class HTTrackActivity extends FragmentActivity {
       break;
       // No Toast unlike the two above: a refusal costs only the end-of-mirror notice.
       case REQUEST_POST_NOTIFICATIONS: {
-        final boolean granted = grantResults.length != 0
-                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-        Log.d("httrack", "Permission to post notifications is "
-                + (granted ? "granted" : "denied"));
+        // An empty result is a dismissal, not an answer, so leave the latch clear and re-offer.
+        if (grantResults.length != 0) {
+          getSharedPreferences(PREFS_NAME, 0).edit().putBoolean(NOTIFY_ASKED_NAME, true).apply();
+          Log.d("httrack", "Permission to post notifications is "
+                  + (grantResults[0] == PackageManager.PERMISSION_GRANTED ? "granted" : "denied"));
+        }
       }
       break;
     }
