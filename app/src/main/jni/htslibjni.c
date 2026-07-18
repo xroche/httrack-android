@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <android/log.h>
 
@@ -62,15 +64,19 @@ static char *rootPath = NULL;
 /* log assertion failure. */
 static void log_assert_failure(const char* exp, const char* file, int line) {
   __android_log_print(ANDROID_LOG_VERBOSE, "httrack", "assertion '%s' failed at %s:%d", exp, file, line);
-#define MKDIR_MODE (S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH)
-  /* FIXME TODO: pass the getExternalStorageDirectory() in init. */
-  FILE *dumpFile;
-  const char *const filename = emergencyLog != NULL ? emergencyLog
-    : "/mnt/sdcard/Download/HTTrack/error.txt";
-  dumpFile = fopen(filename, "wb");
-  if (dumpFile != NULL) {
-    fprintf(dumpFile, "assertion '%s' failed at %s:%d\n", exp, file, line);
-    fclose(dumpFile);
+  /* Nothing is writable before initRootPath(); logcat above carries it either way. */
+  if (emergencyLog != NULL) {
+    /* Owner-only (0600): a crash log created with fopen's default 0666 is world-writable. */
+    const int fd = open(emergencyLog, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (fd != -1) {
+      FILE *const dumpFile = fdopen(fd, "wb");
+      if (dumpFile != NULL) {
+        fprintf(dumpFile, "assertion '%s' failed at %s:%d\n", exp, file, line);
+        fclose(dumpFile);
+      } else {
+        close(fd);
+      }
+    }
   }
 }
 
