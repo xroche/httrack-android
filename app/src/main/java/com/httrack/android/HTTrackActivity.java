@@ -801,6 +801,11 @@ public class HTTrackActivity extends FragmentActivity {
   protected File getTargetFile() {
     final String name = mapper.getProjectName();
     if (name != null && name.length() != 0) {
+      // Backstop: a name that is not a single in-root segment must never become an -O path.
+      if (!StoragePaths.isValidProjectName(name)) {
+        Log.w(getClass().getSimpleName(), "rejecting unsafe project name: " + name);
+        return null;
+      }
       return new File(getProjectRootFile(), name);
     } else {
       return null;
@@ -2139,6 +2144,11 @@ public class HTTrackActivity extends FragmentActivity {
           } finally {
             dirtyNamePane = false;
           }
+        }
+        // A crafted winprofile.ini can overwrite the name with a path that escapes the root.
+        if (!StoragePaths.isValidProjectName(mapper.getProjectName())) {
+          showNotification(getString(R.string.invalid_project_name), true);
+          return false;
         }
         return true;
       }
