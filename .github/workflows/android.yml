@@ -84,6 +84,11 @@ jobs:
         run: tools/ci/fetch-openssl-statics.sh    # picks up $OPENSSL_ANDROID_ROOT from the image
       - name: Gradle assemble + lint
         run: ./gradlew --no-daemon assembleDebug assembleRelease lint
+      - name: Check 16 KB .so alignment
+        run: |
+          for apk in app/build/outputs/apk/*/*.apk; do
+            tools/ci/check-so-alignment.sh "$apk"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: apk

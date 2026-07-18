@@ -7,3 +7,6 @@
 # at API 24+.
 APP_ABI := arm64-v8a x86_64
 APP_PLATFORM := android-24
+
+# Play requires 16 KB-aligned LOAD segments at targetSdk 35+; r26d's lld still defaults to 4 KB.
+APP_LDFLAGS := -Wl,-z,max-page-size=16384
