@@ -44,10 +44,16 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
+import androidx.activity.OnBackPressedCallback;
+import androidx.fragment.app.FragmentActivity;
+
 /**
  * The options activity.
+ *
+ * FragmentActivity rather than Activity: predictive back is dispatched through the AndroidX
+ * OnBackPressedDispatcher, which a plain Activity does not have.
  */
-public class OptionsActivity extends Activity implements View.OnClickListener {
+public class OptionsActivity extends FragmentActivity implements View.OnClickListener {
   /* List of all tabs. */
   @SuppressWarnings("unchecked")
   protected static Class<? extends Tab>[] tabClasses = new Class[] {
@@ -335,6 +341,8 @@ public class OptionsActivity extends Activity implements View.OnClickListener {
   protected void onCreate(final Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
+    getOnBackPressedDispatcher().addCallback(this, backCallback);
+
     // Large screen ? Enable special tablet features in such case...
     // "xlarge screens are at least 960dp x 720dp"
     isTabletMode = getResources().getBoolean(R.bool.isTablet)
@@ -388,27 +396,28 @@ public class OptionsActivity extends Activity implements View.OnClickListener {
   }
 
   /**
-   * Override back to propagate settings. <br />
-   * FIXME: we should probably do better than that!
+   * Back propagates the settings, and on a sub-tab returns to the menu rather than leaving.
+   * Always enabled: neither branch wants the default, which would finish without saving.
    */
-  @Override
-  public void onBackPressed() {
-    // Back from activity
-    if (isTabletMode || activityClass == null) {
-      if (isTabletMode && activityClass != null) {
-        save();
+  private final OnBackPressedCallback backCallback = new OnBackPressedCallback(true) {
+    @Override
+    public void handleOnBackPressed() {
+      // Back from activity. finish() is overridden above to carry the settings back.
+      if (isTabletMode || activityClass == null) {
+        if (isTabletMode && activityClass != null) {
+          save();
+        }
+        finish();
       }
-      super.onBackPressed();
-      finish();
+      // Leave sub-activity (activityClass != null)
+      else {
+        notifyHideTab();
+        save();
+        activityClass = null;
+        setViewMenu();
+      }
     }
-    // Leave sub-activity (activityClass != null)
-    else {
-      notifyHideTab();
-      save();
-      activityClass = null;
-      setViewMenu();
-    }
-  }
+  };
 
   /*
    * Return current field ID's for the activity view.

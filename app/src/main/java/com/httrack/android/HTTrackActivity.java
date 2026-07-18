@@ -91,6 +91,7 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.app.ActivityCompat;
 import androidx.documentfile.provider.DocumentFile;
 import androidx.core.app.NotificationChannelCompat;
@@ -512,6 +513,8 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onCreate");
     super.onCreate(savedInstanceState);
 
+    getOnBackPressedDispatcher().addCallback(this, stayAliveWhileMirroring);
+
     // Attempt to load the native library.
     // Fetch httrack engine version
     if (HTTrackLib.loadLibraries()) {
@@ -912,18 +915,25 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Emergency dump.
+   * Emergency dump, into storage of our own: this runs on a crash path, so it must not depend
+   * on a permission, nor on a volume being mounted.
+   *
+   * @param context
+   *          null while the activity is being torn down, in which case nothing is written
+   * @param e
+   *          the throwable to record
    */
-  protected static void emergencyDump(final Throwable e) {
-    try {
-      final File dumpFile = new File(new File(
-          Environment.getExternalStorageState(), "HTTrack"), "error.txt");
-      final FileWriter writer = new FileWriter(dumpFile);
-      final PrintWriter print = new PrintWriter(writer);
+  protected static void emergencyDump(final Context context, final Throwable e) {
+    if (context == null) {
+      return;
+    }
+    final File external = context.getExternalFilesDir(null);
+    final File dumpFile = new File(
+        external != null ? external : context.getFilesDir(), "error.txt");
+    try (final PrintWriter print = new PrintWriter(new FileWriter(dumpFile))) {
       e.printStackTrace(print);
-      writer.close();
-      HTTrackActivity.setFileReadWrite(dumpFile);
     } catch (final IOException io) {
+      Log.w(HTTrackActivity.class.getSimpleName(), "could not write " + dumpFile, io);
     }
   }
 
@@ -1127,7 +1137,7 @@ public class HTTrackActivity extends FragmentActivity {
       try {
         runInternal();
       } catch (final RuntimeException e) {
-        HTTrackActivity.emergencyDump(e);
+        HTTrackActivity.emergencyDump(parent, e);
         throw e;
       } finally {
         ended = true;
@@ -2182,6 +2192,7 @@ public class HTTrackActivity extends FragmentActivity {
 
       // Switch pane
       pane_id = position;
+      stayAliveWhileMirroring.setEnabled(pane_id == LAYOUT_MIRROR_PROGRESS);
       setContentView(layouts[pane_id]);
 
       // Entering a new pane: restore data
@@ -2851,9 +2862,14 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Create notification
     final long when = System.currentTimeMillis();
-    // FLAG_IMMUTABLE: mandatory from API 31 on, and the extras are only ever read back by us.
-    final PendingIntent pintent = PendingIntent.getActivity(this, 0, intent,
-        PendingIntent.FLAG_IMMUTABLE);
+    // One request code per notification, so each keeps its own extras. Request code 0 shared a
+    // single PendingIntent across notifications, and filterEquals() ignores extras, so tapping a
+    // later notification restored an earlier one's project. UPDATE_CURRENT refreshes on a
+    // same-millisecond collision; IMMUTABLE is mandatory from API 31 on, and right, since we
+    // read the extras back ourselves.
+    final int id = (int) when;
+    final PendingIntent pintent = PendingIntent.getActivity(this, id, intent,
+        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     final Notification notification = new NotificationCompat.Builder(this,
         NOTIFICATION_CHANNEL_ID).setContentTitle(title).setContentText(text)
         .setTicker(title).setSmallIcon(R.drawable.ic_launcher).setWhen(when)
@@ -2861,7 +2877,7 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Send
     final NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-    manager.notify((int) System.currentTimeMillis(), notification);
+    manager.notify(id, notification);
   }
 
   /** Send a notification with a blank Intent. **/
@@ -2986,14 +3002,14 @@ public class HTTrackActivity extends FragmentActivity {
     startActivity(intent);
   }
 
-  @Override
-  public void onBackPressed() {
-    // Downloading data
-    if (pane_id == LAYOUT_MIRROR_PROGRESS) {
-      // Do not go home, or our fragment will die.
+  /*
+   * Enabled only on the progress pane, where finishing would take the retained fragment, and
+   * the crawl with it, down. Everywhere else it stays disabled so back does its usual thing.
+   */
+  private final OnBackPressedCallback stayAliveWhileMirroring = new OnBackPressedCallback(false) {
+    @Override
+    public void handleOnBackPressed() {
       goToHome();
-    } else {
-      super.onBackPressed();
     }
-  }
+  };
 }
