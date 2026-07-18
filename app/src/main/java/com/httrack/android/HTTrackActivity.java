@@ -53,6 +53,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -90,6 +91,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
+import androidx.documentfile.provider.DocumentFile;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
@@ -123,6 +125,8 @@ public class HTTrackActivity extends FragmentActivity {
   // Whether POST_NOTIFICATIONS was ever asked for. Has to outlive the activity: pane_id is
   // restored on rotation, and a second refusal is the one that sticks for good.
   protected static final String NOTIFY_ASKED_NAME = "NotificationPermissionAsked";
+  // Whether the one-time "import your old mirrors" offer has been shown and dismissed for good.
+  protected static final String IMPORT_OFFERED_NAME = "LegacyImportOffered";
 
   // <br /> Pattern
   protected static final Pattern brHtmlPattern = Pattern.compile(Pattern
@@ -160,6 +164,7 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final int ACTIVITY_FILE_CHOOSER = 1;
   protected static final int ACTIVITY_PROJECT_NAME_CHOOSER = 2;
   protected static final int ACTIVITY_CLEANUP = 3;
+  protected static final int ACTIVITY_IMPORT_TREE = 4;
 
   // Process unique session ID for the fragment identifier
   protected String sessionID = "runner_task" + "_"
@@ -547,6 +552,11 @@ public class HTTrackActivity extends FragmentActivity {
     final Bundle extras = getIntent().getExtras();
     if (extras != null) {
       restoreInstanceState(extras);
+    }
+
+    // First launch only, so a rotation does not bring the offer back.
+    if (savedInstanceState == null) {
+      offerLegacyMirrorImportOnce();
     }
   }
 
@@ -2212,6 +2222,95 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
+   * Let the user pick a legacy mirror folder to copy in. The storage-access framework is the
+   * only way left to reach the old public location once we no longer hold storage permissions.
+   */
+  private void startLegacyMirrorImport() {
+    final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    try {
+      showNotification(getString(R.string.import_mirrors_prompt));
+      startActivityForResult(intent, ACTIVITY_IMPORT_TREE);
+    } catch (final ActivityNotFoundException e) {
+      Log.w(getClass().getSimpleName(), "no document-tree picker", e);
+      showNotification(getString(R.string.import_mirrors_none));
+    }
+  }
+
+  /**
+   * Copy the picked tree into our Websites directory, off the UI thread. If the pick holds a
+   * "Websites" subfolder (the user chose the HTTrack folder), descend into it so project
+   * directories do not end up one level too deep. The source is only read, never changed.
+   */
+  private void importMirrorsFrom(final Uri treeUri) {
+    final ContentResolver resolver = getContentResolver();
+    resolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    DocumentFile root = DocumentFile.fromTreeUri(this, treeUri);
+    if (root == null) {
+      showNotification(getString(R.string.import_mirrors_none));
+      return;
+    }
+    final DocumentFile websites = root.findFile("Websites");
+    if (websites != null && websites.isDirectory()) {
+      root = websites;
+    }
+    final LegacyMirrorImport.Source source =
+        new LegacyMirrorImport.DocumentFileSource(resolver, root);
+    final File dest = getProjectRootFile();
+    showNotification(getString(R.string.import_mirrors_running));
+    new Thread(new Runnable() {
+      @Override
+      public void run() {
+        final LegacyMirrorImport.Result result = LegacyMirrorImport.copyTree(source, dest);
+        runOnUiThread(new Runnable() {
+          @Override
+          public void run() {
+            onImportFinished(result);
+          }
+        });
+      }
+    }, "legacy-import").start();
+  }
+
+  /** Report the outcome and surface any freshly imported projects. **/
+  private void onImportFinished(final LegacyMirrorImport.Result result) {
+    if (result.firstError() != null) {
+      Log.w(getClass().getSimpleName(), "import: " + result.firstError());
+    }
+    refreshprojectNameSuggests();
+    final String message;
+    if (!result.isComplete()) {
+      message = getString(R.string.import_mirrors_partial, result.copied, result.failed);
+    } else if (result.copied == 0 && result.skipped == 0) {
+      message = getString(R.string.import_mirrors_none);
+    } else {
+      message = getString(R.string.import_mirrors_done, result.copied, result.skipped);
+    }
+    showNotification(message);
+  }
+
+  /**
+   * Once per install, point users at the import. No storage permission remains to detect the
+   * old folder, so this offers rather than asserts; "Not now" leaves it to ask again.
+   */
+  private void offerLegacyMirrorImportOnce() {
+    final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+    if (settings.getBoolean(IMPORT_OFFERED_NAME, false)) {
+      return;
+    }
+    new AlertDialog.Builder(this)
+        .setMessage(R.string.import_mirrors_offer)
+        .setPositiveButton(R.string.import_mirrors_offer_yes, (dialog, which) -> {
+          settings.edit().putBoolean(IMPORT_OFFERED_NAME, true).apply();
+          startLegacyMirrorImport();
+        })
+        .setNegativeButton(R.string.import_mirrors_offer_later, null)
+        .setNeutralButton(R.string.import_mirrors_offer_never, (dialog, which) ->
+            settings.edit().putBoolean(IMPORT_OFFERED_NAME, true).apply())
+        .show();
+  }
+
+  /**
    * Change base path
    */
   public void onClickBasePath(final View view) {
@@ -2305,6 +2404,11 @@ public class HTTrackActivity extends FragmentActivity {
         // Load modified map
         final String path = data.getStringExtra("com.httrack.android.rootFile");
         setBasePath(path);
+      }
+      break;
+    case ACTIVITY_IMPORT_TREE:
+      if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+        importMirrorsFrom(data.getData());
       }
       break;
     case ACTIVITY_PROJECT_NAME_CHOOSER:
@@ -2565,6 +2669,9 @@ public class HTTrackActivity extends FragmentActivity {
       break;
     case R.id.action_help:
       browse(new File(new File(getResourceFile(), "html"), "index.html"));
+      break;
+    case R.id.action_import_mirrors:
+      startLegacyMirrorImport();
       break;
     default:
       return super.onOptionsItemSelected(item);
