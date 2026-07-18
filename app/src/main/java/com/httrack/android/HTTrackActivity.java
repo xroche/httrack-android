@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -2250,7 +2251,8 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  private volatile boolean importInProgress;
+  // Process-wide: a rotation recreates the activity, but the detached worker keeps copying.
+  private static final AtomicBoolean importInProgress = new AtomicBoolean();
 
   /**
    * Copy the picked tree into our Websites directory, entirely off the UI thread: even walking
@@ -2259,26 +2261,24 @@ public class HTTrackActivity extends FragmentActivity {
    * threads would race on the same temp files.
    */
   private void importMirrorsFrom(final Uri treeUri) {
-    if (importInProgress) {
-      showNotification(getString(R.string.import_mirrors_running));
-      return;
-    }
     final ContentResolver resolver = getContentResolver();
     resolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
     final Context appContext = getApplicationContext();
     final File dest = getProjectRootFile();
-    importInProgress = true;
+    // Claim the guard last, so a synchronous throw above cannot wedge it.
+    if (!importInProgress.compareAndSet(false, true)) {
+      showNotification(getString(R.string.import_mirrors_running));
+      return;
+    }
     showNotification(getString(R.string.import_mirrors_running));
     new Thread(new Runnable() {
       @Override
       public void run() {
-        String outcome;
         try {
-          outcome = runImport(appContext, resolver, treeUri, dest);
+          deliverImportOutcome(appContext, runImport(appContext, resolver, treeUri, dest));
         } finally {
-          importInProgress = false;
+          importInProgress.set(false);
         }
-        deliverImportOutcome(appContext, outcome);
       }
     }, "legacy-import").start();
   }
