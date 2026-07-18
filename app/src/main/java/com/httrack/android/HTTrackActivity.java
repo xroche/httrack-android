@@ -89,6 +89,7 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
@@ -505,6 +506,8 @@ public class HTTrackActivity extends FragmentActivity {
   protected void onCreate(final Bundle savedInstanceState) {
     Log.d(getClass().getSimpleName(), "onCreate");
     super.onCreate(savedInstanceState);
+
+    getOnBackPressedDispatcher().addCallback(this, stayAliveWhileMirroring);
 
     // Attempt to load the native library.
     // Fetch httrack engine version
@@ -2177,6 +2180,7 @@ public class HTTrackActivity extends FragmentActivity {
 
       // Switch pane
       pane_id = position;
+      stayAliveWhileMirroring.setEnabled(pane_id == LAYOUT_MIRROR_PROGRESS);
       setContentView(layouts[pane_id]);
 
       // Entering a new pane: restore data
@@ -2856,14 +2860,14 @@ public class HTTrackActivity extends FragmentActivity {
     startActivity(intent);
   }
 
-  @Override
-  public void onBackPressed() {
-    // Downloading data
-    if (pane_id == LAYOUT_MIRROR_PROGRESS) {
-      // Do not go home, or our fragment will die.
+  /*
+   * Enabled only on the progress pane, where finishing would take the retained fragment, and
+   * the crawl with it, down. Everywhere else it stays disabled so back does its usual thing.
+   */
+  private final OnBackPressedCallback stayAliveWhileMirroring = new OnBackPressedCallback(false) {
+    @Override
+    public void handleOnBackPressed() {
       goToHome();
-    } else {
-      super.onBackPressed();
     }
-  }
+  };
 }
