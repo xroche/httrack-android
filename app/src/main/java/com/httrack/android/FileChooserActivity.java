@@ -27,7 +27,6 @@ public class FileChooserActivity extends Activity implements
 
   protected File projectRootFile;
   protected File defaultRootFile;
-  protected File sdcardRootFile;
 
   protected final List<Pair<String, File>> files = new ArrayList<Pair<String, File>>();
 
@@ -144,8 +143,6 @@ public class FileChooserActivity extends Activity implements
       .get("com.httrack.android.rootFile"));
     defaultRootFile = File.class.cast(extras
       .get("com.httrack.android.defaultHTTrackPath"));
-    sdcardRootFile = File.class.cast(extras
-      .get("com.httrack.android.sdcardHTTrackPath"));
     if (projectRootFile == null || defaultRootFile == null) {
       throw new RuntimeException("internal error");
     }
