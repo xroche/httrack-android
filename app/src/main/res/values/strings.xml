@@ -140,6 +140,17 @@
     <string name="help">Help</string>
     <string name="action_help">View Documentation</string>
     <string name="action_about">About HTTrack</string>
+    <string name="action_import_mirrors">Import existing mirrors</string>
+    <string name="import_mirrors_prompt">Pick the folder that holds your older HTTrack mirrors (for example HTTrack on the internal storage). Their contents will be copied into this app\'s storage; the originals are left untouched.</string>
+    <string name="import_mirrors_running">Importing mirrors…</string>
+    <string name="import_mirrors_done">Imported %1$d files (%2$d already present).</string>
+    <string name="import_mirrors_partial">Imported %1$d files; %2$d could not be copied. You can run the import again.</string>
+    <string name="import_mirrors_none">Nothing to import from that folder.</string>
+    <string name="import_mirrors_no_space">Not enough free space to import these mirrors.</string>
+    <string name="import_mirrors_offer">Mirrors from an older version can no longer be reached directly. Import them into this app now?</string>
+    <string name="import_mirrors_offer_yes">Import</string>
+    <string name="import_mirrors_offer_later">Not now</string>
+    <string name="import_mirrors_offer_never">Don\'t ask again</string>
     <string name="action_website">Go To HTTrack Website</string>
     <string name="action_forum">Go To HTTrack Forum</string>
     <string name="action_license">View License</string>
