@@ -919,7 +919,7 @@ public class HTTrackActivity extends FragmentActivity {
    * on a permission, nor on a volume being mounted.
    *
    * @param context
-   *          null while the activity is being torn down, in which case nothing is written
+   *          an app context; null is tolerated (nothing is written)
    * @param e
    *          the throwable to record
    */
