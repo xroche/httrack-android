@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -2260,7 +2261,8 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  private volatile boolean importInProgress;
+  // Process-wide: a rotation recreates the activity, but the detached worker keeps copying.
+  private static final AtomicBoolean importInProgress = new AtomicBoolean();
 
   /**
    * Copy the picked tree into our Websites directory, entirely off the UI thread: even walking
@@ -2269,28 +2271,33 @@ public class HTTrackActivity extends FragmentActivity {
    * threads would race on the same temp files.
    */
   private void importMirrorsFrom(final Uri treeUri) {
-    if (importInProgress) {
-      showNotification(getString(R.string.import_mirrors_running));
-      return;
-    }
     final ContentResolver resolver = getContentResolver();
     resolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
     final Context appContext = getApplicationContext();
     final File dest = getProjectRootFile();
-    importInProgress = true;
-    showNotification(getString(R.string.import_mirrors_running));
-    new Thread(new Runnable() {
-      @Override
-      public void run() {
-        String outcome;
-        try {
-          outcome = runImport(appContext, resolver, treeUri, dest);
-        } finally {
-          importInProgress = false;
+    // Claim the guard last, so a synchronous throw above cannot wedge it.
+    if (!importInProgress.compareAndSet(false, true)) {
+      showNotification(getString(R.string.import_mirrors_running));
+      return;
+    }
+    // Release the process-wide guard if the worker never starts (e.g. OOM at thread creation);
+    // otherwise a failed launch would wedge it true for the rest of the process.
+    try {
+      showNotification(getString(R.string.import_mirrors_running));
+      new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            deliverImportOutcome(appContext, runImport(appContext, resolver, treeUri, dest));
+          } finally {
+            importInProgress.set(false);
+          }
         }
-        deliverImportOutcome(appContext, outcome);
-      }
-    }, "legacy-import").start();
+      }, "legacy-import").start();
+    } catch (final Throwable t) {
+      importInProgress.set(false);
+      throw t;
+    }
   }
 
   /** The copy itself, on the worker thread; returns the message to show. **/
