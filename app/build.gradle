@@ -33,6 +33,13 @@ android {
             if (propsFile.exists()) {
                 final Properties props = new Properties()
                 props.load(new FileInputStream(propsFile))
+                // Fail loudly on an incomplete file: a missing key otherwise yields a silently
+                // unsigned AAB (AGP skips signing when the config is not ready), which Play rejects.
+                ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'].each { k ->
+                    if (!props.getProperty(k)?.trim()) {
+                        throw new GradleException("keystore.properties is missing '${k}'")
+                    }
+                }
                 storeFile rootProject.file(props.getProperty('storeFile'))
                 storePassword props.getProperty('storePassword')
                 keyAlias props.getProperty('keyAlias')
