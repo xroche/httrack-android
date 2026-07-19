@@ -13,3 +13,6 @@ workspace.xml
 #   per-ABI OpenSSL statics from the toolchain image / fetch-openssl-statics.sh
 /app/src/main/jni/libiconv-1.17/
 /app/src/main/prebuild/
+
+# Signing secrets (never commit); see keystore.properties.sample.
+/keystore.properties
