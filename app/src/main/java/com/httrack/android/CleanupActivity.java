@@ -27,13 +27,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ListActivity;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -41,9 +38,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.SparseArray;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
@@ -67,37 +63,8 @@ public class CleanupActivity extends ListActivity {
   public static final int ACTION_CLEANUP = 1;
   public static final int ACTION_SELECT = 2;
 
-  /**
-   * List adapter.
-   */
-  public class CleanupListAdapter extends SimpleAdapter {
-    private final LayoutInflater inflater;
-
-    public CleanupListAdapter(final Context context,
-        final List<? extends Map<String, ?>> data, final int resource, final String[] from,
-        final int[] to) {
-      super(context, data, resource, from, to);
-      inflater = LayoutInflater.from(context);
-    }
-
-    @Override
-    public Object getItem(final int position) {
-      return super.getItem(position);
-    }
-
-    @Override
-    public View getView(final int position, View convertView, final ViewGroup parent) {
-      if (convertView == null) {
-        convertView = inflater.inflate(R.layout.cleanup_item, null);
-        final CheckBox cb = (CheckBox) convertView.findViewById(R.id.check);
-        if (cb != null) {
-          cb.setTag(position);
-        }
-      }
-      return super.getView(position, convertView, parent);
-    }
-
-  }
+  // A directory nested deeper than this is treated as a failure rather than overflowing the stack.
+  static final int MAX_DEPTH = 100;
 
   /** Called when the activity is first created. */
   @Override
@@ -147,7 +114,7 @@ public class CleanupActivity extends ListActivity {
       listItem.add(map);
     }
 
-    final CleanupListAdapter adapter = new CleanupListAdapter(
+    final SimpleAdapter adapter = new SimpleAdapter(
         this.getBaseContext(), listItem, R.layout.cleanup_item, new String[] {
             "name", "description" }, new int[] { R.id.name, R.id.description });
     list.setAdapter(adapter);
@@ -155,15 +122,24 @@ public class CleanupActivity extends ListActivity {
 
   public void OnClickCheckbox(final View v) {
     final CheckBox cb = (CheckBox) v;
-    final int position = Integer.parseInt(cb.getTag().toString());
-    final View o = list.getChildAt(position).findViewById(R.id.blocCheck);
+    // Adapter position of the clicked row, valid even when scrolled; getChildAt would misread it
+    // as a visible-child index and toggle/select the wrong project.
+    final int position = list.getPositionForView(v);
+    if (position == ListView.INVALID_POSITION) {
+      return;
+    }
 
     if (action == ACTION_CLEANUP) {
+      final View o = blocCheckFor(v);
       if (cb.isChecked()) {
-        o.setBackgroundResource(R.color.transparent_red);
+        if (o != null) {
+          o.setBackgroundResource(R.color.transparent_red);
+        }
         toBeDeleted.add(position);
       } else {
-        o.setBackgroundResource(R.color.transparent);
+        if (o != null) {
+          o.setBackgroundResource(R.color.transparent);
+        }
         toBeDeleted.remove(position);
       }
     } else if (action == ACTION_SELECT) {
@@ -177,20 +153,40 @@ public class CleanupActivity extends ListActivity {
     }
   }
 
+  /** The clicked row's coloured container, walked up from the clicked view rather than by index. */
+  private static View blocCheckFor(final View clicked) {
+    View view = clicked;
+    while (view != null && view.getId() != R.id.blocCheck) {
+      final ViewParent parent = view.getParent();
+      view = parent instanceof View ? (View) parent : null;
+    }
+    return view;
+  }
+
   /* Delete recursively a directory, or delete a file. */
   public static boolean deleteRecursively(final File file) {
+    return deleteRecursively(file, MAX_DEPTH);
+  }
+
+  /* Depth-bounded worker: refuses a tree deeper than depthLeft instead of overflowing the stack. */
+  static boolean deleteRecursively(final File file, final int depthLeft) {
     // TODO: check if this is necessary (symbolic link handling to avoid
     // infinite loops)
     if (file.delete()) {
       return true;
-    } else {
-      if (file.isDirectory()) {
-        for (final File child : file.listFiles()) {
-          deleteRecursively(child);
+    }
+    if (depthLeft <= 0) {
+      return false;
+    }
+    if (file.isDirectory()) {
+      final File[] children = file.listFiles(); // null on I/O error even for a real directory
+      if (children != null) {
+        for (final File child : children) {
+          deleteRecursively(child, depthLeft - 1);
         }
       }
-      return file.delete();
     }
+    return file.delete();
   }
 
   /**
@@ -277,8 +273,10 @@ public class CleanupActivity extends ListActivity {
       public void run() {
         deleteInProgress = false;
         if (!isFinishing() && !isDestroyed()) {
+          final int firstVisible = list.getFirstVisiblePosition();
           for (final int position : deleted) {
-            final View item = list.getChildAt(position);
+            // deleted holds adapter positions; map to the visible child, skipping rows scrolled off.
+            final View item = list.getChildAt(position - firstVisible);
             if (item == null) {
               continue;
             }

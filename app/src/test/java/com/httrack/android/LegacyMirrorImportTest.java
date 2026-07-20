@@ -341,6 +341,21 @@ public class LegacyMirrorImportTest {
     assertEquals(8, LegacyMirrorImport.totalSize(root));
   }
 
+  /** A tree deeper than the cap is refused by both the size probe and the copy, not overflowed. */
+  @Test
+  public void aTreeDeeperThanTheCapIsRefused() throws Exception {
+    FakeNode cursor = FakeNode.dir("leaf");
+    for (int i = 0; i <= LegacyMirrorImport.MAX_DEPTH; i++) {
+      cursor = FakeNode.dir("d").with(cursor);
+    }
+    // Long.MAX_VALUE forces the free-space check to reject the import.
+    assertEquals(Long.MAX_VALUE, LegacyMirrorImport.totalSize(cursor));
+
+    final File dest = tmp.newFolder("dest");
+    final LegacyMirrorImport.Result r = LegacyMirrorImport.copyTree(cursor, dest);
+    assertFalse(r.isComplete());
+  }
+
   @Test
   public void aByteForByteCopyMatchesBinaryContent() throws Exception {
     final byte[] raw = new byte[1000];

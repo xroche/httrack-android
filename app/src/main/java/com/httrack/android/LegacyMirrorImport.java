@@ -24,6 +24,9 @@ import java.util.List;
 final class LegacyMirrorImport {
   private static final int BUFFER = 64 * 1024;
 
+  // A tree nested deeper than this is refused rather than recursing until the stack overflows.
+  static final int MAX_DEPTH = 100;
+
   private LegacyMirrorImport() {
   }
 
@@ -74,6 +77,15 @@ final class LegacyMirrorImport {
   }
 
   private static void copyInto(final Source dir, final File destDir, final Result result) {
+    copyInto(dir, destDir, result, MAX_DEPTH);
+  }
+
+  private static void copyInto(final Source dir, final File destDir, final Result result,
+      final int depthLeft) {
+    if (depthLeft <= 0) {
+      record(result, "tree too deep at " + destDir);
+      return;
+    }
     if (!destDir.exists() && !destDir.mkdirs()) {
       record(result, "could not create " + destDir);
       return;
@@ -87,7 +99,7 @@ final class LegacyMirrorImport {
       }
       final File dest = new File(destDir, name);
       if (child.isDirectory()) {
-        copyInto(child, dest, result);
+        copyInto(child, dest, result, depthLeft - 1);
       } else if (dest.isDirectory()) {
         // A directory already sits where this file would go; skipping would drop it silently.
         record(result, "name clash at " + dest);
@@ -132,12 +144,25 @@ final class LegacyMirrorImport {
 
   /** Bytes the tree holds, for a free-space check before starting. Skipped files still count. */
   static long totalSize(final Source src) {
+    return totalSize(src, MAX_DEPTH);
+  }
+
+  // Long.MAX_VALUE for a tree deeper than the cap so the caller's space check refuses it,
+  // rather than recursing until the stack overflows.
+  private static long totalSize(final Source src, final int depthLeft) {
     if (!src.isDirectory()) {
       return src.length();
     }
+    if (depthLeft <= 0) {
+      return Long.MAX_VALUE;
+    }
     long total = 0;
     for (final Source child : src.children()) {
-      total += totalSize(child);
+      final long childSize = totalSize(child, depthLeft - 1);
+      if (childSize == Long.MAX_VALUE) {
+        return Long.MAX_VALUE;
+      }
+      total += childSize;
     }
     return total;
   }

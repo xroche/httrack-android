@@ -2380,11 +2380,18 @@ public class HTTrackActivity extends FragmentActivity {
       new Thread(new Runnable() {
         @Override
         public void run() {
+          String message;
           try {
-            deliverImportOutcome(appContext, runImport(appContext, resolver, treeUri, dest));
+            message = runImport(appContext, resolver, treeUri, dest);
+          } catch (final Throwable t) {
+            // Even a StackOverflowError must still deliver a failure outcome, not die silently with
+            // the guard cleared and nothing shown.
+            Log.w(getClass().getSimpleName(), "import failed", t);
+            message = getString(R.string.import_mirrors_partial, 0, 0);
           } finally {
             importInProgress.set(false);
           }
+          deliverImportOutcome(appContext, message);
         }
       }, "legacy-import").start();
     } catch (final Throwable t) {
