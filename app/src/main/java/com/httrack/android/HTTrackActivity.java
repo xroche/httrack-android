@@ -1531,10 +1531,10 @@ public class HTTrackActivity extends FragmentActivity {
             break;
           }
 
-          // URL
+          // URL (server-controlled: escape so markup/entities stay literal)
           str.append("<i>");
-          str.append(element.address);
-          str.append(element.path);
+          str.append(TextUtils.htmlEncode(element.address));
+          str.append(TextUtils.htmlEncode(element.path));
           str.append("</i>");
           str.append(" → ");
 
