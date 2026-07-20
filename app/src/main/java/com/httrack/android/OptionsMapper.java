@@ -527,12 +527,7 @@ public class OptionsMapper {
     @Override
     public void emit(final StringBuilder flags, final List<String> commandline,
         final String value) {
-      for (String s : cleanupString(value).trim().split(split)) {
-        s = s.trim();
-        if (s.length() != 0 && !CommandlineTokens.isOptionLike(s)) {
-          commandline.add(s);
-        }
-      }
+      commandline.addAll(CommandlineTokens.urlTokens(value));
     }
   }
 
