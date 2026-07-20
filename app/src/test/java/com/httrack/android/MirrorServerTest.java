@@ -41,12 +41,18 @@ public class MirrorServerTest {
   }
 
   @Test
-  public void refusesAbsolutePathInjection() {
-    // new File(root, "/etc/hosts") stays under root; canonicalisation must not let it escape.
-    final File resolved = MirrorServer.resolveWithinRoot(root, "/etc/hosts");
-    if (resolved != null) {
-      assertEquals(true, resolved.getPath().startsWith(root.getPath()));
-    }
+  public void containsAbsolutePathInjectionUnderRoot() throws Exception {
+    // File(root, "/etc/hosts") resolves under root on Unix; it must never reach the real /etc/hosts.
+    assertEquals(new File(root, "etc/hosts").getCanonicalFile(),
+        MirrorServer.resolveWithinRoot(root, "/etc/hosts"));
+  }
+
+  /** A sibling whose name extends root's ("Websites-evil" vs "Websites") is outside root. */
+  @Test
+  public void refusesASiblingSharingRootsNamePrefix() throws Exception {
+    final File sibling = tmp.newFolder("Websites-evil");
+    Files.createFile(new File(sibling, "secret.txt").toPath());
+    assertNull(MirrorServer.resolveWithinRoot(root, "/../Websites-evil/secret.txt"));
   }
 
   @Test
