@@ -45,46 +45,6 @@
             android:label="@string/title_activity_options" >
         </activity>
         <activity
-            android:name="com.httrack.android.OptionsActivity$ScanRulesTab"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$LimitsTab"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$FlowControlTab"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$LinksTab"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$BuildTab"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$BrowserId"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$Spider"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$Proxy"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$LogIndexCache"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
-            android:name="com.httrack.android.OptionsActivity$ExpertsOnly"
-            android:label="@string/title_activity_options" >
-        </activity>
-        <activity
             android:name="com.httrack.android.FileChooserActivity"
             android:label="@string/title_activity_file_chooser" >
         </activity>
