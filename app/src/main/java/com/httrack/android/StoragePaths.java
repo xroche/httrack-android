@@ -26,10 +26,24 @@ final class StoragePaths {
    *         a caller that reads that as a refusal would discard a setting it cannot vet.
    */
   static Boolean isWritable(final File path, final File external, final File internal) {
+    return isWritable(path, external, internal, null);
+  }
+
+  /**
+   * As {@link #isWritable(File, File, File)}, plus {@code shared}: a public storage root the app
+   * may write only when it holds all-files access. Kept a distinct root because a public path is
+   * writable exactly when that access is held, which only the Context layer knows.
+   *
+   * @param shared
+   *          the public root (e.g. getExternalStorageDirectory()) when access is held, else null.
+   *          Does not affect the null-vs-false verdict, which stays keyed on external.
+   */
+  static Boolean isWritable(final File path, final File external, final File internal,
+      final File shared) {
     try {
       // The separator on both sides is what keeps a sibling like "files2" from matching "files".
       final String target = path.getCanonicalPath() + File.separator;
-      for (final File root : new File[] { external, internal }) {
+      for (final File root : new File[] { external, internal, shared }) {
         if (root != null
             && target.startsWith(root.getCanonicalPath() + File.separator)) {
           return true;

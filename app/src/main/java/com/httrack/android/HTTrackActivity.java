@@ -71,6 +71,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
 import android.os.StrictMode;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.Html;
 import android.text.TextUtils;
@@ -130,6 +131,8 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final String NOTIFY_ASKED_NAME = "NotificationPermissionAsked";
   // Whether the one-time "import your old mirrors" offer has been shown and dismissed for good.
   protected static final String IMPORT_OFFERED_NAME = "LegacyImportOffered";
+  // Whether all-files storage access was ever offered; a refusal keeps mirrors in private storage.
+  protected static final String STORAGE_ASKED_NAME = "StorageAccessAsked";
 
   // <br /> Pattern
   protected static final Pattern brHtmlPattern = Pattern.compile(Pattern
@@ -235,12 +238,19 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /*
-   * The only place mirrors may live under scoped storage: our own external directory, which
-   * needs no permission at any target. The engine takes a POSIX path either way.
+   * Default mirror root. With all-files access, the classic public HTTrack/Websites, so other apps
+   * can use the mirrors and upgraders find their old crawls. Without it (or while the volume is
+   * unmounted), our own private external dir, which needs no permission. The engine takes a POSIX
+   * path either way.
    */
   private File getDefaultHTTrackPath() {
+    if (hasAllFilesAccess()) {
+      final File shared = Environment.getExternalStorageDirectory();
+      if (shared != null) {
+        return new File(new File(shared, "HTTrack"), "Websites");
+      }
+    }
     final File external = getExternalFilesDir(null);
-    // Null while the volume is unmounted; internal storage keeps the engine writable.
     return new File(external != null ? external : getFilesDir(), "Websites");
   }
 
@@ -250,7 +260,8 @@ public class HTTrackActivity extends FragmentActivity {
    * never refused; see StoragePaths.isWritable.
    */
   private Boolean isWritableProjectPath(final File path) {
-    return StoragePaths.isWritable(path, getExternalFilesDir(null), getFilesDir());
+    final File shared = hasAllFilesAccess() ? Environment.getExternalStorageDirectory() : null;
+    return StoragePaths.isWritable(path, getExternalFilesDir(null), getFilesDir(), shared);
   }
 
   /*
@@ -416,6 +427,59 @@ public class HTTrackActivity extends FragmentActivity {
 
   private static final int REQUEST_INTERNET = 2;
   private static final int REQUEST_POST_NOTIFICATIONS = 3;
+  private static final int REQUEST_WRITE_STORAGE = 4;
+
+  /*
+   * Whether the app may write anywhere in shared storage: all-files access from Android 11 on,
+   * or the legacy WRITE_EXTERNAL_STORAGE permission below it.
+   */
+  private boolean hasAllFilesAccess() {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+      return Environment.isExternalStorageManager();
+    }
+    return ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            == PackageManager.PERMISSION_GRANTED;
+  }
+
+  /*
+   * Ask for the access that lets mirrors live in the public HTTrack/ folder, reachable by other
+   * apps. Android 11+ grants all-files access from a system settings screen; below it, the runtime
+   * WRITE permission. Offered once per install; a refusal simply keeps mirrors in private storage.
+   */
+  protected void ensureStorageAccess() {
+    if (hasAllFilesAccess()) {
+      return;
+    }
+    if (getSharedPreferences(PREFS_NAME, 0).getBoolean(STORAGE_ASKED_NAME, false)) {
+      return;
+    }
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+      new AlertDialog.Builder(this)
+          .setMessage("Allow HTTrack all-files access so your mirrors are saved in a public "
+              + "HTTrack folder other apps can open. Without it, mirrors stay private to HTTrack.")
+          .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            getSharedPreferences(PREFS_NAME, 0).edit()
+                .putBoolean(STORAGE_ASKED_NAME, true).apply();
+            try {
+              startActivity(new Intent(
+                  Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                  Uri.parse("package:" + getPackageName())));
+            } catch (final Exception e) {
+              // Some OEMs lack the per-app screen; fall back to the global list.
+              try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+              } catch (final Exception e2) {
+                Log.d(getClass().getSimpleName(), "no all-files-access settings screen", e2);
+              }
+            }
+          })
+          .setNegativeButton(R.string.import_mirrors_offer_later, null)
+          .show();
+    } else {
+      ActivityCompat.requestPermissions(this,
+              new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
+    }
+  }
 
   /*
    * Only a runtime permission from Android 13 on; below that the manifest entry is enough.
@@ -468,6 +532,16 @@ public class HTTrackActivity extends FragmentActivity {
         }
       }
       break;
+      // Legacy write (API <= 29). A refusal keeps mirrors private; on a grant, re-point to public.
+      case REQUEST_WRITE_STORAGE: {
+        if (grantResults.length != 0) {
+          getSharedPreferences(PREFS_NAME, 0).edit().putBoolean(STORAGE_ASKED_NAME, true).apply();
+          if (grantResults[0] == PackageManager.PERMISSION_GRANTED && runner == null) {
+            computeStorageTarget();
+          }
+        }
+      }
+      break;
     }
   }
 
@@ -478,7 +552,8 @@ public class HTTrackActivity extends FragmentActivity {
    */
   protected boolean ensureExternalStorage() {
     Log.d("httrack", "called ensureExternalStorage");
-    
+
+    ensureStorageAccess();
     computeStorageTarget();
     ensureInternetIsAvailable();
 
@@ -3017,6 +3092,13 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onResume");
     super.onResume();
     paused = false;
+    // Returning from the all-files-access settings screen may have granted access: re-point the
+    // default to public storage. Never while a crawl runs, and only if the resolved default moved.
+    if (runner == null && projectPath != null
+        && !getDefaultHTTrackPath().getAbsolutePath().equals(projectPath.getAbsolutePath())
+        && getSharedPreferences(PREFS_NAME, 0).getString(BASE_NAME, null) == null) {
+      computeStorageTarget();
+    }
   }
 
   @Override

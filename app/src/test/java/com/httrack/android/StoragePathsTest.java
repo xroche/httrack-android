@@ -37,11 +37,24 @@ public class StoragePathsTest {
     assertEquals(Boolean.TRUE, StoragePaths.isWritable(external, external, internal));
   }
 
+  /** Without all-files access (no shared root), a public path is not ours to write. */
   @Test
-  public void refusesTheOldPublicRoot() {
+  public void refusesThePublicRootWithoutAllFilesAccess() {
     final File old = new File(tmp.getRoot(), "ext/HTTrack/Websites");
     assertEquals(Boolean.FALSE, StoragePaths.isWritable(old, external, internal));
     assertEquals(Boolean.FALSE, StoragePaths.isWritable(new File("/"), external, internal));
+    assertEquals(Boolean.FALSE, StoragePaths.isWritable(old, external, internal, null));
+  }
+
+  /** With all-files access, the public HTTrack root passed as {@code shared} is writable. */
+  @Test
+  public void acceptsThePublicRootWithAllFilesAccess() throws Exception {
+    final File shared = tmp.newFolder("shared"); // stands in for /storage/emulated/0
+    final File mirror = new File(new File(shared, "HTTrack"), "Websites");
+    assertEquals(Boolean.TRUE, StoragePaths.isWritable(mirror, external, internal, shared));
+    // A sibling of the shared root is still outside it.
+    assertEquals(Boolean.FALSE,
+        StoragePaths.isWritable(new File(tmp.getRoot(), "elsewhere"), external, internal, shared));
   }
 
   /** "files2" shares the string prefix of "files" without being inside it. */
