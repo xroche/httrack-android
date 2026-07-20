@@ -59,7 +59,7 @@ jobs:
         run: ./gradlew --no-daemon bundleRelease
       - name: Assert 16 KB .so alignment in the AAB
         run: |
-          set -euo pipefail
+          set -eu    # steps run under dash here; no pipefail (a readelf failure yields a="" -> $((a))=0, still trips the guard)
           aab=app/build/outputs/bundle/release/app-release.aab
           readelf="$(command -v llvm-readelf || command -v readelf || true)"
           [ -n "$readelf" ] || readelf="$(ls "${ANDROID_NDK_ROOT:-/nonexistent}"/toolchains/llvm/prebuilt/*/bin/llvm-readelf 2>/dev/null | head -1)"
