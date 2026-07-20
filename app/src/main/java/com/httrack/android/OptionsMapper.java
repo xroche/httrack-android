@@ -238,7 +238,7 @@ public class OptionsMapper {
   protected final Pair<String, OptionMapper> fieldsMapper[] = new Pair[] {
       new Pair<String, OptionMapper>("ProjectName", NoOpOption.INSTANCE),
       new Pair<String, OptionMapper>("Category", NoOpOption.INSTANCE),
-      new Pair<String, OptionMapper>("CurrentUrl", StringSplit.INSTANCE),
+      new Pair<String, OptionMapper>("CurrentUrl", UrlSplit.INSTANCE),
       new Pair<String, OptionMapper>("CurrentAction",
           new MultipleChoicesOption(new String[] { "iC1", "iC2" }, true)),
       new Pair<String, OptionMapper>("WildCardFilters", StringSplit.INSTANCE),
@@ -508,6 +508,28 @@ public class OptionsMapper {
           if (option != null) {
             commandline.add(option);
           }
+          commandline.add(s);
+        }
+      }
+    }
+  }
+
+  /**
+   * URL field split: like StringSplit but drops option-looking tokens so a
+   * crafted winprofile.ini can't inject engine options (e.g. -O) through URLs.
+   */
+  public static class UrlSplit extends StringSplit {
+    /**
+     * An instance of the UrlSplit class.
+     */
+    public static final UrlSplit INSTANCE = new UrlSplit();
+
+    @Override
+    public void emit(final StringBuilder flags, final List<String> commandline,
+        final String value) {
+      for (String s : cleanupString(value).trim().split(split)) {
+        s = s.trim();
+        if (s.length() != 0 && !CommandlineTokens.isOptionLike(s)) {
           commandline.add(s);
         }
       }
