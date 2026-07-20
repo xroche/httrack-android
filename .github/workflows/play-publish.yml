@@ -1,0 +1,100 @@
+# Build a signed AAB and upload it to a Play testing track, on a version tag or manual run.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   UPLOAD_KEYSTORE_BASE64    base64 of the upload keystore  (base64 -w0 httrack-upload.jks)
+#   UPLOAD_KEYSTORE_PASSWORD  its store password
+#   UPLOAD_KEY_ALIAS          the key alias (e.g. upload)
+#   UPLOAD_KEY_PASSWORD       the key password
+#   PLAY_SERVICE_ACCOUNT_JSON a Play Console service-account JSON with publishing rights,
+#                             scoped to com.httrack.android
+#
+# The upload is a Docker action, so it runs in its own runner-native job, not the SDK container.
+name: Play publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Play track (internal, alpha, beta, or a closed-track name)'
+        default: internal
+      status:
+        description: 'draft leaves it unreleased for Console review; completed releases to the track'
+        default: draft
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build signed AAB
+    runs-on: ubuntu-24.04
+    container: ghcr.io/xroche/httrack-android-build:latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive          # coucal is nested in httrack
+      - name: Vendor libiconv
+        run: tools/ci/vendor-libiconv.sh
+      - name: Stage OpenSSL statics into prebuild/
+        run: tools/ci/fetch-openssl-statics.sh
+      - name: Write signing config from secrets
+        env:
+          KS_B64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+          KS_PW: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          umask 077
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          # keystore.properties is what app/build.gradle's release signingConfig reads.
+          {
+            echo "storeFile=$RUNNER_TEMP/upload.jks"
+            echo "storePassword=$KS_PW"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PW"
+          } > keystore.properties
+      - name: Bundle release (signed)
+        run: ./gradlew --no-daemon bundleRelease
+      - name: Assert 16 KB .so alignment in the AAB
+        run: |
+          set -euo pipefail
+          aab=app/build/outputs/bundle/release/app-release.aab
+          readelf="$(command -v llvm-readelf || command -v readelf || true)"
+          [ -n "$readelf" ] || readelf="$(ls "${ANDROID_NDK_ROOT:-/nonexistent}"/toolchains/llvm/prebuilt/*/bin/llvm-readelf 2>/dev/null | head -1)"
+          [ -n "$readelf" ] || { echo "no readelf/llvm-readelf found"; exit 1; }
+          tmp="$(mktemp -d)"; unzip -q -o "$aab" 'base/lib/*' -d "$tmp"
+          n=0
+          for so in $(find "$tmp" -name '*.so'); do
+            n=$((n + 1))
+            a="$("$readelf" -lW "$so" | awk '$1 == "LOAD" { print $NF; exit }')"
+            [ "$((a))" -ge 16384 ] || { echo "FAIL $so p_align $a < 16384"; exit 1; }
+          done
+          [ "$n" -gt 0 ] || { echo "no .so in AAB"; exit 1; }
+          echo "16 KB aligned: $n .so in the AAB"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+  publish:
+    name: upload to Play
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-aab
+          path: aab
+      - name: Upload to Play
+        # SHA-pinned: this third-party action holds the Play credential, so a retagged v1 must
+        # not be able to run. Bump the SHA deliberately. (= v1.1.5)
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.httrack.android
+          releaseFiles: aab/app-release.aab
+          track: ${{ github.event.inputs.track || 'internal' }}
+          status: ${{ github.event.inputs.status || 'draft' }}
