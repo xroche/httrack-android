@@ -36,7 +36,7 @@ import fi.iki.elonen.NanoHTTPD;
 final class MirrorServer extends NanoHTTPD {
   // Ports tried in order; mirrors the engine's htscatchurl.c try_to_listen_to[]. 0 = OS-assigned
   // ephemeral fallback. Privileged (<1024) ports are omitted: Android forbids binding them.
-  private static final int[] PORTS = { 8080, 1234, 0 };
+  private static final int[] PORTS = { 8080, 3128, 8081, 3129, 0 };
 
   private final File root;
 
