@@ -17,8 +17,8 @@ android {
         // edge-to-edge (35) is opted out in values-v35 until the layouts handle window insets.
         targetSdk 35
         // Must exceed the versionCode currently live on the Play listing before uploading.
-        versionCode 66
-        versionName "3.49.02.66"
+        versionCode 67
+        versionName "3.49.02.67"
 
         ndk {
             abiFilters "arm64-v8a", "x86_64"
