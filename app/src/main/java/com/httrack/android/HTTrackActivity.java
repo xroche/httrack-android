@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.lang.reflect.Method;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -70,7 +69,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
-import android.os.StrictMode;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.Html;
@@ -100,7 +98,6 @@ import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
@@ -2354,6 +2351,12 @@ public class HTTrackActivity extends FragmentActivity {
   private static final AtomicBoolean importInProgress = new AtomicBoolean();
   private volatile boolean browseAllInProgress;
 
+  // Serves the mirror over http://127.0.0.1 so a browser can read it despite scoped storage.
+  // Plain thread (NanoHTTPD owns it); reliability while browsing backgrounded relies on us staying
+  // the MRU cached process. A foreground service (needs an Android-14 FGS type) is a future step.
+  private MirrorServer mirrorServer;
+  private File mirrorServerRoot;
+
   /**
    * Copy the picked tree into our Websites directory, entirely off the UI thread: even walking
    * the tree to find "Websites" is one IPC per entry, too much for the main thread. The source
@@ -2609,88 +2612,6 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  private static final int FLAG_GRANT_PREFIX_URI_PERMISSION = 0x00000080;
-
-  /* Attempt to disable strict file:// URI check, that appear to have been
-   * introduced in Nougat without too much thinking, especially for
-   * applications like HTTrack producing recurse content.
-   * Thanks to stackoverflow's user Pointer Null for this hack;
-   * See <http://stackoverflow.com/questions/38200282/android-os-fileuriexposedexception-file-storage-emulated-0-test-txt-exposed>
-   */
-  private boolean allowUriSchemes() {
-    if (android.os.Build.VERSION.SDK_INT >= VERSION_CODES.NOUGAT) {
-      // Regular file:// is disabled
-      try {
-        final Method m = StrictMode.class.getMethod("disableDeathOnFileUriExposure");
-        m.invoke(null);
-        Log.d(getClass().getSimpleName(), "called disableDeathOnFileUriExposure() successfully");
-        return true;
-      } catch (final Exception e) {
-        Log.d(getClass().getSimpleName(), "could not call disableDeathOnFileUriExposure()", e);
-        return false;
-      }
-    } else {
-      // Regular file:// works before Nougat
-      return true;
-    }
-  }
-
-  /**
-   * Browser a specific index.
-   **/
-  public Intent getBrowseIntent(final File index, final boolean safe) {
-    if (index != null && index.exists()) {
-      final Intent intent = new Intent();
-      intent.setAction(android.content.Intent.ACTION_VIEW);
-
-      // Attempt to set the default navigator. However, this will raise an
-      // ActivityNotFoundException on some devices.
-      if (!safe) {
-        intent.addCategory(Intent.CATEGORY_BROWSABLE);
-        intent.setClassName("com.android.browser", "com.android.browser.BrowserActivity");
-      }
-
-      // Starting from Nougat, we need to add this boilerplate :(
-      // Unfortunately this insanity won't work recursively, and the only
-      // thing you'll get is the first HTML page of the downloaded mirror,
-      // which is rather useless. Dear Android developers, could you think
-      // a bit forward before breaking applications please ?
-      if (!allowUriSchemes()) {
-        final Context context = getApplicationContext();
-
-        Log.d(getClass().getSimpleName(), "getting content provider for " + index.getAbsolutePath());
-        final Uri uri = FileProvider.getUriForFile(context,
-          BuildConfig.APPLICATION_ID + ".fileprovider",
-          index);
-        Log.d(getClass().getSimpleName(), "content provider for " + index.getAbsolutePath() + " is " + uri);
-
-        // Set URI and type
-        intent.setDataAndType(uri, "text/html");
-
-        // Allow content to be read by third-party (ie. the browser)
-        // The stupid FLAG_GRANT_PREFIX_URI_PERMISSION flag is totally useless
-        // unfortunately, as it won't allow directory-prefix URI, sheesh.
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | FLAG_GRANT_PREFIX_URI_PERMISSION);
-
-      } else {
-        // Note: won't work on certain Android releases if the project name has
-        // spaces :(
-        final Uri uri = Uri.fromFile(index);
-
-        // Without the MIME, Android tend to crash with a NPE (!)
-        intent.setDataAndType(uri, "text/html");
-      }
-
-      return intent;
-    } else {
-      return null;
-    }
-  }
-
-  public Intent getBrowseIntent(final File index) {
-    return getBrowseIntent(index, false);
-  }
-
     /** Browser a specific web page. **/
   private void browse(final Uri uri) {
     try {
@@ -2703,23 +2624,57 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /** Browser a specific index. **/
-  private void browse(final File index) {
+  /**
+   * Lazily start (or restart) the mirror server rooted at {@code root}, reusing it while the root is
+   * unchanged. Returns null on failure; the caller decides what to tell the user.
+   */
+  private MirrorServer ensureMirrorServer(final File root) {
     try {
-      final Intent intent = getBrowseIntent(index);
-      if (intent != null) {
-        try {
-          startActivity(intent);
-        } catch(final ActivityNotFoundException nfe) {
-          Log.d(getClass().getSimpleName(),
-            "browse with browser refused, fallbacking to simple mode", nfe);
-          final Intent safe_intent = getBrowseIntent(index, true);
-          if (safe_intent != null) {
-            startActivity(safe_intent);
-          }
-        }
+      if (mirrorServer != null && !root.equals(mirrorServerRoot)) {
+        mirrorServer.stop();
+        mirrorServer = null;
       }
-   } catch(final Exception e) {
+      if (mirrorServer == null) {
+        mirrorServer = MirrorServer.start(root);
+        mirrorServerRoot = root;
+      }
+      return mirrorServer;
+    } catch (final IOException e) {
+      Log.w(getClass().getSimpleName(), "mirror server failed to start", e);
+      return null;
+    }
+  }
+
+  /** Browse a mirror file by serving it over loopback HTTP to a real external browser. */
+  private void browse(final File index) {
+    if (index == null || !index.exists()) {
+      return;
+    }
+    try {
+      final MirrorServer server = ensureMirrorServer(getProjectRootFile());
+      if (server == null) {
+        showNotification("Could not start the local mirror server");
+        return;
+      }
+      // Path relative to the served root, canonicalised so symlinks/".." cannot escape it.
+      final String rootPath = getProjectRootFile().getCanonicalPath();
+      final String filePath = index.getCanonicalPath();
+      String relative = filePath.substring(rootPath.length());
+      if (relative.startsWith(File.separator)) {
+        relative = relative.substring(1);
+      }
+      final StringBuilder encoded = new StringBuilder();
+      for (final String segment : relative.split("/")) {
+        if (encoded.length() != 0) {
+          encoded.append('/');
+        }
+        encoded.append(java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20"));
+      }
+      final String url = server.getBaseUrl() + "/" + encoded;
+      final Intent intent = new Intent(Intent.ACTION_VIEW);
+      intent.setData(Uri.parse(url));
+      startActivity(intent);
+    } catch (final Exception e) {
       showNotification(e.getLocalizedMessage());
     }
   }
@@ -3133,6 +3088,9 @@ public class HTTrackActivity extends FragmentActivity {
             .replace("%s", name);
         sendSystemNotification(title, e.getMessage());
       }
+    }
+    if (mirrorServer != null) {
+      mirrorServer.stop();
     }
     super.onDestroy();
   }
