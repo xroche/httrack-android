@@ -17,8 +17,8 @@ android {
         // edge-to-edge (35) is opted out in values-v35 until the layouts handle window insets.
         targetSdk 35
         // Must exceed the versionCode currently live on the Play listing before uploading.
-        versionCode 65
-        versionName "3.49.02.65"
+        versionCode 66
+        versionName "3.49.02.66"
 
         ndk {
             abiFilters "arm64-v8a", "x86_64"
@@ -87,6 +87,9 @@ dependencies {
     implementation 'androidx.core:core:1.13.1'
     implementation 'androidx.fragment:fragment:1.8.2'
     implementation 'androidx.documentfile:documentfile:1.0.1'
+
+    // Loopback HTTP server so a real browser reads scoped-storage mirrors over http://.
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
 
     testImplementation 'junit:junit:4.13.2'
 }
