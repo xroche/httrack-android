@@ -371,10 +371,8 @@ Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
       char *const buffer = malloc(buffer_size);
       if (buffer != NULL) {
         snprintf(buffer, buffer_size, "%s/error.txt", path);
-        if (emergencyLog != NULL) {
-          free(emergencyLog);
-          emergencyLog = NULL;
-        }
+        /* Publish without freeing the old pointer: the crash handler may read it on
+           another thread (use-after-free). One small buffer leaks per rare re-init. */
         emergencyLog = buffer;
       }
     }
@@ -384,17 +382,23 @@ Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
     {
       const size_t buffer_size = strlen(path) + 256;
       char *const buffer = malloc(buffer_size);
-      snprintf(buffer, buffer_size, "%s/log.txt", path);
-      FILE * const log = fopen(buffer, "wb");
-      if (log != NULL) {
-        const int fd = dup(fileno(log));
-        if (dup2(fd, 1) == -1 || dup2(fd, 2) == -1) {
-          ASSERT_THROWS(!"could not redirect stdin/stdout");
+      if (buffer != NULL) {
+        snprintf(buffer, buffer_size, "%s/log.txt", path);
+        /* Owner-only (0600) for symmetry with the crash log: no-op on sdcardfs, correct on the internal fallback. */
+        const int fd = open(buffer, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+        FILE *const log = fd != -1 ? fdopen(fd, "wb") : NULL;
+        if (log != NULL) {
+          if (dup2(fileno(log), 1) != -1 && dup2(fileno(log), 2) != -1) {
+            fprintf(stderr, "started stdio logging in file\n");
+          } else {
+            error("could not redirect stdout/stderr to log file");
+          }
+          fclose(log); /* fds 1 and 2 keep the redirected file open */
+        } else if (fd != -1) {
+          close(fd);
         }
-        fclose(log);
-        fprintf(stderr, "started stdio logging in file\n");
+        free(buffer);
       }
-      free(buffer);
     }
 #endif
 
