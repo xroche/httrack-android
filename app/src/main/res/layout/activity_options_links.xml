@@ -36,6 +36,24 @@
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:text="@string/get_html_first" />
+
+        <CheckBox
+            android:id="@+id/checkKeepWwwPrefix"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/keep_www_prefix" />
+
+        <CheckBox
+            android:id="@+id/checkKeepDoubleSlashes"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/keep_double_slashes" />
+
+        <CheckBox
+            android:id="@+id/checkKeepQueryOrder"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/keep_query_order" />
     </LinearLayout>
 
 </ScrollView>

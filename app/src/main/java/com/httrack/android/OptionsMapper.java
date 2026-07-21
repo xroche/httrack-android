@@ -84,12 +84,16 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.editRetries, "Retry"),
       new Pair<Integer, String>(R.id.editMinTransferRate, "RateOut"),
       new Pair<Integer, String>(R.id.checkRemoveHostIfSlow, "RemoveRateout"),
+      new Pair<Integer, String>(R.id.editPause, "Pause"),
 
       /* Links */
       new Pair<Integer, String>(R.id.checkDetectAllLinks, "ParseAll"),
       new Pair<Integer, String>(R.id.checkGetNonHtmlNear, "Near"),
       new Pair<Integer, String>(R.id.checkTestAllLinks, "Test"),
       new Pair<Integer, String>(R.id.checkGetHtmlFirst, "HTMLFirst"),
+      new Pair<Integer, String>(R.id.checkKeepWwwPrefix, "KeepWwwPrefix"),
+      new Pair<Integer, String>(R.id.checkKeepDoubleSlashes, "KeepDoubleSlashes"),
+      new Pair<Integer, String>(R.id.checkKeepQueryOrder, "KeepQueryOrder"),
 
       /* Build */
       new Pair<Integer, String>(R.id.checkDosNames, "Dos"),
@@ -111,6 +115,7 @@ public class OptionsMapper {
 
       /* Spider */
       new Pair<Integer, String>(R.id.checkAcceptCookies, "Cookies"),
+      new Pair<Integer, String>(R.id.editCookiesFile, "CookiesFile"),
       new Pair<Integer, String>(R.id.radioCheckDocumentType, "CheckType"),
       new Pair<Integer, String>(R.id.checkParseJavaFiles, "ParseJava"),
       new Pair<Integer, String>(R.id.radioSpider, "FollowRobotsTxt"),
@@ -120,6 +125,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.checkForceHttp10, "HTTP10"),
 
       /* Proxy */
+      new Pair<Integer, String>(R.id.radioProxyProtocol, "ProxyProtocol"),
       new Pair<Integer, String>(R.id.editProxy, "Proxy"),
       new Pair<Integer, String>(R.id.editProxyPort, "Port"),
       new Pair<Integer, String>(R.id.checkUseProxyForFtp, "UseHTTPProxyForFTP"),
@@ -163,6 +169,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.radioTravelMode, "Travel"),
       new Pair<Integer, String>(R.id.radioGlobalTravelMode, "GlobalTravel"),
       new Pair<Integer, String>(R.id.radioRewriteLinks, "RewriteLinks"),
+      new Pair<Integer, String>(R.id.editStripQuery, "StripQuery"),
       new Pair<Integer, String>(R.id.checkActivateDebugging, "Debugging"), /* FIXME */
 
   };
@@ -206,8 +213,12 @@ public class OptionsMapper {
       new Pair<String, String>("GlobalTravel", "0"),
       new Pair<String, String>("RewriteLinks", "0"),
       new Pair<String, String>("BuildString", "%h%p/%n%q.%t"),
-      new Pair<String, String>("UserID",
-          "Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)"),
+      // Empty: no -F, so the engine supplies its own current versioned User-Agent.
+      new Pair<String, String>("UserID", ""),
+      new Pair<String, String>("ProxyProtocol", "0"),
+      new Pair<String, String>("KeepWwwPrefix", "0"),
+      new Pair<String, String>("KeepDoubleSlashes", "0"),
+      new Pair<String, String>("KeepQueryOrder", "0"),
       new Pair<String, String>("Footer",
           "<!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&CO'2017], %s -->"),
       new Pair<String, String>("AcceptLanguage", "en,*"),
@@ -297,8 +308,17 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("TolerantRequests", new SimpleOptionFlag(
           "%B")),
       new Pair<String, OptionMapper>("HTTP10", new SimpleOptionFlag("%h")),
+      new Pair<String, OptionMapper>("ProxyProtocol",
+          proxyHandler.getProtocolMapper()),
       new Pair<String, OptionMapper>("Proxy", proxyHandler.getAddressMapper()),
       new Pair<String, OptionMapper>("Port", proxyHandler.getPortMapper()),
+      new Pair<String, OptionMapper>("CookiesFile", new ArgumentOption("-%K")),
+      new Pair<String, OptionMapper>("Pause", new ArgumentOption("-%G")),
+      new Pair<String, OptionMapper>("StripQuery", new ArgumentOption("-%g")),
+      new Pair<String, OptionMapper>("KeepWwwPrefix", new SimpleOptionFlag("%j")),
+      new Pair<String, OptionMapper>("KeepDoubleSlashes", new SimpleOptionFlag(
+          "%o")),
+      new Pair<String, OptionMapper>("KeepQueryOrder", new SimpleOptionFlag("%y")),
       new Pair<String, OptionMapper>("UseHTTPProxyForFTP", new SimpleOption0(
           "%f")),
       new Pair<String, OptionMapper>("StoreAllInCache", new SimpleOptionFlag(
@@ -789,6 +809,7 @@ public class OptionsMapper {
     protected boolean finished = false;
     protected String address;
     protected String port;
+    protected String protocol; // radio index: "1" == SOCKS5, else HTTP
 
     /*
      * Build type.
@@ -839,7 +860,7 @@ public class OptionsMapper {
 
     /**
      * Get the port mapper
-     * 
+     *
      * @return the port build mapper
      */
     public OptionMapper getPortMapper() {
@@ -847,16 +868,48 @@ public class OptionsMapper {
     }
 
     /*
-     * Where we really emit the option
+     * Proxy protocol selector (HTTP vs SOCKS5).
+     */
+    private class Protocol implements OptionMapper, OptionMapper.FinishMapper {
+      @Override
+      public void emit(final StringBuilder flags,
+          final List<String> commandline, final String value) {
+        if (value != null && value.length() != 0) {
+          ProxyHandler.this.protocol = value;
+        }
+      }
+
+      @Override
+      public void finish(final StringBuilder flags,
+          final List<String> commandline) {
+        ProxyHandler.this.finish(flags, commandline);
+      }
+    }
+
+    /**
+     * Get the protocol mapper
+     *
+     * @return the proxy protocol mapper
+     */
+    public OptionMapper getProtocolMapper() {
+      return new Protocol();
+    }
+
+    /*
+     * Where we really emit the option; SOCKS5 prepends the scheme and defaults
+     * to the SOCKS port 1080 instead of 8080.
      */
     private void finish(final StringBuilder flags,
         final List<String> commandline) {
       if (!finished) {
         finished = true;
         if (address != null) {
+          final boolean socks5 = "1".equals(protocol);
+          final String scheme = socks5 ? "socks5://" : "";
+          final String defaultPort = socks5 ? "1080" : "8080";
           commandline.add("-P");
-          commandline.add(address + ":"
-              + (port != null && port.length() != 0 ? port : "8080"));
+          commandline.add(scheme + address + ":"
+              + (port != null && port.length() != 0 ? port : defaultPort));
         }
       }
     }
