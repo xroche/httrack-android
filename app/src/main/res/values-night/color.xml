@@ -4,4 +4,6 @@
     <color name="black">#808080</color>
     <!-- Brighten the app-name/debug text so it stays legible on dark. -->
     <color name="blue">#9090D0</color>
+    <!-- 50% white shows as a grey box on a dark window; use 50% black so the row/scroll overlay blends. -->
+    <color name="transparent">#80000000</color>
 </resources>
