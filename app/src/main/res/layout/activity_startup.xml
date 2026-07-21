@@ -4,8 +4,8 @@
     android:layout_height="fill_parent"
     android:orientation="vertical"
     android:paddingBottom="@dimen/activity_vertical_margin"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingStart="@dimen/activity_horizontal_margin"
+    android:paddingEnd="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".HTTrackActivity" >
 
@@ -49,6 +49,8 @@
                     style="@style/ButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:gravity="center_vertical"
                     android:onClick="onBrowseAll"
                     android:text="@string/browse_all" />
@@ -67,6 +69,8 @@
                     style="@style/ButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:gravity="center_vertical"
                     android:onClick="onCleanup"
                     android:text="@string/cleanup_sites" />
@@ -85,7 +89,9 @@
                     style="@style/ButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="right"
+                    android:ellipsize="end"
+                    android:layout_gravity="end"
+                    android:maxLines="1"
                     android:gravity="center_vertical"
                     android:onClick="onClickNext"
                     android:text="@string/tab_next" />
