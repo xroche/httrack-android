@@ -220,7 +220,7 @@ public class OptionsMapper {
       new Pair<String, String>("KeepDoubleSlashes", "0"),
       new Pair<String, String>("KeepQueryOrder", "0"),
       new Pair<String, String>("Footer",
-          "<!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&CO'2017], %s -->"),
+          "<!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&CO'2026], %s -->"),
       new Pair<String, String>("AcceptLanguage", "en,*"),
       new Pair<String, String>("OtherHeaders", ""),
       new Pair<String, String>("DefaultReferer", ""),
