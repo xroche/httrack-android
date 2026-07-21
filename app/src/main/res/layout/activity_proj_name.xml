@@ -36,7 +36,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:hint="@string/projname_hint"
-                    android:textColor="@android:color/primary_text_light" >
+                    android:textColor="?android:attr/textColorPrimary" >
 
                     <requestFocus android:layout_width="fill_parent" />
                 </AutoCompleteTextView>
