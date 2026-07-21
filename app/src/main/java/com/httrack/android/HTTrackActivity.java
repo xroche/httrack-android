@@ -2652,32 +2652,33 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /** Browse a mirror file by serving it over loopback HTTP to a real external browser. */
+  /** Browse a crawled mirror file, served from the Websites root over loopback HTTP. */
   private void browse(final File index) {
+    browse(getProjectRootFile(), index);
+  }
+
+  /**
+   * Browse {@code index} over the loopback mirror server rooted at {@code root}. The root is
+   * explicit because bundled docs/license live under the resources cache, not the Websites tree;
+   * server root and relative-path base must be the same dir or the URL 404s.
+   */
+  private void browse(final File root, final File index) {
     if (index == null || !index.exists()) {
       return;
     }
     try {
-      final MirrorServer server = ensureMirrorServer(getProjectRootFile());
+      final MirrorServer server = ensureMirrorServer(root);
       if (server == null) {
         showNotification("Could not start the local mirror server");
         return;
       }
-      // Path relative to the served root, canonicalised so symlinks/".." cannot escape it.
-      final String rootPath = getProjectRootFile().getCanonicalPath();
-      final String filePath = index.getCanonicalPath();
-      String relative = filePath.substring(rootPath.length());
-      if (relative.startsWith(File.separator)) {
-        relative = relative.substring(1);
+      // Canonicalised + confined to root, so symlinks/".." and an out-of-root file cannot leak.
+      final String relative = MirrorServer.relativeUrlPath(root, index);
+      if (relative == null) {
+        showNotification("Cannot browse a file outside the served folder");
+        return;
       }
-      final StringBuilder encoded = new StringBuilder();
-      for (final String segment : relative.split("/")) {
-        if (encoded.length() != 0) {
-          encoded.append('/');
-        }
-        encoded.append(java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20"));
-      }
-      final String url = server.getBaseUrl() + "/" + encoded;
+      final String url = server.getBaseUrl() + "/" + relative;
       final Intent intent = new Intent(Intent.ACTION_VIEW);
       intent.setData(Uri.parse(url));
       startActivity(intent);
@@ -2791,7 +2792,7 @@ public class HTTrackActivity extends FragmentActivity {
           .setMessage(about0 + "\n" + about + "\n\n" + aboutLegal).show();
       break;
     case R.id.action_license:
-      browse(new File(new File(getResourceFile(), "license"),
+      browse(getResourceFile(), new File(new File(getResourceFile(), "license"),
           "gpl-3.0-standalone.html"));
       break;
     case R.id.action_forum:
@@ -2801,7 +2802,8 @@ public class HTTrackActivity extends FragmentActivity {
       browse(Uri.parse("http://www.httrack.com/"));
       break;
     case R.id.action_help:
-      browse(new File(new File(getResourceFile(), "html"), "index.html"));
+      browse(getResourceFile(), new File(new File(getResourceFile(), "html"),
+          "index.html"));
       break;
     case R.id.action_import_mirrors:
       startLegacyMirrorImport();

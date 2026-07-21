@@ -61,4 +61,35 @@ public class MirrorServerTest {
     Files.createSymbolicLink(new File(root, "escape").toPath(), outside.toPath());
     assertNull(MirrorServer.resolveWithinRoot(root, "/escape/secret"));
   }
+
+  @Test
+  public void relativeUrlPathForAFileUnderRoot() throws Exception {
+    final File page = new File(new File(root, "html"), "index.html");
+    assertEquals("html/index.html", MirrorServer.relativeUrlPath(root, page));
+  }
+
+  @Test
+  public void relativeUrlPathForRootItselfIsEmpty() throws Exception {
+    assertEquals("", MirrorServer.relativeUrlPath(root, root));
+  }
+
+  @Test
+  public void relativeUrlPathEncodesSpaces() throws Exception {
+    assertEquals("a%20b/c.html",
+        MirrorServer.relativeUrlPath(root, new File(new File(root, "a b"), "c.html")));
+  }
+
+  /** The doc/license 404: a resources-cache file addressed against the Websites root is refused. */
+  @Test
+  public void relativeUrlPathRefusesAFileOutsideRoot() throws Exception {
+    final File resources = tmp.newFolder("resources");
+    final File doc = new File(new File(resources, "license"), "gpl-3.0-standalone.html");
+    assertNull(MirrorServer.relativeUrlPath(root, doc));
+  }
+
+  @Test
+  public void relativeUrlPathRefusesASiblingSharingRootsNamePrefix() throws Exception {
+    final File sibling = tmp.newFolder("Websites-evil");
+    assertNull(MirrorServer.relativeUrlPath(root, new File(sibling, "secret.txt")));
+  }
 }
