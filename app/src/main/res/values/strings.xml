@@ -77,7 +77,6 @@
     <string name="remove_host_if_slow">Cancel all links from host if too slow</string>
     <string name="browser_identity">Browser identity</string>
     <string name="html_footer">HTML footer</string>
-    <string name="default_browser_id">Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)</string>
     <string name="default_html_footer" formatted="false">&lt;!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&amp;CO\'2017], %s --&gt;</string>
     <string name="accept_cookies">Accept cookies</string>
     <string name="check_document_type">Check document type</string>
@@ -95,9 +94,21 @@
     <string name="radio_spider_always">follow robots.txt rules</string>
     <string name="proxy">Proxy address</string>
     <string name="proxy_port">Proxy port</string>
+    <string name="proxy_protocol">Proxy protocol</string>
+    <string name="proxy_protocol_http">HTTP</string>
+    <string name="proxy_protocol_socks5">SOCKS5</string>
     <string name="hint_proxy_address">proxy.example.com</string>
     <string name="hint_proxy_port">8080</string>
-    <string name="hint_browser_identity">Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)</string>
+    <string name="cookies_file">Cookies file</string>
+    <string name="hint_cookies_file">cookies.txt (Netscape format)</string>
+    <string name="pause_between_downloads">Pause between downloads (sec, MIN:MAX)</string>
+    <string name="hint_pause">2:5</string>
+    <string name="strip_query">Strip query keys</string>
+    <string name="hint_strip_query">sid,utm_source</string>
+    <string name="keep_www_prefix">Keep www. prefix (www.x != x)</string>
+    <string name="keep_double_slashes">Keep double slashes (//)</string>
+    <string name="keep_query_order">Keep query-string order (?b&amp;a)</string>
+    <string name="hint_browser_identity">Mozilla/5.0 (compatible; HTTrack; +https://www.httrack.com/)</string>
     <string name="hint_footer" formatted="false">&lt;!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&amp;CO\'2017], %s --&gt;</string>
     <string name="use_proxy_for_ftp">Use proxy for ftp transfers</string>
     <string name="store_all_files_in_cache">Store ALL files in cache</string>

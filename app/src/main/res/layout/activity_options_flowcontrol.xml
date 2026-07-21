@@ -123,6 +123,27 @@
             android:layout_height="wrap_content"
             android:layout_gravity="end"
             android:text="@string/remove_host_if_slow" />
+
+        <LinearLayout
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" >
+
+            <TextView
+                android:id="@+id/textPause"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight=".70"
+                android:text="@string/pause_between_downloads" />
+
+            <EditText
+                android:id="@+id/editPause"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight=".30"
+                android:hint="@string/hint_pause"
+                android:inputType="textNoSuggestions" />
+        </LinearLayout>
     </LinearLayout>
 
 </ScrollView>

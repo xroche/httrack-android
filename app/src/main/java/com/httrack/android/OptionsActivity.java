@@ -154,14 +154,15 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @ActivityId(R.layout.activity_options_flowcontrol)
   @Fields({ R.id.editNumberOfConnections, R.id.checkPersistentConnections,
       R.id.editTimeout, R.id.checkRemoveHostIfTimeout, R.id.editRetries,
-      R.id.editMinTransferRate, R.id.checkRemoveHostIfSlow })
+      R.id.editMinTransferRate, R.id.checkRemoveHostIfSlow, R.id.editPause })
   public static class FlowControlTab extends Tab {
   }
 
   @Title(R.string.links)
   @ActivityId(R.layout.activity_options_links)
   @Fields({ R.id.checkDetectAllLinks, R.id.checkGetNonHtmlNear,
-      R.id.checkTestAllLinks, R.id.checkGetHtmlFirst })
+      R.id.checkTestAllLinks, R.id.checkGetHtmlFirst, R.id.checkKeepWwwPrefix,
+      R.id.checkKeepDoubleSlashes, R.id.checkKeepQueryOrder })
   public static class LinksTab extends Tab {
   }
 
@@ -183,15 +184,17 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.spider)
   @ActivityId(R.layout.activity_options_spider)
-  @Fields({ R.id.checkAcceptCookies, R.id.radioCheckDocumentType,
-      R.id.checkParseJavaFiles, R.id.radioSpider, R.id.checkUpdateHacks,
-      R.id.checkUrlHacks, R.id.checkTolerentRequests, R.id.checkForceHttp10 })
+  @Fields({ R.id.checkAcceptCookies, R.id.editCookiesFile,
+      R.id.radioCheckDocumentType, R.id.checkParseJavaFiles, R.id.radioSpider,
+      R.id.checkUpdateHacks, R.id.checkUrlHacks, R.id.checkTolerentRequests,
+      R.id.checkForceHttp10 })
   public static class Spider extends Tab {
   }
 
   @Title(R.string.proxy)
   @ActivityId(R.layout.activity_options_proxy)
-  @Fields({ R.id.editProxy, R.id.editProxyPort, R.id.checkUseProxyForFtp })
+  @Fields({ R.id.radioProxyProtocol, R.id.editProxy, R.id.editProxyPort,
+      R.id.checkUseProxyForFtp })
   public static class Proxy extends Tab {
   }
 
@@ -218,7 +221,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @ActivityId(R.layout.activity_options_expertsonly)
   @Fields({ R.id.checkUseCacheForUpdates, R.id.radioPrimaryScanRule,
       R.id.textTravelMode, R.id.radioTravelMode, R.id.radioGlobalTravelMode,
-      R.id.radioRewriteLinks, R.id.checkActivateDebugging })
+      R.id.radioRewriteLinks, R.id.editStripQuery, R.id.checkActivateDebugging })
   public static class ExpertsOnly extends Tab {
   }
 
