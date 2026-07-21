@@ -12,13 +12,13 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:paddingBottom="4sp"
-        android:paddingLeft="4sp" >
+        android:paddingStart="4sp" >
 
         <TextView
             android:id="@+id/name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="left"
+            android:layout_gravity="start"
             android:textSize="20sp" />
     </TableRow>
 
@@ -26,7 +26,7 @@
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:baselineAligned="true"
-        android:paddingLeft="4sp" >
+        android:paddingStart="4sp" >
 
         <LinearLayout
             android:layout_width="fill_parent"
@@ -34,13 +34,13 @@
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:orientation="horizontal"
-            android:paddingLeft="20sp" >
+            android:paddingStart="20sp" >
 
             <TextView
                 android:id="@+id/description"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="left"
+                android:layout_gravity="start"
                 android:textSize="20sp" />
         </LinearLayout>
 
@@ -48,8 +48,8 @@
             android:id="@+id/check"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:layout_marginRight="10sp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="10sp"
             android:onClick="OnClickCheckbox" />
     </TableRow>
 
