@@ -1,0 +1,7 @@
+<resources>
+
+    <!-- Night variant: dark Holo base. The night qualifier outranks the version
+         qualifier, so this wins over the Theme.Holo.Light in values-v11. -->
+    <style name="AppBaseTheme" parent="@android:style/Theme.Holo" />
+
+</resources>
