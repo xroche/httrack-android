@@ -2,7 +2,7 @@
 #
 #   - JDK 17            (required by AGP 8.x)
 #   - Android cmdline-tools + platform 35 + build-tools 35
-#   - NDK r26d          (Clang, unified toolchain — replaces the r14/GCC hack)
+#   - NDK r27           (Clang, unified toolchain — replaces the r14/GCC hack)
 #   - OpenSSL 3.x static libs cross-compiled for arm64-v8a/x86_64
 #
 # Build:  docker build -t httrack-android-build docker/
@@ -16,7 +16,7 @@ FROM eclipse-temurin:17-jdk-jammy
 ARG ANDROID_CMDLINE_VERSION=11076708
 ARG ANDROID_PLATFORM=android-35
 ARG ANDROID_BUILD_TOOLS=35.0.0
-ARG NDK_VERSION=26.3.11579264
+ARG NDK_VERSION=27.3.13750724
 ARG OPENSSL_VERSION=3.0.15
 ARG OPENSSL_SHA256=23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533
 
