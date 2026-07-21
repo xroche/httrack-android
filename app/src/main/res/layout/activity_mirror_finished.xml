@@ -39,8 +39,6 @@
                     style="@style/ButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
                     android:onClick="onShowLogs"
                     android:text="@string/show_logs" />
             </LinearLayout>
@@ -58,8 +56,6 @@
                     style="@style/ButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
                     android:onClick="onBrowse"
                     android:text="@string/browse_website" />
             </LinearLayout>
@@ -77,8 +73,6 @@
                     style="@style/ButtonStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
                     android:onClick="onNewProject"
                     android:text="@string/title_activity_proj_name" />
             </LinearLayout>
