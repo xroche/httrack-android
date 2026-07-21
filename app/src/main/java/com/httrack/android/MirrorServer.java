@@ -24,6 +24,7 @@ package com.httrack.android;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.URLEncoder;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -136,5 +137,41 @@ final class MirrorServer extends NanoHTTPD {
       // Any decode/canonicalisation failure on hostile input denies rather than leaks.
       return null;
     }
+  }
+
+  /**
+   * Root-relative, percent-encoded URL path for {@code file}, or null if {@code file} is not
+   * inside {@code root}. Inverse of {@link #resolveWithinRoot}: refusing an out-of-root file is
+   * what stops a bogus sliced path (a resources-cache file addressed against the Websites root)
+   * from ever reaching the server.
+   *
+   * @param root
+   *          the served tree
+   * @param file
+   *          the file to link to, expected under root
+   * @return the root-relative %-encoded path, or null if file is outside root
+   */
+  static String relativeUrlPath(final File root, final File file) throws IOException {
+    final String rootPath = root.getCanonicalPath();
+    final String filePath = file.getCanonicalPath();
+    if (!filePath.equals(rootPath)
+        && !filePath.startsWith(rootPath + File.separator)) {
+      return null;
+    }
+    String relative = filePath.substring(rootPath.length());
+    if (relative.startsWith(File.separator)) {
+      relative = relative.substring(1);
+    }
+    final StringBuilder encoded = new StringBuilder();
+    for (final String segment : relative.split("/")) {
+      if (segment.length() == 0) {
+        continue;
+      }
+      if (encoded.length() != 0) {
+        encoded.append('/');
+      }
+      encoded.append(URLEncoder.encode(segment, "UTF-8").replace("+", "%20"));
+    }
+    return encoded.toString();
   }
 }
