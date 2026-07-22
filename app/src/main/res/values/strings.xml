@@ -68,6 +68,7 @@
     <string name="hide_passwords">Hide passwords</string>
     <string name="hide_query_strings">Hide query strings</string>
     <string name="do_not_purge_old_files">Do not purge old files</string>
+    <string name="write_warc_archive">Write WARC archive</string>
     <string name="number_of_connections">Max simultaneous connections</string>
     <string name="persistent_connections">Persistent connections (Keep-Alive)</string>
     <string name="timeout">File timeout</string>

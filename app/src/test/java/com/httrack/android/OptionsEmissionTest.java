@@ -83,4 +83,19 @@ public class OptionsEmissionTest {
     new SimpleOptionFlag("%j").emit(flags, new ArrayList<String>(), "0");
     assertFalse(flags.toString().contains("%j"));
   }
+
+  /* WARC toggle bundles -%r only when checked. */
+  @Test
+  public void warcToggleBundlesFlagWhenChecked() {
+    final StringBuilder flags = new StringBuilder();
+    new SimpleOptionFlag("%r").emit(flags, new ArrayList<String>(), "1");
+    assertTrue(flags.toString().contains("%r"));
+  }
+
+  @Test
+  public void warcToggleEmitsNothingWhenUnchecked() {
+    final StringBuilder flags = new StringBuilder();
+    new SimpleOptionFlag("%r").emit(flags, new ArrayList<String>(), "0");
+    assertFalse(flags.toString().contains("%r"));
+  }
 }
