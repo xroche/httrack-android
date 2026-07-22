@@ -104,6 +104,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.checkHidePasswords, "NoPwdInPages"),
       new Pair<Integer, String>(R.id.checkHideQueryStrings, "NoQueryStrings"),
       new Pair<Integer, String>(R.id.checkDoNotPurge, "NoPurgeOldFiles"),
+      new Pair<Integer, String>(R.id.checkWarc, "Warc"),
       new Pair<Integer, String>(R.id.radioBuild, "Build"),
       new Pair<Integer, String>(R.id.editCustomBuild, "BuildString"),
 
@@ -198,6 +199,7 @@ public class OptionsMapper {
       new Pair<String, String>("NoPwdInPages", "0"),
       new Pair<String, String>("NoQueryStrings", "0"),
       new Pair<String, String>("NoPurgeOldFiles", "0"),
+      new Pair<String, String>("Warc", "0"),
       new Pair<String, String>("Cookies", "1"),
       new Pair<String, String>("CheckType", "1"),
       new Pair<String, String>("ParseJava", "1"),
@@ -287,6 +289,7 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("NoQueryStrings", new SimpleOption0("%q")),
       new Pair<String, OptionMapper>("NoPurgeOldFiles", new SimpleOptionFlag(
           "X0")),
+      new Pair<String, OptionMapper>("Warc", new SimpleOptionFlag("%r")),
       new Pair<String, OptionMapper>("Build", buildHandler.getTypeMapper()),
       new Pair<String, OptionMapper>("BuildString",
           buildHandler.getCustomMapper()),
