@@ -20,8 +20,8 @@ on:
         description: 'Play track (internal, alpha, beta, or a closed-track name)'
         default: internal
       status:
-        description: 'draft leaves it unreleased for Console review; completed releases to the track'
-        default: draft
+        description: 'completed releases to the track; draft leaves it unreleased for Console review'
+        default: completed
 
 permissions:
   contents: read
@@ -97,4 +97,4 @@ jobs:
           packageName: com.httrack.android
           releaseFiles: aab/app-release.aab
           track: ${{ github.event.inputs.track || 'internal' }}
-          status: ${{ github.event.inputs.status || 'draft' }}
+          status: ${{ github.event.inputs.status || 'completed' }}
