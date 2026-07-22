@@ -809,7 +809,7 @@ public class OptionsMapper {
     protected boolean finished = false;
     protected String address;
     protected String port;
-    protected String protocol; // radio index: "1" == SOCKS5, else HTTP
+    protected String protocol; // radio index: "1" == SOCKS5, "2" == CONNECT, else HTTP
 
     /*
      * Build type.
