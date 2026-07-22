@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- targetSdk 35 forces edge-to-edge; opt out until the layouts handle window insets. -->
-    <style name="AppTheme" parent="AppBaseTheme">
-        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
-    </style>
-</resources>

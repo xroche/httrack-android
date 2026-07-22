@@ -4,18 +4,17 @@ plugins {
 
 android {
     namespace 'com.httrack.android'
-    compileSdk 35
+    compileSdk 36
     // Pinned to what the toolchain image installs, so no build-tools are fetched at build time.
-    buildToolsVersion "35.0.0"
+    buildToolsVersion "36.0.0"
     ndkVersion "27.3.13750724"
 
     defaultConfig {
         applicationId "com.httrack.android"
         minSdk 24
-        // Play's upload floor. The behaviour changes crossed to here are handled: notification
-        // channels + POST_NOTIFICATIONS (#10), scoped storage (#11), predictive back (#12);
-        // edge-to-edge (35) is opted out in values-v35 until the layouts handle window insets.
-        targetSdk 35
+        // Google requires API 36 to keep publishing updates from 2026-08-31. Edge-to-edge window
+        // insets (EdgeToEdge) are now mandatory: the platform ignores the opt-out at this level.
+        targetSdk 36
         // Must exceed the versionCode currently live on the Play listing before uploading.
         versionCode 71
         // Prefix = engine HTTRACK_VERSIONID (htsglobal.h); track upstream.
