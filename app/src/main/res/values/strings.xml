@@ -96,6 +96,7 @@
     <string name="proxy_protocol">Proxy protocol</string>
     <string name="proxy_protocol_http">HTTP</string>
     <string name="proxy_protocol_socks5">SOCKS5</string>
+    <string name="proxy_protocol_connect">HTTP (CONNECT tunnel)</string>
     <string name="hint_proxy_address">proxy.example.com</string>
     <string name="hint_proxy_port">8080</string>
     <string name="cookies_file">Cookies file</string>

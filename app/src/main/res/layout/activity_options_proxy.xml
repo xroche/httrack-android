@@ -40,6 +40,11 @@
                     android:id="@+id/radioItemProxySocks5"
                     android:layout_height="wrap_content"
                     android:text="@string/proxy_protocol_socks5" />
+
+                <RadioButton
+                    android:id="@+id/radioItemProxyConnect"
+                    android:layout_height="wrap_content"
+                    android:text="@string/proxy_protocol_connect" />
             </RadioGroup>
         </LinearLayout>
 

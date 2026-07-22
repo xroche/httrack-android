@@ -809,7 +809,7 @@ public class OptionsMapper {
     protected boolean finished = false;
     protected String address;
     protected String port;
-    protected String protocol; // radio index: "1" == SOCKS5, else HTTP
+    protected String protocol; // radio index: "1" == SOCKS5, "2" == CONNECT, else HTTP
 
     /*
      * Build type.
@@ -868,7 +868,7 @@ public class OptionsMapper {
     }
 
     /*
-     * Proxy protocol selector (HTTP vs SOCKS5).
+     * Proxy protocol selector (HTTP vs SOCKS5 vs HTTP CONNECT tunnel).
      */
     private class Protocol implements OptionMapper, OptionMapper.FinishMapper {
       @Override
@@ -896,8 +896,9 @@ public class OptionsMapper {
     }
 
     /*
-     * Where we really emit the option; SOCKS5 prepends the scheme and defaults
-     * to the SOCKS port 1080 instead of 8080.
+     * Where we really emit the option; each protocol prepends its scheme, and
+     * only SOCKS5 defaults to port 1080 instead of 8080. Value is the radio
+     * index: 0 HTTP, 1 SOCKS5, 2 HTTP CONNECT tunnel.
      */
     private void finish(final StringBuilder flags,
         final List<String> commandline) {
@@ -905,7 +906,9 @@ public class OptionsMapper {
         finished = true;
         if (address != null) {
           final boolean socks5 = "1".equals(protocol);
-          final String scheme = socks5 ? "socks5://" : "";
+          final boolean connect = "2".equals(protocol);
+          final String scheme =
+              socks5 ? "socks5://" : connect ? "connect://" : "";
           final String defaultPort = socks5 ? "1080" : "8080";
           commandline.add("-P");
           commandline.add(scheme + address + ":"
