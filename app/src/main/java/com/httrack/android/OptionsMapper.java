@@ -33,6 +33,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import android.content.Context;
@@ -1428,8 +1429,10 @@ public class OptionsMapper {
    */
   private void setDynamicDefaults() {
     if (context != null) {
+      // Derive the ISO code from the runtime locale, not a build-time placeholder.
+      final String iso = Locale.getDefault().getLanguage();
       map.put(fieldsNameToId.get("AcceptLanguage"),
-          context.getString(R.string.language_iso_code) + ",*");
+          (iso == null || iso.isEmpty() ? "en" : iso) + ",*");
     }
   }
 
