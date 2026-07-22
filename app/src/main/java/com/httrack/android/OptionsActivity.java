@@ -170,8 +170,8 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @ActivityId(R.layout.activity_options_build)
   @Fields({ R.id.checkDosNames, R.id.checkIso9660, R.id.checkNoErrorPages,
       R.id.checkNoExternalPages, R.id.checkHidePasswords,
-      R.id.checkHideQueryStrings, R.id.checkDoNotPurge, R.id.radioBuild,
-      R.id.editCustomBuild })
+      R.id.checkHideQueryStrings, R.id.checkDoNotPurge, R.id.checkWarc,
+      R.id.radioBuild, R.id.editCustomBuild })
   public static class BuildTab extends Tab {
   }
 
