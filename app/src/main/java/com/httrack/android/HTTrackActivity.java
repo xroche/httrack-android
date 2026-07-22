@@ -709,6 +709,8 @@ public class HTTrackActivity extends FragmentActivity {
             if (entry.getName().endsWith("/")) {
               dest.mkdirs();
             } else {
+              // Don't rely on the archive ordering dir entries before their files.
+              mkdirs(dest.getParentFile());
               final FileOutputStream writer = new FileOutputStream(dest);
               final byte[] bytes = new byte[1024];
               int length;

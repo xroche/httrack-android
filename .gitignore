@@ -16,3 +16,6 @@ workspace.xml
 
 # Signing secrets (never commit); see keystore.properties.sample.
 /keystore.properties
+
+# Generated at build time from the httrack engine (buildResourcesBundle task).
+/app/src/main/res/raw/resources.zip
