@@ -1791,6 +1791,19 @@ public class OptionsMapper {
     map.unserialize(object);
   }
 
+  // Per-project identity fields: they must never be part of the default options.
+  private static final int identityFields[] = {R.id.fieldProjectName,
+      R.id.fieldProjectCategory};
+
+  private static boolean isIdentityField(final int id) {
+    for (final int field : OptionsMapper.identityFields) {
+      if (field == id) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /*
    * Load default preferences.
    */
@@ -1798,13 +1811,26 @@ public class OptionsMapper {
     if (context != null) {
       final SharedPreferences settings = context.getSharedPreferences(
           PREFS_NAME, 0);
+      // Snapshot the current project identity before the map reset wipes it.
+      final SparseArray<String> identity = new SparseArray<String>();
+      for (final int id : OptionsMapper.identityFields) {
+        identity.put(id, getMap(id));
+      }
       initializeMap();
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+        // A stale saved default must not resurrect a wrong project identity.
+        if (isIdentityField(field.first)) {
+          continue;
+        }
         final String key = field.second;
         final String value = settings.getString(key, null);
         if (value != null) {
           setMap(field.first, value);
         }
+      }
+      // Restore the project identity the default options must not touch.
+      for (int i = 0; i < identity.size(); i++) {
+        setMap(identity.keyAt(i), identity.valueAt(i));
       }
     }
   }
@@ -1818,6 +1844,10 @@ public class OptionsMapper {
           PREFS_NAME, 0);
       final SharedPreferences.Editor editor = settings.edit();
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+        // Never persist per-project identity as a global default.
+        if (isIdentityField(field.first)) {
+          continue;
+        }
         final String value = getMap(field.first);
         final String key = field.second;
         editor.putString(key, value);
