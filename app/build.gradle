@@ -17,9 +17,9 @@ android {
         // edge-to-edge (35) is opted out in values-v35 until the layouts handle window insets.
         targetSdk 35
         // Must exceed the versionCode currently live on the Play listing before uploading.
-        versionCode 69
+        versionCode 70
         // Prefix = engine HTTRACK_VERSIONID (htsglobal.h); track upstream.
-        versionName "3.49.13.69"
+        versionName "3.49.13.70"
 
         ndk {
             abiFilters "arm64-v8a", "x86_64"
