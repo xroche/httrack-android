@@ -79,7 +79,26 @@ android {
             path 'src/main/jni/Android.mk'
         }
     }
+
+    sourceSets.main.res.srcDir(layout.buildDirectory.dir('generated/bundle/res'))
 }
+
+// The in-app Help/docs bundle (R.raw.resources) is assembled from the pinned httrack
+// engine at build time, never committed, so it can't drift from the submodule the way
+// the old checked-in zip silently did for years. html/ and templates/ come from the
+// engine; license/ is a static HTML asset the engine ships only as plain text.
+def buildResourcesBundle = tasks.register('buildResourcesBundle', Zip) {
+    archiveFileName = 'resources.zip'
+    destinationDirectory = layout.buildDirectory.dir('generated/bundle/res/raw')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    from('src/main/jni/httrack/html') { into 'html'; exclude 'Makefile.am' }
+    from('src/main/jni/httrack/templates') { into 'templates'; exclude 'Makefile.am' }
+    from('src/main/bundle/license') { into 'license' }
+}
+// preBuild is a transitive ancestor of every resource task, so this one edge gives
+// them all the dependency on the generated bundle that Gradle's validation requires.
+tasks.named('preBuild').configure { dependsOn buildResourcesBundle }
 
 dependencies {
     // Without this, coroutines' stale jdk7/jdk8 shims collide with the stdlib that absorbed them.
