@@ -3,6 +3,7 @@ package com.httrack.android;
 import android.app.Activity;
 import android.content.res.Configuration;
 import android.os.Build;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.Window;
 
@@ -12,12 +13,12 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
-/** Re-fits the platform title bar and content inside the system bars where edge-to-edge is forced (API 35+). */
+/** Fits content inside the system bars and below the platform action bar where edge-to-edge is forced (API 35+). */
 final class EdgeToEdge {
   private EdgeToEdge() {
   }
 
-  /** Pad the decor so title bar + content clear the status/nav bars and the keyboard; survives setContentView swaps. */
+  /** Pad the decor for the system bars, and the content for the action bar it now overlaps; survives setContentView swaps. */
   static void fitSystemWindows(final Activity activity) {
     // Below API 35 the framework still fits system windows and resizes for the IME; don't disturb it.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
@@ -26,11 +27,17 @@ final class EdgeToEdge {
     final Window window = activity.getWindow();
     WindowCompat.setDecorFitsSystemWindows(window, false);
     final View decor = window.getDecorView();
+    final View content = activity.findViewById(android.R.id.content);
+    // Edge-to-edge puts the Holo action bar into overlay mode over the content, so content must clear its height.
+    final int actionBarHeight = actionBarHeight(activity);
     ViewCompat.setOnApplyWindowInsetsListener(decor, (v, insets) -> {
-      // ime() in the union pads the bottom by max(nav bar, keyboard) so a focused field stays visible.
+      // ime() pads the bottom by max(nav bar, keyboard) so a focused field stays visible.
       final Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars()
           | WindowInsetsCompat.Type.displayCutout() | WindowInsetsCompat.Type.ime());
       v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+      if (content != null) {
+        content.setPadding(0, actionBarHeight, 0, 0);
+      }
       return insets;
     });
     // Dark icons on the light day theme, light icons on the night (Holo dark) theme.
@@ -39,5 +46,14 @@ final class EdgeToEdge {
     final WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, decor);
     controller.setAppearanceLightStatusBars(!night);
     controller.setAppearanceLightNavigationBars(!night);
+  }
+
+  /** The theme's action bar height in px, or 0 if the theme has no action bar. */
+  private static int actionBarHeight(final Activity activity) {
+    final TypedValue tv = new TypedValue();
+    if (activity.getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true)) {
+      return TypedValue.complexToDimensionPixelSize(tv.data, activity.getResources().getDisplayMetrics());
+    }
+    return 0;
   }
 }
