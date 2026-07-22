@@ -1,7 +1,7 @@
 # Reproducible build environment for the modernized HTTrack Android app.
 #
 #   - JDK 17            (required by AGP 8.x)
-#   - Android cmdline-tools + platform 35 + build-tools 35
+#   - Android cmdline-tools + platforms 35+36 + build-tools 35+36 (35 kept over the 35->36 bump)
 #   - NDK r27           (Clang, unified toolchain — replaces the r14/GCC hack)
 #   - OpenSSL 3.x static libs cross-compiled for arm64-v8a/x86_64
 #
@@ -14,8 +14,12 @@
 FROM eclipse-temurin:17-jdk-jammy
 
 ARG ANDROID_CMDLINE_VERSION=11076708
-ARG ANDROID_PLATFORM=android-35
-ARG ANDROID_BUILD_TOOLS=35.0.0
+ARG ANDROID_PLATFORM=android-36
+ARG ANDROID_BUILD_TOOLS=36.0.0
+# Keep 35 alongside 36 so one :latest builds both the current app (compileSdk 35) and the
+# 36 bump; drop these once the app is on 36 and no master build still needs 35.
+ARG ANDROID_PLATFORM_PREV=android-35
+ARG ANDROID_BUILD_TOOLS_PREV=35.0.0
 ARG NDK_VERSION=27.3.13750724
 ARG OPENSSL_VERSION=3.0.15
 ARG OPENSSL_SHA256=23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533
@@ -47,7 +51,9 @@ RUN yes | sdkmanager --licenses >/dev/null && \
     sdkmanager --install \
       "platform-tools" \
       "platforms;${ANDROID_PLATFORM}" \
+      "platforms;${ANDROID_PLATFORM_PREV}" \
       "build-tools;${ANDROID_BUILD_TOOLS}" \
+      "build-tools;${ANDROID_BUILD_TOOLS_PREV}" \
       "ndk;${NDK_VERSION}" >/dev/null
 ENV ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/${NDK_VERSION}"
 
