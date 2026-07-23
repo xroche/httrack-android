@@ -56,12 +56,6 @@
             android:layout_height="wrap_content"
             android:text="@string/do_not_purge_old_files" />
 
-        <CheckBox
-            android:id="@+id/checkWarc"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/write_warc_archive" />
-
         <LinearLayout
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
