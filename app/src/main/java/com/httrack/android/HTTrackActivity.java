@@ -69,6 +69,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
+import android.provider.DocumentsContract;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.Html;
@@ -457,24 +458,87 @@ public class HTTrackActivity extends FragmentActivity {
           .setPositiveButton(android.R.string.ok, (dialog, which) -> {
             getSharedPreferences(PREFS_NAME, 0).edit()
                 .putBoolean(STORAGE_ASKED_NAME, true).apply();
-            try {
-              startActivity(new Intent(
-                  Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                  Uri.parse("package:" + getPackageName())));
-            } catch (final Exception e) {
-              // Some OEMs lack the per-app screen; fall back to the global list.
-              try {
-                startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
-              } catch (final Exception e2) {
-                Log.d(getClass().getSimpleName(), "no all-files-access settings screen", e2);
-              }
-            }
+            requestAllFilesAccess();
           })
           .setNegativeButton(R.string.import_mirrors_offer_later, null)
           .show();
     } else {
+      requestAllFilesAccess();
+    }
+  }
+
+  // Ungated, unlike the one-shot install prompt, so the base-path panel button can reuse it.
+  private void requestAllFilesAccess() {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+      try {
+        startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+            Uri.parse("package:" + getPackageName())));
+      } catch (final Exception e) {
+        try {
+          startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+        } catch (final Exception e2) {
+          Log.d(getClass().getSimpleName(), "no all-files-access settings screen", e2);
+        }
+      }
+    } else {
       ActivityCompat.requestPermissions(this,
               new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_WRITE_STORAGE);
+    }
+  }
+
+  /*
+   * Base-path panel button: grant all-files access so mirrors move to the public HTTrack/ folder.
+   */
+  public void onClickEnableAllFilesAccess(final View view) {
+    requestAllFilesAccess();
+  }
+
+  // Base-path panel button. Private storage can't be opened in a file manager on Android 11+, so
+  // openFolderInFilesApp returns false there and we fall back to showing the path.
+  public void onClickBrowseFolder(final View view) {
+    final File dir = getProjectRootFile();
+    if (!openFolderInFilesApp(dir)) {
+      Toast.makeText(this, getString(R.string.base_path_toast, dir.getAbsolutePath()),
+          Toast.LENGTH_LONG).show();
+    }
+  }
+
+  /* Try to view dir through the external-storage documents provider. False if unmapped/unhandled. */
+  private boolean openFolderInFilesApp(final File dir) {
+    final String docId =
+        StoragePaths.externalStorageDocId(dir, Environment.getExternalStorageDirectory());
+    if (docId == null) {
+      return false;
+    }
+    final Uri uri =
+        DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId);
+    final Intent intent = new Intent(Intent.ACTION_VIEW)
+        .setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    if (intent.resolveActivity(getPackageManager()) == null) {
+      return false;
+    }
+    try {
+      startActivity(intent);
+      return true;
+    } catch (final Exception e) {
+      Log.d(getClass().getSimpleName(), "cannot open folder in files app", e);
+      return false;
+    }
+  }
+
+  // Base-path panel: warn whenever the mirror folder isn't browsable (private storage), which can
+  // outlast the permission bit when a private base path is persisted; offer the grant when it's off.
+  private void refreshStorageAccessHints() {
+    final boolean browsable = StoragePaths.externalStorageDocId(
+        getProjectRootFile(), Environment.getExternalStorageDirectory()) != null;
+    final View grant = findViewById(R.id.buttonEnableAllFiles);
+    if (grant != null) {
+      grant.setVisibility(hasAllFilesAccess() ? View.GONE : View.VISIBLE);
+    }
+    final View warning = findViewById(R.id.textStorageWarning);
+    if (warning != null) {
+      warning.setVisibility(browsable ? View.GONE : View.VISIBLE);
     }
   }
 
@@ -1893,6 +1957,7 @@ public class HTTrackActivity extends FragmentActivity {
       /* Base path */
       TextView.class.cast(findViewById(R.id.fieldBasePath)).setText(
           getProjectRootFile().getAbsolutePath());
+      refreshStorageAccessHints();
 
       // "Next" button is disabled if no project name is defined
       switchEmptyProjectName = !OptionsMapper.isStringNonEmpty(mapper
@@ -3065,6 +3130,8 @@ public class HTTrackActivity extends FragmentActivity {
         && getSharedPreferences(PREFS_NAME, 0).getString(BASE_NAME, null) == null) {
       computeStorageTarget();
     }
+    // A grant made on the settings screen flips the button/warning off (no-op off this panel).
+    refreshStorageAccessHints();
   }
 
   @Override

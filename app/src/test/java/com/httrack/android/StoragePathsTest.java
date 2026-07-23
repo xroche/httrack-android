@@ -104,4 +104,29 @@ public class StoragePathsTest {
     assertTrue(StoragePaths.isWritable(new File(external, "Websites"), external, internal));
     assertTrue(StoragePaths.isWritable(new File(internal, "Websites"), null, internal));
   }
+
+  /** A public folder maps to its "primary:<relative>" documents id. */
+  @Test
+  public void mapsAPublicFolderToItsDocId() throws Exception {
+    final File shared = tmp.newFolder("shared");
+    final File mirror = new File(new File(shared, "HTTrack"), "Websites");
+    assertEquals("primary:HTTrack" + File.separator + "Websites",
+        StoragePaths.externalStorageDocId(mirror, shared));
+  }
+
+  /** The Android/ subtree is hidden from file managers, so it must not map. */
+  @Test
+  public void refusesThePrivateAndroidSubtree() throws Exception {
+    final File shared = tmp.newFolder("shared2");
+    final File priv = new File(shared, "Android/data/com.httrack.android/files/Websites");
+    assertNull(StoragePaths.externalStorageDocId(priv, shared));
+  }
+
+  @Test
+  public void refusesAPathOutsideTheSharedRootOrWithoutIt() throws Exception {
+    final File shared = tmp.newFolder("shared3");
+    assertNull(StoragePaths.externalStorageDocId(new File(tmp.getRoot(), "elsewhere"), shared));
+    assertNull(StoragePaths.externalStorageDocId(shared, shared)); // the root itself, no sub-path
+    assertNull(StoragePaths.externalStorageDocId(new File(shared, "HTTrack"), null));
+  }
 }
