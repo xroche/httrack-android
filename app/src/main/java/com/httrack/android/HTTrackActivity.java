@@ -467,10 +467,7 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /*
-   * Grant all-files access (Android 11+ settings screen, or the global-list fallback) or the legacy
-   * WRITE permission. Ungated, unlike the one-shot install prompt, so the panel button can reuse it.
-   */
+  // Ungated, unlike the one-shot install prompt, so the base-path panel button can reuse it.
   private void requestAllFilesAccess() {
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
       try {
@@ -496,31 +493,23 @@ public class HTTrackActivity extends FragmentActivity {
     requestAllFilesAccess();
   }
 
-  /*
-   * Base-path panel button: open the mirror folder in the system file UI. Private storage is hidden
-   * from file managers on Android 11+, so fall back to showing the path when it can't be opened.
-   */
+  // Base-path panel button. Private storage can't be opened in a file manager on Android 11+, so
+  // openFolderInFilesApp returns false there and we fall back to showing the path.
   public void onClickBrowseFolder(final View view) {
     final File dir = getProjectRootFile();
-    if (hasAllFilesAccess() && openFolderInFilesApp(dir)) {
-      return;
+    if (!openFolderInFilesApp(dir)) {
+      Toast.makeText(this, getString(R.string.base_path_toast, dir.getAbsolutePath()),
+          Toast.LENGTH_LONG).show();
     }
-    Toast.makeText(this, getString(R.string.base_path_toast, dir.getAbsolutePath()),
-        Toast.LENGTH_LONG).show();
   }
 
   /* Try to view dir through the external-storage documents provider. False if unmapped/unhandled. */
   private boolean openFolderInFilesApp(final File dir) {
-    final File shared = Environment.getExternalStorageDirectory();
-    if (shared == null) {
+    final String docId =
+        StoragePaths.externalStorageDocId(dir, Environment.getExternalStorageDirectory());
+    if (docId == null) {
       return false;
     }
-    final String root = shared.getAbsolutePath();
-    final String path = dir.getAbsolutePath();
-    if (!path.startsWith(root + File.separator)) {
-      return false;
-    }
-    final String docId = "primary:" + path.substring(root.length() + 1);
     final Uri uri =
         DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId);
     final Intent intent = new Intent(Intent.ACTION_VIEW)
@@ -538,16 +527,18 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /* Show the grant button and private-storage warning on the base-path panel only when access is off. */
+  // Base-path panel: warn whenever the mirror folder isn't browsable (private storage), which can
+  // outlast the permission bit when a private base path is persisted; offer the grant when it's off.
   private void refreshStorageAccessHints() {
-    final boolean granted = hasAllFilesAccess();
+    final boolean browsable = StoragePaths.externalStorageDocId(
+        getProjectRootFile(), Environment.getExternalStorageDirectory()) != null;
     final View grant = findViewById(R.id.buttonEnableAllFiles);
     if (grant != null) {
-      grant.setVisibility(granted ? View.GONE : View.VISIBLE);
+      grant.setVisibility(hasAllFilesAccess() ? View.GONE : View.VISIBLE);
     }
     final View warning = findViewById(R.id.textStorageWarning);
     if (warning != null) {
-      warning.setVisibility(granted ? View.GONE : View.VISIBLE);
+      warning.setVisibility(browsable ? View.GONE : View.VISIBLE);
     }
   }
 

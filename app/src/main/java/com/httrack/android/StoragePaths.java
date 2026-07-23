@@ -56,6 +56,36 @@ final class StoragePaths {
   }
 
   /**
+   * Documents-provider id ("primary:&lt;relative&gt;") to open {@code dir} in the system Files app via
+   * ACTION_VIEW, or null when it lies outside the primary shared volume or inside the Android/ subtree
+   * (both hidden from file managers on Android 11+), so the caller falls back.
+   *
+   * @param dir
+   *          the folder to open, need not exist
+   * @param shared
+   *          the primary shared root (getExternalStorageDirectory()), or null while unmounted
+   */
+  static String externalStorageDocId(final File dir, final File shared) {
+    if (dir == null || shared == null) {
+      return null;
+    }
+    try {
+      final String root = shared.getCanonicalPath();
+      final String path = dir.getCanonicalPath();
+      if (!path.startsWith(root + File.separator)) {
+        return null;
+      }
+      final String rel = path.substring(root.length() + 1);
+      if (rel.equals("Android") || rel.startsWith("Android" + File.separator)) {
+        return null;
+      }
+      return "primary:" + rel;
+    } catch (final IOException e) {
+      return null;
+    }
+  }
+
+  /**
    * Whether {@code name} is safe to append to a root as one directory. File does not fold "..", so
    * a crafted winprofile.ini name like "../../sdcard/evil" would otherwise steer the engine's -O
    * outside the Websites tree. Rejects empty, ".", ".." and anything carrying a path separator.
