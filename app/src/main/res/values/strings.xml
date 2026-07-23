@@ -220,7 +220,7 @@
     <string name="open_base_folder">Open folder</string>
     <string name="enable_all_files_access">Grant all-files access</string>
     <string name="storage_private_warning">Without all-files access, mirrors are saved in a private folder that other apps and file managers can\'t open. Grant access to keep them in a public HTTrack folder.</string>
-    <string name="base_path_toast">Mirror folder: %s</string>
+    <string name="base_path_toast">Folder path copied to clipboard: %s</string>
     <string name="title_activity_file_chooser">FileChooserActivity</string>
     <string name="apply_base_path">Save prefs</string>
     <string name="ellipsis">…</string>

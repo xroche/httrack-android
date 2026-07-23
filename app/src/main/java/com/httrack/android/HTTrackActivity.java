@@ -53,6 +53,8 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -493,17 +495,23 @@ public class HTTrackActivity extends FragmentActivity {
     requestAllFilesAccess();
   }
 
-  // Base-path panel button. Private storage can't be opened in a file manager on Android 11+, so
-  // openFolderInFilesApp returns false there and we fall back to showing the path.
+  // Base-path panel button. Tries a viewer then the SAF picker; if neither resolves (e.g. private
+  // storage), copies the path to the clipboard so the user can paste it into a file manager.
   public void onClickBrowseFolder(final View view) {
     final File dir = getProjectRootFile();
     if (!openFolderInFilesApp(dir)) {
-      Toast.makeText(this, getString(R.string.base_path_toast, dir.getAbsolutePath()),
-          Toast.LENGTH_LONG).show();
+      final String path = dir.getAbsolutePath();
+      final ClipboardManager clipboard =
+          ClipboardManager.class.cast(getSystemService(CLIPBOARD_SERVICE));
+      if (clipboard != null) {
+        clipboard.setPrimaryClip(ClipData.newPlainText("path", path));
+      }
+      Toast.makeText(this, getString(R.string.base_path_toast, path), Toast.LENGTH_LONG).show();
     }
   }
 
-  /* Try to view dir through the external-storage documents provider. False if unmapped/unhandled. */
+  /* Open dir in a file viewer, else the SAF picker pre-navigated to it. False if neither resolves
+   * (e.g. private storage), so the caller falls back to the path. */
   private boolean openFolderInFilesApp(final File dir) {
     final String docId =
         StoragePaths.externalStorageDocId(dir, Environment.getExternalStorageDirectory());
@@ -512,16 +520,23 @@ public class HTTrackActivity extends FragmentActivity {
     }
     final Uri uri =
         DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", docId);
-    final Intent intent = new Intent(Intent.ACTION_VIEW)
+    // ACTION_VIEW on a directory is honored only by AOSP DocumentsUI; Samsung My Files has none, so
+    // fall back to the SAF picker, which every device ships and pre-navigates to the folder.
+    return startFolderIntent(new Intent(Intent.ACTION_VIEW)
         .setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-    // No resolveActivity() pre-check: targetSdk 30+ package visibility makes it return null even
-    // when startActivity would launch the handler; the catch covers a genuinely absent one.
+        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        || startFolderIntent(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            .putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri));
+  }
+
+  // Launch one folder-opening intent; false when unhandled so the next rung can try. startActivity
+  // beats a resolveActivity() pre-check, which targetSdk 30+ visibility makes null for real handlers.
+  private boolean startFolderIntent(final Intent intent) {
     try {
       startActivity(intent);
       return true;
     } catch (final Exception e) {
-      Log.d(getClass().getSimpleName(), "cannot open folder in files app", e);
+      Log.d(getClass().getSimpleName(), "folder intent unhandled: " + intent.getAction(), e);
       return false;
     }
   }
