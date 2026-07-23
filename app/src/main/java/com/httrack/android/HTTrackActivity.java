@@ -515,9 +515,8 @@ public class HTTrackActivity extends FragmentActivity {
     final Intent intent = new Intent(Intent.ACTION_VIEW)
         .setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-    if (intent.resolveActivity(getPackageManager()) == null) {
-      return false;
-    }
+    // No resolveActivity() pre-check: targetSdk 30+ package visibility makes it return null even
+    // when startActivity would launch the handler; the catch covers a genuinely absent one.
     try {
       startActivity(intent);
       return true;
