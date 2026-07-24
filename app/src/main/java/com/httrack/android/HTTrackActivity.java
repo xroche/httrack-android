@@ -2280,11 +2280,7 @@ public class HTTrackActivity extends FragmentActivity {
     });
   }
 
-  /**
-   * Whether the setup pane must (re)load the selected project's saved profile: the
-   * selection changed from the profile in the map, or a restore forced it. Kept out of
-   * the map name key, which plain Back/Next writes before any profile is loaded.
-   */
+  /** Whether the setup pane should (re)load the selected project's saved profile; see loadedProjectName. */
   static boolean shouldReloadProfile(final String selectedName,
       final String loadedName, final boolean dirty) {
     return dirty || loadedName == null || !loadedName.equals(selectedName);
@@ -2313,9 +2309,7 @@ public class HTTrackActivity extends FragmentActivity {
       // Check project name
       final String name = getFieldText(R.id.fieldProjectName);
       if (OptionsMapper.isStringNonEmpty(name)) {
-        // Load the selected project's profile when the selection differs from what is
-        // loaded. Compares loadedProjectName, not the map name key: Back navigation
-        // writes that key (savePaneFields) before any profile is read.
+        // Reload when the selection differs from the loaded profile (see shouldReloadProfile).
         if (shouldReloadProfile(name, loadedProjectName, dirtyNamePane)) {
           // Put the name in the map first so unserialize() can resolve the profile.
           try {
@@ -2966,6 +2960,9 @@ public class HTTrackActivity extends FragmentActivity {
     // Map keys
     outState.putParcelable("com.httrack.android.map", mapper.serialize());
 
+    // Which project's profile the map holds, so the reload guard survives recreation.
+    outState.putString("com.httrack.android.loadedProjectName", loadedProjectName);
+
     // Current pane
     outState.putInt("com.httrack.android.pane_id", pane_id);
 
@@ -3105,6 +3102,11 @@ public class HTTrackActivity extends FragmentActivity {
     if (data != null) {
       // Load map settings
       loadParcelable(data);
+
+      // Restore the reload-guard sentinel alongside the map it tracks; else a post-restore
+      // Back/Next would treat the live map as stale and wipe the user's edits.
+      loadedProjectName = savedInstanceState
+          .getString("com.httrack.android.loadedProjectName");
 
       // The progress pane means a live crawl; after process death none exists, so land on the
       // setup pane instead, where isInterruptedProfile() defaults the action to Continue.
