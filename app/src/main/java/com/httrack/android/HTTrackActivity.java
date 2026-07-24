@@ -198,6 +198,10 @@ public class HTTrackActivity extends FragmentActivity {
   // "Project name" pane is dirty
   protected boolean dirtyNamePane;
 
+  // Project whose saved profile is loaded in the map (reload-guard sentinel); null if none.
+  // Distinct from the map name key, which plain Back navigation writes before any load.
+  protected String loadedProjectName;
+
   // Handler to execute code in UI thread
   private final Handler handlerUI = new Handler();
 
@@ -699,6 +703,7 @@ public class HTTrackActivity extends FragmentActivity {
     // Clear map (useful to get dynamic fields)
     mapper.setContext(this);
     mapper.resetMap();
+    loadedProjectName = null;
 
     // Go to first pane now
     setPane(0);
@@ -2275,9 +2280,15 @@ public class HTTrackActivity extends FragmentActivity {
     });
   }
 
+  /** Whether the setup pane should (re)load the selected project's saved profile; see loadedProjectName. */
+  static boolean shouldReloadProfile(final String selectedName,
+      final String loadedName, final boolean dirty) {
+    return dirty || loadedName == null || !loadedName.equals(selectedName);
+  }
+
   /**
    * Validate the current pane
-   * 
+   *
    * @return true if the current pane is valid
    */
   protected boolean validatePane() {
@@ -2298,11 +2309,9 @@ public class HTTrackActivity extends FragmentActivity {
       // Check project name
       final String name = getFieldText(R.id.fieldProjectName);
       if (OptionsMapper.isStringNonEmpty(name)) {
-        // Changed name ?
-        final String prevName = getMap(R.id.fieldProjectName);
-        if (prevName == null || !prevName.equals(name) || dirtyNamePane) {
-          // We need to put immediately the name in the map to be able to
-          // unserialize.
+        // Reload when the selection differs from the loaded profile (see shouldReloadProfile).
+        if (shouldReloadProfile(name, loadedProjectName, dirtyNamePane)) {
+          // Put the name in the map first so unserialize() can resolve the profile.
           try {
             mapper.resetMap();
             setMap(R.id.fieldProjectName, name);
@@ -2311,6 +2320,7 @@ public class HTTrackActivity extends FragmentActivity {
             // Ignore (if not found)
           } finally {
             dirtyNamePane = false;
+            loadedProjectName = name;
           }
         }
         // A crafted winprofile.ini can overwrite the name with a path that escapes the root.
@@ -2950,6 +2960,9 @@ public class HTTrackActivity extends FragmentActivity {
     // Map keys
     outState.putParcelable("com.httrack.android.map", mapper.serialize());
 
+    // Which project's profile the map holds, so the reload guard survives recreation.
+    outState.putString("com.httrack.android.loadedProjectName", loadedProjectName);
+
     // Current pane
     outState.putInt("com.httrack.android.pane_id", pane_id);
 
@@ -3089,6 +3102,11 @@ public class HTTrackActivity extends FragmentActivity {
     if (data != null) {
       // Load map settings
       loadParcelable(data);
+
+      // Restore the reload-guard sentinel alongside the map it tracks; else a post-restore
+      // Back/Next would treat the live map as stale and wipe the user's edits.
+      loadedProjectName = savedInstanceState
+          .getString("com.httrack.android.loadedProjectName");
 
       // The progress pane means a live crawl; after process death none exists, so land on the
       // setup pane instead, where isInterruptedProfile() defaults the action to Continue.
