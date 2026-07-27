@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.httrack.android.OptionsMapper.ArgumentOption;
+import com.httrack.android.OptionsMapper.LongOptionFlag;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.ProxyHandler;
 import com.httrack.android.OptionsMapper.SimpleOptionFlag;
@@ -97,5 +98,43 @@ public class OptionsEmissionTest {
     final StringBuilder flags = new StringBuilder();
     new SimpleOptionFlag("%r").emit(flags, new ArrayList<String>(), "0");
     assertFalse(flags.toString().contains("%r"));
+  }
+
+  /* sitemap/single-file/changes: own token, and never in the packed string. */
+  @Test
+  public void longOptionEmitsItsOwnTokenWhenChecked() {
+    for (final String option : new String[] { "--sitemap", "--single-file",
+        "--changes" }) {
+      /* seeded as buildCommandline() does, so a guarded append cannot hide */
+      final StringBuilder flags = new StringBuilder("-");
+      final List<String> cmd = new ArrayList<String>();
+      new LongOptionFlag(option).emit(flags, cmd, "1");
+      assertEquals(1, cmd.size());
+      assertEquals(option, cmd.get(0));
+      assertEquals("-", flags.toString());
+    }
+  }
+
+  @Test
+  public void longOptionStaysSilentWhenUncheckedOrUnset() {
+    for (final String value : new String[] { "0", "", null }) {
+      final StringBuilder flags = new StringBuilder("-");
+      final List<String> cmd = new ArrayList<String>();
+      new LongOptionFlag("--single-file").emit(flags, cmd, value);
+      assertTrue(cmd.isEmpty());
+      assertEquals("-", flags.toString());
+    }
+  }
+
+  /* the mappers are static singletons: emitting again must not go quiet. */
+  @Test
+  public void longOptionEmitsOnEveryBuild() {
+    final OptionMapper mapper = new LongOptionFlag("--changes");
+    final List<String> first = new ArrayList<String>();
+    final List<String> second = new ArrayList<String>();
+    mapper.emit(new StringBuilder("-"), first, "1");
+    mapper.emit(new StringBuilder("-"), second, "1");
+    assertEquals(first, second);
+    assertEquals("--changes", second.get(0));
   }
 }
