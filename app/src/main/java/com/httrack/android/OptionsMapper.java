@@ -104,6 +104,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.checkHidePasswords, "NoPwdInPages"),
       new Pair<Integer, String>(R.id.checkHideQueryStrings, "NoQueryStrings"),
       new Pair<Integer, String>(R.id.checkDoNotPurge, "NoPurgeOldFiles"),
+      new Pair<Integer, String>(R.id.checkSingleFile, "SingleFile"),
       new Pair<Integer, String>(R.id.checkWarc, "Warc"),
       new Pair<Integer, String>(R.id.radioBuild, "Build"),
       new Pair<Integer, String>(R.id.editCustomBuild, "BuildString"),
@@ -121,6 +122,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.radioCheckDocumentType, "CheckType"),
       new Pair<Integer, String>(R.id.checkParseJavaFiles, "ParseJava"),
       new Pair<Integer, String>(R.id.radioSpider, "FollowRobotsTxt"),
+      new Pair<Integer, String>(R.id.checkSitemap, "Sitemap"),
       new Pair<Integer, String>(R.id.checkUpdateHacks, "UpdateHack"),
       new Pair<Integer, String>(R.id.checkUrlHacks, "URLHack"),
       new Pair<Integer, String>(R.id.checkTolerentRequests, "TolerantRequests"),
@@ -137,6 +139,7 @@ public class OptionsMapper {
           "StoreAllInCache"),
       new Pair<Integer, String>(R.id.checkDoNotRedownloadLocallErasedFiles,
           "NoRecatch"),
+      new Pair<Integer, String>(R.id.checkChanges, "Changes"),
       new Pair<Integer, String>(R.id.checkCreateLogFiles, "Log"),
       /* FIXME with Log */
       new Pair<Integer, String>(R.id.radioVerbosity, "LogType"),
@@ -200,6 +203,9 @@ public class OptionsMapper {
       new Pair<String, String>("NoQueryStrings", "0"),
       new Pair<String, String>("NoPurgeOldFiles", "0"),
       new Pair<String, String>("Warc", "0"),
+      new Pair<String, String>("Sitemap", "0"),
+      new Pair<String, String>("SingleFile", "0"),
+      new Pair<String, String>("Changes", "0"),
       new Pair<String, String>("Cookies", "1"),
       new Pair<String, String>("CheckType", "1"),
       new Pair<String, String>("ParseJava", "1"),
@@ -290,6 +296,10 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("NoPurgeOldFiles", new SimpleOptionFlag(
           "X0")),
       new Pair<String, OptionMapper>("Warc", new SimpleOptionFlag("%r")),
+      new Pair<String, OptionMapper>("Sitemap", new LongOptionFlag("--sitemap")),
+      new Pair<String, OptionMapper>("SingleFile", new LongOptionFlag(
+          "--single-file")),
+      new Pair<String, OptionMapper>("Changes", new LongOptionFlag("--changes")),
       new Pair<String, OptionMapper>("Build", buildHandler.getTypeMapper()),
       new Pair<String, OptionMapper>("BuildString",
           buildHandler.getCustomMapper()),
@@ -1362,6 +1372,29 @@ public class OptionsMapper {
         if ((!reverted && "1".equals(value)) || (reverted && "0".equals(value))) {
           flags.append(option);
         }
+      }
+    }
+  }
+
+  /**
+   * Boolean option emitted as its own argument, in long form.
+   *
+   * Mandatory when the short form has a two-letter variant (-%m / -%mu, -%Z /
+   * -%Zs): packed in the compacted flag string, the next flag's first letter
+   * would be read as that variant and swallow an argument.
+   */
+  public static class LongOptionFlag implements OptionMapper {
+    protected final String option;
+
+    public LongOptionFlag(final String option) {
+      this.option = option;
+    }
+
+    @Override
+    public void emit(final StringBuilder flags, final List<String> commandline,
+        final String value) {
+      if ("1".equals(value)) {
+        commandline.add(option);
       }
     }
   }

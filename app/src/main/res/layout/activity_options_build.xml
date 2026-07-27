@@ -56,6 +56,12 @@
             android:layout_height="wrap_content"
             android:text="@string/do_not_purge_old_files" />
 
+        <CheckBox
+            android:id="@+id/checkSingleFile"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/single_file" />
+
         <LinearLayout
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
