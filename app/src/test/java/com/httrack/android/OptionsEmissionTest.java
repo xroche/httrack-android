@@ -103,22 +103,38 @@ public class OptionsEmissionTest {
   /* sitemap/single-file/changes: own token, and never in the packed string. */
   @Test
   public void longOptionEmitsItsOwnTokenWhenChecked() {
-    final StringBuilder flags = new StringBuilder();
-    final List<String> cmd = new ArrayList<String>();
-    new LongOptionFlag("--sitemap").emit(flags, cmd, "1");
-    assertEquals(1, cmd.size());
-    assertEquals("--sitemap", cmd.get(0));
-    assertEquals("", flags.toString());
+    for (final String option : new String[] { "--sitemap", "--single-file",
+        "--changes" }) {
+      /* seeded as buildCommandline() does, so a guarded append cannot hide */
+      final StringBuilder flags = new StringBuilder("-");
+      final List<String> cmd = new ArrayList<String>();
+      new LongOptionFlag(option).emit(flags, cmd, "1");
+      assertEquals(1, cmd.size());
+      assertEquals(option, cmd.get(0));
+      assertEquals("-", flags.toString());
+    }
   }
 
   @Test
   public void longOptionStaysSilentWhenUncheckedOrUnset() {
     for (final String value : new String[] { "0", "", null }) {
-      final StringBuilder flags = new StringBuilder();
+      final StringBuilder flags = new StringBuilder("-");
       final List<String> cmd = new ArrayList<String>();
       new LongOptionFlag("--single-file").emit(flags, cmd, value);
       assertTrue(cmd.isEmpty());
-      assertEquals("", flags.toString());
+      assertEquals("-", flags.toString());
     }
+  }
+
+  /* the mappers are static singletons: emitting again must not go quiet. */
+  @Test
+  public void longOptionEmitsOnEveryBuild() {
+    final OptionMapper mapper = new LongOptionFlag("--changes");
+    final List<String> first = new ArrayList<String>();
+    final List<String> second = new ArrayList<String>();
+    mapper.emit(new StringBuilder("-"), first, "1");
+    mapper.emit(new StringBuilder("-"), second, "1");
+    assertEquals(first, second);
+    assertEquals("--changes", second.get(0));
   }
 }

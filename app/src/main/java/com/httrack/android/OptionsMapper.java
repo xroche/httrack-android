@@ -1377,11 +1377,9 @@ public class OptionsMapper {
   }
 
   /**
-   * Boolean option emitted as its own argument, in long form.
-   *
-   * Mandatory when the short form has a two-letter variant (-%m / -%mu, -%Z /
-   * -%Zs): packed in the compacted flag string, the next flag's first letter
-   * would be read as that variant and swallow an argument.
+   * Required for a short flag with a two-letter variant (-%m / -%mu, -%Z /
+   * -%Zs): packed in the compacted string, the next flag's first letter would
+   * be misread as that variant and swallow an argument.
    */
   public static class LongOptionFlag implements OptionMapper {
     protected final String option;
