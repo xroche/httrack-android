@@ -1101,6 +1101,20 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
+   * Describe a throwable that aborted a crawl, for the finished panel.
+   *
+   * @param e
+   *          the throwable to describe
+   * @return plain text, not HTML-escaped
+   */
+  static String describeCrash(final Throwable e) {
+    final String detail = e.getMessage();
+    return detail != null && !detail.isEmpty()
+        ? e.getClass().getName() + ": " + detail
+        : e.getClass().getName();
+  }
+
+  /**
    * Build the top index.
    * 
    * @return 1 upon success
@@ -1304,7 +1318,8 @@ public class HTTrackActivity extends FragmentActivity {
     protected Void doInBackground(final Void... arg0) {
       try {
         runInternal();
-      } catch (final RuntimeException e) {
+      } catch (final Throwable e) {
+        // Last resort: runInternal absorbs its own failures, this only covers what comes after.
         HTTrackActivity.emergencyDump(appContext, e);
         throw e;
       } finally {
@@ -1407,6 +1422,13 @@ public class HTTrackActivity extends FragmentActivity {
         buildTopIndex();
       } catch (final IOException io) {
         message = io.getMessage();
+      } catch (final Throwable t) {
+        // A native fault recovered by coffeecatch lands here as java.lang.Error: report it on
+        // the finished panel instead of letting it take the process down.
+        Log.e(getClass().getSimpleName(), "crawl aborted", t);
+        HTTrackActivity.emergencyDump(appContext, t);
+        message = "<b>Error</b>: "
+            + TextUtils.htmlEncode(HTTrackActivity.describeCrash(t));
       } finally {
         // Release inter-thread lock
         if (profile != null) {
