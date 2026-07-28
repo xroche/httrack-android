@@ -303,7 +303,12 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Set root path for logs
     if (HTTrackLib.loadedSuccessfully()) {
-      HTTrackLib.initRootPath(projectPath.getAbsolutePath());
+      try {
+        HTTrackLib.initRootPath(projectPath.getAbsolutePath());
+      } catch (final Throwable t) {
+        // Recovered native fault: losing the crash log is better than losing the app.
+        Log.e(getClass().getSimpleName(), "could not set the log root path", t);
+      }
     }
 
     // Change ?
@@ -1101,6 +1106,20 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
+   * Describe a throwable that aborted a crawl, for the finished panel.
+   *
+   * @param e
+   *          the throwable to describe
+   * @return plain text, not HTML-escaped
+   */
+  static String describeCrash(final Throwable e) {
+    final String detail = e.getMessage();
+    return detail != null && !detail.isEmpty()
+        ? e.getClass().getName() + ": " + detail
+        : e.getClass().getName();
+  }
+
+  /**
    * Build the top index.
    * 
    * @return 1 upon success
@@ -1109,7 +1128,14 @@ public class HTTrackActivity extends FragmentActivity {
     // Build top index
     final File rsc = getResourceFile();
     if (rsc != null) {
-      return HTTrackLib.buildTopIndex(getProjectRootFile(), rsc);
+      try {
+        return HTTrackLib.buildTopIndex(getProjectRootFile(), rsc);
+      } catch (final Throwable t) {
+        // Recovered native fault: a missing top index is not worth the process.
+        Log.e(getClass().getSimpleName(), "could not build top index", t);
+        emergencyDump(getApplicationContext(), t);
+        return 0;
+      }
     } else {
       return 0;
     }
@@ -1304,7 +1330,8 @@ public class HTTrackActivity extends FragmentActivity {
     protected Void doInBackground(final Void... arg0) {
       try {
         runInternal();
-      } catch (final RuntimeException e) {
+      } catch (final Throwable e) {
+        // Last resort: runInternal absorbs its own failures, this only covers what comes after.
         HTTrackActivity.emergencyDump(appContext, e);
         throw e;
       } finally {
@@ -1406,7 +1433,16 @@ public class HTTrackActivity extends FragmentActivity {
         // Build top index
         buildTopIndex();
       } catch (final IOException io) {
-        message = io.getMessage();
+        // Carries user-supplied paths, and the panel renders it as HTML.
+        final String detail = io.getMessage();
+        message = TextUtils.htmlEncode(
+            detail != null ? detail : HTTrackActivity.describeCrash(io));
+      } catch (final Throwable t) {
+        // A native fault recovered by coffeecatch lands here as java.lang.Error.
+        Log.e(getClass().getSimpleName(), "crawl aborted", t);
+        HTTrackActivity.emergencyDump(appContext, t);
+        message = "<b>Error</b>: "
+            + TextUtils.htmlEncode(HTTrackActivity.describeCrash(t));
       } finally {
         // Release inter-thread lock
         if (profile != null) {

@@ -348,10 +348,7 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_initStatic(JNIEnv* env, jcl
   hts_set_log_vprint_callback(httrackLogCallback);
 }
 
-JNICALL void
-Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
-                                                     jclass clazz,
-                                                     jstring opath) {
+static void HTTrackLib_initRootPath(JNIEnv* env, jclass clazz, jstring opath) {
   if (opath != NULL) {
     const char* path = (*env)->GetStringUTFChars(env, opath, NULL);
 
@@ -407,6 +404,17 @@ Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
 #undef ASSERT_THROWS
 #undef L
 #undef L_
+}
+
+JNICALL void
+Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
+                                                     jclass clazz,
+                                                     jstring opath) {
+#ifdef USE_COFFEECATCH
+  COFFEE_TRY_JNI(env, HTTrackLib_initRootPath(env, clazz, opath));
+#else
+  HTTrackLib_initRootPath(env, clazz, opath);
+#endif
 }
 
 /* note: never called on Android */
@@ -777,9 +785,8 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
   return stopped;
 }
 
-JNICALL jint
-Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
-                                                      jstring opath, jstring otemplates) {
+static jint HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz, jstring opath,
+                                     jstring otemplates) {
   if (opath != NULL && otemplates != NULL) {
     const char* path = (*env)->GetStringUTFChars(env, opath, NULL);
     const char* templates = (*env)->GetStringUTFChars(env, otemplates, NULL);
@@ -800,6 +807,18 @@ Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
     return -1;
   }
   UNUSED(clazz);
+}
+
+JNICALL jint
+Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
+                                                      jstring opath, jstring otemplates) {
+#ifdef USE_COFFEECATCH
+  volatile jint ret = -1;
+  COFFEE_TRY_JNI(env, ret = HTTrackLib_buildTopIndex(env, clazz, opath, otemplates));
+  return ret;
+#else
+  return HTTrackLib_buildTopIndex(env, clazz, opath, otemplates);
+#endif
 }
 
 jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
