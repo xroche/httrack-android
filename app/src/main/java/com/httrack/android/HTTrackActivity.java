@@ -1423,8 +1423,7 @@ public class HTTrackActivity extends FragmentActivity {
       } catch (final IOException io) {
         message = io.getMessage();
       } catch (final Throwable t) {
-        // A native fault recovered by coffeecatch lands here as java.lang.Error: report it on
-        // the finished panel instead of letting it take the process down.
+        // A native fault recovered by coffeecatch lands here as java.lang.Error.
         Log.e(getClass().getSimpleName(), "crawl aborted", t);
         HTTrackActivity.emergencyDump(appContext, t);
         message = "<b>Error</b>: "
