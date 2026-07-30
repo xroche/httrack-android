@@ -117,7 +117,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install requests cryptography
+      - run: pip install -r tools/ci/play-requirements.txt
       - run: python3 tools/ci/play_track_admin_test.py
 
   # --- Phases below land with the app modernization (see the plan) ---

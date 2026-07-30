@@ -21,11 +21,15 @@ on:
         description: 'track to leave with no release, in the same edit (blank = none)'
         default: ''
       dry_run:
-        description: 'true prints the plan and commits nothing'
-        default: 'false'
+        description: 'print the plan and commit nothing'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+
+concurrency:                             # concurrent edits on the same app collide
+  group: play-promote
 
 jobs:
   promote:
@@ -36,7 +40,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install requests cryptography
+      - run: pip install -r tools/ci/play-requirements.txt
       - name: Promote
         # Inputs go through the environment, never interpolated into the script body.
         env:
@@ -49,6 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+          trap 'rm -f "$RUNNER_TEMP/play-sa.json"' EXIT
           printf '%s' "$SA_JSON" > "$RUNNER_TEMP/play-sa.json"
           args=()
           if [ -n "$CLEAR_TRACK" ]; then args+=(--clear-track "$CLEAR_TRACK"); fi
