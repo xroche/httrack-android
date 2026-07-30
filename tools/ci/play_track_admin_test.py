@@ -36,13 +36,18 @@ TRACKS = {
 
 
 class FakeResponse:
+    """payload=None models a body-less 200, which is what Play answers a track clear with."""
+
     def __init__(self, status=200, payload=None):
         self.status_code = status
-        self._payload = payload if payload is not None else {}
+        self._payload = payload
         self.ok = 200 <= status < 300
-        self.text = json.dumps(self._payload)
+        self.text = "" if payload is None else json.dumps(payload)
+        self.content = self.text.encode()
 
     def json(self):
+        if not self.content:
+            raise ValueError("Expecting value: line 1 column 1 (char 0)")
         return self._payload
 
     def raise_for_status(self):
@@ -97,7 +102,7 @@ class FakeSession:
             self.reject_times -= 1
             return FakeResponse(400, {"error": {"message": self.reject_message}})
         self.puts.append((track, copy.deepcopy(json)))
-        return FakeResponse(200, json)
+        return FakeResponse(200) if not json["releases"] else FakeResponse(200, json)
 
     def delete(self, url, **kw):
         self.deleted.append(self._edit_id(url))
@@ -159,6 +164,12 @@ class Test(unittest.TestCase):
             run(promote(), s)
         self.assertEqual(len(s.commits), 1)
         self.assertEqual(s.deleted, [])  # deleting a committed edit is an API error
+
+    def test_a_body_less_200_on_the_clear_is_not_an_error(self):
+        s = FakeSession()
+        run(promote("--clear-track", "alpha"), s)
+        self.assertEqual([t for t, _ in s.puts], ["beta", "alpha"])
+        self.assertEqual(len(s.commits), 1)
 
     def test_dry_run_commits_nothing(self):
         s = FakeSession()

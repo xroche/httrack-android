@@ -133,7 +133,8 @@ def put_track(session, eid, track, releases):
     while True:
         r = session.put(f"{BASE}/edits/{eid}/tracks/{track}", json=body, timeout=TIMEOUT)
         if r.ok:
-            return r.json()
+            # Clearing a track answers 200 with no body at all, so do not assume JSON.
+            return r.json() if r.content else {}
         present = {n["language"] for rel in body["releases"] for n in rel.get("releaseNotes", [])}
         bad = unsupported_language(r, present)
         if bad is None:
