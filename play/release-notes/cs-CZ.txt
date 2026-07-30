@@ -1,0 +1,10 @@
+HTTrack 3.50 beta 1, první verze pro Android po devíti letech.
+
+• HTTPS zase funguje: OpenSSL 3, TLS 1.3, proxy SOCKS5
+• Soubory nad 2 GB a názvy s diakritikou už kopii nerozbijí
+• Neúspěšná aktualizace už nepřepíše vaši dobrou kopii
+• Zachytí srcset, líně načítané obrázky, video a audio zdroje
+• Novinky: start z mapy webu, samostatné stránky, výstup WARC
+• 64 bitů, tmavý režim, rozvržení zprava doleva, Android 16
+
+Beta: hlaste problémy na GitHubu.
