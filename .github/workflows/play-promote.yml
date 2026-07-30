@@ -1,5 +1,3 @@
-# Move an already-uploaded versionCode between Play tracks, and optionally clear a track.
-#
 # play-publish.yml uploads a new AAB; Play refuses a second upload of the same versionCode,
 # so changing which track serves an existing build has to go through the Publishing API.
 # Track names are the API's: alpha is Closed testing, beta is Open testing.

@@ -107,8 +107,7 @@ jobs:
           path: app/build/reports/lint-results-*.*
           if-no-files-found: warn
 
-  # play-promote.yml only ever runs by hand against the live Play API, so this stubbed-API
-  # test is the only thing standing between a typo and a bad track edit.
+  # play-promote.yml only runs by hand against the live Play API; this is its only guard.
   play-tools:
     name: play tooling
     runs-on: ubuntu-24.04
