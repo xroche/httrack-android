@@ -94,9 +94,15 @@ def put_track(session, eid, track, releases):
         bad = unsupported_language(r)
         if bad is None:
             sys.exit(f"PUT {track} failed: {r.status_code} {r.text}")
-        print(f"  dropping unsupported locale {bad}")
+        dropped = False
         for rel in body["releases"]:
-            rel["releaseNotes"] = [n for n in rel.get("releaseNotes", []) if n["language"] != bad]
+            keep = [n for n in rel.get("releaseNotes", []) if n["language"] != bad]
+            dropped |= len(keep) != len(rel.get("releaseNotes", []))
+            rel["releaseNotes"] = keep
+        # Retrying an unchanged body would spin forever, so a locale we cannot find is fatal.
+        if not dropped:
+            sys.exit(f"PUT {track} failed on locale {bad!r}, which is not in the body: {r.text}")
+        print(f"  dropping unsupported locale {bad}")
 
 
 def unsupported_language(response):
@@ -174,6 +180,9 @@ def main():
         if args.clear_track:
             if args.clear_track not in by_name:
                 sys.exit(f"no such track: {args.clear_track}")
+            # Both PUTs share one edit, so clearing the target would just erase the promote.
+            if args.clear_track == args.to_track:
+                sys.exit(f"--clear-track {args.clear_track} is also the promote target")
             plan.append((args.clear_track, []))
 
         if args.dry_run:

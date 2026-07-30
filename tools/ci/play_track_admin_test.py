@@ -67,8 +67,8 @@ class FakeSession:
 
     def put(self, url, json=None, **kw):
         track = url.rsplit("/", 1)[-1]
-        langs = [n["language"] for r in json["releases"] for n in r.get("releaseNotes", [])]
-        if self.reject_locale and self.reject_locale in langs and not self._rejected:
+        # Reject once whatever reject_locale names, present in the body or not.
+        if self.reject_locale and not self._rejected:
             self._rejected = True
             return FakeResponse(
                 400, {"error": {"message": f"Invalid language: {self.reject_locale}"}}
@@ -169,6 +169,31 @@ class Test(unittest.TestCase):
         self.assertEqual({n["language"] for n in beta["releaseNotes"]}, {"en-US", "fr-FR"})
         self.assertIn("dropping unsupported locale uz", out)
         self.assertTrue(s.committed)
+
+    def test_clearing_the_promote_target_aborts(self):
+        s = FakeSession()
+        with self.assertRaises(SystemExit):
+            run(
+                [
+                    "promote",
+                    "89",
+                    "internal",
+                    "alpha",
+                    "--notes-dir",
+                    self.notes_dir(),
+                    "--clear-track",
+                    "alpha",
+                ],
+                s,
+            )
+        self.assertEqual(s.puts, [])
+        self.assertFalse(s.committed)
+
+    def test_a_locale_error_naming_nothing_in_the_body_aborts(self):
+        s = FakeSession(reject_locale="pt-BR")  # never sent, so the drop cannot make progress
+        with self.assertRaises(SystemExit):
+            run(["promote", "89", "internal", "beta", "--notes-dir", self.notes_dir()], s)
+        self.assertFalse(s.committed)
 
     def test_unknown_version_code_aborts_before_any_put(self):
         s = FakeSession()
