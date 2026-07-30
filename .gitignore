@@ -19,3 +19,6 @@ workspace.xml
 
 # Generated at build time from the httrack engine (buildResourcesBundle task).
 /app/src/main/res/raw/resources.zip
+
+# Python bytecode from tools/ci scripts
+__pycache__/

@@ -1,0 +1,61 @@
+# play-publish.yml uploads a new AAB; Play refuses a second upload of the same versionCode,
+# so changing which track serves an existing build has to go through the Publishing API.
+# Track names are the API's: alpha is Closed testing, beta is Open testing.
+name: Play promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'versionCode to promote (integer)'
+        required: true
+      from_track:
+        description: 'track the build is on now'
+        default: internal
+      to_track:
+        description: 'track to promote it to (internal, alpha = closed, beta = open, production)'
+        default: beta
+      clear_track:
+        description: 'track to leave with no release, in the same edit (blank = none)'
+        default: ''
+      dry_run:
+        description: 'print the plan and commit nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:                             # concurrent edits on the same app collide
+  group: play-promote
+
+jobs:
+  promote:
+    name: promote on Play
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tools/ci/play-requirements.txt
+      - name: Promote
+        # Inputs go through the environment, never interpolated into the script body.
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          FROM_TRACK: ${{ inputs.from_track }}
+          TO_TRACK: ${{ inputs.to_track }}
+          CLEAR_TRACK: ${{ inputs.clear_track }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/play-sa.json"' EXIT
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/play-sa.json"
+          args=()
+          if [ -n "$CLEAR_TRACK" ]; then args+=(--clear-track "$CLEAR_TRACK"); fi
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python3 tools/ci/play_track_admin.py "$RUNNER_TEMP/play-sa.json" promote \
+            "$VERSION_CODE" "$FROM_TRACK" "$TO_TRACK" \
+            --notes-dir distribution/whatsnew "${args[@]}"

@@ -1,0 +1,10 @@
+HTTrack 3.50 beta 1, la primera versión Android en nueve años.
+
+• HTTPS vuelve a funcionar: OpenSSL 3, TLS 1.3, proxies SOCKS5
+• Archivos de más de 2 GB y nombres acentuados ya no rompen una copia
+• Una actualización fallida ya no sobrescribe la copia buena
+• Captura srcset, imágenes de carga diferida, fuentes de vídeo y audio
+• Nuevo: inicio por sitemap, páginas autónomas, salida WARC
+• 64 bits, modo oscuro, diseños de derecha a izquierda, Android 16
+
+Beta: informa de los problemas en GitHub.

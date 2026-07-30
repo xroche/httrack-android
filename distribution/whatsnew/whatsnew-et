@@ -1,0 +1,10 @@
+HTTrack 3.50 beeta 1, esimene Androidi versioon üheksa aasta jooksul.
+
+• HTTPS töötab jälle: OpenSSL 3, TLS 1.3, SOCKS5 puhverserverid
+• Üle 2 GB failid ja täpitähtedega nimed ei riku enam koopiat
+• Ebaõnnestunud värskendus ei kirjuta enam head koopiat üle
+• Salvestab srcset'i, laisalt laaditud pildid, video- ja heliallikad
+• Uut: käivitus saidikaardist, iseseisvad lehed, WARC-väljund
+• 64-bitine, tume režiim, paremalt vasakule paigutused, Android 16
+
+Beeta: teata probleemidest GitHubis.
