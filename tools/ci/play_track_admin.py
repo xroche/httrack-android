@@ -18,6 +18,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import sys
 import time
 
@@ -27,8 +28,43 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 PKG = "com.httrack.android"
 BASE = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PKG}"
-NOTE_LIMIT = 500  # Play's per-language cap on release notes.
+NOTE_LIMIT = 500  # Play's per-language cap, in Unicode characters.
+NOTE_PREFIX = "whatsnew-"  # fastlane's naming, so play-publish.yml can read the same files.
 TIMEOUT = 30
+
+# Play's release-note locales, restricted to the languages httrack itself ships. httrack's
+# Uzbek is deliberately absent: Play has no Uzbek locale, and offering one fails the upload.
+PLAY_LOCALES = {
+    "bg",
+    "cs-CZ",
+    "da-DK",
+    "de-DE",
+    "el-GR",
+    "en-US",
+    "es-ES",
+    "et",
+    "fi-FI",
+    "fr-FR",
+    "hr",
+    "hu-HU",
+    "it-IT",
+    "ja-JP",
+    "mk-MK",
+    "nl-NL",
+    "no-NO",
+    "pl-PL",
+    "pt-BR",
+    "pt-PT",
+    "ro",
+    "ru-RU",
+    "sk",
+    "sl",
+    "sv-SE",
+    "tr-TR",
+    "uk",
+    "zh-CN",
+    "zh-TW",
+}
 
 
 def b64url(b):
@@ -60,63 +96,68 @@ def access_token(sa):
 
 
 def load_notes(notes_dir):
-    """Read <locale>.txt into the API's releaseNotes list, rejecting over-long ones."""
-    notes, over = [], []
+    """Read whatsnew-<locale> files into the API's releaseNotes list.
+
+    Both the length and the locale are checked here rather than at PUT time: Play's
+    rejection messages are not worth parsing, and a bad note should cost nothing.
+    """
+    notes, bad = [], []
     for name in sorted(os.listdir(notes_dir)):
-        if not name.endswith(".txt"):
+        if not name.startswith(NOTE_PREFIX):
             continue
+        locale = name.removeprefix(NOTE_PREFIX)
         with open(os.path.join(notes_dir, name), encoding="utf-8") as f:
             text = f.read().strip()
         if len(text) > NOTE_LIMIT:
-            over.append(f"{name} ({len(text)} chars)")
-        notes.append({"language": name[:-4], "text": text})
-    if over:
-        sys.exit(f"release notes over Play's {NOTE_LIMIT}-char limit: {', '.join(over)}")
+            bad.append(f"{name}: {len(text)} chars, over the {NOTE_LIMIT} limit")
+        if locale not in PLAY_LOCALES:
+            bad.append(f"{name}: {locale} is not a Play release-note locale")
+        notes.append({"language": locale, "text": text})
+    if bad:
+        sys.exit("bad release notes:\n  " + "\n  ".join(bad))
     if not notes:
-        sys.exit(f"no <locale>.txt under {notes_dir}")
+        sys.exit(f"no {NOTE_PREFIX}* files under {notes_dir}")
     return notes
 
 
 def find_release(track, version_code):
     for rel in track.get("releases", []):
-        if version_code in [int(c) for c in rel.get("versionCodes", [])]:
+        if version_code in [int(c) for c in rel.get("versionCodes") or []]:
             return rel
     return None
 
 
 def put_track(session, eid, track, releases):
-    """PUT a track body, dropping any locale Play rejects rather than failing the run."""
+    """PUT a track body, dropping a locale Play rejects rather than failing the whole run."""
     body = {"track": track, "releases": releases}
     while True:
         r = session.put(f"{BASE}/edits/{eid}/tracks/{track}", json=body, timeout=TIMEOUT)
         if r.ok:
             return r.json()
-        bad = unsupported_language(r)
+        present = {n["language"] for rel in body["releases"] for n in rel.get("releaseNotes", [])}
+        bad = unsupported_language(r, present)
         if bad is None:
             sys.exit(f"PUT {track} failed: {r.status_code} {r.text}")
-        dropped = False
-        for rel in body["releases"]:
-            keep = [n for n in rel.get("releaseNotes", []) if n["language"] != bad]
-            dropped |= len(keep) != len(rel.get("releaseNotes", []))
-            rel["releaseNotes"] = keep
-        # Retrying an unchanged body would spin forever, so a locale we cannot find is fatal.
-        if not dropped:
-            sys.exit(f"PUT {track} failed on locale {bad!r}, which is not in the body: {r.text}")
         print(f"  dropping unsupported locale {bad}")
+        for rel in body["releases"]:
+            rel["releaseNotes"] = [n for n in rel.get("releaseNotes", []) if n["language"] != bad]
 
 
-def unsupported_language(response):
-    """The locale Play rejected in a 400, or None if the error is something else."""
-    if response.status_code != 400:
+def unsupported_language(response, present):
+    """The locale from `present` that Play's 400 names, or None if it names none of them.
+
+    Only a locale actually in the body can be returned, so the caller always makes progress
+    and the retry terminates. Play's wording varies, so this matches rather than parses.
+    """
+    if response.status_code != 400 or not present:
         return None
-    message = response.json().get("error", {}).get("message", "")
-    if "language" not in message.lower():
+    try:
+        message = response.json().get("error", {}).get("message", "")
+    except ValueError:
         return None
-    # e.g. "Invalid language: uz" / "... language 'uz' is not supported"
-    for token in message.replace("'", " ").replace('"', " ").replace(":", " ").split():
-        if 2 <= len(token) <= 6 and token.replace("-", "").isalpha() and token[0].islower():
-            return token
-    return None
+    words = set(re.findall(r"[A-Za-z]{2}(?:-[A-Za-z]{2,4})?", message))
+    named = [loc for loc in present if loc in words]
+    return named[0] if len(named) == 1 else None
 
 
 def main():
@@ -165,6 +206,10 @@ def main():
         src = find_release(by_name[args.from_track], args.version_code)
         if src is None:
             sys.exit(f"vc{args.version_code} is not on the {args.from_track} track")
+        # A multi-code release would lose its siblings, since the PUT replaces the track.
+        codes = src.get("versionCodes") or []
+        if len(codes) > 1:
+            sys.exit(f"vc{args.version_code} shares a release with {', '.join(codes)}")
 
         release = {
             "name": src.get("name", str(args.version_code)),
@@ -183,6 +228,8 @@ def main():
             # Both PUTs share one edit, so clearing the target would just erase the promote.
             if args.clear_track == args.to_track:
                 sys.exit(f"--clear-track {args.clear_track} is also the promote target")
+            if args.clear_track == "production":
+                sys.exit("refusing to unpublish production")
             plan.append((args.clear_track, []))
 
         if args.dry_run:

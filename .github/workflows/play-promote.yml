@@ -60,4 +60,4 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
           python3 tools/ci/play_track_admin.py "$RUNNER_TEMP/play-sa.json" promote \
             "$VERSION_CODE" "$FROM_TRACK" "$TO_TRACK" \
-            --notes-dir play/release-notes "${args[@]}"
+            --notes-dir distribution/whatsnew "${args[@]}"

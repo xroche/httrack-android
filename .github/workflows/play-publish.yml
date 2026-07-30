@@ -98,3 +98,4 @@ jobs:
           releaseFiles: aab/app-release.aab
           track: ${{ github.event.inputs.track || 'internal' }}
           status: ${{ github.event.inputs.status || 'completed' }}
+          whatsNewDirectory: distribution/whatsnew
