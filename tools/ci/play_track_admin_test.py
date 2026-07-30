@@ -30,6 +30,7 @@ TRACKS = {
             "releases": [{"name": "3.49.14.86", "versionCodes": ["86"], "status": "completed"}],
         },
         {"track": "beta", "releases": []},
+        {"track": "empty", "releases": []},
         {"track": "production", "releases": []},
     ]
 }
@@ -62,7 +63,10 @@ class FakeSession:
     edit, package or path fails here rather than silently passing.
     """
 
-    def __init__(self, reject_message=None, reject_times=1, fail_after_commit=False):
+    def __init__(
+        self, reject_message=None, reject_times=1, fail_after_commit=False, body_less_put=False
+    ):
+        self.body_less_put = body_less_put
         self.fail_after_commit = fail_after_commit
         self.headers = {}
         self.puts = []
@@ -102,7 +106,7 @@ class FakeSession:
             self.reject_times -= 1
             return FakeResponse(400, {"error": {"message": self.reject_message}})
         self.puts.append((track, copy.deepcopy(json)))
-        return FakeResponse(200) if not json["releases"] else FakeResponse(200, json)
+        return FakeResponse(200) if self.body_less_put else FakeResponse(200, json)
 
     def delete(self, url, **kw):
         self.deleted.append(self._edit_id(url))
@@ -140,7 +144,7 @@ def promote(*extra, notes=None):
 class Test(unittest.TestCase):
     def test_promote_and_clear_share_one_edit(self):
         s = FakeSession()
-        run(promote("--clear-track", "alpha"), s)
+        run(promote("--halt-track", "alpha"), s)
         self.assertEqual([t for t, _ in s.puts], ["beta", "alpha"])
         beta = dict(s.puts)["beta"]["releases"][0]
         self.assertEqual(beta["versionCodes"], ["89"])
@@ -148,7 +152,10 @@ class Test(unittest.TestCase):
         self.assertNotIn("userFraction", beta)
         self.assertEqual(beta["name"], "3.50-beta-1")  # carried over from the source release
         self.assertEqual({n["language"] for n in beta["releaseNotes"]}, {"en-US", "fr-FR", "de-DE"})
-        self.assertEqual(dict(s.puts)["alpha"]["releases"], [])
+        self.assertEqual(
+            dict(s.puts)["alpha"]["releases"],
+            [{"name": "3.49.14.86", "versionCodes": ["86"], "status": "halted"}],
+        )
         self.assertEqual(len(s.commits), 1)
 
     def test_the_committed_edit_is_never_deleted(self):
@@ -165,15 +172,28 @@ class Test(unittest.TestCase):
         self.assertEqual(len(s.commits), 1)
         self.assertEqual(s.deleted, [])  # deleting a committed edit is an API error
 
-    def test_a_body_less_200_on_the_clear_is_not_an_error(self):
-        s = FakeSession()
-        run(promote("--clear-track", "alpha"), s)
+    def test_a_body_less_200_is_not_an_error(self):
+        s = FakeSession(body_less_put=True)
+        run(promote("--halt-track", "alpha"), s)
         self.assertEqual([t for t, _ in s.puts], ["beta", "alpha"])
         self.assertEqual(len(s.commits), 1)
 
+    def test_halting_a_track_with_no_release_aborts(self):
+        s = FakeSession()
+        with self.assertRaises(SystemExit):
+            run(promote("--halt-track", "empty"), s)
+
+    def test_halting_an_already_halted_track_aborts(self):
+        s = FakeSession()
+        halted = [{"name": "x", "versionCodes": ["86"], "status": "halted"}]
+        with mock.patch.dict(TRACKS["tracks"][1], {"releases": halted}):
+            with self.assertRaises(SystemExit):
+                run(promote("--halt-track", "alpha"), s)
+        self.assertEqual(s.puts, [])
+
     def test_dry_run_commits_nothing(self):
         s = FakeSession()
-        out = run(promote("--clear-track", "alpha", "--dry-run"), s)
+        out = run(promote("--halt-track", "alpha", "--dry-run"), s)
         self.assertEqual(s.puts, [])
         self.assertEqual(s.commits, [])
         self.assertIn("dry run", out)
@@ -207,7 +227,7 @@ class Test(unittest.TestCase):
                 run(promote(), s)
             self.assertEqual(s.puts, [], message)
 
-    def test_clearing_the_promote_target_aborts(self):
+    def test_halting_the_promote_target_aborts(self):
         s = FakeSession()
         with self.assertRaises(SystemExit):
             run(
@@ -218,7 +238,7 @@ class Test(unittest.TestCase):
                     "alpha",
                     "--notes-dir",
                     notes_dir(),
-                    "--clear-track",
+                    "--halt-track",
                     "alpha",
                 ],
                 s,
@@ -226,10 +246,10 @@ class Test(unittest.TestCase):
         self.assertEqual(s.puts, [])
         self.assertEqual(s.commits, [])
 
-    def test_clearing_production_aborts(self):
+    def test_halting_production_aborts(self):
         s = FakeSession()
         with self.assertRaises(SystemExit):
-            run(promote("--clear-track", "production"), s)
+            run(promote("--halt-track", "production"), s)
         self.assertEqual(s.puts, [])
 
     def test_multi_code_source_release_aborts(self):
