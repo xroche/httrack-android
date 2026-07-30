@@ -220,6 +220,7 @@ public class HTTrackActivity extends FragmentActivity {
   protected String version;
   protected String versionFeatures;
   protected int versionCode;
+  protected String versionName;
 
   /*
    * Mark this profile as in use.
@@ -689,6 +690,7 @@ public class HTTrackActivity extends FragmentActivity {
       final PackageInfo info = getPackageManager().getPackageInfo(
           getPackageName(), 0);
       versionCode = info.versionCode;
+      versionName = info.versionName;
     } catch (final NameNotFoundException e) {
       throw new RuntimeException(e);
     }
@@ -1979,13 +1981,14 @@ public class HTTrackActivity extends FragmentActivity {
       final StringBuilder str = new StringBuilder();
       str.append("<i>");
       if (version != null) {
+        // The app's own name leads: a 3.50 beta can ride a 3.49 engine.
         str.append("<br />Version: ");
-        // Library version
+        str.append(versionName);
+        str.append(" (build ");
+        str.append(versionCode);
+        str.append(", engine ");
         str.append(version);
         str.append(versionFeatures);
-        // Android version
-        str.append(" (Android version ");
-        str.append(versionCode);
         str.append(")");
       }
       // str.append(" • Path: ");
