@@ -8,7 +8,7 @@ clear share a single edit, so either both land or neither does.
 Usage:
   play_track_admin.py <sa_json> list
   play_track_admin.py <sa_json> promote <versionCode> <fromTrack> <toTrack>
-                      [--notes-dir DIR] [--clear-track TRACK] [--dry-run]
+                      [--notes-dir DIR] [--halt-track TRACK] [--dry-run]
 
 Track names are the API's, not the Console's: alpha is Closed testing, beta is
 Open testing.
@@ -127,6 +127,18 @@ def find_release(track, version_code):
     return None
 
 
+def halted(track):
+    """The track's releases with distribution stopped.
+
+    Sending an empty releases list does NOT clear a track: Play accepts the PUT, commits it,
+    and keeps serving the old release. Flipping each release to `halted` is what stops it.
+    """
+    live = [r for r in track.get("releases") or [] if r.get("status") != "halted"]
+    if not live:
+        sys.exit(f"{track['track']} serves nothing to halt")
+    return [dict(r, status="halted") for r in live]
+
+
 def put_track(session, eid, track, releases):
     """PUT a track body, dropping a locale Play rejects rather than failing the whole run."""
     body = {"track": track, "releases": releases}
@@ -169,7 +181,7 @@ def main():
     ap.add_argument("from_track", nargs="?")
     ap.add_argument("to_track", nargs="?")
     ap.add_argument("--notes-dir", help="directory of <locale>.txt release notes")
-    ap.add_argument("--clear-track", help="track to leave with no release, in the same edit")
+    ap.add_argument("--halt-track", help="track to stop serving, in the same edit")
     ap.add_argument("--dry-run", action="store_true", help="print the plan, commit nothing")
     args = ap.parse_args()
 
@@ -223,15 +235,15 @@ def main():
             release["releaseNotes"] = src["releaseNotes"]
 
         plan = [(args.to_track, [release])]
-        if args.clear_track:
-            if args.clear_track not in by_name:
-                sys.exit(f"no such track: {args.clear_track}")
-            # Both PUTs share one edit, so clearing the target would just erase the promote.
-            if args.clear_track == args.to_track:
-                sys.exit(f"--clear-track {args.clear_track} is also the promote target")
-            if args.clear_track == "production":
-                sys.exit("refusing to unpublish production")
-            plan.append((args.clear_track, []))
+        if args.halt_track:
+            if args.halt_track not in by_name:
+                sys.exit(f"no such track: {args.halt_track}")
+            # Both PUTs share one edit, so halting the target would undo the promote.
+            if args.halt_track == args.to_track:
+                sys.exit(f"--halt-track {args.halt_track} is also the promote target")
+            if args.halt_track == "production":
+                sys.exit("refusing to halt production")
+            plan.append((args.halt_track, halted(by_name[args.halt_track])))
 
         if args.dry_run:
             print("=== plan (dry run, nothing committed) ===")

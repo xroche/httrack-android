@@ -15,8 +15,8 @@ on:
       to_track:
         description: 'track to promote it to (internal, alpha = closed, beta = open, production)'
         default: beta
-      clear_track:
-        description: 'track to leave with no release, in the same edit (blank = none)'
+      halt_track:
+        description: 'track to stop serving, in the same edit (blank = none)'
         default: ''
       dry_run:
         description: 'print the plan and commit nothing'
@@ -46,7 +46,7 @@ jobs:
           VERSION_CODE: ${{ inputs.version_code }}
           FROM_TRACK: ${{ inputs.from_track }}
           TO_TRACK: ${{ inputs.to_track }}
-          CLEAR_TRACK: ${{ inputs.clear_track }}
+          HALT_TRACK: ${{ inputs.halt_track }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
@@ -54,7 +54,7 @@ jobs:
           trap 'rm -f "$RUNNER_TEMP/play-sa.json"' EXIT
           printf '%s' "$SA_JSON" > "$RUNNER_TEMP/play-sa.json"
           args=()
-          if [ -n "$CLEAR_TRACK" ]; then args+=(--clear-track "$CLEAR_TRACK"); fi
+          if [ -n "$HALT_TRACK" ]; then args+=(--halt-track "$HALT_TRACK"); fi
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
           python3 tools/ci/play_track_admin.py "$RUNNER_TEMP/play-sa.json" promote \
             "$VERSION_CODE" "$FROM_TRACK" "$TO_TRACK" \
