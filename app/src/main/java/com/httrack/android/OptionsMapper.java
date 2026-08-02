@@ -276,7 +276,8 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("MaxConn", new SimpleOption("%c")),
       new Pair<String, OptionMapper>("MaxLinks", new SimpleOption("#L")),
       new Pair<String, OptionMapper>("Sockets", new SimpleOption("c")),
-      new Pair<String, OptionMapper>("KeepAlive", new SimpleOption0("k")),
+      /* keep-alive is -%k; the bare -k is StoreAllInCache. */
+      new Pair<String, OptionMapper>("KeepAlive", new SimpleOption0("%k")),
       new Pair<String, OptionMapper>("TimeOut", new SimpleOption("T")),
       new Pair<String, OptionMapper>("RemoveTimeout",
           hostControlHandler.getTimeMapper()),

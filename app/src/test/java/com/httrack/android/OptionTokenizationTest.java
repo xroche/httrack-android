@@ -122,6 +122,16 @@ public class OptionTokenizationTest {
     assertTrue(emit(new SimpleOption0("%f"), null).isEmpty());
   }
 
+  /* Keep-alive is the second-set -%k; the bare -k is store-all-in-cache. */
+  @Test
+  public void keepAliveEmitsTheSecondSetOption() {
+    assertEquals(Arrays.asList("-%k"), emit(new SimpleOption0("%k"), "1"));
+    assertEquals(Arrays.asList("-%k0"), emit(new SimpleOption0("%k"), "0"));
+    for (final String value : new String[] { "", null }) {
+      assertTrue(emit(new SimpleOption0("%k"), value).isEmpty());
+    }
+  }
+
   @Test
   public void simpleOptionFlagEmitsOnlyOnOne() {
     assertEquals(Arrays.asList("-n"), emit(new SimpleOptionFlag("n"), "1"));
