@@ -105,7 +105,10 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.checkHideQueryStrings, "NoQueryStrings"),
       new Pair<Integer, String>(R.id.checkDoNotPurge, "NoPurgeOldFiles"),
       new Pair<Integer, String>(R.id.checkSingleFile, "SingleFile"),
+      new Pair<Integer, String>(R.id.editSingleFileMaxSize,
+          "SingleFileMaxSize"),
       new Pair<Integer, String>(R.id.checkWarc, "Warc"),
+      new Pair<Integer, String>(R.id.editWarcFile, "WarcFile"),
       new Pair<Integer, String>(R.id.radioBuild, "Build"),
       new Pair<Integer, String>(R.id.editCustomBuild, "BuildString"),
 
@@ -123,6 +126,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.checkParseJavaFiles, "ParseJava"),
       new Pair<Integer, String>(R.id.radioSpider, "FollowRobotsTxt"),
       new Pair<Integer, String>(R.id.checkSitemap, "Sitemap"),
+      new Pair<Integer, String>(R.id.editSitemapUrl, "SitemapUrl"),
       new Pair<Integer, String>(R.id.checkUpdateHacks, "UpdateHack"),
       new Pair<Integer, String>(R.id.checkUrlHacks, "URLHack"),
       new Pair<Integer, String>(R.id.checkTolerentRequests, "TolerantRequests"),
@@ -296,8 +300,15 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("NoPurgeOldFiles", new SimpleOptionFlag(
           "X0")),
       new Pair<String, OptionMapper>("Warc", new SimpleOptionFlag("%r")),
+      /* each companion enables its own feature; the toggle is optional */
+      new Pair<String, OptionMapper>("WarcFile", new ArgumentOption(
+          "--warc-file")),
       new Pair<String, OptionMapper>("Sitemap", new SimpleOptionFlag("%m")),
+      new Pair<String, OptionMapper>("SitemapUrl", new ArgumentOption(
+          "--sitemap-url")),
       new Pair<String, OptionMapper>("SingleFile", new SimpleOptionFlag("%Z")),
+      new Pair<String, OptionMapper>("SingleFileMaxSize", new ArgumentOption(
+          "--single-file-max-size")),
       new Pair<String, OptionMapper>("Changes", new SimpleOptionFlag("%d")),
       new Pair<String, OptionMapper>("Build", buildHandler.getTypeMapper()),
       new Pair<String, OptionMapper>("BuildString",

@@ -171,7 +171,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @Fields({ R.id.checkDosNames, R.id.checkIso9660, R.id.checkNoErrorPages,
       R.id.checkNoExternalPages, R.id.checkHidePasswords,
       R.id.checkHideQueryStrings, R.id.checkDoNotPurge, R.id.checkSingleFile,
-      R.id.radioBuild, R.id.editCustomBuild })
+      R.id.editSingleFileMaxSize, R.id.radioBuild, R.id.editCustomBuild })
   public static class BuildTab extends Tab {
   }
 
@@ -186,8 +186,8 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @ActivityId(R.layout.activity_options_spider)
   @Fields({ R.id.checkAcceptCookies, R.id.editCookiesFile,
       R.id.radioCheckDocumentType, R.id.checkParseJavaFiles, R.id.radioSpider,
-      R.id.checkSitemap, R.id.checkUpdateHacks, R.id.checkUrlHacks,
-      R.id.checkTolerentRequests, R.id.checkForceHttp10 })
+      R.id.checkSitemap, R.id.editSitemapUrl, R.id.checkUpdateHacks,
+      R.id.checkUrlHacks, R.id.checkTolerentRequests, R.id.checkForceHttp10 })
   public static class Spider extends Tab {
   }
 
@@ -202,8 +202,9 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @ActivityId(R.layout.activity_options_logindexcache)
   @Fields({ R.id.checkStoreAllFilesInCache,
       R.id.checkDoNotRedownloadLocallErasedFiles, R.id.checkWarc,
-      R.id.checkChanges, R.id.checkCreateLogFiles, R.id.radioVerbosity,
-      R.id.checkUseIndex, R.id.checkUseWordIndex, R.id.checkUseMailIndex })
+      R.id.editWarcFile, R.id.checkChanges, R.id.checkCreateLogFiles,
+      R.id.radioVerbosity, R.id.checkUseIndex, R.id.checkUseWordIndex,
+      R.id.checkUseMailIndex })
   public static class LogIndexCache extends Tab {
   }
 
