@@ -32,7 +32,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="999"
-                android:inputType="numberDecimal" >
+                android:inputType="number" >
 
                 <requestFocus />
             </EditText>
@@ -57,7 +57,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="0"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <LinearLayout
@@ -78,7 +78,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <LinearLayout
@@ -99,7 +99,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <LinearLayout
@@ -120,7 +120,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <LinearLayout
@@ -141,7 +141,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <LinearLayout
@@ -163,7 +163,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="25000"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <LinearLayout
@@ -206,7 +206,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="100000"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
     </LinearLayout>
 
