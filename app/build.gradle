@@ -104,7 +104,9 @@ tasks.named('preBuild').configure { dependsOn buildResourcesBundle }
 
 // NumericFieldInputTypeTest reads the layout XMLs off disk, which Gradle can't infer.
 tasks.withType(Test).configureEach {
-    inputs.dir('src/main/res/layout').withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree('src/main/res') { include 'layout*/**/*.xml' })
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+            .withPropertyName('layoutXml')
 }
 
 dependencies {
