@@ -1,11 +1,9 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.httrack.android.OptionsMapper.ArgumentOption;
-import com.httrack.android.OptionsMapper.LongOptionFlag;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.ProxyHandler;
 import com.httrack.android.OptionsMapper.SimpleOptionFlag;
@@ -70,57 +68,57 @@ public class OptionsEmissionTest {
     assertTrue(cmd.isEmpty());
   }
 
-  /* keep-* toggles bundle their %-flag into the single dash token. */
+  /* keep-* toggles emit their %-flag as a standalone token. */
   @Test
-  public void keepToggleBundlesFlagWhenChecked() {
-    final StringBuilder flags = new StringBuilder();
-    new SimpleOptionFlag("%j").emit(flags, new ArrayList<String>(), "1");
-    assertTrue(flags.toString().contains("%j"));
+  public void keepToggleEmitsFlagWhenChecked() {
+    final List<String> cmd = new ArrayList<String>();
+    new SimpleOptionFlag("%j").emit(new StringBuilder("-"), cmd, "1");
+    assertEquals("-%j", cmd.get(0));
   }
 
   @Test
   public void keepToggleEmitsNothingWhenUnchecked() {
-    final StringBuilder flags = new StringBuilder();
-    new SimpleOptionFlag("%j").emit(flags, new ArrayList<String>(), "0");
-    assertFalse(flags.toString().contains("%j"));
+    final List<String> cmd = new ArrayList<String>();
+    new SimpleOptionFlag("%j").emit(new StringBuilder("-"), cmd, "0");
+    assertTrue(cmd.isEmpty());
   }
 
-  /* WARC toggle bundles -%r only when checked. */
+  /* WARC emits -%r only when checked. */
   @Test
-  public void warcToggleBundlesFlagWhenChecked() {
-    final StringBuilder flags = new StringBuilder();
-    new SimpleOptionFlag("%r").emit(flags, new ArrayList<String>(), "1");
-    assertTrue(flags.toString().contains("%r"));
+  public void warcToggleEmitsFlagWhenChecked() {
+    final List<String> cmd = new ArrayList<String>();
+    new SimpleOptionFlag("%r").emit(new StringBuilder("-"), cmd, "1");
+    assertEquals("-%r", cmd.get(0));
   }
 
   @Test
   public void warcToggleEmitsNothingWhenUnchecked() {
-    final StringBuilder flags = new StringBuilder();
-    new SimpleOptionFlag("%r").emit(flags, new ArrayList<String>(), "0");
-    assertFalse(flags.toString().contains("%r"));
+    final List<String> cmd = new ArrayList<String>();
+    new SimpleOptionFlag("%r").emit(new StringBuilder("-"), cmd, "0");
+    assertTrue(cmd.isEmpty());
   }
 
-  /* sitemap/single-file/changes: own token, and never in the packed string. */
+  /* sitemap/single-file/changes keep the short forms the engine aliases them to. */
   @Test
-  public void longOptionEmitsItsOwnTokenWhenChecked() {
-    for (final String option : new String[] { "--sitemap", "--single-file",
-        "--changes" }) {
-      /* seeded as buildCommandline() does, so a guarded append cannot hide */
+  public void spiderTogglesEmitTheirEngineFlag() {
+    final String[][] cases = { { "%m", "-%m" }, { "%Z", "-%Z" },
+        { "%d", "-%d" } };
+    for (final String[] c : cases) {
       final StringBuilder flags = new StringBuilder("-");
       final List<String> cmd = new ArrayList<String>();
-      new LongOptionFlag(option).emit(flags, cmd, "1");
+      new SimpleOptionFlag(c[0]).emit(flags, cmd, "1");
       assertEquals(1, cmd.size());
-      assertEquals(option, cmd.get(0));
+      assertEquals(c[1], cmd.get(0));
       assertEquals("-", flags.toString());
     }
   }
 
   @Test
-  public void longOptionStaysSilentWhenUncheckedOrUnset() {
-    for (final String value : new String[] { "0", "", null }) {
+  public void spiderToggleStaysSilentWhenUncheckedOrUnset() {
+    for (final String value : new String[] { "0", "2", "", null }) {
       final StringBuilder flags = new StringBuilder("-");
       final List<String> cmd = new ArrayList<String>();
-      new LongOptionFlag("--single-file").emit(flags, cmd, value);
+      new SimpleOptionFlag("%Z").emit(flags, cmd, value);
       assertTrue(cmd.isEmpty());
       assertEquals("-", flags.toString());
     }
@@ -128,13 +126,13 @@ public class OptionsEmissionTest {
 
   /* the mappers are static singletons: emitting again must not go quiet. */
   @Test
-  public void longOptionEmitsOnEveryBuild() {
-    final OptionMapper mapper = new LongOptionFlag("--changes");
+  public void flagEmitsOnEveryBuild() {
+    final OptionMapper mapper = new SimpleOptionFlag("%d");
     final List<String> first = new ArrayList<String>();
     final List<String> second = new ArrayList<String>();
     mapper.emit(new StringBuilder("-"), first, "1");
     mapper.emit(new StringBuilder("-"), second, "1");
     assertEquals(first, second);
-    assertEquals("--changes", second.get(0));
+    assertEquals("-%d", second.get(0));
   }
 }
