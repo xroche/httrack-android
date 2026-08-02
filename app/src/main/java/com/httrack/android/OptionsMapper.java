@@ -276,7 +276,7 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("MaxConn", new SimpleOption("%c")),
       new Pair<String, OptionMapper>("MaxLinks", new SimpleOption("#L")),
       new Pair<String, OptionMapper>("Sockets", new SimpleOption("c")),
-      new Pair<String, OptionMapper>("KeepAlive", new SimpleOption0("k")),
+      new Pair<String, OptionMapper>("KeepAlive", KeepAliveOption.INSTANCE),
       new Pair<String, OptionMapper>("TimeOut", new SimpleOption("T")),
       new Pair<String, OptionMapper>("RemoveTimeout",
           hostControlHandler.getTimeMapper()),
@@ -1309,6 +1309,21 @@ public class OptionsMapper {
       if (value != null && value.length() != 0) {
         commandline.add("-" + option + ("0".equals(value) ? "0" : ""));
       }
+    }
+  }
+
+  /**
+   * Keep-alive toggle: -%k enables it, -%k0 disables it. Beware the bare -k,
+   * which is the unrelated store-everything-in-cache option.
+   */
+  public static class KeepAliveOption extends SimpleOption0 {
+    /**
+     * An instance of the KeepAliveOption class.
+     */
+    public static final KeepAliveOption INSTANCE = new KeepAliveOption();
+
+    private KeepAliveOption() {
+      super("%k");
     }
   }
 

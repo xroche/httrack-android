@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.httrack.android.OptionsMapper.ArgumentOption;
+import com.httrack.android.OptionsMapper.KeepAliveOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.ProxyHandler;
 import com.httrack.android.OptionsMapper.SimpleOptionFlag;
@@ -152,6 +153,19 @@ public class OptionsEmissionTest {
         assertTrue(cmd.isEmpty());
         assertEquals("-", flags.toString());
       }
+    }
+  }
+
+  /* -%k / -%k0, never the bare -k the engine reads as store-all-in-cache. */
+  @Test
+  public void keepAliveEmitsTheSecondSetOptionBothWays() {
+    for (final String[] c : new String[][] { { "1", "-%k" }, { "0", "-%k0" } }) {
+      final StringBuilder flags = new StringBuilder("-");
+      final List<String> cmd = new ArrayList<String>();
+      KeepAliveOption.INSTANCE.emit(flags, cmd, c[0]);
+      assertEquals(1, cmd.size());
+      assertEquals(c[1], cmd.get(0));
+      assertEquals("-", flags.toString());
     }
   }
 
