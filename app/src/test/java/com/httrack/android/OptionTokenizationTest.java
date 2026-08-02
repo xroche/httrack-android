@@ -33,66 +33,47 @@ public class OptionTokenizationTest {
     }
   }
 
-  /* Assemble as buildCommandline() does: leading flags token, then the rest. */
-  private static List<String> argv(final StringBuilder flags,
-      final List<String> commandline) {
-    final List<String> args = new ArrayList<String>();
-    if (flags.length() > 1) {
-      args.add(flags.toString());
-    }
-    args.addAll(commandline);
-    return args;
-  }
-
   private static List<String> emit(final OptionMapper mapper, final String value) {
     final List<String> cmd = new ArrayList<String>();
-    final StringBuilder flags = new StringBuilder("-");
-    mapper.emit(flags, cmd, value);
-    assertEquals("nothing may be packed", "-", flags.toString());
+    mapper.emit(cmd, value);
     return cmd;
   }
 
   private static List<String> finish(final OptionMapper mapper) {
     final List<String> cmd = new ArrayList<String>();
-    final StringBuilder flags = new StringBuilder("-");
-    ((OptionMapper.FinishMapper) mapper).finish(flags, cmd);
-    assertEquals("nothing may be packed", "-", flags.toString());
+    ((OptionMapper.FinishMapper) mapper).finish(cmd);
     return cmd;
   }
 
   /* Reported profile: WARC on, no CheckType to separate it from robots. */
   @Test
   public void warcWithoutCheckTypeKeepsTheCrawlUrl() {
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    UrlSplit.INSTANCE.emit(flags, cmd, "http://www.example.com/");
-    new SimpleOptionFlag("X0").emit(flags, cmd, "1"); // NoPurgeOldFiles
-    new SimpleOptionFlag("%r").emit(flags, cmd, "1"); // Warc
-    new SimpleOption("u").emit(flags, cmd, ""); // CheckType, out of range
-    new SimpleOption("s").emit(flags, cmd, "2"); // FollowRobotsTxt
-    new SimpleOptionFlag("%s").emit(flags, cmd, "1"); // UpdateHack
+    UrlSplit.INSTANCE.emit(cmd, "http://www.example.com/");
+    new SimpleOptionFlag("X0").emit(cmd, "1"); // NoPurgeOldFiles
+    new SimpleOptionFlag("%r").emit(cmd, "1"); // Warc
+    new SimpleOption("u").emit(cmd, ""); // CheckType, out of range
+    new SimpleOption("s").emit(cmd, "2"); // FollowRobotsTxt
+    new SimpleOptionFlag("%s").emit(cmd, "1"); // UpdateHack
 
-    final List<String> args = argv(flags, cmd);
-    assertNoArgumentVariant(args);
+    assertNoArgumentVariant(cmd);
     assertEquals(Arrays.asList("http://www.example.com/", "-X0", "-%r", "-s2",
-        "-%s"), args);
+        "-%s"), cmd);
   }
 
   /* Sitemap and single-file have the same shape, and the same neighbours. */
   @Test
   public void sitemapAndSingleFileNeverSpellTheirArgumentVariant() {
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    UrlSplit.INSTANCE.emit(flags, cmd, "http://www.example.com/");
-    new SimpleOptionFlag("%m").emit(flags, cmd, "1"); // Sitemap
-    new SimpleOption0("%u").emit(flags, cmd, "1"); // URLHack
-    new SimpleOptionFlag("%Z").emit(flags, cmd, "1"); // SingleFile
-    new SimpleOption("s").emit(flags, cmd, "0"); // FollowRobotsTxt
+    UrlSplit.INSTANCE.emit(cmd, "http://www.example.com/");
+    new SimpleOptionFlag("%m").emit(cmd, "1"); // Sitemap
+    new SimpleOption0("%u").emit(cmd, "1"); // URLHack
+    new SimpleOptionFlag("%Z").emit(cmd, "1"); // SingleFile
+    new SimpleOption("s").emit(cmd, "0"); // FollowRobotsTxt
 
-    final List<String> args = argv(flags, cmd);
-    assertNoArgumentVariant(args);
+    assertNoArgumentVariant(cmd);
     assertEquals(Arrays.asList("http://www.example.com/", "-%m", "-%u", "-%Z",
-        "-s0"), args);
+        "-s0"), cmd);
   }
 
   @Test
@@ -143,13 +124,11 @@ public class OptionTokenizationTest {
   private static List<String> emitMaxSize(final String html,
       final String nonHtml) {
     final MaxSizeHandler handler = new MaxSizeHandler();
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    handler.getHtml().emit(flags, cmd, html);
+    handler.getHtml().emit(cmd, html);
     final OptionMapper nonHtmlMapper = handler.getNonHtml();
-    nonHtmlMapper.emit(flags, cmd, nonHtml);
-    ((OptionMapper.FinishMapper) nonHtmlMapper).finish(flags, cmd);
-    assertEquals("nothing may be packed", "-", flags.toString());
+    nonHtmlMapper.emit(cmd, nonHtml);
+    ((OptionMapper.FinishMapper) nonHtmlMapper).finish(cmd);
     return cmd;
   }
 
@@ -170,24 +149,21 @@ public class OptionTokenizationTest {
   public void maxSizeEmitsOnce() {
     final MaxSizeHandler handler = new MaxSizeHandler();
     final OptionMapper mapper = handler.getHtml();
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    mapper.emit(flags, cmd, "1000");
-    ((OptionMapper.FinishMapper) mapper).finish(flags, cmd);
-    ((OptionMapper.FinishMapper) handler.getNonHtml()).finish(flags, cmd);
+    mapper.emit(cmd, "1000");
+    ((OptionMapper.FinishMapper) mapper).finish(cmd);
+    ((OptionMapper.FinishMapper) handler.getNonHtml()).finish(cmd);
     assertEquals(Arrays.asList("-m,1000"), cmd);
   }
 
   private static List<String> emitHostControl(final String time,
       final String rate) {
     final HostControlHandler handler = new HostControlHandler();
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    handler.getTimeMapper().emit(flags, cmd, time);
+    handler.getTimeMapper().emit(cmd, time);
     final OptionMapper rateMapper = handler.getRateMapper();
-    rateMapper.emit(flags, cmd, rate);
-    ((OptionMapper.FinishMapper) rateMapper).finish(flags, cmd);
-    assertEquals("nothing may be packed", "-", flags.toString());
+    rateMapper.emit(cmd, rate);
+    ((OptionMapper.FinishMapper) rateMapper).finish(cmd);
     return cmd;
   }
 
@@ -203,20 +179,17 @@ public class OptionTokenizationTest {
   public void hostControlEmitsOnce() {
     final HostControlHandler handler = new HostControlHandler();
     final List<String> cmd = finish(handler.getTimeMapper());
-    ((OptionMapper.FinishMapper) handler.getRateMapper()).finish(
-        new StringBuilder("-"), cmd);
+    ((OptionMapper.FinishMapper) handler.getRateMapper()).finish(cmd);
     assertEquals(Arrays.asList("-H0"), cmd);
   }
 
   private static List<String> emitDosIso(final String dos, final String iso) {
     final DosIso9660Handler handler = new DosIso9660Handler();
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    handler.getDosMapper().emit(flags, cmd, dos);
+    handler.getDosMapper().emit(cmd, dos);
     final OptionMapper isoMapper = handler.getIso9660Mapper();
-    isoMapper.emit(flags, cmd, iso);
-    ((OptionMapper.FinishMapper) isoMapper).finish(flags, cmd);
-    assertEquals("nothing may be packed", "-", flags.toString());
+    isoMapper.emit(cmd, iso);
+    ((OptionMapper.FinishMapper) isoMapper).finish(cmd);
     return cmd;
   }
 
@@ -232,23 +205,20 @@ public class OptionTokenizationTest {
   public void dosIso9660EmitsOnce() {
     final DosIso9660Handler handler = new DosIso9660Handler();
     final OptionMapper mapper = handler.getDosMapper();
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    mapper.emit(flags, cmd, "1");
-    ((OptionMapper.FinishMapper) mapper).finish(flags, cmd);
-    ((OptionMapper.FinishMapper) handler.getIso9660Mapper()).finish(flags, cmd);
+    mapper.emit(cmd, "1");
+    ((OptionMapper.FinishMapper) mapper).finish(cmd);
+    ((OptionMapper.FinishMapper) handler.getIso9660Mapper()).finish(cmd);
     assertEquals(Arrays.asList("-L0"), cmd);
   }
 
   private static List<String> emitBuild(final String type, final String custom) {
     final BuildHandler handler = new BuildHandler();
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    handler.getCustomMapper().emit(flags, cmd, custom);
+    handler.getCustomMapper().emit(cmd, custom);
     final OptionMapper typeMapper = handler.getTypeMapper();
-    typeMapper.emit(flags, cmd, type);
-    ((OptionMapper.FinishMapper) typeMapper).finish(flags, cmd);
-    assertEquals("nothing may be packed", "-", flags.toString());
+    typeMapper.emit(cmd, type);
+    ((OptionMapper.FinishMapper) typeMapper).finish(cmd);
     return cmd;
   }
 
@@ -267,11 +237,10 @@ public class OptionTokenizationTest {
   public void buildEmitsOnce() {
     final BuildHandler handler = new BuildHandler();
     final OptionMapper mapper = handler.getTypeMapper();
-    final StringBuilder flags = new StringBuilder("-");
     final List<String> cmd = new ArrayList<String>();
-    mapper.emit(flags, cmd, "6");
-    ((OptionMapper.FinishMapper) mapper).finish(flags, cmd);
-    ((OptionMapper.FinishMapper) handler.getCustomMapper()).finish(flags, cmd);
+    mapper.emit(cmd, "6");
+    ((OptionMapper.FinishMapper) mapper).finish(cmd);
+    ((OptionMapper.FinishMapper) handler.getCustomMapper()).finish(cmd);
     assertEquals(Arrays.asList("-N100"), cmd);
   }
 }

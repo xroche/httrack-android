@@ -4,10 +4,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.httrack.android.OptionsMapper.ArgumentOption;
+import com.httrack.android.OptionsMapper.LogHandler;
+import com.httrack.android.OptionsMapper.MultipleChoicesOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
+import com.httrack.android.OptionsMapper.PrimaryScanHandler;
 import com.httrack.android.OptionsMapper.ProxyHandler;
 import com.httrack.android.OptionsMapper.SimpleOptionFlag;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 
@@ -17,13 +21,12 @@ public class OptionsEmissionTest {
   private static List<String> emitProxy(final String protocol,
       final String address, final String port) {
     final ProxyHandler handler = new ProxyHandler();
-    final StringBuilder flags = new StringBuilder();
     final List<String> cmd = new ArrayList<String>();
-    handler.getProtocolMapper().emit(flags, cmd, protocol);
-    handler.getAddressMapper().emit(flags, cmd, address);
+    handler.getProtocolMapper().emit(cmd, protocol);
+    handler.getAddressMapper().emit(cmd, address);
     final OptionMapper portMapper = handler.getPortMapper();
-    portMapper.emit(flags, cmd, port);
-    ((OptionMapper.FinishMapper) portMapper).finish(flags, cmd);
+    portMapper.emit(cmd, port);
+    ((OptionMapper.FinishMapper) portMapper).finish(cmd);
     return cmd;
   }
 
@@ -56,7 +59,7 @@ public class OptionsEmissionTest {
   @Test
   public void valueOptionEmitsFlagAndArgumentWhenSet() {
     final List<String> cmd = new ArrayList<String>();
-    new ArgumentOption("-%K").emit(new StringBuilder(), cmd, "cookies.txt");
+    new ArgumentOption("-%K").emit(cmd, "cookies.txt");
     assertEquals("-%K", cmd.get(0));
     assertEquals("cookies.txt", cmd.get(1));
   }
@@ -64,7 +67,7 @@ public class OptionsEmissionTest {
   @Test
   public void valueOptionStaysSilentWhenEmpty() {
     final List<String> cmd = new ArrayList<String>();
-    new ArgumentOption("-%K").emit(new StringBuilder(), cmd, "");
+    new ArgumentOption("-%K").emit(cmd, "");
     assertTrue(cmd.isEmpty());
   }
 
@@ -72,14 +75,14 @@ public class OptionsEmissionTest {
   @Test
   public void keepToggleEmitsFlagWhenChecked() {
     final List<String> cmd = new ArrayList<String>();
-    new SimpleOptionFlag("%j").emit(new StringBuilder("-"), cmd, "1");
+    new SimpleOptionFlag("%j").emit(cmd, "1");
     assertEquals("-%j", cmd.get(0));
   }
 
   @Test
   public void keepToggleEmitsNothingWhenUnchecked() {
     final List<String> cmd = new ArrayList<String>();
-    new SimpleOptionFlag("%j").emit(new StringBuilder("-"), cmd, "0");
+    new SimpleOptionFlag("%j").emit(cmd, "0");
     assertTrue(cmd.isEmpty());
   }
 
@@ -87,14 +90,14 @@ public class OptionsEmissionTest {
   @Test
   public void warcToggleEmitsFlagWhenChecked() {
     final List<String> cmd = new ArrayList<String>();
-    new SimpleOptionFlag("%r").emit(new StringBuilder("-"), cmd, "1");
+    new SimpleOptionFlag("%r").emit(cmd, "1");
     assertEquals("-%r", cmd.get(0));
   }
 
   @Test
   public void warcToggleEmitsNothingWhenUnchecked() {
     final List<String> cmd = new ArrayList<String>();
-    new SimpleOptionFlag("%r").emit(new StringBuilder("-"), cmd, "0");
+    new SimpleOptionFlag("%r").emit(cmd, "0");
     assertTrue(cmd.isEmpty());
   }
 
@@ -104,23 +107,19 @@ public class OptionsEmissionTest {
     final String[][] cases = { { "%m", "-%m" }, { "%Z", "-%Z" },
         { "%d", "-%d" } };
     for (final String[] c : cases) {
-      final StringBuilder flags = new StringBuilder("-");
       final List<String> cmd = new ArrayList<String>();
-      new SimpleOptionFlag(c[0]).emit(flags, cmd, "1");
+      new SimpleOptionFlag(c[0]).emit(cmd, "1");
       assertEquals(1, cmd.size());
       assertEquals(c[1], cmd.get(0));
-      assertEquals("-", flags.toString());
     }
   }
 
   @Test
   public void spiderToggleStaysSilentWhenUncheckedOrUnset() {
     for (final String value : new String[] { "0", "2", "", null }) {
-      final StringBuilder flags = new StringBuilder("-");
       final List<String> cmd = new ArrayList<String>();
-      new SimpleOptionFlag("%Z").emit(flags, cmd, value);
+      new SimpleOptionFlag("%Z").emit(cmd, value);
       assertTrue(cmd.isEmpty());
-      assertEquals("-", flags.toString());
     }
   }
 
@@ -131,13 +130,11 @@ public class OptionsEmissionTest {
   @Test
   public void companionEmitsItsOwnTokenPairWhenSet() {
     for (final String option : COMPANIONS) {
-      final StringBuilder flags = new StringBuilder("-");
       final List<String> cmd = new ArrayList<String>();
-      new ArgumentOption(option).emit(flags, cmd, "value");
+      new ArgumentOption(option).emit(cmd, "value");
       assertEquals(2, cmd.size());
       assertEquals(option, cmd.get(0));
       assertEquals("value", cmd.get(1));
-      assertEquals("-", flags.toString());
     }
   }
 
@@ -146,11 +143,9 @@ public class OptionsEmissionTest {
   public void companionStaysSilentWhenEmptyOrUnset() {
     for (final String option : COMPANIONS) {
       for (final String value : new String[] { "", null }) {
-        final StringBuilder flags = new StringBuilder("-");
         final List<String> cmd = new ArrayList<String>();
-        new ArgumentOption(option).emit(flags, cmd, value);
+        new ArgumentOption(option).emit(cmd, value);
         assertTrue(cmd.isEmpty());
-        assertEquals("-", flags.toString());
       }
     }
   }
@@ -161,9 +156,110 @@ public class OptionsEmissionTest {
     final OptionMapper mapper = new SimpleOptionFlag("%d");
     final List<String> first = new ArrayList<String>();
     final List<String> second = new ArrayList<String>();
-    mapper.emit(new StringBuilder("-"), first, "1");
-    mapper.emit(new StringBuilder("-"), second, "1");
+    mapper.emit(first, "1");
+    mapper.emit(second, "1");
     assertEquals(first, second);
     assertEquals("-%d", second.get(0));
+  }
+
+  private static List<String> emitLog(final String enabled, final String type) {
+    final LogHandler handler = new LogHandler();
+    final List<String> cmd = new ArrayList<String>();
+    handler.getEnabledMapper().emit(cmd, enabled);
+    final OptionMapper typeMapper = handler.getTypeMapper();
+    typeMapper.emit(cmd, type);
+    ((OptionMapper.FinishMapper) typeMapper).finish(cmd);
+    return cmd;
+  }
+
+  /* Verbosity radio: quiet, -z, -Z; unticked logging is -Q whatever the radio. */
+  @Test
+  public void logVerbosityIsItsOwnToken() {
+    assertTrue(emitLog("1", "0").isEmpty());
+    assertEquals(Arrays.asList("-z"), emitLog("1", "1"));
+    assertEquals(Arrays.asList("-Z"), emitLog("1", "2"));
+    assertEquals(Arrays.asList("-Q"), emitLog("0", "0"));
+    assertEquals(Arrays.asList("-Q"), emitLog("0", "2"));
+  }
+
+  @Test
+  public void logEmitsOnce() {
+    final LogHandler handler = new LogHandler();
+    final OptionMapper typeMapper = handler.getTypeMapper();
+    final List<String> cmd = new ArrayList<String>();
+    handler.getEnabledMapper().emit(cmd, "1");
+    typeMapper.emit(cmd, "2");
+    ((OptionMapper.FinishMapper) typeMapper).finish(cmd);
+    ((OptionMapper.FinishMapper) handler.getEnabledMapper()).finish(cmd);
+    assertEquals(Arrays.asList("-Z"), cmd);
+  }
+
+  private static List<String> emitPrimaryScan(final String type,
+      final String htmlFirst) {
+    final PrimaryScanHandler handler = new PrimaryScanHandler();
+    final List<String> cmd = new ArrayList<String>();
+    handler.getHtmlFirstMapper().emit(cmd, htmlFirst);
+    final OptionMapper typeMapper = handler.getTypeMapper();
+    typeMapper.emit(cmd, type);
+    ((OptionMapper.FinishMapper) typeMapper).finish(cmd);
+    return cmd;
+  }
+
+  /* Scan radio 0..2 map straight to -pN; 3 and 4 fold "html first" into -p7. */
+  @Test
+  public void primaryScanModeIsItsOwnToken() {
+    assertEquals(Arrays.asList("-p0"), emitPrimaryScan("0", "0"));
+    assertEquals(Arrays.asList("-p1"), emitPrimaryScan("1", "0"));
+    assertEquals(Arrays.asList("-p2"), emitPrimaryScan("2", "1"));
+    assertEquals(Arrays.asList("-p3"), emitPrimaryScan("3", "0"));
+    assertEquals(Arrays.asList("-p7"), emitPrimaryScan("3", "1"));
+    assertEquals(Arrays.asList("-p7"), emitPrimaryScan("4", "0"));
+    assertTrue(emitPrimaryScan("5", "0").isEmpty());
+  }
+
+  @Test
+  public void primaryScanEmitsOnce() {
+    final PrimaryScanHandler handler = new PrimaryScanHandler();
+    final OptionMapper typeMapper = handler.getTypeMapper();
+    final List<String> cmd = new ArrayList<String>();
+    typeMapper.emit(cmd, "1");
+    ((OptionMapper.FinishMapper) typeMapper).finish(cmd);
+    ((OptionMapper.FinishMapper) handler.getHtmlFirstMapper()).finish(cmd);
+    assertEquals(Arrays.asList("-p1"), cmd);
+  }
+
+  private static List<String> emitChoice(final MultipleChoicesOption mapper,
+      final String value) {
+    final List<String> cmd = new ArrayList<String>();
+    mapper.emit(cmd, value);
+    return cmd;
+  }
+
+  /* Pins the shipped radio tables, not a copy of them. */
+  @Test
+  public void radioChoiceIsItsOwnToken() {
+    assertEquals(Arrays.asList("-iC1"),
+        emitChoice(MultipleChoicesOption.ACTION, "0"));
+    assertEquals(Arrays.asList("-iC2"),
+        emitChoice(MultipleChoicesOption.ACTION, "1"));
+    final String[] travel = { "-S", "-D", "-U", "-B" };
+    final String[] globalTravel = { "-a", "-d", "-l", "-e" };
+    final String[] rewriteLinks = { "-K0", "-K", "-K3", "-K4" };
+    for (int i = 0; i < 4; i++) {
+      final String index = String.valueOf(i);
+      assertEquals(Arrays.asList(travel[i]),
+          emitChoice(MultipleChoicesOption.TRAVEL, index));
+      assertEquals(Arrays.asList(globalTravel[i]),
+          emitChoice(MultipleChoicesOption.GLOBAL_TRAVEL, index));
+      assertEquals(Arrays.asList(rewriteLinks[i]),
+          emitChoice(MultipleChoicesOption.REWRITE_LINKS, index));
+    }
+  }
+
+  @Test
+  public void radioChoiceStaysSilentOutOfRange() {
+    for (final String value : new String[] { "4", "-1", "", null, "x" }) {
+      assertTrue(emitChoice(MultipleChoicesOption.TRAVEL, value).isEmpty());
+    }
   }
 }
