@@ -88,7 +88,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="@string/hint_proxy_port"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <CheckBox
