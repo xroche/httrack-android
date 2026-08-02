@@ -59,9 +59,10 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.fieldProjectName, "ProjectName"),
       new Pair<Integer, String>(R.id.fieldProjectCategory, "Category"),
 
-      /* URL */
-      new Pair<Integer, String>(R.id.fieldWebsiteURLs, "CurrentUrl"),
+      /* URL. CurrentAction emits before the URL on purpose: the engine counts
+         URLs positionally, and its -iC* must land ahead of the first one. */
       new Pair<Integer, String>(R.id.radioAction, "CurrentAction"), /* FIXME */
+      new Pair<Integer, String>(R.id.fieldWebsiteURLs, "CurrentUrl"),
 
       /* Scan Rules */
       new Pair<Integer, String>(R.id.editRules, "WildCardFilters"),
@@ -1797,8 +1798,6 @@ public class OptionsMapper {
    * @return The commandline argument(s)
    */
   public List<String> buildCommandline() {
-    // One engine option per token: packing them lets a flag's letter be read as
-    // the next one's two-letter variant (issue #78).
     final List<String> args = new ArrayList<String>();
 
     // Map all options

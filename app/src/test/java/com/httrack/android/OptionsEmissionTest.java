@@ -10,9 +10,14 @@ import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.PrimaryScanHandler;
 import com.httrack.android.OptionsMapper.ProxyHandler;
 import com.httrack.android.OptionsMapper.SimpleOptionFlag;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Test;
 
 /** Guards the argv emitted for the engine options exposed by issue #6. */
@@ -162,12 +167,22 @@ public class OptionsEmissionTest {
     assertEquals("-%d", second.get(0));
   }
 
-  private static List<String> emitLog(final String enabled, final String type) {
+  /* Neither field may decide alone, so emit() has to stay silent: a mapper the
+     user left unset is skipped entirely, and would finish on partial state. */
+  private static List<String> emitLog(final String enabled, final String type,
+      final boolean typeFirst) {
     final LogHandler handler = new LogHandler();
-    final List<String> cmd = new ArrayList<String>();
-    handler.getEnabledMapper().emit(cmd, enabled);
+    final OptionMapper enabledMapper = handler.getEnabledMapper();
     final OptionMapper typeMapper = handler.getTypeMapper();
-    typeMapper.emit(cmd, type);
+    final List<String> cmd = new ArrayList<String>();
+    if (typeFirst) {
+      typeMapper.emit(cmd, type);
+      enabledMapper.emit(cmd, enabled);
+    } else {
+      enabledMapper.emit(cmd, enabled);
+      typeMapper.emit(cmd, type);
+    }
+    assertTrue("emit() must not emit; finish() does", cmd.isEmpty());
     ((OptionMapper.FinishMapper) typeMapper).finish(cmd);
     return cmd;
   }
@@ -175,11 +190,13 @@ public class OptionsEmissionTest {
   /* Verbosity radio: quiet, -z, -Z; unticked logging is -Q whatever the radio. */
   @Test
   public void logVerbosityIsItsOwnToken() {
-    assertTrue(emitLog("1", "0").isEmpty());
-    assertEquals(Arrays.asList("-z"), emitLog("1", "1"));
-    assertEquals(Arrays.asList("-Z"), emitLog("1", "2"));
-    assertEquals(Arrays.asList("-Q"), emitLog("0", "0"));
-    assertEquals(Arrays.asList("-Q"), emitLog("0", "2"));
+    for (final boolean typeFirst : new boolean[] { false, true }) {
+      assertTrue(emitLog("1", "0", typeFirst).isEmpty());
+      assertEquals(Arrays.asList("-z"), emitLog("1", "1", typeFirst));
+      assertEquals(Arrays.asList("-Z"), emitLog("1", "2", typeFirst));
+      assertEquals(Arrays.asList("-Q"), emitLog("0", "0", typeFirst));
+      assertEquals(Arrays.asList("-Q"), emitLog("0", "2", typeFirst));
+    }
   }
 
   @Test
@@ -195,12 +212,19 @@ public class OptionsEmissionTest {
   }
 
   private static List<String> emitPrimaryScan(final String type,
-      final String htmlFirst) {
+      final String htmlFirst, final boolean typeFirst) {
     final PrimaryScanHandler handler = new PrimaryScanHandler();
-    final List<String> cmd = new ArrayList<String>();
-    handler.getHtmlFirstMapper().emit(cmd, htmlFirst);
+    final OptionMapper htmlFirstMapper = handler.getHtmlFirstMapper();
     final OptionMapper typeMapper = handler.getTypeMapper();
-    typeMapper.emit(cmd, type);
+    final List<String> cmd = new ArrayList<String>();
+    if (typeFirst) {
+      typeMapper.emit(cmd, type);
+      htmlFirstMapper.emit(cmd, htmlFirst);
+    } else {
+      htmlFirstMapper.emit(cmd, htmlFirst);
+      typeMapper.emit(cmd, type);
+    }
+    assertTrue("emit() must not emit; finish() does", cmd.isEmpty());
     ((OptionMapper.FinishMapper) typeMapper).finish(cmd);
     return cmd;
   }
@@ -208,13 +232,15 @@ public class OptionsEmissionTest {
   /* Scan radio 0..2 map straight to -pN; 3 and 4 fold "html first" into -p7. */
   @Test
   public void primaryScanModeIsItsOwnToken() {
-    assertEquals(Arrays.asList("-p0"), emitPrimaryScan("0", "0"));
-    assertEquals(Arrays.asList("-p1"), emitPrimaryScan("1", "0"));
-    assertEquals(Arrays.asList("-p2"), emitPrimaryScan("2", "1"));
-    assertEquals(Arrays.asList("-p3"), emitPrimaryScan("3", "0"));
-    assertEquals(Arrays.asList("-p7"), emitPrimaryScan("3", "1"));
-    assertEquals(Arrays.asList("-p7"), emitPrimaryScan("4", "0"));
-    assertTrue(emitPrimaryScan("5", "0").isEmpty());
+    for (final boolean typeFirst : new boolean[] { false, true }) {
+      assertEquals(Arrays.asList("-p0"), emitPrimaryScan("0", "0", typeFirst));
+      assertEquals(Arrays.asList("-p1"), emitPrimaryScan("1", "0", typeFirst));
+      assertEquals(Arrays.asList("-p2"), emitPrimaryScan("2", "1", typeFirst));
+      assertEquals(Arrays.asList("-p3"), emitPrimaryScan("3", "0", typeFirst));
+      assertEquals(Arrays.asList("-p7"), emitPrimaryScan("3", "1", typeFirst));
+      assertEquals(Arrays.asList("-p7"), emitPrimaryScan("4", "0", typeFirst));
+      assertTrue(emitPrimaryScan("5", "0", typeFirst).isEmpty());
+    }
   }
 
   @Test
@@ -261,5 +287,35 @@ public class OptionsEmissionTest {
     for (final String value : new String[] { "4", "-1", "", null, "x" }) {
       assertTrue(emitChoice(MultipleChoicesOption.TRAVEL, value).isEmpty());
     }
+  }
+
+  /* fieldsSerializer fixes the emission order but pulls in R.id, which the stub
+     android.jar cannot load, so read the declared order out of the source. */
+  private static List<String> serializerKeys() throws IOException {
+    final String src = new String(Files.readAllBytes(Paths
+        .get("src/main/java/com/httrack/android/OptionsMapper.java")), "UTF-8");
+    final int from = src.indexOf("fieldsSerializer[] = new Pair[] {");
+    final int to = src.indexOf("\n  };", from);
+    assertTrue("fieldsSerializer not found", from != -1 && to > from);
+    final Matcher m = Pattern.compile(", \"(\\w+)\"\\)").matcher(
+        src.substring(from, to));
+    final List<String> keys = new ArrayList<String>();
+    while (m.find()) {
+      keys.add(m.group(1));
+    }
+    assertTrue("no keys parsed", keys.size() > 80);
+    return keys;
+  }
+
+  /* The engine counts URLs positionally and -iC* carries its 'i': behind the
+     URL it clears the count instead of leaving it at one, which switches the
+     crawl onto the doit.log recovery path. */
+  @Test
+  public void currentActionIsEmittedBeforeTheUrl() throws IOException {
+    final List<String> keys = serializerKeys();
+    assertTrue("CurrentAction missing", keys.contains("CurrentAction"));
+    assertTrue("CurrentUrl missing", keys.contains("CurrentUrl"));
+    assertTrue("-iC* must precede the URL",
+        keys.indexOf("CurrentAction") < keys.indexOf("CurrentUrl"));
   }
 }
