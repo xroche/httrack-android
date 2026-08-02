@@ -126,6 +126,37 @@ public class OptionsEmissionTest {
     }
   }
 
+  /* companions of the sitemap, single-file and WARC toggles. */
+  private static final String[] COMPANIONS = { "--sitemap-url",
+      "--single-file-max-size", "--warc-file" };
+
+  @Test
+  public void companionEmitsItsOwnTokenPairWhenSet() {
+    for (final String option : COMPANIONS) {
+      final StringBuilder flags = new StringBuilder("-");
+      final List<String> cmd = new ArrayList<String>();
+      new ArgumentOption(option).emit(flags, cmd, "value");
+      assertEquals(2, cmd.size());
+      assertEquals(option, cmd.get(0));
+      assertEquals("value", cmd.get(1));
+      assertEquals("-", flags.toString());
+    }
+  }
+
+  /* an empty field emits nothing: a bare --opt would eat the next token. */
+  @Test
+  public void companionStaysSilentWhenEmptyOrUnset() {
+    for (final String option : COMPANIONS) {
+      for (final String value : new String[] { "", null }) {
+        final StringBuilder flags = new StringBuilder("-");
+        final List<String> cmd = new ArrayList<String>();
+        new ArgumentOption(option).emit(flags, cmd, value);
+        assertTrue(cmd.isEmpty());
+        assertEquals("-", flags.toString());
+      }
+    }
+  }
+
   /* the mappers are static singletons: emitting again must not go quiet. */
   @Test
   public void longOptionEmitsOnEveryBuild() {

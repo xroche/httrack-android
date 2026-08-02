@@ -69,9 +69,15 @@
     <string name="hide_query_strings">Hide query strings</string>
     <string name="do_not_purge_old_files">Do not purge old files</string>
     <string name="single_file">Inline assets as data: URIs (self-contained pages)</string>
+    <string name="single_file_max_size">Max size of an inlined asset (bytes)</string>
+    <string name="hint_single_file_max_size">10485760</string>
     <string name="write_warc_archive">Write WARC archive</string>
+    <string name="warc_file">WARC file name</string>
+    <string name="hint_warc_file">mysite.warc.gz</string>
     <string name="report_changes">Report what changed since the previous mirror</string>
     <string name="sitemap">Seed the crawl from the site\'s sitemap</string>
+    <string name="sitemap_url">Sitemap URL</string>
+    <string name="hint_sitemap_url">http://www.example.com/sitemap.xml</string>
     <string name="number_of_connections">Max simultaneous connections</string>
     <string name="persistent_connections">Persistent connections (Keep-Alive)</string>
     <string name="timeout">File timeout</string>
