@@ -296,10 +296,9 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("NoPurgeOldFiles", new SimpleOptionFlag(
           "X0")),
       new Pair<String, OptionMapper>("Warc", new SimpleOptionFlag("%r")),
-      new Pair<String, OptionMapper>("Sitemap", new LongOptionFlag("--sitemap")),
-      new Pair<String, OptionMapper>("SingleFile", new LongOptionFlag(
-          "--single-file")),
-      new Pair<String, OptionMapper>("Changes", new LongOptionFlag("--changes")),
+      new Pair<String, OptionMapper>("Sitemap", new SimpleOptionFlag("%m")),
+      new Pair<String, OptionMapper>("SingleFile", new SimpleOptionFlag("%Z")),
+      new Pair<String, OptionMapper>("Changes", new SimpleOptionFlag("%d")),
       new Pair<String, OptionMapper>("Build", buildHandler.getTypeMapper()),
       new Pair<String, OptionMapper>("BuildString",
           buildHandler.getCustomMapper()),
@@ -392,9 +391,6 @@ public class OptionsMapper {
   // String-to-OptionMapper map
   protected final HashMap<String, OptionMapper> fieldsNameToMapper = new HashMap<String, OptionMapper>();
 
-  // Pure digits (0..9) pattern.
-  protected static final Pattern patternDigits = Pattern.compile("^[0-9]+$");
-
   // The options mapping
   protected final SparseArraySerializable map = new SparseArraySerializable();
 
@@ -408,35 +404,6 @@ public class OptionsMapper {
   static {
     // Create fieldsNameToId
     createFieldsNameToId();
-  }
-
-  /**
-   * Parse an integer.
-   * 
-   * @param value
-   *          The integer value
-   * @param defaultValue
-   *          Default value on error or out-of-range
-   * @return The parsed value, or defaultValue on error
-   */
-  public static int parseInt(final String value, final int defaultValue) {
-    try {
-      return Integer.parseInt(value);
-    } catch (final NumberFormatException nfe) {
-      Log.d(OptionsMapper.class.getSimpleName(), "format number exception", nfe);
-      return defaultValue;
-    }
-  }
-
-  /**
-   * Parse an integer.
-   * 
-   * @param value
-   *          The integer value
-   * @return The parsed value, or 999999999 on error
-   */
-  public static int parseInt(final String value) {
-    return parseInt(value, 999999999);
   }
 
   /**
@@ -581,9 +548,8 @@ public class OptionsMapper {
       @Override
       public void emit(final StringBuilder flags,
           final List<String> commandline, final String value) {
-        if (value != null && value.length() != 0
-            && patternDigits.matcher(value).matches()) {
-          MaxSizeHandler.this.maxHtml = OptionsMapper.parseInt(value);
+        if (OptionValues.isDigits(value)) {
+          MaxSizeHandler.this.maxHtml = OptionValues.parseInt(value);
         }
       }
 
@@ -601,9 +567,8 @@ public class OptionsMapper {
       @Override
       public void emit(final StringBuilder flags,
           final List<String> commandline, final String value) {
-        if (value != null && value.length() != 0
-            && patternDigits.matcher(value).matches()) {
-          MaxSizeHandler.this.maxNonHtml = OptionsMapper.parseInt(value);
+        if (OptionValues.isDigits(value)) {
+          MaxSizeHandler.this.maxNonHtml = OptionValues.parseInt(value);
         }
       }
 
@@ -642,14 +607,15 @@ public class OptionsMapper {
       if (!finished) {
         finished = true;
         if (maxNonHtml != -1 || maxHtml != -1) {
-          flags.append("m");
+          final StringBuilder option = new StringBuilder("-m");
           if (maxNonHtml != -1) {
-            flags.append(maxNonHtml);
+            option.append(maxNonHtml);
           }
           if (maxHtml != -1) {
-            flags.append(',');
-            flags.append(maxHtml);
+            option.append(',');
+            option.append(maxHtml);
           }
+          commandline.add(option.toString());
         }
       }
     }
@@ -726,8 +692,7 @@ public class OptionsMapper {
         final List<String> commandline) {
       if (!finished) {
         finished = true;
-        flags.append("H");
-        flags.append(flag);
+        commandline.add("-H" + flag);
       }
     }
   }
@@ -805,12 +770,7 @@ public class OptionsMapper {
         finished = true;
         // Note: same logic (...) as WinHTTrack ; see WinHTTrack/Shell.cpp
         if (dos || iso9660) {
-          flags.append("L");
-          if (dos) {
-            flags.append('0');
-          } else {
-            flags.append('2');
-          }
+          commandline.add(dos ? "-L0" : "-L2");
         }
       }
     }
@@ -947,8 +907,7 @@ public class OptionsMapper {
       @Override
       public void emit(final StringBuilder flags,
           final List<String> commandline, final String value) {
-        if (value != null && value.length() != 0
-            && patternDigits.matcher(value).matches()) {
+        if (OptionValues.isDigits(value)) {
           BuildHandler.this.build = Integer.parseInt(value);
         }
       }
@@ -1009,8 +968,7 @@ public class OptionsMapper {
       if (!finished) {
         finished = true;
         if (build < mapping.length) {
-          flags.append('N');
-          flags.append(mapping[build]);
+          commandline.add("-N" + mapping[build]);
         } else if (build == mapping.length) {
           commandline.add("-N");
           commandline.add(custom);
@@ -1034,8 +992,7 @@ public class OptionsMapper {
       @Override
       public void emit(final StringBuilder flags,
           final List<String> commandline, final String value) {
-        if (value != null && value.length() != 0
-            && patternDigits.matcher(value).matches()) {
+        if (OptionValues.isDigits(value)) {
           LogHandler.this.type = Integer.parseInt(value);
         }
       }
@@ -1124,8 +1081,7 @@ public class OptionsMapper {
       @Override
       public void emit(final StringBuilder flags,
           final List<String> commandline, final String value) {
-        if (value != null && value.length() != 0
-            && patternDigits.matcher(value).matches()) {
+        if (OptionValues.isDigits(value)) {
           PrimaryScanHandler.this.type = Integer.parseInt(value);
         }
       }
@@ -1299,8 +1255,7 @@ public class OptionsMapper {
     public void emit(final StringBuilder flags, final List<String> commandline,
         final String value) {
       if (value != null && value.length() != 0) {
-        flags.append(option);
-        flags.append(value);
+        commandline.add("-" + option + value);
       }
     }
   }
@@ -1341,10 +1296,7 @@ public class OptionsMapper {
     public void emit(final StringBuilder flags, final List<String> commandline,
         final String value) {
       if (value != null && value.length() != 0) {
-        flags.append(option);
-        if ("0".equals(value)) {
-          flags.append('0');
-        }
+        commandline.add("-" + option + ("0".equals(value) ? "0" : ""));
       }
     }
   }
@@ -1370,29 +1322,8 @@ public class OptionsMapper {
         final String value) {
       if (value != null && value.length() != 0) {
         if ((!reverted && "1".equals(value)) || (reverted && "0".equals(value))) {
-          flags.append(option);
+          commandline.add("-" + option);
         }
-      }
-    }
-  }
-
-  /**
-   * Required for a short flag with a two-letter variant (-%m / -%mu, -%Z /
-   * -%Zs): packed in the compacted string, the next flag's first letter would
-   * be misread as that variant and swallow an argument.
-   */
-  public static class LongOptionFlag implements OptionMapper {
-    protected final String option;
-
-    public LongOptionFlag(final String option) {
-      this.option = option;
-    }
-
-    @Override
-    public void emit(final StringBuilder flags, final List<String> commandline,
-        final String value) {
-      if ("1".equals(value)) {
-        commandline.add(option);
       }
     }
   }
@@ -1412,8 +1343,7 @@ public class OptionsMapper {
     @Override
     public void emit(final StringBuilder flags, final List<String> commandline,
         final String value) {
-      if (value != null && value.length() != 0
-          && patternDigits.matcher(value).matches()) {
+      if (OptionValues.isDigits(value)) {
         final int choiceId = Integer.parseInt(value);
         if (choiceId >= 0 && choiceId < choices.length) {
           final String choice = choices[choiceId];
@@ -1916,6 +1846,8 @@ public class OptionsMapper {
    * @return The commandline argument(s)
    */
   public List<String> buildCommandline() {
+    // Leftover compacted token: only options with no two-letter variant may be
+    // packed here, or the next flag's letter is read as that variant (issue #78).
     final StringBuilder flags = new StringBuilder("-");
     final List<String> list = new ArrayList<String>();
 
