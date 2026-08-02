@@ -102,6 +102,13 @@ def buildResourcesBundle = tasks.register('buildResourcesBundle', Zip) {
 // them all the dependency on the generated bundle that Gradle's validation requires.
 tasks.named('preBuild').configure { dependsOn buildResourcesBundle }
 
+// NumericFieldInputTypeTest reads the layout XMLs off disk, which Gradle can't infer.
+tasks.withType(Test).configureEach {
+    inputs.files(fileTree('src/main/res') { include 'layout*/**/*.xml' })
+            .withPathSensitivity(PathSensitivity.RELATIVE)
+            .withPropertyName('layoutXml')
+}
+
 dependencies {
     // Without this, coroutines' stale jdk7/jdk8 shims collide with the stdlib that absorbed them.
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')

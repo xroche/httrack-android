@@ -32,7 +32,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="8"
-                android:inputType="numberDecimal" >
+                android:inputType="number" >
 
                 <requestFocus />
             </EditText>
@@ -64,7 +64,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="120"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <CheckBox
@@ -93,7 +93,7 @@
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
                 android:hint="2"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <LinearLayout
@@ -114,7 +114,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
-                android:inputType="numberDecimal" />
+                android:inputType="number" />
         </LinearLayout>
 
         <CheckBox
