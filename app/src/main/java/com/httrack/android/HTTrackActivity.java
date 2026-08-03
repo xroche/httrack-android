@@ -3099,7 +3099,9 @@ public class HTTrackActivity extends FragmentActivity {
         PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     final Notification notification = new NotificationCompat.Builder(this,
         NOTIFICATION_CHANNEL_ID).setContentTitle(title).setContentText(text)
-        .setTicker(title).setSmallIcon(R.drawable.ic_launcher).setWhen(when)
+        // The status bar keeps only the alpha, so this has to be the silhouette
+        // and not the launcher tile, which arrives there as a white rectangle.
+        .setTicker(title).setSmallIcon(R.drawable.ic_stat_httrack).setWhen(when)
         .setContentIntent(pintent).setAutoCancel(true).build();
 
     // Send
