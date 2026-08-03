@@ -84,6 +84,13 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     steps:
+      # This job holds the Play credential, so it takes the narrowest checkout that
+      # still feeds whatsNewDirectory below. Without it the action uploads the AAB,
+      # then dies scanning for notes that were never in this job's workspace.
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: distribution/whatsnew
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v4
         with:
           name: release-aab
