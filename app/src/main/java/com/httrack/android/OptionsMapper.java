@@ -1196,7 +1196,8 @@ public class OptionsMapper {
   }
 
   /**
-   * Simple option (typically one character and an option)
+   * Simple option (typically one character and an option). The fields mapped
+   * this way are all numeric, so a value that is not is dropped.
    */
   public static class SimpleOption implements OptionMapper {
     protected final String option;
@@ -1207,7 +1208,11 @@ public class OptionsMapper {
 
     @Override
     public void emit(final List<String> commandline, final String value) {
-      if (value != null && value.length() != 0) {
+      /* cmdl_opt reads a '.' in a '%'-less token as a URL, so -r1.5 would join
+       * the crawl as an exclusion filter; the '%' forms are parsed with %f. */
+      final boolean accepted = option.indexOf('%') != -1 ? OptionValues
+          .isDecimal(value) : OptionValues.isDigits(value);
+      if (accepted) {
         commandline.add("-" + option + value);
       }
     }
