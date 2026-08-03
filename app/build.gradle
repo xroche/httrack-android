@@ -95,8 +95,8 @@ def buildResourcesBundle = tasks.register('buildResourcesBundle', Zip) {
     from('src/main/jni/httrack/html') { into 'html'; exclude 'Makefile.am' }
     from('src/main/jni/httrack/templates') { into 'templates'; exclude 'Makefile.am' }
     from('src/main/bundle/license') { into 'license' }
-    // html/index.html links to ../license.txt and ../history.txt at the bundle root.
-    from('src/main/jni/httrack') { include 'license.txt', 'history.txt' }
+    // html/index.html links to ../greetings.txt, ../history.txt and ../license.txt at the bundle root.
+    from('src/main/jni/httrack') { include 'greetings.txt', 'history.txt', 'license.txt' }
 }
 // preBuild is a transitive ancestor of every resource task, so this one edge gives
 // them all the dependency on the generated bundle that Gradle's validation requires.
