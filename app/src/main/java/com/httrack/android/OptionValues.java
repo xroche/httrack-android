@@ -33,6 +33,9 @@ public final class OptionValues {
 
   private static final Pattern patternDigits = Pattern.compile("^[0-9]+$");
 
+  private static final Pattern patternDecimal = Pattern
+      .compile("^[0-9]+(\\.[0-9]+)?$");
+
   /**
    * True if the value is a non-empty run of ASCII digits.
    *
@@ -42,6 +45,17 @@ public final class OptionValues {
    */
   public static boolean isDigits(final String value) {
     return value != null && patternDigits.matcher(value).matches();
+  }
+
+  /**
+   * True if the value is a non-negative integer or decimal.
+   *
+   * @param value
+   *          The value, possibly null
+   * @return true if the value is a non-negative decimal
+   */
+  public static boolean isDecimal(final String value) {
+    return value != null && patternDecimal.matcher(value).matches();
   }
 
   /**

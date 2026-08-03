@@ -274,7 +274,9 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("MaxAll", new SimpleOption("M")),
       new Pair<String, OptionMapper>("MaxTime", new SimpleOption("E")),
       new Pair<String, OptionMapper>("MaxRate", new SimpleOption("A")),
-      new Pair<String, OptionMapper>("MaxConn", new SimpleOption("%c")),
+      /* the only option the engine scans with %f, so the only one taking a
+         fraction: -%e carries a '%' too but is scanned with %d */
+      new Pair<String, OptionMapper>("MaxConn", new SimpleOption("%c", true)),
       new Pair<String, OptionMapper>("MaxLinks", new SimpleOption("#L")),
       new Pair<String, OptionMapper>("Sockets", new SimpleOption("c")),
       /* keep-alive is -%k; the bare -k is StoreAllInCache. */
@@ -1196,18 +1198,35 @@ public class OptionsMapper {
   }
 
   /**
-   * Simple option (typically one character and an option)
+   * Simple option (typically one character and an option). The fields mapped
+   * this way are all numeric; a value that is not is dropped.
    */
   public static class SimpleOption implements OptionMapper {
     protected final String option;
+    protected final boolean fraction;
+
+    /**
+     * @param option
+     *          The engine option
+     * @param fraction
+     *          true if the engine scans this option's value with %f
+     */
+    public SimpleOption(final String option, final boolean fraction) {
+      this.option = option;
+      this.fraction = fraction;
+    }
 
     public SimpleOption(final String option) {
-      this.option = option;
+      this(option, false);
     }
 
     @Override
     public void emit(final List<String> commandline, final String value) {
-      if (value != null && value.length() != 0) {
+      /* A '.' anywhere else is fatal: an integer option leaves it unconsumed
+       * and the engine panics, and cmdl_opt reads a '%'-less token holding one
+       * as a URL, which turns -r1.5 into an exclusion filter. */
+      if (fraction ? OptionValues.isDecimal(value) : OptionValues
+          .isDigits(value)) {
         commandline.add("-" + option + value);
       }
     }
