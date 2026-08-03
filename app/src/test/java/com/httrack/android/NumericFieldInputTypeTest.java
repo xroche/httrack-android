@@ -15,13 +15,16 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 /**
- * The engine's cmdl_opt() reads a '.' inside a '%'-less token such as "-r1.5" as
- * a URL and drops the option, so a numeric option field may offer a decimal
- * point only when the option it maps to carries a '%'.
+ * A '.' reaching the engine is either read as a URL by cmdl_opt or left over
+ * for the option walker to abort on, so a numeric option field may offer a
+ * decimal point only for the one option the engine scans with %f.
  */
 public class NumericFieldInputTypeTest {
   private static final String ANDROID_NS =
       "http://schemas.android.com/apk/res/android";
+
+  /** The only option the engine scans with %f (htscoremain.c, case 'c'). */
+  private static final String FLOAT_OPTION = "%c";
 
   /** Numeric option fields, each with the engine option OptionsMapper emits. */
   private static final String[][] NUMERIC_FIELDS = {
@@ -106,7 +109,7 @@ public class NumericFieldInputTypeTest {
           assertFalse(where + " accepts a sign", "numberSigned".equals(flag));
           assertTrue(
               where + " accepts a decimal point but -" + option + " does not",
-              !"numberDecimal".equals(flag) || option.indexOf('%') != -1);
+              !"numberDecimal".equals(flag) || FLOAT_OPTION.equals(option));
         }
       }
     }

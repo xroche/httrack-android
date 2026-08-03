@@ -48,8 +48,7 @@ public final class OptionValues {
   }
 
   /**
-   * True if the value is a non-negative decimal number, with an optional
-   * fractional part.
+   * True if the value is a non-negative integer or decimal.
    *
    * @param value
    *          The value, possibly null
