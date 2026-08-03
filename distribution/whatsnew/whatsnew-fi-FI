@@ -1,10 +1,8 @@
-HTTrack 3.50 beta 1, ensimmäinen Android-versio yhdeksään vuoteen.
+HTTrack 3.50 beta 2.
 
-• HTTPS toimii taas: OpenSSL 3, TLS 1.3, SOCKS5-välityspalvelimet
-• Yli 2 Gt:n tiedostot ja aksentilliset nimet eivät enää riko kopiota
-• Epäonnistunut päivitys ei enää korvaa hyvää kopiotasi
-• Tallentaa srcset-kuvat, laiskasti ladatut kuvat, videon ja äänen
-• Uutta: käynnistys sivukartasta, itsenäiset sivut, WARC-tuloste
-• 64-bittinen, tumma tila, oikealta vasemmalle -asettelut, Android 16
+• Asettamasi valinnat päätyvät nyt moottorille: useita katosi, sulautui toisiinsa tai keskeytti peilauksen
+• Numerokentät eivät enää hyväksy desimaalipistettä, joka saattoi muuttaa ne suodattimeksi
+• Moottori ei enää keskeytä osoitteisiin, jotka sen oma välimuisti hyväksyy
+• Uusi kuvake, terävämmät ohjesivut
 
 Beta: ilmoita ongelmista GitHubissa.

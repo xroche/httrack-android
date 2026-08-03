@@ -1,10 +1,8 @@
-HTTrack 3.50 beta 1, the first Android build in nine years.
+HTTrack 3.50 beta 2.
 
-• HTTPS works again: OpenSSL 3, TLS 1.3, SOCKS5 proxies
-• Files over 2 GB and accented names no longer break a mirror
-• A failed update no longer overwrites your good copy
-• Captures srcset, lazy-loaded images, video and audio sources
-• New: sitemap seeding, single-file pages, WARC output
-• 64-bit, dark mode, right-to-left layouts, Android 16
+• The options you set now reach the engine: several were dropped, merged into each other, or aborted the crawl
+• Number fields no longer accept a decimal point, which could turn them into a filter
+• The engine no longer aborts on URLs its own cache accepts
+• New app icon, sharper help pages
 
-Beta: please report problems on GitHub.
+Beta: report problems on GitHub.

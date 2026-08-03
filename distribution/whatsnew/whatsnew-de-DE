@@ -1,10 +1,8 @@
-HTTrack 3.50 Beta 1, die erste Android-Version seit neun Jahren.
+HTTrack 3.50 Beta 2.
 
-• HTTPS funktioniert wieder: OpenSSL 3, TLS 1.3, SOCKS5-Proxys
-• Dateien über 2 GB und Namen mit Akzenten zerstören kein Mirror mehr
-• Ein fehlgeschlagenes Update überschreibt die gute Kopie nicht mehr
-• Erfasst srcset, verzögert geladene Bilder, Video und Audio
-• Neu: Start per Sitemap, eigenständige Seiten, WARC-Ausgabe
-• 64 Bit, dunkler Modus, Rechts-nach-links-Layouts, Android 16
+• Die gesetzten Optionen erreichen jetzt die Engine: mehrere wurden verworfen, ineinander verschmolzen oder brachen den Spiegel ab
+• Zahlenfelder nehmen kein Dezimalkomma mehr an, das sie in einen Filter verwandeln konnte
+• Die Engine bricht nicht mehr bei URLs ab, die ihr eigener Cache akzeptiert
+• Neues App-Symbol, schärfere Hilfeseiten
 
 Beta: Probleme bitte auf GitHub melden.
