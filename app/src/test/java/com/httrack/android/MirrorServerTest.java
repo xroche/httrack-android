@@ -1,7 +1,10 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -91,5 +94,21 @@ public class MirrorServerTest {
   public void relativeUrlPathRefusesASiblingSharingRootsNamePrefix() throws Exception {
     final File sibling = tmp.newFolder("Websites-evil");
     assertNull(MirrorServer.relativeUrlPath(root, new File(sibling, "secret.txt")));
+  }
+
+  /** Docs and mirrors are served at once, so each root must keep its own server. */
+  @Test
+  public void forRootKeepsOneServerPerTree() throws Exception {
+    final File resources = tmp.newFolder("resources");
+    final MirrorServer mirrors = MirrorServer.forRoot(root);
+    assertSame(mirrors, MirrorServer.forRoot(root));
+    assertNotSame(mirrors, MirrorServer.forRoot(resources));
+    assertNotEquals(mirrors.getPort(), MirrorServer.forRoot(resources).getPort());
+  }
+
+  /** Keyed by canonical path: "/sdcard" is a symlink on Android, so aliases must not fork servers. */
+  @Test
+  public void forRootFoldsAliasesOfTheSameTree() throws Exception {
+    assertSame(MirrorServer.forRoot(root), MirrorServer.forRoot(new File(root, "html/..")));
   }
 }

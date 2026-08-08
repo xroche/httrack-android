@@ -2481,12 +2481,6 @@ public class HTTrackActivity extends FragmentActivity {
   private static final AtomicBoolean importInProgress = new AtomicBoolean();
   private volatile boolean browseAllInProgress;
 
-  // Serves the mirror over http://127.0.0.1 so a browser can read it despite scoped storage.
-  // Plain thread (NanoHTTPD owns it); reliability while browsing backgrounded relies on us staying
-  // the MRU cached process. A foreground service (needs an Android-14 FGS type) is a future step.
-  private MirrorServer mirrorServer;
-  private File mirrorServerRoot;
-
   /**
    * Copy the picked tree into our Websites directory, entirely off the UI thread: even walking
    * the tree to find "Websites" is one IPC per entry, too much for the main thread. The source
@@ -2761,60 +2755,9 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /**
-   * Lazily start (or restart) the mirror server rooted at {@code root}, reusing it while the root is
-   * unchanged. Returns null on failure; the caller decides what to tell the user.
-   */
-  private MirrorServer ensureMirrorServer(final File root) {
-    try {
-      if (mirrorServer != null && !root.equals(mirrorServerRoot)) {
-        mirrorServer.stop();
-        mirrorServer = null;
-      }
-      if (mirrorServer == null) {
-        mirrorServer = MirrorServer.start(root);
-        mirrorServerRoot = root;
-      }
-      return mirrorServer;
-    } catch (final IOException e) {
-      Log.w(getClass().getSimpleName(), "mirror server failed to start", e);
-      return null;
-    }
-  }
-
-  /** Browse a crawled mirror file, served from the Websites root over loopback HTTP. */
+  /** Browse a crawled mirror in the browser proper: a whole site wants tabs and bookmarks. */
   private void browse(final File index) {
-    browse(getProjectRootFile(), index);
-  }
-
-  /**
-   * Browse {@code index} over the loopback mirror server rooted at {@code root}. The root is
-   * explicit because bundled docs/license live under the resources cache, not the Websites tree;
-   * server root and relative-path base must be the same dir or the URL 404s.
-   */
-  private void browse(final File root, final File index) {
-    if (index == null || !index.exists()) {
-      return;
-    }
-    try {
-      final MirrorServer server = ensureMirrorServer(root);
-      if (server == null) {
-        showNotification("Could not start the local mirror server");
-        return;
-      }
-      // Canonicalised + confined to root, so symlinks/".." and an out-of-root file cannot leak.
-      final String relative = MirrorServer.relativeUrlPath(root, index);
-      if (relative == null) {
-        showNotification("Cannot browse a file outside the served folder");
-        return;
-      }
-      final String url = server.getBaseUrl() + "/" + relative;
-      final Intent intent = new Intent(Intent.ACTION_VIEW);
-      intent.setData(Uri.parse(url));
-      startActivity(intent);
-    } catch (final Exception e) {
-      showNotification(e.getLocalizedMessage());
-    }
+    Loopback.open(this, getProjectRootFile(), index, null, false);
   }
 
   /**
@@ -2922,8 +2865,8 @@ public class HTTrackActivity extends FragmentActivity {
           .setMessage(about0 + "\n" + about + "\n\n" + aboutLegal).show();
       break;
     case R.id.action_license:
-      browse(getResourceFile(), new File(new File(getResourceFile(), "license"),
-          "gpl-3.0-standalone.html"));
+      Loopback.open(this, getResourceFile(), new File(new File(getResourceFile(), "license"),
+          "gpl-3.0-standalone.html"), null, true);
       break;
     case R.id.action_forum:
       browse(Uri.parse("http://forum.httrack.com/"));
@@ -2932,8 +2875,7 @@ public class HTTrackActivity extends FragmentActivity {
       browse(Uri.parse("http://www.httrack.com/"));
       break;
     case R.id.action_help:
-      browse(getResourceFile(), new File(new File(getResourceFile(), "html"),
-          "index.html"));
+      Help.show(this, getResourceFile(), Help.pageForPane(pane_id));
       break;
     case R.id.action_import_mirrors:
       startLegacyMirrorImport();
@@ -3238,9 +3180,6 @@ public class HTTrackActivity extends FragmentActivity {
             .replace("%s", name);
         sendSystemNotification(title, e.getMessage());
       }
-    }
-    if (mirrorServer != null) {
-      mirrorServer.stop();
     }
     super.onDestroy();
   }

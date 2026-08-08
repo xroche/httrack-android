@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 package com.httrack.android;
 
+import java.io.File;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -70,6 +71,9 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   // Widget data exchanger
   private final WidgetDataExchange widgetDataExchange = new WidgetDataExchange(
       this);
+
+  // Extracted docs bundle, where the help pages live
+  private File resourceFile;
 
   // Current activity class
   protected Class<?> activityClass;
@@ -124,8 +128,18 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
     int[] value();
   }
 
+  /**
+   * Bundled doc page of a tab class, one page per tab as in WinHTTrack's own help.
+   */
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public static @interface HelpPage {
+    String value();
+  }
+
   @Title(R.string.scan_rules)
   @ActivityId(R.layout.activity_options_scanrules)
+  @HelpPage("guide.html#droid/opt-scan-rules")
   @Fields({ R.id.editRules })
   public static class ScanRulesTab extends Tab {
     @Override
@@ -143,6 +157,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.limits)
   @ActivityId(R.layout.activity_options_limits)
+  @HelpPage("guide.html#droid/opt-limits")
   @Fields({ R.id.editMaxDepth, R.id.editMaxExtDepth, R.id.editMaxSizeHtml,
       R.id.editMaxSizeOther, R.id.editSiteSizeLimit, R.id.editMaxTimeOverall,
       R.id.editMaxTransferRate, R.id.editMaxConnectionsSecond,
@@ -152,6 +167,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.flow_control)
   @ActivityId(R.layout.activity_options_flowcontrol)
+  @HelpPage("guide.html#droid/opt-flow-control")
   @Fields({ R.id.editNumberOfConnections, R.id.checkPersistentConnections,
       R.id.editTimeout, R.id.checkRemoveHostIfTimeout, R.id.editRetries,
       R.id.editMinTransferRate, R.id.checkRemoveHostIfSlow, R.id.editPause })
@@ -160,6 +176,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.links)
   @ActivityId(R.layout.activity_options_links)
+  @HelpPage("guide.html#droid/opt-links")
   @Fields({ R.id.checkDetectAllLinks, R.id.checkGetNonHtmlNear,
       R.id.checkTestAllLinks, R.id.checkGetHtmlFirst, R.id.checkKeepWwwPrefix,
       R.id.checkKeepDoubleSlashes, R.id.checkKeepQueryOrder })
@@ -168,6 +185,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.build)
   @ActivityId(R.layout.activity_options_build)
+  @HelpPage("guide.html#droid/opt-build")
   @Fields({ R.id.checkDosNames, R.id.checkIso9660, R.id.checkNoErrorPages,
       R.id.checkNoExternalPages, R.id.checkHidePasswords,
       R.id.checkHideQueryStrings, R.id.checkDoNotPurge, R.id.checkSingleFile,
@@ -177,6 +195,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.browser_id)
   @ActivityId(R.layout.activity_options_browserid)
+  @HelpPage("guide.html#droid/opt-browser-id")
   @Fields({ R.id.editBrowserIdentity, R.id.editHtmlFooter,
       R.id.editAcceptLanguage, R.id.editOtherHeaders, R.id.editDefaultReferer })
   public static class BrowserId extends Tab {
@@ -184,6 +203,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.spider)
   @ActivityId(R.layout.activity_options_spider)
+  @HelpPage("guide.html#droid/opt-spider")
   @Fields({ R.id.checkAcceptCookies, R.id.editCookiesFile,
       R.id.radioCheckDocumentType, R.id.checkParseJavaFiles, R.id.radioSpider,
       R.id.checkSitemap, R.id.editSitemapUrl, R.id.checkUpdateHacks,
@@ -193,6 +213,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.proxy)
   @ActivityId(R.layout.activity_options_proxy)
+  @HelpPage("guide.html#droid/opt-proxy")
   @Fields({ R.id.radioProxyProtocol, R.id.editProxy, R.id.editProxyPort,
       R.id.checkUseProxyForFtp })
   public static class Proxy extends Tab {
@@ -200,6 +221,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.log_index_cache)
   @ActivityId(R.layout.activity_options_logindexcache)
+  @HelpPage("guide.html#droid/opt-log-index-cache")
   @Fields({ R.id.checkStoreAllFilesInCache,
       R.id.checkDoNotRedownloadLocallErasedFiles, R.id.checkWarc,
       R.id.editWarcFile, R.id.checkChanges, R.id.checkCreateLogFiles,
@@ -210,6 +232,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.type_mime_associations)
   @ActivityId(R.layout.activity_options_mimetypes)
+  @HelpPage("guide.html#droid/opt-mime-types")
   @Fields({ R.id.editExtDef1, R.id.editMimeDef1, R.id.editExtDef2,
       R.id.editMimeDef2, R.id.editExtDef3, R.id.editMimeDef3, R.id.editExtDef4,
       R.id.editMimeDef4, R.id.editExtDef5, R.id.editMimeDef5, R.id.editExtDef6,
@@ -220,6 +243,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   @Title(R.string.experts_only)
   @ActivityId(R.layout.activity_options_expertsonly)
+  @HelpPage("guide.html#droid/opt-experts-only")
   @Fields({ R.id.checkUseCacheForUpdates, R.id.radioPrimaryScanRule,
       R.id.textTravelMode, R.id.radioTravelMode, R.id.radioGlobalTravelMode,
       R.id.radioRewriteLinks, R.id.editStripQuery, R.id.checkActivateDebugging })
@@ -355,6 +379,12 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
       Log.d(getClass().getSimpleName(), "tablet mode detected");
     } else {
       Log.d(getClass().getSimpleName(), "phone mode detected");
+    }
+
+    final Bundle extras = getIntent().getExtras();
+    if (extras != null) {
+      resourceFile = File.class.cast(extras
+          .get("com.httrack.android.resourceFile"));
     }
 
     // Set map context
@@ -607,6 +637,9 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   public boolean onOptionsItemSelected(final MenuItem item) {
     // Handle item selection
     switch (item.getItemId()) {
+    case R.id.action_help:
+      Help.show(this, resourceFile, Help.pageForTab(activityClass));
+      break;
     case R.id.action_load_default:
       mapper.loadDefaultPreferences();
       loadIfNeeded();
