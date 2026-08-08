@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.HashMap;
+import java.util.Map;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -33,11 +35,18 @@ import fi.iki.elonen.NanoHTTPD;
  * browser file:// access to our scoped storage, so the mirror is served over http://127.0.0.1 and
  * read as an ordinary web site. Filenames come from crawled URLs, so path resolution is hostile
  * input and lives in the unit-tested {@link #resolveWithinRoot(File, String)}.
+ *
+ * Plain thread (NanoHTTPD owns it): reliability while browsing backgrounded relies on us staying
+ * the MRU cached process. A foreground service (needs an Android-14 FGS type) is a future step.
  */
 final class MirrorServer extends NanoHTTPD {
   // Ports tried in order; mirrors the engine's htscatchurl.c try_to_listen_to[]. 0 = OS-assigned
   // ephemeral fallback. Privileged (<1024) ports are omitted: Android forbids binding them.
   private static final int[] PORTS = { 8080, 3128, 8081, 3129, 0 };
+
+  // One server per served tree, keyed by canonical path: docs and mirrors live in different trees,
+  // and restarting a shared server on every switch would cut off whatever is reading the other one.
+  private static final Map<String, MirrorServer> servers = new HashMap<String, MirrorServer>();
 
   private final File root;
 
@@ -68,6 +77,27 @@ final class MirrorServer extends NanoHTTPD {
       }
     }
     throw last != null ? last : new IOException("no loopback port available");
+  }
+
+  /**
+   * Started server for {@code root}, reusing the one already serving that tree. Servers outlive the
+   * activity that opened them: the browser reading a mirror is another app, and stopping the server
+   * when our activity goes away would break the page under it.
+   *
+   * @param root
+   *          the served tree; every request is confined to it
+   * @return a started server, valid until the process exits
+   * @throws IOException
+   *           if the tree cannot be canonicalised, or no port could be bound
+   */
+  static synchronized MirrorServer forRoot(final File root) throws IOException {
+    final String key = root.getCanonicalPath();
+    MirrorServer server = servers.get(key);
+    if (server == null) {
+      server = start(root);
+      servers.put(key, server);
+    }
+    return server;
   }
 
   /** Actual bound port, valid once started. */

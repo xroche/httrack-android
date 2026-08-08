@@ -2481,12 +2481,6 @@ public class HTTrackActivity extends FragmentActivity {
   private static final AtomicBoolean importInProgress = new AtomicBoolean();
   private volatile boolean browseAllInProgress;
 
-  // Serves the mirror over http://127.0.0.1 so a browser can read it despite scoped storage.
-  // Plain thread (NanoHTTPD owns it); reliability while browsing backgrounded relies on us staying
-  // the MRU cached process. A foreground service (needs an Android-14 FGS type) is a future step.
-  private MirrorServer mirrorServer;
-  private File mirrorServerRoot;
-
   /**
    * Copy the picked tree into our Websites directory, entirely off the UI thread: even walking
    * the tree to find "Websites" is one IPC per entry, too much for the main thread. The source
@@ -2762,20 +2756,12 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Lazily start (or restart) the mirror server rooted at {@code root}, reusing it while the root is
-   * unchanged. Returns null on failure; the caller decides what to tell the user.
+   * Server for {@code root}, started on first use. Returns null on failure; the caller decides what
+   * to tell the user.
    */
   private MirrorServer ensureMirrorServer(final File root) {
     try {
-      if (mirrorServer != null && !root.equals(mirrorServerRoot)) {
-        mirrorServer.stop();
-        mirrorServer = null;
-      }
-      if (mirrorServer == null) {
-        mirrorServer = MirrorServer.start(root);
-        mirrorServerRoot = root;
-      }
-      return mirrorServer;
+      return MirrorServer.forRoot(root);
     } catch (final IOException e) {
       Log.w(getClass().getSimpleName(), "mirror server failed to start", e);
       return null;
@@ -2910,6 +2896,22 @@ public class HTTrackActivity extends FragmentActivity {
     // TODO: handle orientation change ?
   }
 
+  /** Doc page for the pane currently shown, so Help lands where the user is. */
+  private String getHelpPage() {
+    switch (pane_id) {
+    case LAYOUT_PROJECT_NAME:
+      return Help.PAGE_PROJECT_NAME;
+    case LAYOUT_PROJECT_SETUP:
+      return Help.PAGE_PROJECT_SETUP;
+    case LAYOUT_MIRROR_PROGRESS:
+      return Help.PAGE_MIRROR_PROGRESS;
+    case LAYOUT_FINISHED:
+      return Help.PAGE_FINISHED;
+    default:
+      return Help.PAGE_START;
+    }
+  }
+
   @Override
   public boolean onOptionsItemSelected(final MenuItem item) {
     // Handle item selection
@@ -2932,8 +2934,7 @@ public class HTTrackActivity extends FragmentActivity {
       browse(Uri.parse("http://www.httrack.com/"));
       break;
     case R.id.action_help:
-      browse(getResourceFile(), new File(new File(getResourceFile(), "html"),
-          "index.html"));
+      Help.show(this, getResourceFile(), getHelpPage());
       break;
     case R.id.action_import_mirrors:
       startLegacyMirrorImport();
@@ -3238,9 +3239,6 @@ public class HTTrackActivity extends FragmentActivity {
             .replace("%s", name);
         sendSystemNotification(title, e.getMessage());
       }
-    }
-    if (mirrorServer != null) {
-      mirrorServer.stop();
     }
     super.onDestroy();
   }
