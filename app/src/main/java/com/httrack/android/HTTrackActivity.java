@@ -2755,52 +2755,9 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /**
-   * Server for {@code root}, started on first use. Returns null on failure; the caller decides what
-   * to tell the user.
-   */
-  private MirrorServer ensureMirrorServer(final File root) {
-    try {
-      return MirrorServer.forRoot(root);
-    } catch (final IOException e) {
-      Log.w(getClass().getSimpleName(), "mirror server failed to start", e);
-      return null;
-    }
-  }
-
-  /** Browse a crawled mirror file, served from the Websites root over loopback HTTP. */
+  /** Browse a crawled mirror in the browser proper: a whole site wants tabs and bookmarks. */
   private void browse(final File index) {
-    browse(getProjectRootFile(), index);
-  }
-
-  /**
-   * Browse {@code index} over the loopback mirror server rooted at {@code root}. The root is
-   * explicit because bundled docs/license live under the resources cache, not the Websites tree;
-   * server root and relative-path base must be the same dir or the URL 404s.
-   */
-  private void browse(final File root, final File index) {
-    if (index == null || !index.exists()) {
-      return;
-    }
-    try {
-      final MirrorServer server = ensureMirrorServer(root);
-      if (server == null) {
-        showNotification("Could not start the local mirror server");
-        return;
-      }
-      // Canonicalised + confined to root, so symlinks/".." and an out-of-root file cannot leak.
-      final String relative = MirrorServer.relativeUrlPath(root, index);
-      if (relative == null) {
-        showNotification("Cannot browse a file outside the served folder");
-        return;
-      }
-      final String url = server.getBaseUrl() + "/" + relative;
-      final Intent intent = new Intent(Intent.ACTION_VIEW);
-      intent.setData(Uri.parse(url));
-      startActivity(intent);
-    } catch (final Exception e) {
-      showNotification(e.getLocalizedMessage());
-    }
+    Loopback.open(this, getProjectRootFile(), index, null, false);
   }
 
   /**
@@ -2896,22 +2853,6 @@ public class HTTrackActivity extends FragmentActivity {
     // TODO: handle orientation change ?
   }
 
-  /** Doc page for the pane currently shown, so Help lands where the user is. */
-  private String getHelpPage() {
-    switch (pane_id) {
-    case LAYOUT_PROJECT_NAME:
-      return Help.PAGE_PROJECT_NAME;
-    case LAYOUT_PROJECT_SETUP:
-      return Help.PAGE_PROJECT_SETUP;
-    case LAYOUT_MIRROR_PROGRESS:
-      return Help.PAGE_MIRROR_PROGRESS;
-    case LAYOUT_FINISHED:
-      return Help.PAGE_FINISHED;
-    default:
-      return Help.PAGE_START;
-    }
-  }
-
   @Override
   public boolean onOptionsItemSelected(final MenuItem item) {
     // Handle item selection
@@ -2924,8 +2865,8 @@ public class HTTrackActivity extends FragmentActivity {
           .setMessage(about0 + "\n" + about + "\n\n" + aboutLegal).show();
       break;
     case R.id.action_license:
-      browse(getResourceFile(), new File(new File(getResourceFile(), "license"),
-          "gpl-3.0-standalone.html"));
+      Loopback.open(this, getResourceFile(), new File(new File(getResourceFile(), "license"),
+          "gpl-3.0-standalone.html"), null, true);
       break;
     case R.id.action_forum:
       browse(Uri.parse("http://forum.httrack.com/"));
@@ -2934,7 +2875,7 @@ public class HTTrackActivity extends FragmentActivity {
       browse(Uri.parse("http://www.httrack.com/"));
       break;
     case R.id.action_help:
-      Help.show(this, getResourceFile(), getHelpPage());
+      Help.show(this, getResourceFile(), Help.pageForPane(pane_id));
       break;
     case R.id.action_import_mirrors:
       startLegacyMirrorImport();

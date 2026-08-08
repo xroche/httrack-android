@@ -37,7 +37,8 @@ import fi.iki.elonen.NanoHTTPD;
  * input and lives in the unit-tested {@link #resolveWithinRoot(File, String)}.
  *
  * Plain thread (NanoHTTPD owns it): reliability while browsing backgrounded relies on us staying
- * the MRU cached process. A foreground service (needs an Android-14 FGS type) is a future step.
+ * the most-recently-used cached process. A foreground service (needs an Android-14 type) is a
+ * future step.
  */
 final class MirrorServer extends NanoHTTPD {
   // Ports tried in order; mirrors the engine's htscatchurl.c try_to_listen_to[]. 0 = OS-assigned
@@ -81,8 +82,8 @@ final class MirrorServer extends NanoHTTPD {
 
   /**
    * Started server for {@code root}, reusing the one already serving that tree. Servers outlive the
-   * activity that opened them: the browser reading a mirror is another app, and stopping the server
-   * when our activity goes away would break the page under it.
+   * activity that opened them: the browser reading a mirror is a separate app, and stopping the
+   * server on our onDestroy would break its page.
    *
    * @param root
    *          the served tree; every request is confined to it
