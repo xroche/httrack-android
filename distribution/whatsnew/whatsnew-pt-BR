@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• As opções que você define agora chegam ao motor: várias eram descartadas, fundidas entre si ou abortavam a cópia
-• Os campos numéricos não aceitam mais ponto decimal, que podia transformá-los em um filtro
-• O motor não aborta mais em URLs que o próprio cache aceita
-• Novo ícone, páginas de ajuda mais nítidas
+• A ajuda agora abre a página da tela em que você está, cada aba de opções incluída
+• As transferências FTP voltam a respeitar o tempo limite e a duração máxima
+• Uma retomada recusada não perde mais o arquivo
+• Ícone de notificação mais nítido em telas de baixa densidade
 
-Beta: relate problemas no GitHub.
+Beta: relate os problemas no GitHub.

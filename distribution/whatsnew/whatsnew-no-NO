@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Alternativene du velger når nå motoren: flere falt bort, ble slått sammen eller avbrøt kopieringen
-• Tallfelt godtar ikke lenger desimaltegn, som kunne gjøre dem til et filter
-• Motoren avbryter ikke lenger på adresser som dens egen hurtigbuffer godtar
-• Nytt ikon, skarpere hjelpesider
+• Hjelpen åpner nå siden for skjermen du er på, hver alternativfane inkludert
+• FTP-overføringer følger igjen tidsgrensen og den lengste tiden
+• En avvist gjenopptaking mister ikke lenger filen
+• Skarpere varselikon på skjermer med lav tetthet
 
-Beta: meld problemer på GitHub.
+Beta: meld fra om problemer på GitHub.

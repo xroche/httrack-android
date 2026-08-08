@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 bèta 3.
 
-• De opties die u instelt bereiken nu de engine: meerdere werden genegeerd, samengevoegd of braken de kopie af
-• Numerieke velden accepteren geen decimaalteken meer, dat ze in een filter kon veranderen
-• De engine breekt niet meer af op URL's die de eigen cache accepteert
-• Nieuw pictogram, scherpere helppagina's
+• Help opent nu de pagina van het scherm waar u bent, elk optietabblad inbegrepen
+• FTP-overdrachten houden zich weer aan de time-out en de tijdslimiet
+• Een geweigerde hervatting verliest het bestand niet meer
+• Scherper meldingspictogram op schermen met lage dichtheid
 
-Beta: meld problemen op GitHub.
+Bèta: meld problemen op GitHub.
