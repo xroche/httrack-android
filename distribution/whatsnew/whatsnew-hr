@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Postavljene opcije sada stižu do stroja: nekoliko ih se gubilo, stapalo ili prekidalo kopiranje
-• Brojčana polja više ne prihvaćaju decimalnu točku, koja ih je mogla pretvoriti u filtar
-• Stroj više ne prekida na adresama koje prihvaća njegova vlastita predmemorija
-• Nova ikona, oštrije stranice pomoći
+• Pomoć sada otvara stranicu zaslona na kojem ste, uključujući svaku karticu mogućnosti
+• FTP prijenosi opet poštuju vrijeme čekanja i najdulje trajanje
+• Odbijeni nastavak više ne gubi datoteku
+• Oštrija ikona obavijesti na zaslonima male gustoće
 
-Beta: prijavite probleme na GitHubu.
+Beta: probleme prijavite na GitHubu.

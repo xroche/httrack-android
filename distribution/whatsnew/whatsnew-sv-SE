@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Inställda alternativ når nu motorn: flera föll bort, slogs ihop eller avbröt kopieringen
-• Sifferfält godtar inte längre decimaltecken, som kunde göra dem till ett filter
-• Motorn avbryter inte längre på adresser som dess egen cache accepterar
-• Ny ikon, skarpare hjälpsidor
+• Hjälpen öppnar nu sidan för skärmen du är på, varje alternativflik inräknad
+• FTP-överföringar följer åter tidsgränsen och den längsta tiden
+• En nekad återupptagning tappar inte längre filen
+• Skarpare aviseringsikon på skärmar med låg täthet
 
 Beta: rapportera problem på GitHub.

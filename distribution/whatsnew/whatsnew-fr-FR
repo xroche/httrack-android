@@ -1,8 +1,8 @@
-HTTrack 3.50 bêta 2.
+HTTrack 3.50 bêta 3.
 
-• Les options que vous réglez arrivent enfin au moteur : plusieurs étaient ignorées, fusionnées entre elles, ou interrompaient le miroir
-• Les champs numériques n'acceptent plus de virgule décimale, qui pouvait les transformer en filtre
-• Le moteur n'abandonne plus sur les URL que son propre cache accepte
-• Nouvelle icône, pages d'aide plus nettes
+• L'aide ouvre maintenant la page de l'écran où vous êtes, chaque onglet d'options compris
+• Les transferts FTP respectent de nouveau le délai d'attente et la durée maximale
+• Une reprise refusée ne perd plus le fichier
+• Icône de notification plus nette sur les écrans peu denses
 
 Bêta : signalez les problèmes sur GitHub.

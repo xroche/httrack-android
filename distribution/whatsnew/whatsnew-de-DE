@@ -1,8 +1,8 @@
-HTTrack 3.50 Beta 2.
+HTTrack 3.50 Beta 3.
 
-• Die gesetzten Optionen erreichen jetzt die Engine: mehrere wurden verworfen, ineinander verschmolzen oder brachen den Spiegel ab
-• Zahlenfelder nehmen kein Dezimalkomma mehr an, das sie in einen Filter verwandeln konnte
-• Die Engine bricht nicht mehr bei URLs ab, die ihr eigener Cache akzeptiert
-• Neues App-Symbol, schärfere Hilfeseiten
+• Die Hilfe öffnet jetzt die Seite zum aktuellen Bildschirm, jeden Optionsreiter eingeschlossen
+• FTP-Übertragungen halten sich wieder an Zeitlimit und Höchstdauer
+• Eine abgelehnte Wiederaufnahme verliert die Datei nicht mehr
+• Schärferes Benachrichtigungssymbol auf Bildschirmen geringer Dichte
 
 Beta: Probleme bitte auf GitHub melden.

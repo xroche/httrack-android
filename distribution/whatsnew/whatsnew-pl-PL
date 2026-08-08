@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Ustawione opcje trafiają teraz do silnika: kilka było pomijanych, łączonych ze sobą lub przerywało kopiowanie
-• Pola liczbowe nie przyjmują już kropki dziesiętnej, która mogła zamienić je w filtr
-• Silnik nie przerywa już na adresach, które akceptuje jego własna pamięć podręczna
-• Nowa ikona, ostrzejsze strony pomocy
+• Pomoc otwiera teraz stronę ekranu, na którym jesteś, każdą kartę opcji włącznie
+• Transfery FTP znów respektują limit czasu oczekiwania i czasu całkowitego
+• Odrzucone wznowienie nie gubi już pliku
+• Ostrzejsza ikona powiadomień na ekranach o niskiej gęstości
 
 Beta: zgłaszaj problemy na GitHubie.

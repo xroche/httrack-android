@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Nastavljene možnosti zdaj pridejo do pogona: več jih je izginilo, se zlilo ali prekinilo kopiranje
-• Številska polja ne sprejemajo več decimalne pike, ki jih je lahko spremenila v filter
-• Pogon se ne prekine več pri naslovih, ki jih sprejema njegov lastni predpomnilnik
-• Nova ikona, ostrejše strani pomoči
+• Pomoč zdaj odpre stran zaslona, na katerem ste, skupaj z vsakim zavihkom možnosti
+• Prenosi FTP spet upoštevajo časovno omejitev in najdaljši čas
+• Zavrnjeno nadaljevanje ne izgubi več datoteke
+• Ostrejša ikona obvestil na zaslonih z majhno gostoto
 
-Beta: težave prijavite na GitHubu.
+Beta: težave sporočite na GitHubu.

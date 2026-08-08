@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Ayarladığınız seçenekler artık motora ulaşıyor: birkaçı düşüyor, birbirine karışıyor ya da kopyalamayı durduruyordu
-• Sayı alanları artık ondalık ayırıcı kabul etmiyor; bu onları bir filtreye çeviriyordu
-• Motor, kendi önbelleğinin kabul ettiği adreslerde artık durmuyor
-• Yeni simge, daha net yardım sayfaları
+• Yardım artık bulunduğunuz ekranın sayfasını açıyor, her seçenek sekmesi dahil
+• FTP aktarımları zaman aşımına ve süre sınırına yeniden uyuyor
+• Reddedilen bir sürdürme artık dosyayı kaybetmiyor
+• Düşük yoğunluklu ekranlarda daha keskin bildirim simgesi
 
-Beta: sorunları GitHub'da bildirin.
+Beta: sorunları GitHub üzerinden bildirin.

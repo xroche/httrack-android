@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Asettamasi valinnat päätyvät nyt moottorille: useita katosi, sulautui toisiinsa tai keskeytti peilauksen
-• Numerokentät eivät enää hyväksy desimaalipistettä, joka saattoi muuttaa ne suodattimeksi
-• Moottori ei enää keskeytä osoitteisiin, jotka sen oma välimuisti hyväksyy
-• Uusi kuvake, terävämmät ohjesivut
+• Ohje avaa nyt sen näytön sivun, jolla olet, jokainen asetusvälilehti mukaan lukien
+• FTP-siirrot noudattavat taas aikakatkaisua ja enimmäisaikaa
+• Hylätty jatkaminen ei enää menetä tiedostoa
+• Terävämpi ilmoituskuvake pienitiheyksisillä näytöillä
 
 Beta: ilmoita ongelmista GitHubissa.

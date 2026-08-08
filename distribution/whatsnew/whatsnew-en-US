@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• The options you set now reach the engine: several were dropped, merged into each other, or aborted the crawl
-• Number fields no longer accept a decimal point, which could turn them into a filter
-• The engine no longer aborts on URLs its own cache accepts
-• New app icon, sharper help pages
+• Help now opens the page for the screen you are on, each option tab included
+• FTP transfers respect the timeout and the time limit again
+• A refused resume no longer loses the file
+• Sharper notification icon on low-density screens
 
 Beta: report problems on GitHub.

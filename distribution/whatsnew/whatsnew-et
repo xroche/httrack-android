@@ -1,8 +1,8 @@
-HTTrack 3.50 beeta 2.
+HTTrack 3.50 beeta 3.
 
-• Määratud valikud jõuavad nüüd mootorini: mitu neist kadus, sulandus teistega või katkestas peegelduse
-• Numbriväljad ei võta enam vastu koma, mis võis need filtriks muuta
-• Mootor ei katkesta enam aadressidel, mille tema enda vahemälu vastu võtab
-• Uus ikoon, teravamad abilehed
+• Abi avab nüüd selle ekraani lehe, kus te olete, iga suvandivahekaart kaasa arvatud
+• FTP-ülekanded järgivad taas ajalõppu ja pikimat aega
+• Tagasi lükatud jätkamine ei kaota enam faili
+• Teravam teavitusikoon väikese tihedusega ekraanidel
 
-Beeta: teata probleemidest GitHubis.
+Beeta: teatage probleemidest GitHubis.

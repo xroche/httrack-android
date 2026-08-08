@@ -1,8 +1,8 @@
-HTTrack 3.50 béta 2.
+HTTrack 3.50 béta 3.
 
-• A beállított opciók végre eljutnak a motorhoz: több elveszett, egymásba olvadt vagy megszakította a másolást
-• A számmezők már nem fogadnak el tizedespontot, ami szűrővé változtatta őket
-• A motor már nem áll le olyan címeken, amelyeket a saját gyorsítótára elfogad
-• Új ikon, élesebb súgóoldalak
+• A súgó mostantól annak a képernyőnek a lapját nyitja meg, amelyen áll, minden beállításfület beleértve
+• Az FTP-átvitelek ismét betartják az időkorlátot és a leghosszabb időt
+• Az elutasított folytatás többé nem veszíti el a fájlt
+• Élesebb értesítési ikon a kis sűrűségű képernyőkön
 
-Béta: a hibákat a GitHubon jelentsd.
+Béta: a hibákat a GitHubon jelentse.

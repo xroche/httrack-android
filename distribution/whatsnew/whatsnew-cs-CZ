@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 2.
+HTTrack 3.50 beta 3.
 
-• Nastavené volby se nyní dostanou do jádra: několik jich mizelo, slučovalo se nebo přerušovalo kopírování
-• Číselná pole už nepřijímají desetinnou tečku, která z nich mohla udělat filtr
-• Jádro už nekončí chybou na adresách, které přijímá jeho vlastní cache
-• Nová ikona, ostřejší stránky nápovědy
+• Nápověda nyní otevře stránku obrazovky, na které jste, včetně každé karty voleb
+• Přenosy FTP opět dodržují časový limit i nejdelší dobu
+• Odmítnuté pokračování už neztratí soubor
+• Ostřejší ikona oznámení na obrazovkách s nízkou hustotou
 
 Beta: hlaste problémy na GitHubu.
