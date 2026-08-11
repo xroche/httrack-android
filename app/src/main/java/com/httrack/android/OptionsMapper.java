@@ -180,6 +180,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.radioGlobalTravelMode, "GlobalTravel"),
       new Pair<Integer, String>(R.id.radioRewriteLinks, "RewriteLinks"),
       new Pair<Integer, String>(R.id.editStripQuery, "StripQuery"),
+      new Pair<Integer, String>(R.id.editHostAlias, "HostAlias"),
       new Pair<Integer, String>(R.id.checkActivateDebugging, "Debugging"), /* FIXME */
 
   };
@@ -343,6 +344,8 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("CookiesFile", new ArgumentOption("-%K")),
       new Pair<String, OptionMapper>("Pause", new ArgumentOption("-%G")),
       new Pair<String, OptionMapper>("StripQuery", new ArgumentOption("-%g")),
+      new Pair<String, OptionMapper>("HostAlias", new RuleListOption(
+          "--host-alias")),
       new Pair<String, OptionMapper>("KeepWwwPrefix", new SimpleOptionFlag("%j")),
       new Pair<String, OptionMapper>("KeepDoubleSlashes", new SimpleOptionFlag(
           "%o")),
@@ -534,6 +537,24 @@ public class OptionsMapper {
     @Override
     public void emit(final List<String> commandline, final String value) {
       commandline.addAll(CommandlineTokens.urlTokens(value));
+    }
+  }
+
+  /**
+   * Rule list: emit the option once per rule, matching how the engine
+   * accumulates repeated flags.
+   */
+  public static class RuleListOption extends StringSplit {
+    public RuleListOption(final String option) {
+      super(option);
+    }
+
+    @Override
+    public void emit(final List<String> commandline, final String value) {
+      for (final String rule : CommandlineTokens.ruleTokens(value)) {
+        commandline.add(option);
+        commandline.add(rule);
+      }
     }
   }
 
