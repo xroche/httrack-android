@@ -321,7 +321,7 @@ public class OptionsEmissionTest {
   }
 
   private static int skipWhile(final String s, int i, final boolean ws) {
-    while (i < s.length() && (" \t\r\n".indexOf(s.charAt(i)) >= 0) == ws) {
+    while (i < s.length() && (" \t\r\n\013\f".indexOf(s.charAt(i)) >= 0) == ws) {
       i++;
     }
     return i;
@@ -353,7 +353,7 @@ public class OptionsEmissionTest {
   @Test
   public void ruleSplitAgreesWithTheEngineSplitter() {
     final char[] alphabet = { 'a', 'B', '.', '+', '-', ',', '=', ' ', '\t',
-        '\n' };
+        '\n', '\013', '\f', '\001' };
     final Random random = new Random(20260811L);
     for (int i = 0; i < 20000; i++) {
       final StringBuilder value = new StringBuilder();

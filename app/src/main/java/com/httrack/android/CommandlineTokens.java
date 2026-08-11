@@ -49,7 +49,7 @@ public final class CommandlineTokens {
     if (value == null) {
       return out;
     }
-    for (final String rule : value.replaceAll("\\s*([,=])\\s*", "$1").trim()
+    for (final String rule : value.replaceAll("\\s*([,=])\\s*", "$1")
         .split("\\s+")) {
       if (rule.length() != 0) {
         out.add(rule);
