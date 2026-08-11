@@ -41,8 +41,8 @@ public final class CommandlineTokens {
 
   /**
    * Split a rule-list field value into one rule per engine flag. Whitespace
-   * separates two rules, except beside a ',' or an '=', where it belongs to the
-   * rule and is dropped: the engine rejects a rule that keeps it.
+   * separates two rules. Beside a ',' or an '=' it holds one rule together
+   * instead, so it is dropped there rather than splitting the rule in three.
    */
   public static List<String> ruleTokens(final String value) {
     final List<String> out = new ArrayList<String>();

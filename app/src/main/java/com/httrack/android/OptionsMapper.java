@@ -541,14 +541,12 @@ public class OptionsMapper {
   }
 
   /**
-   * Rule list: emit the option once per rule, the way the engine takes the
-   * options it accumulates.
+   * Rule list: emit the option once per rule, matching how the engine
+   * accumulates repeated flags.
    */
-  public static class RuleListOption implements OptionMapper {
-    protected final String option;
-
+  public static class RuleListOption extends StringSplit {
     public RuleListOption(final String option) {
-      this.option = option;
+      super(option);
     }
 
     @Override

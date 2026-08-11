@@ -115,7 +115,7 @@
     <string name="hint_pause">2:5</string>
     <string name="strip_query">Strip query keys</string>
     <string name="hint_strip_query">sid,utm_source</string>
-    <string name="host_alias">Other hostnames of this same site (one rule per line)</string>
+    <string name="host_alias">Other hostnames of this same site (one per line)</string>
     <string name="hint_host_alias">www2.example.com,m.example.com=example.com</string>
     <string name="keep_www_prefix">Keep www. prefix (www.x != x)</string>
     <string name="keep_double_slashes">Keep double slashes (//)</string>

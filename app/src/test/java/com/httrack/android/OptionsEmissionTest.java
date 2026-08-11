@@ -308,6 +308,8 @@ public class OptionsEmissionTest {
   public void spacesAroundSeparatorsDoNotStartANewRule() {
     assertEquals(Arrays.asList("--host-alias", "a.com,b.com=c.com"),
         emitRules("a.com , b.com = c.com"));
+    assertEquals(Arrays.asList("--host-alias", "a.com,b.com=c.com"),
+        emitRules("a.com,\nb.com=\nc.com"));
   }
 
   @Test
@@ -325,8 +327,8 @@ public class OptionsEmissionTest {
     return i;
   }
 
-  /* cat_cmdline_arglist() from the engine's htsserver.c: the character loop the
-     regexp form has to agree with. */
+  /* cat_cmdline_arglist() from httrack#1166: the character loop WebHTTrack
+     splits its own field with, and the regexp form has to agree with. */
   private static List<String> arglistOracle(final String value) {
     final List<String> out = new ArrayList<String>();
     int p = skipWhile(value, 0, true);
@@ -350,11 +352,12 @@ public class OptionsEmissionTest {
 
   @Test
   public void ruleSplitAgreesWithTheEngineSplitter() {
-    final char alphabet[] = { 'a', 'b', ',', '=', ' ', '\t', '\n' };
-    final java.util.Random random = new Random(20260811L);
+    final char[] alphabet = { 'a', 'B', '.', '+', '-', ',', '=', ' ', '\t',
+        '\n' };
+    final Random random = new Random(20260811L);
     for (int i = 0; i < 20000; i++) {
       final StringBuilder value = new StringBuilder();
-      for (int j = random.nextInt(12); j > 0; j--) {
+      for (int j = random.nextInt(80); j > 0; j--) {
         value.append(alphabet[random.nextInt(alphabet.length)]);
       }
       final String s = value.toString();
