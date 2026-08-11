@@ -38,4 +38,23 @@ public final class CommandlineTokens {
     }
     return out;
   }
+
+  /**
+   * Split a rule-list field value into one rule per engine flag. Whitespace
+   * separates two rules, except beside a ',' or an '=', where it belongs to the
+   * rule and is dropped: the engine rejects a rule that keeps it.
+   */
+  public static List<String> ruleTokens(final String value) {
+    final List<String> out = new ArrayList<String>();
+    if (value == null) {
+      return out;
+    }
+    for (final String rule : value.replaceAll("\\s*([,=])\\s*", "$1").trim()
+        .split("\\s+")) {
+      if (rule.length() != 0) {
+        out.add(rule);
+      }
+    }
+    return out;
+  }
 }

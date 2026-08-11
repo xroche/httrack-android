@@ -246,7 +246,8 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @HelpPage("guide.html#droid/opt-experts-only")
   @Fields({ R.id.checkUseCacheForUpdates, R.id.radioPrimaryScanRule,
       R.id.textTravelMode, R.id.radioTravelMode, R.id.radioGlobalTravelMode,
-      R.id.radioRewriteLinks, R.id.editStripQuery, R.id.checkActivateDebugging })
+      R.id.radioRewriteLinks, R.id.editStripQuery, R.id.editHostAlias,
+      R.id.checkActivateDebugging })
   public static class ExpertsOnly extends Tab {
   }
 

@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
@@ -289,6 +290,78 @@ public class OptionsEmissionTest {
     }
   }
 
+  private static List<String> emitRules(final String value) {
+    final List<String> cmd = new ArrayList<String>();
+    new OptionsMapper.RuleListOption("--host-alias").emit(cmd, value);
+    return cmd;
+  }
+
+  @Test
+  public void oneHostAliasFlagPerRule() {
+    assertEquals(Arrays.asList("--host-alias", "www2.example.com=example.com",
+        "--host-alias", "https://legacy.example.com=https://example.com"),
+        emitRules("www2.example.com=example.com\n"
+            + "https://legacy.example.com=https://example.com"));
+  }
+
+  @Test
+  public void spacesAroundSeparatorsDoNotStartANewRule() {
+    assertEquals(Arrays.asList("--host-alias", "a.com,b.com=c.com"),
+        emitRules("a.com , b.com = c.com"));
+  }
+
+  @Test
+  public void blankLinesAndAnEmptyFieldEmitNothing() {
+    assertTrue(emitRules("").isEmpty());
+    assertTrue(emitRules("  \n\t\n ").isEmpty());
+    assertEquals(Arrays.asList("--host-alias", "a=b", "--host-alias", "c=d"),
+        emitRules("\n\n a=b \n\n  c=d\n\n"));
+  }
+
+  private static int skipWhile(final String s, int i, final boolean ws) {
+    while (i < s.length() && (" \t\r\n".indexOf(s.charAt(i)) >= 0) == ws) {
+      i++;
+    }
+    return i;
+  }
+
+  /* cat_cmdline_arglist() from the engine's htsserver.c: the character loop the
+     regexp form has to agree with. */
+  private static List<String> arglistOracle(final String value) {
+    final List<String> out = new ArrayList<String>();
+    int p = skipWhile(value, 0, true);
+    while (p < value.length()) {
+      final StringBuilder rule = new StringBuilder();
+      boolean more = true;
+      while (more) {
+        final int end = skipWhile(value, p, false);
+        final int next = skipWhile(value, end, true);
+        rule.append(value, p, end);
+        more = next < value.length()
+            && (value.charAt(next) == ',' || value.charAt(next) == '=' || (end != p && (value
+                .charAt(end - 1) == ',' || value.charAt(end - 1) == '=')));
+        p = next;
+      }
+      out.add("--host-alias");
+      out.add(rule.toString());
+    }
+    return out;
+  }
+
+  @Test
+  public void ruleSplitAgreesWithTheEngineSplitter() {
+    final char alphabet[] = { 'a', 'b', ',', '=', ' ', '\t', '\n' };
+    final java.util.Random random = new Random(20260811L);
+    for (int i = 0; i < 20000; i++) {
+      final StringBuilder value = new StringBuilder();
+      for (int j = random.nextInt(12); j > 0; j--) {
+        value.append(alphabet[random.nextInt(alphabet.length)]);
+      }
+      final String s = value.toString();
+      assertEquals(s, arglistOracle(s), emitRules(s));
+    }
+  }
+
   /* fieldsSerializer fixes the emission order but pulls in R.id, which the stub
      android.jar cannot load, so read the declared order out of the source. */
   private static List<String> serializerKeys() throws IOException {
@@ -317,5 +390,10 @@ public class OptionsEmissionTest {
     assertTrue("CurrentUrl missing", keys.contains("CurrentUrl"));
     assertTrue("-iC* must precede the URL",
         keys.indexOf("CurrentAction") < keys.indexOf("CurrentUrl"));
+  }
+
+  @Test
+  public void hostAliasIsWiredIntoTheProfile() throws IOException {
+    assertTrue("HostAlias missing", serializerKeys().contains("HostAlias"));
   }
 }
