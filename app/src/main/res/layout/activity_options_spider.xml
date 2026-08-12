@@ -160,6 +160,19 @@
             android:layout_gravity="end"
             android:text="@string/url_hacks" />
 
+        <TextView
+            android:id="@+id/textHostAlias"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/host_alias" />
+
+        <EditText
+            android:id="@+id/editHostAlias"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_host_alias"
+            android:inputType="textMultiLine|textNoSuggestions" />
+
         <CheckBox
             android:id="@+id/checkTolerentRequests"
             android:layout_width="fill_parent"
