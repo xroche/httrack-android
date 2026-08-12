@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • Una nuova opzione elenca gli altri nomi host del sito, che non viene più copiato una volta per nome
 • Un aggiornamento interrotto non cancella più i file che non ha raggiunto
-• Una regola che inizia con un trattino non blocca più la copia
+• Una regola che inizia con «-» non blocca più la copia
 • Un indirizzo molto lungo non fa più andare in crash la copia
 
 Beta: segnalate i problemi su GitHub.

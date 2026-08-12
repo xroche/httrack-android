@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • Uma nova opção indica os outros nomes de anfitrião do site, que deixa de ser copiado uma vez por nome
 • Uma atualização interrompida já não apaga os ficheiros que não chegou a percorrer
-• Uma regra começada por um hífen já não interrompe a cópia
+• Uma regra começada por «-» já não interrompe a cópia
 • Um endereço muito longo já não faz a cópia falhar
 
 Beta: comunique os problemas no GitHub.

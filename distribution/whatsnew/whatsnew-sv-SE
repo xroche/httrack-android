@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • Ett nytt alternativ anger webbplatsens övriga värdnamn, så att den kopieras en gång i stället för per namn
 • En avbruten uppdatering raderar inte längre filerna den aldrig hann nå
-• En regel som börjar med bindestreck avbryter inte längre kopieringen
+• En regel som börjar med ”-” avbryter inte längre kopieringen
 • En mycket lång adress kraschar inte längre kopieringen
 
 Beta: rapportera problem på GitHub.

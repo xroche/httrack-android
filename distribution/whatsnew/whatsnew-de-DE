@@ -2,7 +2,7 @@ HTTrack 3.50 Beta 4.
 
 • Eine neue Option nennt die weiteren Hostnamen der Website, die nun einmal statt je Name kopiert wird
 • Eine unterbrochene Aktualisierung löscht nicht mehr die Dateien, die sie nie erreicht hat
-• Eine Regel, die mit einem Bindestrich beginnt, bricht den Lauf nicht mehr ab
+• Eine Regel, die mit „-“ beginnt, bricht die Kopie nicht mehr ab
 • Eine sehr lange Adresse lässt die Kopie nicht mehr abstürzen
 
 Beta: Probleme bitte auf GitHub melden.

@@ -1,8 +1,8 @@
 HTTrack 3.50 bèta 4.
 
 • Een nieuwe optie noemt de andere hostnamen van de site, die niet meer per naam wordt gekopieerd
-• Een onderbroken bijwerking wist niet langer de bestanden die zij nooit bereikte
-• Een regel die met een streepje begint, breekt de kopie niet meer af
+• Een onderbroken update wist niet langer de bestanden die deze nooit heeft bereikt
+• Een regel die met "-" begint, breekt de kopie niet meer af
 • Een heel lang adres laat de kopie niet meer vastlopen
 
 Bèta: meld problemen op GitHub.

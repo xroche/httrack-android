@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • Nova mogućnost navodi ostala imena poslužitelja, pa se web mjesto kopira jednom, a ne po imenu
 • Prekinuto ažuriranje više ne briše datoteke do kojih nije stiglo
-• Pravilo koje počinje crticom više ne prekida kopiranje
+• Pravilo koje počinje znakom „-“ više ne prekida kopiranje
 • Vrlo dugačka adresa više ne ruši kopiranje
 
 Beta: prijavite probleme na GitHubu.

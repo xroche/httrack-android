@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • Nowa opcja podaje pozostałe nazwy hosta witryny, która nie jest już kopiowana raz na nazwę
 • Przerwana aktualizacja nie usuwa już plików, do których nie dotarła
-• Reguła zaczynająca się od myślnika nie przerywa już kopiowania
+• Reguła zaczynająca się od znaku „-” nie przerywa już kopiowania
 • Bardzo długi adres nie powoduje już awarii kopiowania
 
 Beta: zgłaszaj problemy na GitHubie.

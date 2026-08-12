@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • Nova možnost navede druga imena gostitelja, tako da se spletišče kopira enkrat, ne po imenu
 • Prekinjena posodobitev ne izbriše več datotek, do katerih ni prišla
-• Pravilo, ki se začne s pomišljajem, ne prekine več kopiranja
+• Pravilo, ki se začne z znakom „-“, ne prekine več kopiranja
 • Zelo dolg naslov ne sesuje več kopiranja
 
 Beta: težave sporočite na GitHubu.

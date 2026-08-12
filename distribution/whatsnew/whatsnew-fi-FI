@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • Uusi valinta luettelee sivuston muut isäntänimet, joten se kopioidaan kerran eikä nimeä kohden
 • Keskeytynyt päivitys ei enää poista tiedostoja, joihin se ei ehtinyt
-• Väliviivalla alkava sääntö ei enää katkaise kopiointia
+• Merkillä ”-” alkava sääntö ei enää katkaise kopiointia
 • Hyvin pitkä osoite ei enää kaada kopiointia
 
 Beta: ilmoita ongelmista GitHubissa.

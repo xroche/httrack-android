@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 4.
 
-• Yeni bir seçenek sitenin diğer ana makine adlarını listeler, site her ad için değil bir kez kopyalanır
+• Yeni bir seçenek sitenin diğer ana makine adlarını listeler; böylece site her ad için değil, bir kez kopyalanır
 • Yarıda kesilen güncelleme, ulaşamadığı dosyaları artık silmiyor
-• Tire ile başlayan bir kural artık kopyalamayı durdurmuyor
+• "-" ile başlayan bir kural artık kopyalamayı durdurmuyor
 • Çok uzun bir adres artık kopyalamayı çökertmiyor
 
 Beta: sorunları GitHub'da bildirin.

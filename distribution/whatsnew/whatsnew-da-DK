@@ -2,7 +2,7 @@ HTTrack 3.50 beta 4.
 
 • En ny indstilling angiver webstedets øvrige værtsnavne, så det kopieres én gang i stedet for pr. navn
 • En afbrudt opdatering sletter ikke længere de filer, den aldrig nåede
-• En regel, der begynder med en bindestreg, afbryder ikke længere kopieringen
+• En regel, der begynder med ”-”, afbryder ikke længere kopieringen
 • En meget lang adresse får ikke længere kopieringen til at gå ned
 
 Beta: rapportér problemer på GitHub.

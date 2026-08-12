@@ -2,7 +2,7 @@ HTTrack 3.50 beeta 4.
 
 • Uus säte loetleb saidi teised hostinimed, nii et see kopeeritakse korra, mitte iga nime kohta
 • Katkenud värskendus ei kustuta enam faile, milleni see ei jõudnud
-• Sidekriipsuga algav reegel ei katkesta enam kopeerimist
+• Märgiga „-“ algav reegel ei katkesta enam kopeerimist
 • Väga pikk aadress ei pane enam kopeerimist kokku jooksma
 
 Beeta: teatage probleemidest GitHubis.
