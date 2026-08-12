@@ -15,9 +15,8 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * A tab looks its declared fields up in its own inflated layout, and
- * WidgetDataExchange throws on a view it cannot find, so an id left behind by a
- * field that moved to another tab crashes that tab as soon as it is left.
+ * A tab's declared field must be in that tab's own layout: leaving the tab
+ * looks it up, and WidgetDataExchange throws on a view it cannot find.
  */
 public class OptionsTabFieldsTest {
   /** @ActivityId + @Fields of one tab, as declared in the source. */
