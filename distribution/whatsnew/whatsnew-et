@@ -1,8 +1,8 @@
-HTTrack 3.50 beeta 3.
+HTTrack 3.50 beeta 4.
 
-• Abi avab nüüd selle ekraani lehe, kus te olete, iga suvandivahekaart kaasa arvatud
-• FTP-ülekanded järgivad taas ajalõppu ja pikimat aega
-• Tagasi lükatud jätkamine ei kaota enam faili
-• Teravam teavitusikoon väikese tihedusega ekraanidel
+• Uus säte loetleb saidi teised hostinimed, nii et see kopeeritakse korra, mitte iga nime kohta
+• Katkenud värskendus ei kustuta enam faile, milleni see ei jõudnud
+• Märgiga „-“ algav reegel ei katkesta enam kopeerimist
+• Väga pikk aadress ei pane enam kopeerimist kokku jooksma
 
 Beeta: teatage probleemidest GitHubis.

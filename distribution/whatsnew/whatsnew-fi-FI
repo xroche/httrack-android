@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Ohje avaa nyt sen näytön sivun, jolla olet, jokainen asetusvälilehti mukaan lukien
-• FTP-siirrot noudattavat taas aikakatkaisua ja enimmäisaikaa
-• Hylätty jatkaminen ei enää menetä tiedostoa
-• Terävämpi ilmoituskuvake pienitiheyksisillä näytöillä
+• Uusi valinta luettelee sivuston muut isäntänimet, joten se kopioidaan kerran eikä nimeä kohden
+• Keskeytynyt päivitys ei enää poista tiedostoja, joihin se ei ehtinyt
+• Merkillä ”-” alkava sääntö ei enää katkaise kopiointia
+• Hyvin pitkä osoite ei enää kaada kopiointia
 
 Beta: ilmoita ongelmista GitHubissa.

@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Pomoć sada otvara stranicu zaslona na kojem ste, uključujući svaku karticu mogućnosti
-• FTP prijenosi opet poštuju vrijeme čekanja i najdulje trajanje
-• Odbijeni nastavak više ne gubi datoteku
-• Oštrija ikona obavijesti na zaslonima male gustoće
+• Nova mogućnost navodi ostala imena poslužitelja, pa se web mjesto kopira jednom, a ne po imenu
+• Prekinuto ažuriranje više ne briše datoteke do kojih nije stiglo
+• Pravilo koje počinje znakom „-“ više ne prekida kopiranje
+• Vrlo dugačka adresa više ne ruši kopiranje
 
-Beta: probleme prijavite na GitHubu.
+Beta: prijavite probleme na GitHubu.

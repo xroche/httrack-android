@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Hjelpen åpner nå siden for skjermen du er på, hver alternativfane inkludert
-• FTP-overføringer følger igjen tidsgrensen og den lengste tiden
-• En avvist gjenopptaking mister ikke lenger filen
-• Skarpere varselikon på skjermer med lav tetthet
+• Et nytt valg angir nettstedets øvrige vertsnavn, så det kopieres én gang i stedet for per navn
+• En avbrutt oppdatering sletter ikke lenger filene den aldri rakk
+• En regel som begynner med «-», avbryter ikke lenger kopieringen
+• En svært lang adresse krasjer ikke lenger kopieringen
 
 Beta: meld fra om problemer på GitHub.

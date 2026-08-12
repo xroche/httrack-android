@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Pomoc otwiera teraz stronę ekranu, na którym jesteś, każdą kartę opcji włącznie
-• Transfery FTP znów respektują limit czasu oczekiwania i czasu całkowitego
-• Odrzucone wznowienie nie gubi już pliku
-• Ostrzejsza ikona powiadomień na ekranach o niskiej gęstości
+• Nowa opcja podaje pozostałe nazwy hosta witryny, która nie jest już kopiowana raz na nazwę
+• Przerwana aktualizacja nie usuwa już plików, do których nie dotarła
+• Reguła zaczynająca się od znaku „-” nie przerywa już kopiowania
+• Bardzo długi adres nie powoduje już awarii kopiowania
 
 Beta: zgłaszaj problemy na GitHubie.
