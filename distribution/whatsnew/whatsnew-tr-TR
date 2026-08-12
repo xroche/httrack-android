@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Yardım artık bulunduğunuz ekranın sayfasını açıyor, her seçenek sekmesi dahil
-• FTP aktarımları zaman aşımına ve süre sınırına yeniden uyuyor
-• Reddedilen bir sürdürme artık dosyayı kaybetmiyor
-• Düşük yoğunluklu ekranlarda daha keskin bildirim simgesi
+• Yeni bir seçenek sitenin diğer ana makine adlarını listeler, site her ad için değil bir kez kopyalanır
+• Yarıda kesilen güncelleme, ulaşamadığı dosyaları artık silmiyor
+• Tire ile başlayan bir kural artık kopyalamayı durdurmuyor
+• Çok uzun bir adres artık kopyalamayı çökertmiyor
 
-Beta: sorunları GitHub üzerinden bildirin.
+Beta: sorunları GitHub'da bildirin.

@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Ajutorul deschide acum pagina ecranului pe care sunteți, fiecare filă de opțiuni inclusă
-• Transferurile FTP respectă din nou timpul de așteptare și durata maximă
-• O reluare refuzată nu mai pierde fișierul
-• Pictogramă de notificare mai clară pe ecranele cu densitate mică
+• O opțiune nouă indică celelalte nume de gazdă ale sitului, copiat acum o dată, nu o dată pe nume
+• O actualizare întreruptă nu mai șterge fișierele la care nu a ajuns
+• O regulă care începe cu o cratimă nu mai oprește copierea
+• O adresă foarte lungă nu mai duce la blocarea copierii
 
 Beta: raportați problemele pe GitHub.

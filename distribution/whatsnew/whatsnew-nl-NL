@@ -1,8 +1,8 @@
-HTTrack 3.50 bèta 3.
+HTTrack 3.50 bèta 4.
 
-• Help opent nu de pagina van het scherm waar u bent, elk optietabblad inbegrepen
-• FTP-overdrachten houden zich weer aan de time-out en de tijdslimiet
-• Een geweigerde hervatting verliest het bestand niet meer
-• Scherper meldingspictogram op schermen met lage dichtheid
+• Een nieuwe optie noemt de andere hostnamen van de site, die niet meer per naam wordt gekopieerd
+• Een onderbroken bijwerking wist niet langer de bestanden die zij nooit bereikte
+• Een regel die met een streepje begint, breekt de kopie niet meer af
+• Een heel lang adres laat de kopie niet meer vastlopen
 
 Bèta: meld problemen op GitHub.

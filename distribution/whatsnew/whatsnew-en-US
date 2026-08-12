@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Help now opens the page for the screen you are on, each option tab included
-• FTP transfers respect the timeout and the time limit again
-• A refused resume no longer loses the file
-• Sharper notification icon on low-density screens
+• A new option lists the site's other hostnames, so it is copied once, not once per name
+• An interrupted update no longer deletes the files it never reached
+• A rule that begins with a dash no longer kills the run
+• A very long address no longer crashes the copy
 
 Beta: report problems on GitHub.

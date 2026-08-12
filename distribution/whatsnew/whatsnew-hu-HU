@@ -1,8 +1,8 @@
-HTTrack 3.50 béta 3.
+HTTrack 3.50 béta 4.
 
-• A súgó mostantól annak a képernyőnek a lapját nyitja meg, amelyen áll, minden beállításfület beleértve
-• Az FTP-átvitelek ismét betartják az időkorlátot és a leghosszabb időt
-• Az elutasított folytatás többé nem veszíti el a fájlt
-• Élesebb értesítési ikon a kis sűrűségű képernyőkön
+• Új beállítás sorolja fel a webhely többi gépnevét, így az egyszer másolódik, nem nevenként
+• A megszakított frissítés többé nem törli azokat a fájlokat, amelyekhez el sem jutott
+• A kötőjellel kezdődő szabály többé nem szakítja meg a másolást
+• A nagyon hosszú cím többé nem omlasztja össze a másolást
 
-Béta: a hibákat a GitHubon jelentse.
+Béta: a problémákat a GitHubon jelentse.

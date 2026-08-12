@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• Pomocník teraz otvorí stránku obrazovky, na ktorej ste, vrátane každej karty volieb
-• Prenosy FTP opäť dodržiavajú časový limit aj najdlhší čas
-• Odmietnuté pokračovanie už nestratí súbor
-• Ostrejšia ikona oznámení na obrazovkách s nízkou hustotou
+• Nová voľba uvádza ďalšie názvy hostiteľa webu, ktorý sa už nekopíruje raz za každý názov
+• Prerušená aktualizácia už nemaže súbory, ku ktorým sa nedostala
+• Pravidlo začínajúce pomlčkou už nezruší kopírovanie
+• Veľmi dlhá adresa už kopírovanie nezhodí
 
 Beta: hláste problémy na GitHube.

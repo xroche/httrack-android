@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 3.
+HTTrack 3.50 beta 4.
 
-• La guida apre ora la pagina della schermata in cui si trova, ogni scheda di opzioni compresa
-• I trasferimenti FTP rispettano di nuovo il timeout e il limite di tempo
-• Una ripresa rifiutata non perde più il file
-• Icona di notifica più nitida sugli schermi a bassa densità
+• Una nuova opzione elenca gli altri nomi host del sito, che non viene più copiato una volta per nome
+• Un aggiornamento interrotto non cancella più i file che non ha raggiunto
+• Una regola che inizia con un trattino non blocca più la copia
+• Un indirizzo molto lungo non fa più andare in crash la copia
 
 Beta: segnalate i problemi su GitHub.
