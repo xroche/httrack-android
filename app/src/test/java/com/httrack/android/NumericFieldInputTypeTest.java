@@ -37,35 +37,6 @@ public class NumericFieldInputTypeTest {
       { "editMinTransferRate", "J" }, { "editProxyPort", "P" },
       { "editSingleFileMaxSize", "--single-file-max-size" } };
 
-  /* Unit tests run with the app project as working directory. */
-  private static File resDir() {
-    for (final String path : new String[] { "src/main/res",
-        "app/src/main/res" }) {
-      final File dir = new File(path);
-      if (dir.isDirectory()) {
-        return dir;
-      }
-    }
-    throw new IllegalStateException("no res directory below "
-        + new File(".").getAbsolutePath());
-  }
-
-  /* Every layout, qualified variants such as layout-land/ included. */
-  private static Set<File> layouts() {
-    final Set<File> files = new HashSet<File>();
-    for (final File dir : resDir().listFiles()) {
-      if (!dir.isDirectory() || !dir.getName().startsWith("layout")) {
-        continue;
-      }
-      for (final File file : dir.listFiles()) {
-        if (file.getName().endsWith(".xml")) {
-          files.add(file);
-        }
-      }
-    }
-    return files;
-  }
-
   private static String option(final String id) {
     for (final String[] field : NUMERIC_FIELDS) {
       if (field[0].equals(id)) {
@@ -82,7 +53,7 @@ public class NumericFieldInputTypeTest {
     factory.setNamespaceAware(true);
     final DocumentBuilder builder = factory.newDocumentBuilder();
     final Set<String> seen = new HashSet<String>();
-    for (final File layout : layouts()) {
+    for (final File layout : TestSources.layouts()) {
       final Document doc = builder.parse(layout);
       final NodeList nodes = doc.getElementsByTagName("*");
       for (int i = 0; i < nodes.getLength(); i++) {

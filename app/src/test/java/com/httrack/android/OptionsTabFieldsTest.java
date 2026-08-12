@@ -1,14 +1,16 @@
 package com.httrack.android;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,66 +28,80 @@ public class OptionsTabFieldsTest {
 
   private static final Pattern FIELD_ID = Pattern.compile("R\\.id\\.(\\w+)");
 
-  /* Unit tests run with the app project as working directory. */
-  private static File dir(final String path) {
-    for (final String prefix : new String[] { "", "app/" }) {
-      final File dir = new File(prefix + path);
-      if (dir.isDirectory()) {
-        return dir;
-      }
-    }
-    throw new IllegalStateException("no " + path + " below "
-        + new File(".").getAbsolutePath());
-  }
+  private static final Pattern LAYOUT_ID = Pattern
+      .compile("android:id=\"@\\+?id/(\\w+)\"");
 
-  /* Every qualified variant of LAYOUT, all of which may be inflated. */
-  private static List<File> layouts(final String layout) {
-    final List<File> files = new ArrayList<File>();
-    for (final File res : dir("src/main/res").listFiles()) {
-      if (!res.isDirectory() || !res.getName().startsWith("layout")) {
-        continue;
-      }
-      final File file = new File(res, layout + ".xml");
-      if (file.isFile()) {
-        files.add(file);
-      }
-    }
-    return files;
-  }
-
-  private static Set<String> declaredIds(final File layout) throws IOException {
-    final Set<String> ids = new HashSet<String>();
-    final Matcher m = Pattern.compile("android:id=\"@\\+?id/(\\w+)\"").matcher(
-        new String(Files.readAllBytes(layout.toPath()), "UTF-8"));
+  private static List<String> ids(final Pattern pattern, final String text) {
+    final List<String> ids = new ArrayList<String>();
+    final Matcher m = pattern.matcher(text);
     while (m.find()) {
       ids.add(m.group(1));
     }
     return ids;
   }
 
+  /** Layout of each option tab, with the field ids that tab declares. */
+  private static Map<String, List<String>> tabs() throws IOException {
+    final Map<String, List<String>> tabs = new LinkedHashMap<String, List<String>>();
+    final Matcher tab = TAB.matcher(TestSources.javaSource("OptionsActivity"));
+    while (tab.find()) {
+      final List<String> fields = ids(FIELD_ID, tab.group(2));
+      // An annotation order this pattern cannot read would yield none.
+      assertFalse("no field parsed for " + tab.group(1), fields.isEmpty());
+      assertFalse("twice: " + tab.group(1), tabs.containsKey(tab.group(1)));
+      tabs.put(tab.group(1), fields);
+    }
+    assertTrue("parsed " + tabs.size() + " tabs", tabs.size() > 10);
+    return tabs;
+  }
+
   @Test
   public void everyTabFieldLivesInThatTabsLayout() throws IOException {
-    final String src = new String(Files.readAllBytes(Paths
-        .get(dir("src/main/java").getPath(),
-            "com/httrack/android/OptionsActivity.java")), "UTF-8");
-    final Matcher tab = TAB.matcher(src);
-    int tabs = 0;
-    int fields = 0;
-    while (tab.find()) {
-      final String layout = tab.group(1);
-      final List<File> files = layouts(layout);
-      assertTrue("no layout named " + layout, !files.isEmpty());
-      final Matcher id = FIELD_ID.matcher(tab.group(2));
-      tabs++;
-      while (id.find()) {
-        fields++;
-        for (final File file : files) {
-          assertTrue(file.getName() + " has no " + id.group(1),
-              declaredIds(file).contains(id.group(1)));
+    for (final Map.Entry<String, List<String>> tab : tabs().entrySet()) {
+      final List<File> files = TestSources.layouts(tab.getKey());
+      assertFalse("no layout named " + tab.getKey(), files.isEmpty());
+      for (final File file : files) {
+        final Set<String> declared = new HashSet<String>(ids(LAYOUT_ID,
+            TestSources.read(file)));
+        for (final String field : tab.getValue()) {
+          assertTrue(file.getName() + " has no " + field,
+              declared.contains(field));
         }
       }
     }
-    assertTrue("parsed " + tabs + " tabs", tabs > 10);
-    assertTrue("parsed " + fields + " fields", fields > 80);
+  }
+
+  /* The other direction: a view the mapper knows but no tab claims is never
+     saved, and nothing at runtime says so. */
+  @Test
+  public void everyMappedOptionViewIsClaimedByATab() throws IOException {
+    final Set<String> mapped = new HashSet<String>(ids(FIELD_ID,
+        TestSources.javaSource("OptionsMapper")));
+    assertTrue("parsed " + mapped.size() + " mapped ids", mapped.size() > 80);
+    final Map<String, List<String>> tabs = tabs();
+    int claimed = 0;
+    for (final File file : TestSources.layouts()) {
+      if (!file.getName().startsWith("activity_options_")) {
+        continue;
+      }
+      final String layout = file.getName().replaceFirst("\\.xml$", "");
+      for (final String id : ids(LAYOUT_ID, TestSources.read(file))) {
+        if (!mapped.contains(id)) {
+          continue;
+        }
+        final List<String> owners = new ArrayList<String>();
+        for (final Map.Entry<String, List<String>> tab : tabs.entrySet()) {
+          if (tab.getValue().contains(id)) {
+            owners.add(tab.getKey());
+          }
+        }
+        assertEquals(id + " in " + layout + " claimed by " + owners, 1,
+            owners.size());
+        assertEquals(id + " is claimed by " + owners.get(0), layout,
+            owners.get(0));
+        claimed++;
+      }
+    }
+    assertTrue("checked " + claimed + " views", claimed > 50);
   }
 }
