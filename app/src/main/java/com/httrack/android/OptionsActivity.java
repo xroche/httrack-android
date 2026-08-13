@@ -207,7 +207,8 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @Fields({ R.id.checkAcceptCookies, R.id.editCookiesFile,
       R.id.radioCheckDocumentType, R.id.checkParseJavaFiles, R.id.radioSpider,
       R.id.checkSitemap, R.id.editSitemapUrl, R.id.checkUpdateHacks,
-      R.id.checkUrlHacks, R.id.checkTolerentRequests, R.id.checkForceHttp10 })
+      R.id.checkUrlHacks, R.id.editHostAlias, R.id.checkTolerentRequests,
+      R.id.checkForceHttp10 })
   public static class Spider extends Tab {
   }
 
@@ -246,8 +247,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   @HelpPage("guide.html#droid/opt-experts-only")
   @Fields({ R.id.checkUseCacheForUpdates, R.id.radioPrimaryScanRule,
       R.id.textTravelMode, R.id.radioTravelMode, R.id.radioGlobalTravelMode,
-      R.id.radioRewriteLinks, R.id.editStripQuery, R.id.editHostAlias,
-      R.id.checkActivateDebugging })
+      R.id.radioRewriteLinks, R.id.editStripQuery, R.id.checkActivateDebugging })
   public static class ExpertsOnly extends Tab {
   }
 
