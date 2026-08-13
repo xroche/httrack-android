@@ -44,6 +44,15 @@ public class FooterDefaultTest {
     assertTrue(footer, footer.contains("{date}"));
   }
 
+  /** Both strings agreeing on the wrong text would satisfy the field check. */
+  @Test
+  public void defaultIsAnHttrackComment() throws IOException {
+    final String footer = mapperDefault();
+    assertTrue(footer, footer.startsWith("<!--"));
+    assertTrue(footer, footer.endsWith("-->"));
+    assertTrue(footer, footer.contains("HTTrack Website Copier"));
+  }
+
   /** The hint shows the field's own default, so it must not teach %s either. */
   @Test
   public void hintMatchesTheDefault() throws IOException {
