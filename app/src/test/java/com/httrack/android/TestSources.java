@@ -46,6 +46,11 @@ final class TestSources {
     return files;
   }
 
+  /** A file below res/, such as "values/strings.xml". */
+  static File resFile(final String name) {
+    return new File(dir("src/main/res"), name);
+  }
+
   static String read(final File file) throws IOException {
     return new String(Files.readAllBytes(file.toPath()), "UTF-8");
   }

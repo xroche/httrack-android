@@ -234,8 +234,10 @@ public class OptionsMapper {
       new Pair<String, String>("KeepWwwPrefix", "0"),
       new Pair<String, String>("KeepDoubleSlashes", "0"),
       new Pair<String, String>("KeepQueryOrder", "0"),
+      /* A single %s anywhere puts the whole template back on the engine's
+       * legacy positional path, where named fields render verbatim. */
       new Pair<String, String>("Footer",
-          "<!-- Mirrored from %s%s by HTTrack Website Copier/3.x [XR&CO'2026], %s -->"),
+          "<!-- Mirrored from {url} by HTTrack Website Copier/3.x [XR&CO'2026], {date} -->"),
       new Pair<String, String>("AcceptLanguage", "en,*"),
       new Pair<String, String>("OtherHeaders", ""),
       new Pair<String, String>("DefaultReferer", ""),
