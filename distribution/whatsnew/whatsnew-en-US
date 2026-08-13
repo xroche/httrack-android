@@ -1,4 +1,4 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 4.
 
 • A new option lists a site's other hostnames, so the site is copied once, not once per hostname
 • An interrupted update no longer deletes the files it never reached
