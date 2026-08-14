@@ -53,6 +53,13 @@ public class FooterDefaultTest {
     assertTrue(footer, footer.contains("HTTrack Website Copier"));
   }
 
+  /** {date} already dates the footer, so a baked year only goes stale. */
+  @Test
+  public void defaultCarriesNoYear() throws IOException {
+    final String footer = mapperDefault();
+    assertFalse(footer, Pattern.compile("\\d{4}").matcher(footer).find());
+  }
+
   /** The hint shows the field's own default, so it must not teach %s either. */
   @Test
   public void hintMatchesTheDefault() throws IOException {
