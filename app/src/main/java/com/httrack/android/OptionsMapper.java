@@ -237,7 +237,7 @@ public class OptionsMapper {
       /* A single %s anywhere puts the whole template back on the engine's
        * legacy positional path, where named fields render verbatim. */
       new Pair<String, String>("Footer",
-          "<!-- Mirrored from {url} by HTTrack Website Copier/3.x [XR&CO'2026], {date} -->"),
+          "<!-- Mirrored from {url} by HTTrack Website Copier/3.x [XR&CO], {date} -->"),
       new Pair<String, String>("AcceptLanguage", "en,*"),
       new Pair<String, String>("OtherHeaders", ""),
       new Pair<String, String>("DefaultReferer", ""),
