@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
 • Las reglas, direcciones y redirecciones muy largas ya no interrumpen la copia ni desaparecen de ella
-• Un archivo robots.txt grande ahora se lee hasta el final
-• El pie de página de cada página copiada ya no lleva un año fijo, y los campos que usted añada funcionan
+• Un archivo robots.txt grande ya no se corta tras los primeros kilobytes
+• En los proyectos nuevos, el pie de página pierde el año fijo y los campos que usted añada se rellenan
 • La página de ayuda sobre los filtros ya coincide con lo que el programa acepta
 
 Beta: informe de los problemas en GitHub.

@@ -1,8 +1,8 @@
 HTTrack 3.50 beeta 5.
 
 • Väga pikad reeglid, aadressid ja ümbersuunamised ei katkesta enam kopeerimist ega kao sellest
-• Suur robots.txt-fail loetakse nüüd täies ulatuses
-• Iga kopeeritud lehe jaluses ei ole enam kindlat aastaarvu ja teie lisatud väljad toimivad
+• Suurt robots.txt-faili ei kärbita enam pärast esimesi kilobaite
+• Uutes projektides kaob jaluse kindel aastaarv ja teie lisatud väljad täidetakse
 • Filtrite abileht vastab nüüd sellele, mida programm vastu võtab
 
 Beeta: teatage probleemidest GitHubis.

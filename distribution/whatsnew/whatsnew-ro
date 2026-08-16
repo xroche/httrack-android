@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
 • Regulile, adresele și redirecționările foarte lungi nu mai întrerup copierea și nu mai dispar din ea
-• Un fișier robots.txt mare este acum citit în întregime
-• Subsolul fiecărei pagini copiate nu mai conține un an fix, iar câmpurile adăugate de dumneavoastră funcționează
+• Un fișier robots.txt mare nu mai este tăiat după primii kiloocteți
+• În proiectele noi, subsolul pierde anul fix, iar câmpurile adăugate de dumneavoastră sunt completate
 • Pagina de ajutor despre filtre corespunde acum cu ceea ce acceptă programul
 
 Beta: raportați problemele pe GitHub.

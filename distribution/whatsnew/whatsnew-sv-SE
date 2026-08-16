@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
 • Mycket långa regler, adresser och omdirigeringar avbryter inte längre kopieringen och försvinner inte ur den
-• En stor robots.txt-fil läses nu i sin helhet
-• Sidfoten på varje kopierad sida innehåller inte längre ett fast årtal, och egna fält fungerar i den
+• En stor robots.txt-fil kapas inte längre efter de första kilobyten
+• I nya projekt försvinner det fasta årtalet i sidfoten, och egna fält fylls i
 • Hjälpsidan om filter stämmer nu med vad programmet accepterar
 
 Beta: rapportera problem på GitHub.

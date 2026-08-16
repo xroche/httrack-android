@@ -1,8 +1,8 @@
 HTTrack 3.50 béta 5.
 
 • A nagyon hosszú szabályok, címek és átirányítások többé nem szakítják meg a másolást, és nem tűnnek el belőle
-• A nagy robots.txt fájlt a program mostantól teljesen beolvassa
-• A másolt oldalak láblécében már nincs rögzített évszám, és a saját mezők is működnek benne
+• A nagy robots.txt fájl már nem szakad meg az első kilobájtok után
+• Az új projektekben eltűnik a lábléc rögzített évszáma, és a program kitölti a saját mezőket
 • A szűrők súgóoldala mostantól megfelel annak, amit a program elfogad
 
 Béta: a hibákat a GitHubon jelezze.

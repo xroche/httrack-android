@@ -1,8 +1,8 @@
 HTTrack 3.50 Beta 5.
 
 • Sehr lange Regeln, Adressen und Weiterleitungen brechen die Kopie nicht mehr ab und verschwinden nicht mehr daraus
-• Eine große robots.txt wird jetzt vollständig gelesen
-• Die Fußzeile jeder kopierten Seite enthält kein festes Jahr mehr, und eigene Felder darin funktionieren
+• Eine große robots.txt wird nicht mehr nach den ersten Kilobyte abgeschnitten
+• In neuen Projekten entfällt das feste Jahr in der Fußzeile, und eigene Felder darin werden ausgefüllt
 • Die Hilfeseite zu den Filtern entspricht jetzt dem, was das Programm annimmt
 
 Beta: Probleme bitte auf GitHub melden.

@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
 • Very long rules, addresses and redirects no longer break the copy or disappear from it
-• A large robots.txt file is now read to the end
-• The footer on each copied page no longer carries a fixed year, and the fields you add to it work
+• A large robots.txt file is no longer cut off after the first few kilobytes
+• In new projects, the page footer drops the fixed year, and the fields you add to it are filled in
 • The help page on filters now matches what the program accepts
 
 Beta: report problems on GitHub.

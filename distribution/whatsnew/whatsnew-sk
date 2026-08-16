@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
 • Veľmi dlhé pravidlá, adresy a presmerovania už kopírovanie neprerušia ani z neho nezmiznú
-• Veľký súbor robots.txt sa teraz načíta celý
-• Päta každej skopírovanej stránky už neobsahuje pevný rok a vlastné polia v nej fungujú
+• Veľký súbor robots.txt sa už neoreže po prvých kilobajtoch
+• V nových projektoch päta stráca pevný rok a vlastné polia sa v nej vyplnia
 • Stránka pomocníka o filtroch teraz zodpovedá tomu, čo program prijíma
 
 Beta: problémy hláste na GitHube.

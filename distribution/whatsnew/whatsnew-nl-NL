@@ -1,8 +1,8 @@
 HTTrack 3.50 bèta 5.
 
 • Zeer lange regels, adressen en omleidingen breken de kopie niet meer af en verdwijnen er niet meer uit
-• Een groot robots.txt-bestand wordt nu volledig gelezen
-• De voettekst op elke gekopieerde pagina bevat geen vast jaartal meer, en eigen velden werken erin
+• Een groot robots.txt-bestand wordt niet meer na de eerste kilobytes afgekapt
+• In nieuwe projecten vervalt het vaste jaartal in de voettekst en worden eigen velden ingevuld
 • De helppagina over filters komt nu overeen met wat het programma accepteert
 
 Bèta: meld problemen op GitHub.
