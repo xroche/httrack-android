@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• A new option lists a site's other hostnames, so the site is copied once, not once per hostname
-• An interrupted update no longer deletes the files it never reached
-• A rule that begins with "-" no longer stops the copy
-• A very long address no longer crashes the copy
+• Very long rules, addresses and redirects no longer break the copy or disappear from it
+• A large robots.txt file is no longer cut off after the first few kilobytes
+• In new projects, the page footer drops the fixed year, and the fields you add to it are filled in
+• The help page on filters now matches what the program accepts
 
 Beta: report problems on GitHub.

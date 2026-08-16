@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• Uma nova opção indica os outros nomes de host do site, que deixa de ser copiado uma vez por nome
-• Uma atualização interrompida não apaga mais os arquivos que não chegou a percorrer
-• Uma regra começada por "-" não interrompe mais a cópia
-• Um endereço muito longo não trava mais a cópia
+• Regras, endereços e redirecionamentos muito longos não interrompem mais a cópia nem desaparecem dela
+• Um arquivo robots.txt grande não é mais cortado após os primeiros kilobytes
+• Nos projetos novos, o rodapé perde o ano fixo e os campos que você acrescentar são preenchidos
+• A página de ajuda sobre os filtros agora corresponde ao que o programa aceita
 
 Beta: relate os problemas no GitHub.

@@ -1,8 +1,8 @@
-HTTrack 3.50 bêta 4.
+HTTrack 3.50 bêta 5.
 
-• Une nouvelle option liste les autres noms d'hôte du site, qui n'est plus copié une fois par nom
-• Une mise à jour interrompue ne supprime plus les fichiers qu'elle n'a pas atteints
-• Une règle commençant par « - » n'interrompt plus la copie
-• Une adresse très longue ne fait plus planter la copie
+• Les règles, adresses et redirections très longues n'interrompent plus la copie et n'en disparaissent plus
+• Un fichier robots.txt volumineux n'est plus tronqué après les premiers kilo-octets
+• Dans les nouveaux projets, le pied de page perd son année figée, et les champs que vous y ajoutez sont remplis
+• La page d'aide sur les filtres correspond maintenant à ce que le programme accepte
 
 Bêta : signalez les problèmes sur GitHub.

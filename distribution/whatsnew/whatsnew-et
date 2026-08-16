@@ -1,8 +1,8 @@
-HTTrack 3.50 beeta 4.
+HTTrack 3.50 beeta 5.
 
-• Uus säte loetleb saidi teised hostinimed, nii et see kopeeritakse korra, mitte iga nime kohta
-• Katkenud värskendus ei kustuta enam faile, milleni see ei jõudnud
-• Märgiga „-“ algav reegel ei katkesta enam kopeerimist
-• Väga pikk aadress ei pane enam kopeerimist kokku jooksma
+• Väga pikad reeglid, aadressid ja ümbersuunamised ei katkesta enam kopeerimist ega kao sellest
+• Suurt robots.txt-faili ei kärbita enam pärast esimesi kilobaite
+• Uutes projektides kaob jaluse kindel aastaarv ja teie lisatud väljad täidetakse
+• Filtrite abileht vastab nüüd sellele, mida programm vastu võtab
 
 Beeta: teatage probleemidest GitHubis.

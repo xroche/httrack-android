@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• Yeni bir seçenek sitenin diğer ana makine adlarını listeler; böylece site her ad için değil, bir kez kopyalanır
-• Yarıda kesilen güncelleme, ulaşamadığı dosyaları artık silmiyor
-• "-" ile başlayan bir kural artık kopyalamayı durdurmuyor
-• Çok uzun bir adres artık kopyalamayı çökertmiyor
+• Çok uzun kurallar, adresler ve yönlendirmeler artık kopyalamayı kesmiyor ve kopyadan kaybolmuyor
+• Büyük bir robots.txt dosyası artık ilk kilobayttan sonra kesilmiyor
+• Yeni projelerde altbilgideki sabit yıl kalkıyor ve eklediğiniz alanlar dolduruluyor
+• Filtrelerle ilgili yardım sayfası artık programın kabul ettiğiyle örtüşüyor
 
 Beta: sorunları GitHub'da bildirin.

@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• Et nytt valg angir nettstedets øvrige vertsnavn, så det kopieres én gang i stedet for per navn
-• En avbrutt oppdatering sletter ikke lenger filene den aldri rakk
-• En regel som begynner med «-», avbryter ikke lenger kopieringen
-• En svært lang adresse krasjer ikke lenger kopieringen
+• Svært lange regler, adresser og omdirigeringer avbryter ikke lenger kopieringen og forsvinner ikke fra den
+• En stor robots.txt-fil blir ikke lenger kuttet etter de første kilobytene
+• I nye prosjekter forsvinner det faste årstallet i bunnteksten, og egne felt blir fylt ut
+• Hjelpesiden om filtre stemmer nå med det programmet godtar
 
 Beta: meld fra om problemer på GitHub.

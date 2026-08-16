@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beeta 5.
 
-• Uusi valinta luettelee sivuston muut isäntänimet, joten se kopioidaan kerran eikä nimeä kohden
-• Keskeytynyt päivitys ei enää poista tiedostoja, joihin se ei ehtinyt
-• Merkillä ”-” alkava sääntö ei enää katkaise kopiointia
-• Hyvin pitkä osoite ei enää kaada kopiointia
+• Hyvin pitkät säännöt, osoitteet ja uudelleenohjaukset eivät enää keskeytä kopiointia eivätkä katoa siitä
+• Suurta robots.txt-tiedostoa ei enää katkaista ensimmäisten kilotavujen jälkeen
+• Uusissa projekteissa alatunnisteen kiinteä vuosiluku poistuu, ja omat kentät täytetään
+• Suodattimien ohjesivu vastaa nyt sitä, mitä ohjelma hyväksyy
 
-Beta: ilmoita ongelmista GitHubissa.
+Beeta: ilmoita ongelmista GitHubissa.
