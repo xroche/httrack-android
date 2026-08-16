@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• Nowa opcja podaje pozostałe nazwy hosta witryny, która nie jest już kopiowana raz na nazwę
-• Przerwana aktualizacja nie usuwa już plików, do których nie dotarła
-• Reguła zaczynająca się od znaku „-” nie przerywa już kopiowania
-• Bardzo długi adres nie powoduje już awarii kopiowania
+• Bardzo długie reguły, adresy i przekierowania nie przerywają już kopiowania ani z niego nie znikają
+• Duży plik robots.txt jest teraz czytany do końca
+• Stopka każdej skopiowanej strony nie zawiera już stałego roku, a dodane przez Ciebie pola działają
+• Strona pomocy o filtrach odpowiada teraz temu, co program przyjmuje
 
 Beta: zgłaszaj problemy na GitHubie.

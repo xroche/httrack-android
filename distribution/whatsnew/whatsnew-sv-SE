@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• Ett nytt alternativ anger webbplatsens övriga värdnamn, så att den kopieras en gång i stället för per namn
-• En avbruten uppdatering raderar inte längre filerna den aldrig hann nå
-• En regel som börjar med ”-” avbryter inte längre kopieringen
-• En mycket lång adress kraschar inte längre kopieringen
+• Mycket långa regler, adresser och omdirigeringar avbryter inte längre kopieringen och försvinner inte ur den
+• En stor robots.txt-fil läses nu i sin helhet
+• Sidfoten på varje kopierad sida innehåller inte längre ett fast årtal, och egna fält fungerar i den
+• Hjälpsidan om filter stämmer nu med vad programmet accepterar
 
 Beta: rapportera problem på GitHub.

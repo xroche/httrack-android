@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• Nova mogućnost navodi ostala imena poslužitelja, pa se web mjesto kopira jednom, a ne po imenu
-• Prekinuto ažuriranje više ne briše datoteke do kojih nije stiglo
-• Pravilo koje počinje znakom „-“ više ne prekida kopiranje
-• Vrlo dugačka adresa više ne ruši kopiranje
+• Vrlo duga pravila, adrese i preusmjeravanja više ne prekidaju kopiranje niti iz njega nestaju
+• Velika datoteka robots.txt sada se čita u cijelosti
+• Podnožje svake kopirane stranice više ne sadrži stalnu godinu, a vlastita polja u njemu rade
+• Stranica pomoći o filtrima sada odgovara onome što program prihvaća
 
-Beta: prijavite probleme na GitHubu.
+Beta: probleme prijavite na GitHubu.

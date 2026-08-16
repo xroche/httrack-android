@@ -1,8 +1,8 @@
-HTTrack 3.50 bèta 4.
+HTTrack 3.50 bèta 5.
 
-• Een nieuwe optie noemt de andere hostnamen van de site, die niet meer per naam wordt gekopieerd
-• Een onderbroken update wist niet langer de bestanden die deze nooit heeft bereikt
-• Een regel die met "-" begint, breekt de kopie niet meer af
-• Een heel lang adres laat de kopie niet meer vastlopen
+• Zeer lange regels, adressen en omleidingen breken de kopie niet meer af en verdwijnen er niet meer uit
+• Een groot robots.txt-bestand wordt nu volledig gelezen
+• De voettekst op elke gekopieerde pagina bevat geen vast jaartal meer, en eigen velden werken erin
+• De helppagina over filters komt nu overeen met wat het programma accepteert
 
 Bèta: meld problemen op GitHub.

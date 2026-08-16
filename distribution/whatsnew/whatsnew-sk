@@ -1,8 +1,8 @@
-HTTrack 3.50 beta 4.
+HTTrack 3.50 beta 5.
 
-• Nová voľba uvádza ďalšie názvy hostiteľa webu, ktorý sa už nekopíruje raz za každý názov
-• Prerušená aktualizácia už nemaže súbory, ku ktorým sa nedostala
-• Pravidlo začínajúce znakom „-“ už nezruší kopírovanie
-• Veľmi dlhá adresa už kopírovanie nezhodí
+• Veľmi dlhé pravidlá, adresy a presmerovania už kopírovanie neprerušia ani z neho nezmiznú
+• Veľký súbor robots.txt sa teraz načíta celý
+• Päta každej skopírovanej stránky už neobsahuje pevný rok a vlastné polia v nej fungujú
+• Stránka pomocníka o filtroch teraz zodpovedá tomu, čo program prijíma
 
-Beta: hláste problémy na GitHube.
+Beta: problémy hláste na GitHube.
