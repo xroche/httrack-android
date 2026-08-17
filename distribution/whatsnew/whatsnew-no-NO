@@ -1,8 +1,7 @@
 HTTrack 3.50 beta 5.
 
-• Svært lange regler, adresser og omdirigeringer avbryter ikke lenger kopieringen og forsvinner ikke fra den
-• En stor robots.txt-fil blir ikke lenger kuttet etter de første kilobytene
-• I nye prosjekter forsvinner det faste årstallet i bunnteksten, og egne felt blir fylt ut
-• Hjelpesiden om filtre stemmer nå med det programmet godtar
+• Nye prosjekter erstatter ikke lenger eksterne lenker med feilsider og fjerner ikke spørringer fra de lagrede filnavnene
+• Mellomlagringsvalget ser nå etter oppdateringer før en fil brukes på nytt
+• Prosjektinnstillinger kan utveksles med Windows-versjonen, inkludert DOS- og ISO 9660-navn
 
 Beta: meld fra om problemer på GitHub.

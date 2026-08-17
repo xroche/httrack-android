@@ -1,8 +1,7 @@
 HTTrack 3.50 Beta 5.
 
-• Sehr lange Regeln, Adressen und Weiterleitungen brechen die Kopie nicht mehr ab und verschwinden nicht mehr daraus
-• Eine große robots.txt wird nicht mehr nach den ersten Kilobyte abgeschnitten
-• In neuen Projekten entfällt das feste Jahr in der Fußzeile, und eigene Felder darin werden ausgefüllt
-• Die Hilfeseite zu den Filtern entspricht jetzt dem, was das Programm annimmt
+• Neue Projekte ersetzen externe Links nicht mehr durch Fehlerseiten und entfernen keine Abfragen mehr aus den gespeicherten Dateinamen
+• Die Cache-Option prüft jetzt auf Aktualisierungen, bevor eine Datei wiederverwendet wird
+• Projekteinstellungen lassen sich mit der Windows-Version austauschen, einschließlich DOS- und ISO-9660-Namen
 
 Beta: Probleme bitte auf GitHub melden.
