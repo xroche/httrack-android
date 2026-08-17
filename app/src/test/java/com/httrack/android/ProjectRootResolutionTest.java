@@ -163,6 +163,13 @@ public class ProjectRootResolutionTest {
         computeStorageTargetBody().contains(".edit()"));
   }
 
+  /** Wiring, not behaviour: the recorder tests below cannot see the call site at all. */
+  @Test
+  public void computeStorageTargetIsStillWiredToApplyRootMove() throws Exception {
+    assertTrue("computeStorageTarget must hand the move to StoragePaths",
+        computeStorageTargetBody().contains("StoragePaths.applyRootMove("));
+  }
+
   /** A move re-points the native side at the root just resolved, and relists what is under it. */
   @Test
   public void aMoveReinitsAtTheNewRoot() {
