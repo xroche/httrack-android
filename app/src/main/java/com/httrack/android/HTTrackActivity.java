@@ -247,9 +247,7 @@ public class HTTrackActivity extends FragmentActivity {
     return hasAllFilesAccess() ? Environment.getExternalStorageDirectory() : null;
   }
 
-  /* Default mirror root, a POSIX path the engine takes; the policy is StoragePaths.defaultRoot.
-   * Both private-dir lookups create their directory even when shared storage wins: empty, hidden
-   * under Android/data, and isWritableProjectPath makes them anyway once a base is set. */
+  /* Default mirror root, a POSIX path the engine takes; the policy is StoragePaths.defaultRoot. */
   private File getDefaultHTTrackPath() {
     return StoragePaths.defaultRoot(getExternalFilesDir(null), getFilesDir(), sharedStorageRoot());
   }

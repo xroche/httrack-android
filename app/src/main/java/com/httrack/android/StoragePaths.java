@@ -94,7 +94,7 @@ final class StoragePaths {
     void warnMissingDirectory();
 
     /** Point the native side at the new root, so its logs land under it. */
-    void initNativeRoot(File root);
+    void initNativeRoot(final File root);
 
     /** The listed projects are the ones under the root, so the suggestions went stale. */
     void refreshProjectSuggestions();
@@ -106,8 +106,12 @@ final class StoragePaths {
    *
    * @param previous
    *          the root in use, null before anything was resolved
+   * @param resolved
+   *          the freshly resolved root
    * @param missingDir
    *          whether the persisted base could not be created
+   * @param actions
+   *          the side effects to run
    * @return whether the root moved
    */
   static boolean applyRootMove(final File previous, final File resolved, final boolean missingDir,
