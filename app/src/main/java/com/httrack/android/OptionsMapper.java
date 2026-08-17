@@ -93,8 +93,8 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.checkGetNonHtmlNear, "Near"),
       new Pair<Integer, String>(R.id.checkTestAllLinks, "Test"),
       new Pair<Integer, String>(R.id.checkGetHtmlFirst, "HTMLFirst"),
-      new Pair<Integer, String>(R.id.checkKeepWwwPrefix, "KeepWwwPrefix"),
-      new Pair<Integer, String>(R.id.checkKeepDoubleSlashes, "KeepDoubleSlashes"),
+      new Pair<Integer, String>(R.id.checkKeepWwwPrefix, "KeepWww"),
+      new Pair<Integer, String>(R.id.checkKeepDoubleSlashes, "KeepSlashes"),
       new Pair<Integer, String>(R.id.checkKeepQueryOrder, "KeepQueryOrder"),
 
       /* Build */
@@ -134,7 +134,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.checkForceHttp10, "HTTP10"),
 
       /* Proxy */
-      new Pair<Integer, String>(R.id.radioProxyProtocol, "ProxyProtocol"),
+      new Pair<Integer, String>(R.id.radioProxyProtocol, "ProxyType"),
       new Pair<Integer, String>(R.id.editProxy, "Proxy"),
       new Pair<Integer, String>(R.id.editProxyPort, "Port"),
       new Pair<Integer, String>(R.id.checkUseProxyForFtp, "UseHTTPProxyForFTP"),
@@ -230,9 +230,9 @@ public class OptionsMapper {
       new Pair<String, String>("BuildString", "%h%p/%n%q.%t"),
       // Empty: no -F, so the engine supplies its own current versioned User-Agent.
       new Pair<String, String>("UserID", ""),
-      new Pair<String, String>("ProxyProtocol", "0"),
-      new Pair<String, String>("KeepWwwPrefix", "0"),
-      new Pair<String, String>("KeepDoubleSlashes", "0"),
+      new Pair<String, String>("ProxyType", "0"),
+      new Pair<String, String>("KeepWww", "0"),
+      new Pair<String, String>("KeepSlashes", "0"),
       new Pair<String, String>("KeepQueryOrder", "0"),
       /* A single %s anywhere puts the whole template back on the engine's
        * legacy positional path, where named fields render verbatim. */
@@ -301,9 +301,10 @@ public class OptionsMapper {
           dosIso9660Handler.getIso9660Mapper()),
       new Pair<String, OptionMapper>("NoErrorPages", new SimpleOptionFlag("o0")),
       new Pair<String, OptionMapper>("NoExternalPages", new SimpleOptionFlag(
-          "x", true)),
+          "x")),
       new Pair<String, OptionMapper>("NoPwdInPages", new SimpleOptionFlag("%x")),
-      new Pair<String, OptionMapper>("NoQueryStrings", new SimpleOption0("%q")),
+      new Pair<String, OptionMapper>("NoQueryStrings", new SimpleOptionFlag(
+          "%q0")),
       new Pair<String, OptionMapper>("NoPurgeOldFiles", new SimpleOptionFlag(
           "X0")),
       new Pair<String, OptionMapper>("Warc", new SimpleOptionFlag("%r")),
@@ -331,7 +332,8 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("Cookies",
           new SimpleOptionFlag("b0", true)),
       new Pair<String, OptionMapper>("CheckType", new SimpleOption("u")),
-      new Pair<String, OptionMapper>("ParseJava", new SimpleOptionFlag("j",
+      /* Bare -j only re-asserts the engine default; switching it off needs -j0. */
+      new Pair<String, OptionMapper>("ParseJava", new SimpleOptionFlag("j0",
           true)),
       new Pair<String, OptionMapper>("FollowRobotsTxt", new SimpleOption("s")),
       new Pair<String, OptionMapper>("UpdateHack", new SimpleOptionFlag("%s")),
@@ -339,7 +341,7 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("TolerantRequests", new SimpleOptionFlag(
           "%B")),
       new Pair<String, OptionMapper>("HTTP10", new SimpleOptionFlag("%h")),
-      new Pair<String, OptionMapper>("ProxyProtocol",
+      new Pair<String, OptionMapper>("ProxyType",
           proxyHandler.getProtocolMapper()),
       new Pair<String, OptionMapper>("Proxy", proxyHandler.getAddressMapper()),
       new Pair<String, OptionMapper>("Port", proxyHandler.getPortMapper()),
@@ -348,8 +350,8 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("StripQuery", new ArgumentOption("-%g")),
       new Pair<String, OptionMapper>("HostAlias", new RuleListOption(
           "--host-alias")),
-      new Pair<String, OptionMapper>("KeepWwwPrefix", new SimpleOptionFlag("%j")),
-      new Pair<String, OptionMapper>("KeepDoubleSlashes", new SimpleOptionFlag(
+      new Pair<String, OptionMapper>("KeepWww", new SimpleOptionFlag("%j")),
+      new Pair<String, OptionMapper>("KeepSlashes", new SimpleOptionFlag(
           "%o")),
       new Pair<String, OptionMapper>("KeepQueryOrder", new SimpleOptionFlag("%y")),
       new Pair<String, OptionMapper>("UseHTTPProxyForFTP", new SimpleOption0(
@@ -403,6 +405,17 @@ public class OptionsMapper {
           mimeTypesHandlers[7].getExtMapper()),
       new Pair<String, OptionMapper>("MIMEDefsMime8",
           mimeTypesHandlers[7].getMimeMapper()) };
+
+  // Spellings earlier builds wrote; accepted on read, never written back.
+  @SuppressWarnings("unchecked")
+  protected static final Pair<String, String> fieldsLegacyNames[] = new Pair[] {
+      new Pair<String, String>("ProxyProtocol", "ProxyType"),
+      new Pair<String, String>("KeepWwwPrefix", "KeepWww"),
+      new Pair<String, String>("KeepDoubleSlashes", "KeepSlashes") };
+
+  // WinHTTrack packs both name-mangling boxes in Dos; Iso9660 is ours alone.
+  private static final String DOS_KEY = "Dos";
+  private static final String ISO9660_KEY = "Iso9660";
 
   // Name-to-ID hash map
   protected static final HashMap<String, Integer> fieldsNameToId = new HashMap<String, Integer>();
@@ -786,6 +799,33 @@ public class OptionsMapper {
           commandline.add(dos ? "-L0" : "-L2");
         }
       }
+    }
+
+    /**
+     * Pack both boxes the way WinHTTrack stores them: bit 0 DOS names, bit 1
+     * ISO 9660, each box "1" when checked.
+     */
+    public static String pack(final String dos, final String iso9660) {
+      return String.valueOf(("1".equals(dos) ? 1 : 0)
+          | ("1".equals(iso9660) ? 2 : 0));
+    }
+
+    /**
+     * Split a packed value into { dos, iso9660 }, or null when it holds no
+     * number, which leaves both boxes on their defaults.
+     */
+    public static String[] unpack(final String packed) {
+      if (packed == null) {
+        return null;
+      }
+      final int bits;
+      try {
+        bits = Integer.parseInt(packed.trim());
+      } catch (final NumberFormatException nfe) {
+        return null;
+      }
+      return new String[] { (bits & 1) != 0 ? "1" : "0",
+          (bits & 2) != 0 ? "1" : "0" };
     }
   }
 
@@ -1366,6 +1406,38 @@ public class OptionsMapper {
       }
       fieldsNameToId.put(fkey, id);
     }
+    for (final Pair<String, String> legacy : fieldsLegacyNames) {
+      final Integer id = fieldsNameToId.get(legacy.second);
+      if (id == null) {
+        throw new RuntimeException("unexpected internal error with "
+            + legacy.second);
+      }
+      fieldsNameToId.put(legacy.first, id);
+    }
+  }
+
+  /*
+   * The spelling an earlier build used for this key, or null if unchanged.
+   */
+  private static String legacyNameOf(final String key) {
+    for (final Pair<String, String> legacy : fieldsLegacyNames) {
+      if (legacy.second.equals(key)) {
+        return legacy.first;
+      }
+    }
+    return null;
+  }
+
+  /*
+   * Expand a stored Dos bitmask into the two boxes it packs.
+   */
+  private static void splitDosBitmask(final SparseArray<String> map) {
+    final String[] boxes = DosIso9660Handler.unpack(map.get(fieldsNameToId
+        .get(DOS_KEY)));
+    if (boxes != null) {
+      map.put(fieldsNameToId.get(DOS_KEY), boxes[0]);
+      map.put(fieldsNameToId.get(ISO9660_KEY), boxes[1]);
+    }
   }
 
   /*
@@ -1633,6 +1705,9 @@ public class OptionsMapper {
     final FileReader reader = new FileReader(profile);
     final BufferedReader lreader = new BufferedReader(reader);
     try {
+      // An explicit Iso9660 wins: older profiles of ours wrote Dos as a plain
+      // boolean beside it.
+      boolean hasIso9660 = false;
       String rawline;
       while ((rawline = lreader.readLine()) != null) {
         final String line = rawline.trim();
@@ -1647,8 +1722,12 @@ public class OptionsMapper {
           final Integer id = OptionsMapper.fieldsNameToId.get(key);
           if (id != null) {
             map.put(id, value);
+            hasIso9660 |= ISO9660_KEY.equals(key);
           }
         }
+      }
+      if (!hasIso9660) {
+        splitDosBitmask(map);
       }
       lreader.close();
     } finally {
@@ -1681,8 +1760,13 @@ public class OptionsMapper {
     final BufferedWriter lwriter = new BufferedWriter(writer);
     try {
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
-        final String value = getMap(field.first);
         final String key = field.second;
+        if (ISO9660_KEY.equals(key)) {
+          continue; // folded into Dos
+        }
+        final String value = DOS_KEY.equals(key) ? DosIso9660Handler.pack(
+            getMap(field.first), getMap(fieldsNameToId.get(ISO9660_KEY)))
+            : getMap(field.first);
         lwriter.write(key);
         lwriter.write("=");
         if (value != null) {
@@ -1787,7 +1871,13 @@ public class OptionsMapper {
           continue;
         }
         final String key = field.second;
-        final String value = settings.getString(key, null);
+        String value = settings.getString(key, null);
+        if (value == null) {
+          final String legacy = legacyNameOf(key);
+          if (legacy != null) {
+            value = settings.getString(legacy, null);
+          }
+        }
         if (value != null) {
           setMap(field.first, value);
         }
