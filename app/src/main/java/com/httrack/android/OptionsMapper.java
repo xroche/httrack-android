@@ -88,7 +88,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.editRetries, "Retry"),
       new Pair<Integer, String>(R.id.editMinTransferRate, "RateOut"),
       new Pair<Integer, String>(R.id.checkRemoveHostIfSlow, "RemoveRateout"),
-      new Pair<Integer, String>(R.id.editPause, "Pause"),
+      new Pair<Integer, String>(R.id.editPause, "PauseFiles"),
 
       /* Links */
       new Pair<Integer, String>(R.id.checkDetectAllLinks, "ParseAll"),
@@ -348,7 +348,7 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("Proxy", proxyHandler.getAddressMapper()),
       new Pair<String, OptionMapper>("Port", proxyHandler.getPortMapper()),
       new Pair<String, OptionMapper>("CookiesFile", new ArgumentOption("-%K")),
-      new Pair<String, OptionMapper>("Pause", new ArgumentOption("-%G")),
+      new Pair<String, OptionMapper>("PauseFiles", new ArgumentOption("-%G")),
       new Pair<String, OptionMapper>("StripQuery", new ArgumentOption("-%g")),
       new Pair<String, OptionMapper>("HostAlias", new RuleListOption(
           "--host-alias")),
@@ -420,7 +420,7 @@ public class OptionsMapper {
     // Spellings earlier builds wrote; accepted on read, never written back.
     private static final String LEGACY_NAMES[][] = {
         { "ProxyProtocol", "ProxyType" }, { "KeepWwwPrefix", "KeepWww" },
-        { "KeepDoubleSlashes", "KeepSlashes" } };
+        { "KeepDoubleSlashes", "KeepSlashes" }, { "Pause", "PauseFiles" } };
 
     // WinHTTrack packs both name-mangling boxes in Dos; Iso9660 is ours alone.
     static final String DOS_KEY = "Dos";
