@@ -425,14 +425,24 @@ public class OptionsActivity extends FragmentActivity implements
     mapper.unserialize(map);
   }
 
-  @Override
-  public int visiblePane() {
+  /** Index of CLS in tabClasses, NO_PANE when it names no tab. **/
+  protected static int paneIndexOf(final Class<?> cls) {
     for (int i = 0; i < tabClasses.length; i++) {
-      if (tabClasses[i] == activityClass) {
+      if (tabClasses[i] == cls) {
         return i;
       }
     }
     return OptionsInstanceState.NO_PANE;
+  }
+
+  @Override
+  public int paneCount() {
+    return tabClasses.length;
+  }
+
+  @Override
+  public int visiblePane() {
+    return paneIndexOf(activityClass);
   }
 
   @Override

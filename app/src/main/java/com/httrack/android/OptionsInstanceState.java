@@ -28,15 +28,15 @@ import android.os.Parcelable;
  * What the options screen saves across a recreation, kept out of OptionsActivity so both
  * directions run over seams: production stores into a Bundle, the tests into a plain map.
  */
-public final class OptionsInstanceState {
-  /** No tab is open: the menu is showing. */
-  public static final int NO_PANE = -1;
+final class OptionsInstanceState {
+  /** No tab is open: the menu is showing. **/
+  static final int NO_PANE = -1;
 
   private OptionsInstanceState() {
   }
 
   /** The bundle slots the state occupies. **/
-  public interface Store {
+  interface Store {
     void putInt(final String key, final int value);
 
     int getInt(final String key, final int defaultValue);
@@ -47,25 +47,28 @@ public final class OptionsInstanceState {
   }
 
   /** The options screen the state is taken from and given back to. **/
-  public interface Screen {
-    /** Flush the visible tab's widgets into the map, which is what gets saved. */
+  interface Screen {
+    /** Flush the visible tab's widgets into the map, which is what gets saved. **/
     void flushVisibleTab();
 
     Parcelable serializeMap();
 
     void unserializeMap(final Parcelable map);
 
-    /** Index in tabClasses of the open tab, NO_PANE on the menu. */
+    /** Number of tabs, so a saved index naming none can be refused. **/
+    int paneCount();
+
+    /** Index in tabClasses of the open tab, NO_PANE on the menu. **/
     int visiblePane();
 
     void openPane(final int index);
   }
 
   /** Store over the real thing. **/
-  public static class BundleStore implements Store {
+  static final class BundleStore implements Store {
     private final Bundle bundle;
 
-    public BundleStore(final Bundle bundle) {
+    BundleStore(final Bundle bundle) {
       this.bundle = bundle;
     }
 
@@ -91,7 +94,7 @@ public final class OptionsInstanceState {
   }
 
   /** Save what it takes to re-open SCREEN as the user left it. **/
-  public static void save(final Screen screen, final Store store,
+  static void save(final Screen screen, final Store store,
       final int versionCode) {
     // Edits on the visible tab only reach the map when that tab is left.
     screen.flushVisibleTab();
@@ -103,7 +106,7 @@ public final class OptionsInstanceState {
   }
 
   /** Restore SCREEN from STORE; false when the bundle held nothing usable. **/
-  public static boolean restore(final Screen screen, final Store store,
+  static boolean restore(final Screen screen, final Store store,
       final int versionCode) {
     // Another build renumbers R.id, so its map keys and pane index name other fields and tabs.
     if (store.getInt(HTTrackActivity.VERSION_CODE_NAME, 0) != versionCode) {
@@ -118,8 +121,9 @@ public final class OptionsInstanceState {
 
     // The map first: opening a tab loads its fields from it.
     screen.unserializeMap(map);
+    // A rebuild at the same versionCode may drop or reorder tabs, so the index can name none.
     final int pane = store.getInt(HTTrackActivity.PANE_NAME, NO_PANE);
-    if (pane != NO_PANE) {
+    if (pane >= 0 && pane < screen.paneCount()) {
       screen.openPane(pane);
     }
     return true;

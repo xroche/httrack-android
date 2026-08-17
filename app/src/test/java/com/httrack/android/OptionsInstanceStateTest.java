@@ -2,7 +2,6 @@ package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -96,6 +95,11 @@ public class OptionsInstanceStateTest {
     }
 
     @Override
+    public int paneCount() {
+      return OptionsActivity.tabClasses.length;
+    }
+
+    @Override
     public int visiblePane() {
       calls.add("visiblePane");
       return pane;
@@ -115,6 +119,18 @@ public class OptionsInstanceStateTest {
     final FakeScreen restored = new FakeScreen(null,
         OptionsInstanceState.NO_PANE);
     restored.restored = OptionsInstanceState.restore(restored, store, version);
+    return restored;
+  }
+
+  /** The screen a bundle naming PANE restores onto. */
+  private static FakeScreen restorePane(final int pane) {
+    final FakeStore store = new FakeStore();
+    store.putInt(HTTrackActivity.VERSION_CODE_NAME, VERSION);
+    store.putParcelable(HTTrackActivity.MAP_NAME, new FakeMap());
+    store.putInt(HTTrackActivity.PANE_NAME, pane);
+    final FakeScreen restored = new FakeScreen(null,
+        OptionsInstanceState.NO_PANE);
+    restored.restored = OptionsInstanceState.restore(restored, store, VERSION);
     return restored;
   }
 
@@ -178,23 +194,59 @@ public class OptionsInstanceStateTest {
   }
 
   @Test
-  public void noTabIsListedTwice() {
-    // A duplicate would make two menu entries share one saved pane index.
+  public void everyTabHasItsOwnPaneIndex() {
+    // A duplicate would make two menu entries share one index, and reopen the wrong tab.
     for (int i = 0; i < OptionsActivity.tabClasses.length; i++) {
-      for (int j = i + 1; j < OptionsActivity.tabClasses.length; j++) {
-        assertNotSame(OptionsActivity.tabClasses[i].getName(),
-            OptionsActivity.tabClasses[i], OptionsActivity.tabClasses[j]);
-      }
+      assertEquals(OptionsActivity.tabClasses[i].getName(), i,
+          OptionsActivity.paneIndexOf(OptionsActivity.tabClasses[i]));
     }
+  }
+
+  @Test
+  public void whatIsNotATabIsNotAPane() {
+    // activityClass is null on the menu, and never a class outside the list.
+    assertEquals(OptionsInstanceState.NO_PANE,
+        OptionsActivity.paneIndexOf(null));
+    assertEquals(OptionsInstanceState.NO_PANE,
+        OptionsActivity.paneIndexOf(OptionsActivity.class));
+  }
+
+  @Test
+  public void aPaneIndexNamingNoTabLeavesTheMenu() {
+    // A rebuild at the same versionCode passes the version stamp, so the index reaches setPane.
+    for (final int pane : new int[] { OptionsActivity.tabClasses.length, -2 }) {
+      final FakeScreen restored = restorePane(pane);
+      assertTrue("bundle refused for pane " + pane, restored.restored);
+      assertFalse("reopened pane " + pane,
+          restored.calls.contains("openPane"));
+    }
+  }
+
+  @Test
+  public void theSavedIndexIsTheVisibleTabs() throws IOException {
+    // The fake screen answers visiblePane() itself, so only the source pins the real one.
+    assertTrue("visiblePane() does not use paneIndexOf",
+        body("public int visiblePane(").contains("paneIndexOf(activityClass)"));
   }
 
   @Test
   public void bothLifecycleHooksAreOverridden() throws IOException {
     // The Activity overrides are the one thing above no seam reaches.
-    final String source = TestSources.javaSource("OptionsActivity");
     assertTrue("no onSaveInstanceState",
-        source.contains("OptionsInstanceState.save(this,"));
+        body("protected void onSaveInstanceState(").contains(
+            "OptionsInstanceState.save(this,"));
     assertTrue("no onRestoreInstanceState",
-        source.contains("OptionsInstanceState.restore(this,"));
+        body("protected void onRestoreInstanceState(").contains(
+            "OptionsInstanceState.restore(this,"));
+  }
+
+  /** Body of an OptionsActivity method, up to the closing brace at method indent. */
+  private static String body(final String signature) throws IOException {
+    final String source = TestSources.javaSource("OptionsActivity");
+    final int start = source.indexOf(signature);
+    assertTrue("not declared: " + signature, start >= 0);
+    final int end = source.indexOf("\n  }", start);
+    assertTrue("unterminated: " + signature, end > start);
+    return source.substring(start, end);
   }
 }
