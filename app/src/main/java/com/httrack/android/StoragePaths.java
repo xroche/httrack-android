@@ -61,17 +61,16 @@ final class StoragePaths {
    * re-points the running session instead of waiting for the next cold start.
    *
    * @param base
-   *          the persisted base path, or null when none is set
+   *          the persisted base path, or null when none is set; call after any mkdirs attempt,
+   *          since a base that is not yet a directory is refused
    * @param writable
    *          {@link #isWritable} verdict for base; only a decided yes is honoured
-   * @param baseIsDirectory
-   *          whether base is a directory, tested after any mkdirs attempt
    * @param defaultRoot
-   *          the fallback root, which depends on the access currently held
+   *          the fallback root
+   * @return base, or defaultRoot whenever base is unset, unvetted or not a directory
    */
-  static File resolveRoot(final File base, final Boolean writable, final boolean baseIsDirectory,
-      final File defaultRoot) {
-    if (base != null && Boolean.TRUE.equals(writable) && baseIsDirectory) {
+  static File resolveRoot(final File base, final Boolean writable, final File defaultRoot) {
+    if (base != null && Boolean.TRUE.equals(writable) && base.isDirectory()) {
       return base;
     }
     return defaultRoot;

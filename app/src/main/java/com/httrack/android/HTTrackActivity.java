@@ -278,32 +278,38 @@ public class HTTrackActivity extends FragmentActivity {
     final File baseFile = base != null ? new File(base) : null;
     final Boolean writable = baseFile != null ? isWritableProjectPath(baseFile) : null;
 
+    boolean missingDir = false;
     if (baseFile != null && !Boolean.TRUE.equals(writable)) {
-      // Unusable now is not forever: keep the setting so a remount or a regrant restores it.
+      // Keep the setting: a remount or a regrant can restore it.
       Log.i(getClass().getSimpleName(), "cannot use base path now: " + base);
     } else if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
-      showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
+      missingDir = true;
     }
 
     final File previous = projectPath;
-    projectPath = StoragePaths.resolveRoot(baseFile, writable,
-        baseFile != null && baseFile.isDirectory(), getDefaultHTTrackPath());
-    if (previous != null && !previous.equals(projectPath)) {
-      // The listed projects are the ones under the root, so the suggestions are now stale.
-      refreshprojectNameSuggests();
-    }
+    projectPath = StoragePaths.resolveRoot(baseFile, writable, getDefaultHTTrackPath());
 
-    // Set root path for logs
-    if (HTTrackLib.loadedSuccessfully()) {
-      try {
-        HTTrackLib.initRootPath(projectPath.getAbsolutePath());
-      } catch (final Throwable t) {
-        // Recovered native fault: losing the crash log is better than losing the app.
-        Log.e(getClass().getSimpleName(), "could not set the log root path", t);
+    // Every resume re-resolves, so what must not repeat is gated on the root having moved:
+    // initRootPath leaks a buffer per call, and the warning would become a toast loop.
+    if (previous == null || !previous.equals(projectPath)) {
+      if (missingDir) {
+        showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
+      }
+      if (HTTrackLib.loadedSuccessfully()) {
+        try {
+          HTTrackLib.initRootPath(projectPath.getAbsolutePath());
+        } catch (final Throwable t) {
+          // Recovered native fault: losing the crash log is better than losing the app.
+          Log.e(getClass().getSimpleName(), "could not set the log root path", t);
+        }
+      }
+      if (previous != null) {
+        // The listed projects are the ones under the root, so the suggestions are now stale.
+        refreshprojectNameSuggests();
       }
     }
 
-    // Change ?
+    // Always refreshed: the field may have just been inflated.
     final View view = findViewById(R.id.fieldBasePath);
     if (view != null) {
       TextView.class.cast(view).setText(projectPath.getAbsolutePath());
@@ -3128,7 +3134,7 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onResume");
     super.onResume();
     paused = false;
-    // Returning from the all-files-access settings screen may have changed what we may write.
+    // Returning from the all-files-access settings screen can change what we can write.
     // Never while a crawl runs, since the engine already holds the destination.
     if (runner == null) {
       computeStorageTarget();
