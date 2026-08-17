@@ -62,6 +62,10 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
       LinksTab.class, BuildTab.class, BrowserId.class, Spider.class,
       Proxy.class, LogIndexCache.class, MimeDefs.class, ExpertsOnly.class };
 
+  /* Instance state keys; naming them pairs each write with its read. */
+  private static final String KEY_MAP = "com.httrack.android.map";
+  private static final String KEY_PANE = "com.httrack.android.pane_id";
+
   /* List of all tabs instances. */
   protected Tab[] tabInstances;
 
@@ -414,18 +418,22 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
     return -1;
   }
 
-  /** Whether index designates a tab; a bundle from another build may name one we no longer have. */
+  /** Whether index designates a tab; a bundle from another build can name one we no longer have. */
   protected static boolean isPaneIndex(final int index) {
     return index >= 0 && index < tabClasses.length;
   }
 
-  /** Save instance state. **/
+  /** Pane to re-open on restore, -1 for none: a mapless bundle or a stale index leaves the menu. */
+  protected static int paneToRestore(final boolean hasMap, final int savedPane) {
+    return hasMap && isPaneIndex(savedPane) ? savedPane : -1;
+  }
+
   protected void saveInstanceState(final Bundle outState) {
     // Edits on the visible tab only reach the map when that tab is left.
     saveIfNeeded();
 
-    outState.putParcelable("com.httrack.android.map", mapper.serialize());
-    outState.putInt("com.httrack.android.pane_id", paneIndexOf(activityClass));
+    outState.putParcelable(KEY_MAP, mapper.serialize());
+    outState.putInt(KEY_PANE, paneIndexOf(activityClass));
   }
 
   @Override
@@ -435,21 +443,18 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
     saveInstanceState(outState);
   }
 
-  /** Restore a saved instance state. **/
   protected void restoreInstanceState(final Bundle savedInstanceState) {
-    final Parcelable data = savedInstanceState
-        .getParcelable("com.httrack.android.map");
+    final Parcelable data = savedInstanceState.getParcelable(KEY_MAP);
+    final int pane = paneToRestore(data != null,
+        savedInstanceState.getInt(KEY_PANE, -1));
 
-    // Nothing saved: keep the map onCreate took from the intent.
-    if (data == null) {
-      return;
+    // Without a map, keep the one onCreate took from the intent.
+    if (data != null) {
+      mapper.unserialize(data);
     }
-    mapper.unserialize(data);
 
-    // Re-open the tab the user was on; setPane() reloads its fields from the restored map.
-    final int pane = savedInstanceState
-        .getInt("com.httrack.android.pane_id", -1);
-    if (isPaneIndex(pane)) {
+    // Re-open the tab the user was on.
+    if (pane != -1) {
       setPane(pane);
     }
   }
