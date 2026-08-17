@@ -124,6 +124,12 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final int LAYOUT_MIRROR_PROGRESS = 3;
   protected static final int LAYOUT_FINISHED = 4;
 
+  // The options map: carried on the intent both ways, and saved in either activity's bundle.
+  protected static final String MAP_NAME = "com.httrack.android.map";
+  // Build stamp of a bundle; another build's R.id values key that same map differently.
+  protected static final String VERSION_CODE_NAME = "com.httrack.android.version";
+  protected static final String PANE_NAME = "com.httrack.android.pane_id";
+
   // Preferences
   protected static final String PREFS_NAME = "HTTrackPreferences";
   protected static final String BASE_NAME = "BasePath";
@@ -243,21 +249,14 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /*
-   * Default mirror root. With all-files access, the classic public HTTrack/Websites, so other apps
-   * can use the mirrors and upgraders find their old crawls. Without it (or while the volume is
-   * unmounted), our own private external dir, which needs no permission. The engine takes a POSIX
-   * path either way.
-   */
+  /* The public storage root when it is ours to write, else null: StoragePaths' shared root. */
+  private File sharedStorageRoot() {
+    return hasAllFilesAccess() ? Environment.getExternalStorageDirectory() : null;
+  }
+
+  /* Default mirror root, a POSIX path the engine takes; the policy is StoragePaths.defaultRoot. */
   private File getDefaultHTTrackPath() {
-    if (hasAllFilesAccess()) {
-      final File shared = Environment.getExternalStorageDirectory();
-      if (shared != null) {
-        return new File(new File(shared, "HTTrack"), "Websites");
-      }
-    }
-    final File external = getExternalFilesDir(null);
-    return new File(external != null ? external : getFilesDir(), "Websites");
+    return StoragePaths.defaultRoot(getExternalFilesDir(null), getFilesDir(), sharedStorageRoot());
   }
 
   /*
@@ -266,8 +265,8 @@ public class HTTrackActivity extends FragmentActivity {
    * never refused; see StoragePaths.isWritable.
    */
   private Boolean isWritableProjectPath(final File path) {
-    final File shared = hasAllFilesAccess() ? Environment.getExternalStorageDirectory() : null;
-    return StoragePaths.isWritable(path, getExternalFilesDir(null), getFilesDir(), shared);
+    return StoragePaths.isWritable(path, getExternalFilesDir(null), getFilesDir(),
+        sharedStorageRoot());
   }
 
   /*
@@ -276,44 +275,48 @@ public class HTTrackActivity extends FragmentActivity {
   private void computeStorageTarget() {
     final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
     final String base = settings.getString(BASE_NAME, null);
-    File baseFile = base != null ? new File(base) : null;
+    final File baseFile = base != null ? new File(base) : null;
+    final Boolean writable = baseFile != null ? isWritableProjectPath(baseFile) : null;
 
-    if (baseFile != null) {
-      final Boolean writable = isWritableProjectPath(baseFile);
-      if (Boolean.FALSE.equals(writable)) {
-        // Known foreign: the mirrors it names stay on disk, out of reach until imported.
-        Log.i(getClass().getSimpleName(), "dropping unusable base path " + base);
-        settings.edit().remove(BASE_NAME).apply();
-        baseFile = null;
-      } else if (writable == null) {
-        // Undecided: fall back for this run, but keep the setting for when the volume returns.
-        Log.i(getClass().getSimpleName(), "cannot vet base path yet: " + base);
-        baseFile = null;
-      }
+    boolean missingDir = false;
+    if (baseFile != null && !Boolean.TRUE.equals(writable)) {
+      // Keep the setting: a remount or a regrant can restore it.
+      Log.i(getClass().getSimpleName(), "cannot use base path now: " + base);
+    } else if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
+      missingDir = true;
     }
 
-    if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
-      showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
-    }
+    final File previous = projectPath;
+    projectPath = StoragePaths.resolveRoot(baseFile, writable, getDefaultHTTrackPath());
 
-    if (baseFile != null && baseFile.exists() && baseFile.isDirectory()) {
-      projectPath = baseFile;
-    } else if (projectPath == null || !projectPath.exists()) {
-      final File path = getDefaultHTTrackPath();
-      projectPath = path;
-    }
+    StoragePaths.applyRootMove(previous, projectPath, missingDir,
+        new StoragePaths.RootMoveActions() {
+          @Override
+          public void warnMissingDirectory() {
+            showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
+          }
 
-    // Set root path for logs
-    if (HTTrackLib.loadedSuccessfully()) {
-      try {
-        HTTrackLib.initRootPath(projectPath.getAbsolutePath());
-      } catch (final Throwable t) {
-        // Recovered native fault: losing the crash log is better than losing the app.
-        Log.e(getClass().getSimpleName(), "could not set the log root path", t);
-      }
-    }
+          @Override
+          public void initNativeRoot(final File root) {
+            if (!HTTrackLib.loadedSuccessfully()) {
+              return;
+            }
+            try {
+              HTTrackLib.initRootPath(root.getAbsolutePath());
+            } catch (final Throwable t) {
+              // Recovered native fault: losing the crash log is better than losing the app.
+              Log.e(HTTrackActivity.this.getClass().getSimpleName(),
+                  "could not set the log root path", t);
+            }
+          }
 
-    // Change ?
+          @Override
+          public void refreshProjectSuggestions() {
+            refreshprojectNameSuggests();
+          }
+        });
+
+    // Always refreshed: the field may have just been inflated.
     final View view = findViewById(R.id.fieldBasePath);
     if (view != null) {
       TextView.class.cast(view).setText(projectPath.getAbsolutePath());
@@ -670,6 +673,16 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
+  /** This build's own PackageInfo; not finding our own package is unrecoverable. **/
+  protected static PackageInfo packageInfo(final Context context) {
+    try {
+      return context.getPackageManager().getPackageInfo(
+          context.getPackageName(), 0);
+    } catch (final NameNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
     Log.d(getClass().getSimpleName(), "onCreate");
@@ -687,14 +700,9 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     // Android package version code
-    try {
-      final PackageInfo info = getPackageManager().getPackageInfo(
-          getPackageName(), 0);
-      versionCode = info.versionCode;
-      versionName = info.versionName;
-    } catch (final NameNotFoundException e) {
-      throw new RuntimeException(e);
-    }
+    final PackageInfo info = packageInfo(this);
+    versionCode = info.versionCode;
+    versionName = info.versionName;
 
     // Compute target directory on external storage
     ensureExternalStorage();
@@ -2652,7 +2660,7 @@ public class HTTrackActivity extends FragmentActivity {
     // Then start new activity
     final Intent intent = new Intent(this, OptionsActivity.class);
     fillExtra(intent);
-    intent.putExtra("com.httrack.android.map", mapper.serialize());
+    intent.putExtra(MAP_NAME, mapper.serialize());
     Log.d(getClass().getSimpleName(), "map size: " + mapper.size());
     startActivityForResult(intent, ACTIVITY_OPTIONS);
   }
@@ -2691,7 +2699,7 @@ public class HTTrackActivity extends FragmentActivity {
     case ACTIVITY_OPTIONS:
       if (resultCode == Activity.RESULT_OK) {
         // Load modified map
-        loadParcelable(data.getParcelableExtra("com.httrack.android.map"));
+        loadParcelable(data.getParcelableExtra(MAP_NAME));
       }
       break;
     case ACTIVITY_FILE_CHOOSER:
@@ -2949,16 +2957,16 @@ public class HTTrackActivity extends FragmentActivity {
     outState.putString("com.httrack.android.sessionID", sessionID);
 
     // Version ID
-    outState.putInt("com.httrack.android.version", versionCode);
+    outState.putInt(VERSION_CODE_NAME, versionCode);
 
     // Map keys
-    outState.putParcelable("com.httrack.android.map", mapper.serialize());
+    outState.putParcelable(MAP_NAME, mapper.serialize());
 
     // Which project's profile the map holds, so the reload guard survives recreation.
     outState.putString("com.httrack.android.loadedProjectName", loadedProjectName);
 
     // Current pane
-    outState.putInt("com.httrack.android.pane_id", pane_id);
+    outState.putInt(PANE_NAME, pane_id);
 
     // Current focus id
     outState.putIntArray("com.httrack.android.focus_id", getCurrentFocusId());
@@ -3072,8 +3080,7 @@ public class HTTrackActivity extends FragmentActivity {
   /** Restore a saved instance state. **/
   protected void restoreInstanceState(final Bundle savedInstanceState) {
     // Check version ID
-    final int version = savedInstanceState
-        .getInt("com.httrack.android.version");
+    final int version = savedInstanceState.getInt(VERSION_CODE_NAME);
     if (version != versionCode) {
       Log.d(getClass().getSimpleName(), "refused bundle version " + version);
       return;
@@ -3083,15 +3090,14 @@ public class HTTrackActivity extends FragmentActivity {
     sessionID = savedInstanceState.getString("com.httrack.android.sessionID");
 
     // Switch pane id
-    final int id = savedInstanceState.getInt("com.httrack.android.pane_id");
+    final int id = savedInstanceState.getInt(PANE_NAME);
 
     // Current focus
     final int[] focus_ids = savedInstanceState
         .getIntArray("com.httrack.android.focus_id");
 
     // Load map
-    final Parcelable data = savedInstanceState
-        .getParcelable("com.httrack.android.map");
+    final Parcelable data = savedInstanceState.getParcelable(MAP_NAME);
 
     // Load map
     if (data != null) {
@@ -3150,11 +3156,9 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onResume");
     super.onResume();
     paused = false;
-    // Returning from the all-files-access settings screen may have granted access: re-point the
-    // default to public storage. Never while a crawl runs, and only if the resolved default moved.
-    if (runner == null && projectPath != null
-        && !getDefaultHTTrackPath().getAbsolutePath().equals(projectPath.getAbsolutePath())
-        && getSharedPreferences(PREFS_NAME, 0).getString(BASE_NAME, null) == null) {
+    // Returning from the all-files-access settings screen can change what we can write.
+    // Never while a crawl runs, since the engine already holds the destination.
+    if (runner == null) {
       computeStorageTarget();
     }
     // A grant made on the settings screen flips the button/warning off (no-op off this panel).

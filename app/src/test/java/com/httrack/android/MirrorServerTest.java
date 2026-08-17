@@ -1,20 +1,44 @@
 package com.httrack.android;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-/** Attacks MirrorServer.resolveWithinRoot: what it serves, what it must refuse to leave the root. */
+import fi.iki.elonen.NanoHTTPD;
+
+/**
+ * Attacks MirrorServer: what it serves, what it must refuse to leave the root, and how it frames a
+ * file the engine may be rewriting underneath it.
+ */
 public class MirrorServerTest {
   @Rule
   public final TemporaryFolder tmp = new TemporaryFolder();
@@ -94,6 +118,338 @@ public class MirrorServerTest {
   public void relativeUrlPathRefusesASiblingSharingRootsNamePrefix() throws Exception {
     final File sibling = tmp.newFolder("Websites-evil");
     assertNull(MirrorServer.relativeUrlPath(root, new File(sibling, "secret.txt")));
+  }
+
+  @Test
+  public void fileResponseOnAnUnopenableFileIs404() throws Exception {
+    final NanoHTTPD.Response response =
+        MirrorServer.fileResponse(new File(root, "gone.html"), false);
+    assertEquals(NanoHTTPD.Response.Status.NOT_FOUND, response.getStatus());
+  }
+
+  @Test
+  public void servesAFileChunkedAndIntact() throws Exception {
+    final byte[] content = "<html>hello</html>".getBytes("UTF-8");
+    Files.write(new File(root, "index.html").toPath(), content);
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.send("GET", "/index.html");
+      final Reply reply = client.read(false);
+      assertEquals("HTTP/1.1 200 OK", reply.status);
+      assertEquals("chunked", reply.headers.get("transfer-encoding"));
+      assertNull(reply.headers.get("content-length"));
+      assertArrayEquals(content, reply.body);
+    } finally {
+      server.stop();
+    }
+  }
+
+  /**
+   * The engine truncating index.html mid-serve. Chunked framing cannot hand the client a short body
+   * under a length it already promised, so the message ends and the connection stays usable.
+   */
+  @Test
+  public void aTruncationMidServeStillEndsTheMessage() throws Exception {
+    final File page = new File(root, "big.html");
+    // Larger than any socket buffer pair, so the server is provably still writing when we truncate.
+    final byte[] content = new byte[16 * 1024 * 1024];
+    for (int i = 0; i < content.length; i++) {
+      content[i] = (byte) i;
+    }
+    Files.write(page.toPath(), content);
+    final byte[] next = "<html>after</html>".getBytes("UTF-8");
+    Files.write(new File(root, "next.html").toPath(), next);
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.send("GET", "/big.html");
+      final Reply reply = client.readHead();
+      assertEquals("HTTP/1.1 200 OK", reply.status);
+      // Blocking for one chunk pins the truncation mid-body, where a timer only makes it likely.
+      final ByteArrayOutputStream served = new ByteArrayOutputStream();
+      served.write(client.readChunk());
+      assertTrue("truncation landed before the serve started, so nothing was under test",
+          served.size() > 0);
+      final RandomAccessFile rewrite = new RandomAccessFile(page, "rw");
+      rewrite.setLength(0);
+      rewrite.close();
+      for (byte[] chunk = client.readChunk(); chunk.length != 0; chunk = client.readChunk()) {
+        served.write(chunk);
+      }
+      final byte[] body = served.toByteArray();
+      assertTrue("truncation landed after the whole file went out", body.length < content.length);
+      assertArrayEquals(Arrays.copyOf(content, body.length), body);
+      client.send("GET", "/next.html");
+      assertArrayEquals(next, client.read(false).body);
+    } finally {
+      server.stop();
+    }
+  }
+
+  /** HEAD keeps a real length, which chunked framing turns into "Content-Length: -1" instead. */
+  @Test
+  public void headAnswersALengthAndNoBody() throws Exception {
+    assertHeadIsBodiless("");
+  }
+
+  /** A browser asks for gzip, and NanoHTTPD gzips a HEAD into a body it frames with nothing. */
+  @Test
+  public void headAnswersALengthAndNoBodyWhenGzipIsAccepted() throws Exception {
+    assertHeadIsBodiless("Accept-Encoding: gzip\r\n");
+  }
+
+  private void assertHeadIsBodiless(final String extraHeaders) throws Exception {
+    final byte[] content = "<html>hello</html>".getBytes("UTF-8");
+    Files.write(new File(root, "index.html").toPath(), content);
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.send("HEAD", "/index.html", extraHeaders);
+      final Reply reply = client.read(true);
+      assertEquals("HTTP/1.1 200 OK", reply.status);
+      assertEquals(String.valueOf(content.length), reply.headers.get("content-length"));
+      assertNull(reply.headers.get("transfer-encoding"));
+      assertNull(reply.headers.get("content-encoding"));
+      // A stray HEAD body would be read as the head of this reply, so its status line is the probe.
+      client.send("GET", "/index.html");
+      final Reply second = client.read(false);
+      assertEquals("HTTP/1.1 200 OK", second.status);
+      assertArrayEquals(content, second.body);
+    } finally {
+      server.stop();
+    }
+  }
+
+  /** The 404 never reaches fileResponse, so it has to frame its own HEAD or the stream desyncs. */
+  @Test
+  public void headOnAMissingFileIsBodilessToo() throws Exception {
+    assertErrorHeadIsBodiless("/gone.html", "404 Not Found");
+  }
+
+  /** Same for the path-escape refusal, which returns earlier still. */
+  @Test
+  public void headOnAnEscapingPathIsBodilessToo() throws Exception {
+    assertErrorHeadIsBodiless("/../../etc/passwd", "403 Forbidden");
+  }
+
+  private void assertErrorHeadIsBodiless(final String path, final String error) throws Exception {
+    final byte[] content = "<html>hello</html>".getBytes("UTF-8");
+    Files.write(new File(root, "index.html").toPath(), content);
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.send("GET", path);
+      final Reply get = client.read(false);
+      assertEquals("HTTP/1.1 " + error, get.status);
+      assertArrayEquals(error.getBytes("US-ASCII"), get.body);
+      client.send("HEAD", path);
+      final Reply reply = client.read(true);
+      assertEquals("HTTP/1.1 " + error, reply.status);
+      assertEquals(String.valueOf(error.length()), reply.headers.get("content-length"));
+      // A stray HEAD body would be read as the head of this reply, so its status line is the probe.
+      client.send("GET", "/index.html");
+      final Reply second = client.read(false);
+      assertEquals("HTTP/1.1 200 OK", second.status);
+      assertArrayEquals(content, second.body);
+    } finally {
+      server.stop();
+    }
+  }
+
+  /** Gzip is suppressed for HEAD alone, so a GET that asks for it must still be compressed. */
+  @Test
+  public void getIsGzippedWhenAccepted() throws Exception {
+    final byte[] content = "<html>hello</html>".getBytes("UTF-8");
+    Files.write(new File(root, "index.html").toPath(), content);
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.send("GET", "/index.html", "Accept-Encoding: gzip\r\n");
+      final Reply reply = client.read(false);
+      assertEquals("HTTP/1.1 200 OK", reply.status);
+      assertEquals("gzip", reply.headers.get("content-encoding"));
+      assertArrayEquals(content, gunzip(reply.body));
+    } finally {
+      server.stop();
+    }
+  }
+
+  private static byte[] gunzip(final byte[] compressed) throws IOException {
+    final ByteArrayOutputStream plain = new ByteArrayOutputStream();
+    try (InputStream gzip = new GZIPInputStream(new ByteArrayInputStream(compressed))) {
+      final byte[] buffer = new byte[4096];
+      for (int read = gzip.read(buffer); read > 0; read = gzip.read(buffer)) {
+        plain.write(buffer, 0, read);
+      }
+    }
+    return plain.toByteArray();
+  }
+
+  /** HEAD answers from a stat, so it must not open the file it describes at all. */
+  @Test
+  public void headOpensNoDescriptor() throws Exception {
+    final File fds = new File("/proc/self/fd");
+    assumeTrue("descriptor table only readable on Linux", fds.isDirectory());
+    final File page = new File(root, "index.html");
+    Files.write(page.toPath(), "<html>hello</html>".getBytes("UTF-8"));
+    final NanoHTTPD.Response response = MirrorServer.fileResponse(page, true);
+    try {
+      assertEquals(0, openDescriptors(fds, page));
+    } finally {
+      response.close();
+    }
+  }
+
+  /** We hand NanoHTTPD an open file and never see it again, so it has to be the one closing it. */
+  @Test
+  public void servingLeavesNoOpenDescriptor() throws Exception {
+    final File fds = new File("/proc/self/fd");
+    assumeTrue("descriptor table only readable on Linux", fds.isDirectory());
+    final File page = new File(root, "index.html");
+    Files.write(page.toPath(), "<html>hello</html>".getBytes("UTF-8"));
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.send("GET", "/index.html");
+      client.read(false);
+      // The close trails the last byte the client sees, so wait for it rather than sampling once.
+      final long deadline = System.currentTimeMillis() + 5000;
+      while (openDescriptors(fds, page) != 0 && System.currentTimeMillis() < deadline) {
+        Thread.sleep(20);
+      }
+      assertEquals(0, openDescriptors(fds, page));
+    } finally {
+      server.stop();
+    }
+  }
+
+  private static int openDescriptors(final File fds, final File file) throws IOException {
+    final Path target = file.getCanonicalFile().toPath();
+    int open = 0;
+    for (final File fd : fds.listFiles()) {
+      try {
+        if (target.equals(Files.readSymbolicLink(fd.toPath()))) {
+          open++;
+        }
+      } catch (final IOException closedUnderUs) {
+        continue;
+      }
+    }
+    return open;
+  }
+
+  /** One response as the client framed it. */
+  private static final class Reply {
+    final String status;
+
+    final Map<String, String> headers;
+
+    final byte[] body;
+
+    Reply(final String status, final Map<String, String> headers, final byte[] body) {
+      this.status = status;
+      this.headers = headers;
+      this.body = body;
+    }
+  }
+
+  /**
+   * Minimal HTTP/1.1 client on one keep-alive connection. It sends no Accept-Encoding unless a test
+   * asks for one, so the framing under test is the one the server chose.
+   */
+  private static final class Client implements Closeable {
+    private final Socket socket;
+
+    private final InputStream in;
+
+    private final OutputStream out;
+
+    Client(final int port) throws IOException {
+      socket = new Socket();
+      // A small receive window keeps the server blocked mid-body while a test rewrites the file.
+      socket.setReceiveBufferSize(4096);
+      socket.connect(new InetSocketAddress("127.0.0.1", port));
+      socket.setSoTimeout(30000);
+      in = new BufferedInputStream(socket.getInputStream());
+      out = socket.getOutputStream();
+    }
+
+    void send(final String method, final String path) throws IOException {
+      send(method, path, "");
+    }
+
+    void send(final String method, final String path, final String extraHeaders)
+        throws IOException {
+      final String request =
+          method + " " + path + " HTTP/1.1\r\nHost: 127.0.0.1\r\n" + extraHeaders + "\r\n";
+      out.write(request.getBytes("US-ASCII"));
+      out.flush();
+    }
+
+    Reply read(final boolean head) throws IOException {
+      final Reply reply = readHead();
+      return head ? reply : new Reply(reply.status, reply.headers, readBody(reply.headers));
+    }
+
+    /** Status line and headers, leaving the body on the socket for piecewise reading. */
+    Reply readHead() throws IOException {
+      // NanoHTTPD pads its status line with a trailing space.
+      final String status = line().trim();
+      final Map<String, String> headers = new HashMap<String, String>();
+      for (String header = line(); header.length() != 0; header = line()) {
+        final int colon = header.indexOf(':');
+        headers.put(header.substring(0, colon).toLowerCase(Locale.ROOT),
+            header.substring(colon + 1).trim());
+      }
+      return new Reply(status, headers, new byte[0]);
+    }
+
+    /** One chunk of a chunked body; empty at the terminating chunk. */
+    byte[] readChunk() throws IOException {
+      final byte[] chunk = readFully(chunkSize());
+      line();
+      return chunk;
+    }
+
+    private byte[] readBody(final Map<String, String> headers) throws IOException {
+      if (!"chunked".equals(headers.get("transfer-encoding"))) {
+        return readFully(Integer.parseInt(headers.get("content-length")));
+      }
+      final ByteArrayOutputStream body = new ByteArrayOutputStream();
+      for (byte[] chunk = readChunk(); chunk.length != 0; chunk = readChunk()) {
+        body.write(chunk);
+      }
+      return body.toByteArray();
+    }
+
+    private int chunkSize() throws IOException {
+      final String size = line();
+      final int extension = size.indexOf(';');
+      final String value = extension < 0 ? size : size.substring(0, extension);
+      return Integer.parseInt(value.trim(), 16);
+    }
+
+    private byte[] readFully(final int size) throws IOException {
+      final byte[] buffer = new byte[size];
+      for (int done = 0; done < size;) {
+        final int read = in.read(buffer, done, size - done);
+        if (read < 0) {
+          throw new IOException("connection closed " + (size - done) + " bytes short");
+        }
+        done += read;
+      }
+      return buffer;
+    }
+
+    private String line() throws IOException {
+      final StringBuilder text = new StringBuilder();
+      for (int c = in.read(); c != -1 && c != '\n'; c = in.read()) {
+        if (c != '\r') {
+          text.append((char) c);
+        }
+      }
+      return text.toString();
+    }
+
+    @Override
+    public void close() throws IOException {
+      socket.close();
+    }
   }
 
   /** Docs and mirrors are served at once, so each root must keep its own server. */

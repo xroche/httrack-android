@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 package com.httrack.android;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -118,24 +119,65 @@ final class MirrorServer extends NanoHTTPD {
       return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT,
           "405 Method Not Allowed");
     }
+    final boolean headOnly = method == Method.HEAD;
     final File target = resolveWithinRoot(root, session.getUri());
     if (target == null) {
-      return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "403 Forbidden");
+      return errorResponse(Response.Status.FORBIDDEN, "403 Forbidden", headOnly);
     }
     File file = target;
     if (file.isDirectory()) {
       file = new File(file, "index.html");
     }
     if (!file.exists() || file.isDirectory()) {
-      return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
+      return errorResponse(Response.Status.NOT_FOUND, "404 Not Found", headOnly);
+    }
+    return fileResponse(file, headOnly);
+  }
+
+  /**
+   * Short text error page, bodiless for a HEAD: a body the client is entitled not to read gets
+   * parsed as the head of the next response on the connection.
+   */
+  private static Response errorResponse(final Response.Status status, final String text,
+      final boolean headOnly) {
+    if (headOnly) {
+      return newFixedLengthResponse(status, MIME_PLAINTEXT,
+          new ByteArrayInputStream(new byte[0]), text.length());
+    }
+    return newFixedLengthResponse(status, MIME_PLAINTEXT, text);
+  }
+
+  @Override
+  protected boolean useGzipWhenAccepted(final Response response) {
+    // Gzipping a HEAD emits a compressed empty body carrying neither a length nor chunk framing.
+    return response.getRequestMethod() != Method.HEAD && super.useGzipWhenAccepted(response);
+  }
+
+  /**
+   * Response for {@code file}. A GET is chunked because the engine rewrites index.html in place, so
+   * a length measured before the reads can contradict the bytes that go out. A HEAD instead answers
+   * the stat'd length and no body, opening nothing: chunking it would advertise the chunked
+   * response's own -1 as its Content-Length.
+   *
+   * @param file
+   *          an existing regular file, already confined to the root
+   * @param headOnly
+   *          true for a HEAD request, answered with headers alone
+   * @return a 200 streaming the file, or a 404 if it cannot be opened
+   */
+  static Response fileResponse(final File file, final boolean headOnly) {
+    String mime = getMimeTypeForFile(file.getName());
+    if (mime == null) {
+      mime = "application/octet-stream";
+    }
+    if (headOnly) {
+      // NanoHTTPD writes a body for HEAD too, so it gets an empty stream to write it from.
+      return newFixedLengthResponse(Response.Status.OK, mime,
+          new ByteArrayInputStream(new byte[0]), file.length());
     }
     try {
-      String mime = getMimeTypeForFile(file.getName());
-      if (mime == null) {
-        mime = "application/octet-stream";
-      }
-      return newFixedLengthResponse(Response.Status.OK, mime, new FileInputStream(file),
-          file.length());
+      // NanoHTTPD owns the stream from here, and closes it on every path out of the response.
+      return newChunkedResponse(Response.Status.OK, mime, new FileInputStream(file));
     } catch (final IOException e) {
       return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
     }
