@@ -129,14 +129,36 @@ final class MirrorServer extends NanoHTTPD {
     if (!file.exists() || file.isDirectory()) {
       return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
     }
+    return fileResponse(file);
+  }
+
+  /**
+   * Response streaming {@code file}. The length comes from the open descriptor, not from a second
+   * look at the path: the engine rewrites index.html in place, and a stat landing mid-rewrite
+   * advertises a length the bytes served do not match (0, and a blank page, while truncated).
+   *
+   * @param file
+   *          an existing regular file, already confined to the root
+   * @return a 200 streaming the file, or a 404 if it cannot be opened
+   */
+  static Response fileResponse(final File file) {
+    FileInputStream stream = null;
     try {
+      stream = new FileInputStream(file);
+      final long length = stream.getChannel().size();
       String mime = getMimeTypeForFile(file.getName());
       if (mime == null) {
         mime = "application/octet-stream";
       }
-      return newFixedLengthResponse(Response.Status.OK, mime, new FileInputStream(file),
-          file.length());
+      return newFixedLengthResponse(Response.Status.OK, mime, stream, length);
     } catch (final IOException e) {
+      // NanoHTTPD never got the stream, so closing it is ours to do.
+      if (stream != null) {
+        try {
+          stream.close();
+        } catch (final IOException ignored) {
+        }
+      }
       return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
     }
   }
