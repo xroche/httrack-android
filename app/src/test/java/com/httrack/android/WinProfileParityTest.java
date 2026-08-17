@@ -183,6 +183,27 @@ public class WinProfileParityTest {
     return keys;
   }
 
+  private static List<String> mapperKeys() throws IOException {
+    final Matcher m = Pattern.compile(
+        "new Pair<String, OptionMapper>\\(\"([^\"]+)\"").matcher(mapperTable());
+    final List<String> keys = new ArrayList<String>();
+    while (m.find()) {
+      keys.add(m.group(1));
+    }
+    assertEquals("mapper keys parsed", 94, keys.size());
+    return keys;
+  }
+
+  /* Renaming a key in one table only strands the other half: an option whose
+     mapper no longer matches a stored key emits nothing, in silence. */
+  @Test
+  public void everyMapperKeyIsStored() throws IOException {
+    final List<String> stored = serializerKeys();
+    for (final String key : mapperKeys()) {
+      assertTrue(key + " maps an option no field stores", stored.contains(key));
+    }
+  }
+
   @Test
   public void keysUseTheWinHttrackSpelling() throws IOException {
     final List<String> keys = serializerKeys();
