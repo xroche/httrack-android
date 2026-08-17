@@ -32,11 +32,13 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import android.content.Context;
@@ -500,9 +502,53 @@ public class OptionsMapper {
       return values;
     }
 
-    /* A key nobody chose: it holds no value, or still holds the seeded one. */
-    private static boolean isUnset(final String value, final String seeded) {
-      return value == null || value.equals(seeded != null ? seeded : "");
+    /**
+     * The file view of these settings, Iso9660 folded into Dos and so absent.
+     *
+     * @param values
+     *          the settings, under their current names
+     * @return the pairs a file stands for, before any are left out
+     */
+    static Map<String, String> packed(final Map<String, String> values) {
+      final Map<String, String> file = new LinkedHashMap<String, String>(values);
+      file.put(DOS_KEY, pack(values.get(DOS_KEY), values.get(ISO9660_KEY)));
+      file.remove(ISO9660_KEY);
+      return file;
+    }
+
+    /**
+     * What the next load puts back for a key the file leaves out, which is the
+     * only thing that says whether leaving it out is safe. Comparing against
+     * the built-in default table instead is unsound wherever a second layer of
+     * defaults exists, since the key reloads through that layer.
+     */
+    static final class Baseline {
+      private final Map<String, String> seeded;
+      private final Set<String> held;
+
+      /**
+       * @param seeded
+       *          the file view of the settings a load starts from, before the
+       *          profile is laid over them
+       * @param held
+       *          keys the loaded profile carried, which stay in the file
+       *          whatever they hold, so that saving never drops someone else's
+       *          line
+       */
+      Baseline(final Map<String, String> seeded, final Set<String> held) {
+        this.seeded = seeded;
+        this.held = held;
+      }
+
+      boolean holds(final String key) {
+        return held.contains(key);
+      }
+
+      /* Absent and empty read alike, so an unseeded key matches an empty one. */
+      boolean reloadsAs(final String key, final String value) {
+        final String reloaded = seeded.get(key);
+        return value.equals(reloaded != null ? reloaded : "");
+      }
     }
 
     /**
@@ -510,22 +556,21 @@ public class OptionsMapper {
      *
      * @param values
      *          the settings, under their current names
-     * @param defaults
-     *          what a project with no profile of its own starts from
-     * @return the pairs to write, none of them null, Iso9660 folded into Dos
-     *         and so absent, and every key still holding its default left out
-     *         so that a reader keeps applying its own
+     * @param baseline
+     *          what a load reconstructs, and what the profile already held
+     * @return the pairs to write, none of them null, and none the next load
+     *         would put back by itself
      */
     static Map<String, String> toFile(final Map<String, String> values,
-        final Map<String, String> defaults) {
-      final Map<String, String> file = new LinkedHashMap<String, String>(values);
-      file.put(DOS_KEY, pack(values.get(DOS_KEY), values.get(ISO9660_KEY)));
-      file.remove(ISO9660_KEY);
+        final Baseline baseline) {
+      final Map<String, String> file = packed(values);
       final Iterator<Map.Entry<String, String>> entries = file.entrySet()
           .iterator();
       while (entries.hasNext()) {
         final Map.Entry<String, String> entry = entries.next();
-        if (isUnset(entry.getValue(), defaults.get(entry.getKey()))) {
+        final String value = entry.getValue();
+        if (value == null || (!baseline.holds(entry.getKey()) && baseline
+            .reloadsAs(entry.getKey(), value))) {
           entries.remove();
         }
       }
@@ -541,6 +586,11 @@ public class OptionsMapper {
 
   // The options mapping
   protected final SparseArraySerializable map = new SparseArraySerializable();
+
+  // What a load puts back on its own, and which keys the profile carried.
+  // Empty means nothing is known, so serialize() writes every key it holds.
+  private Map<String, String> seededState = new LinkedHashMap<String, String>();
+  private final Set<String> heldKeys = new HashSet<String>();
 
   // Is the map dirty ?
   protected boolean dirty;
@@ -1513,13 +1563,7 @@ public class OptionsMapper {
     }
   }
 
-  /**
-   * What a project with no profile of its own starts from. Also the baseline
-   * {@link #serialize(OutputStream)} leaves out of the file, so the two must
-   * stay the same set of values.
-   *
-   * @return the defaults, by profile key
-   */
+  /* What a project with no profile of its own starts from, by profile key. */
   private Map<String, String> seededDefaults() {
     final Map<String, String> defaults = new LinkedHashMap<String, String>();
     for (final Pair<String, String> field : fieldsDefaults) {
@@ -1547,6 +1591,21 @@ public class OptionsMapper {
       }
       map.put(id, field.getValue());
     }
+  }
+
+  /* Every stored setting, by profile key, null where nothing is set. */
+  private Map<String, String> valuesByKey() {
+    final Map<String, String> values = new LinkedHashMap<String, String>();
+    for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+      values.put(field.second, getMap(field.first));
+    }
+    return values;
+  }
+
+  /* Record what a load would put back, once the map holds it and no further. */
+  private void snapshotSeeded() {
+    seededState = ProfileFormat.packed(valuesByKey());
+    heldKeys.clear();
   }
 
   /**
@@ -1586,6 +1645,7 @@ public class OptionsMapper {
 
     // Initialize default values for map
     initializeMap();
+    snapshotSeeded();
   }
 
   /**
@@ -1632,6 +1692,9 @@ public class OptionsMapper {
 
     // Load default preferences if any
     loadDefaultPreferences();
+
+    // The preferences are part of what a load rebuilds, so snapshot after them
+    snapshotSeeded();
 
     dirty = false;
   }
@@ -1752,11 +1815,13 @@ public class OptionsMapper {
    *          The profile file (winprofile.ini)
    * @param map
    *          The map to be filled
-   * 
+   * @return the keys the file carried, under their current names; a caller
+   *         that only wants the settings can ignore them
+   *
    * @throws IOException
    *           Upon I/O error.
    */
-  public static void unserialize(final File profile,
+  public static Set<String> unserialize(final File profile,
       final SparseArray<String> map) throws IOException {
     // Write settings
     if (!profile.exists()) {
@@ -1778,6 +1843,10 @@ public class OptionsMapper {
               OptionsMapper.profileDecode(line.substring(sep + 1)));
         }
       }
+      final Set<String> held = new HashSet<String>();
+      for (final String key : raw.keySet()) {
+        held.add(ProfileFormat.canonicalName(key));
+      }
       for (final Map.Entry<String, String> field : ProfileFormat.resolve(raw)
           .entrySet()) {
         final Integer id = OptionsMapper.fieldsNameToId.get(field.getKey());
@@ -1786,6 +1855,7 @@ public class OptionsMapper {
         }
       }
       lreader.close();
+      return held;
     } finally {
       reader.close();
     }
@@ -1815,12 +1885,8 @@ public class OptionsMapper {
     final OutputStreamWriter writer = new OutputStreamWriter(fos);
     final BufferedWriter lwriter = new BufferedWriter(writer);
     try {
-      final Map<String, String> values = new LinkedHashMap<String, String>();
-      for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
-        values.put(field.second, getMap(field.first));
-      }
-      final Map<String, String> file = ProfileFormat.toFile(values,
-          seededDefaults());
+      final Map<String, String> file = ProfileFormat.toFile(valuesByKey(),
+          new ProfileFormat.Baseline(seededState, heldKeys));
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
         final String key = field.second;
         if (!file.containsKey(key)) {
@@ -1854,6 +1920,15 @@ public class OptionsMapper {
    */
   public void serialize(final File profile)
       throws UnsupportedEncodingException, IOException {
+    // The file outlives an activity restart that leaves the map with no record
+    // of the keys it carried, and opening it below truncates it.
+    if (profile.exists()) {
+      try {
+        heldKeys.addAll(unserialize(profile, new SparseArraySerializable()));
+      } catch (final IOException e) {
+        Log.d(getClass().getSimpleName(), "unreadable profile: " + e);
+      }
+    }
     final FileOutputStream fos = new FileOutputStream(profile);
     try {
       serialize(fos);
@@ -1878,7 +1953,7 @@ public class OptionsMapper {
    *           Upon I/O error.
    */
   protected void unserialize(final File profile) throws IOException {
-    unserialize(profile, map);
+    heldKeys.addAll(unserialize(profile, map));
     if (dirty) {
       dirty = false;
       Log.d(getClass().getSimpleName(),
