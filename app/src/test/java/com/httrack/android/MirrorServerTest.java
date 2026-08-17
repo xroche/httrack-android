@@ -166,6 +166,8 @@ public class MirrorServerTest {
       rewrite.close();
       final Reply reply = client.read(false);
       assertEquals("HTTP/1.1 200 OK", reply.status);
+      assertTrue("truncation landed before the serve started, so nothing was under test",
+          reply.body.length > 0);
       assertTrue("truncation landed after the whole file went out",
           reply.body.length < content.length);
       assertArrayEquals(Arrays.copyOf(content, reply.body.length), reply.body);
@@ -179,20 +181,48 @@ public class MirrorServerTest {
   /** HEAD keeps a real length, which chunked framing turns into "Content-Length: -1" instead. */
   @Test
   public void headAnswersALengthAndNoBody() throws Exception {
+    assertHeadIsBodiless("");
+  }
+
+  /** A browser asks for gzip, and NanoHTTPD gzips a HEAD into a body it frames with nothing. */
+  @Test
+  public void headAnswersALengthAndNoBodyWhenGzipIsAccepted() throws Exception {
+    assertHeadIsBodiless("Accept-Encoding: gzip\r\n");
+  }
+
+  private void assertHeadIsBodiless(final String extraHeaders) throws Exception {
     final byte[] content = "<html>hello</html>".getBytes("UTF-8");
     Files.write(new File(root, "index.html").toPath(), content);
     final MirrorServer server = MirrorServer.start(root);
     try (Client client = new Client(server.getPort())) {
-      client.send("HEAD", "/index.html");
+      client.send("HEAD", "/index.html", extraHeaders);
       final Reply reply = client.read(true);
       assertEquals("HTTP/1.1 200 OK", reply.status);
       assertEquals(String.valueOf(content.length), reply.headers.get("content-length"));
       assertNull(reply.headers.get("transfer-encoding"));
-      // Stray body bytes would desync this second reply.
+      assertNull(reply.headers.get("content-encoding"));
+      // A stray HEAD body would be read as the head of this reply, so its status line is the probe.
       client.send("GET", "/index.html");
-      assertArrayEquals(content, client.read(false).body);
+      final Reply second = client.read(false);
+      assertEquals("HTTP/1.1 200 OK", second.status);
+      assertArrayEquals(content, second.body);
     } finally {
       server.stop();
+    }
+  }
+
+  /** HEAD answers from a stat, so it must not open the file it describes at all. */
+  @Test
+  public void headOpensNoDescriptor() throws Exception {
+    final File fds = new File("/proc/self/fd");
+    assumeTrue("descriptor table only readable on Linux", fds.isDirectory());
+    final File page = new File(root, "index.html");
+    Files.write(page.toPath(), "<html>hello</html>".getBytes("UTF-8"));
+    final NanoHTTPD.Response response = MirrorServer.fileResponse(page, true);
+    try {
+      assertEquals(0, openDescriptors(fds, page));
+    } finally {
+      response.close();
     }
   }
 
@@ -249,8 +279,8 @@ public class MirrorServerTest {
   }
 
   /**
-   * Minimal HTTP/1.1 client on one keep-alive connection. It sends no Accept-Encoding, so nothing
-   * gets gzipped and the framing under test is the one the server chose.
+   * Minimal HTTP/1.1 client on one keep-alive connection. It sends no Accept-Encoding unless a test
+   * asks for one, so the framing under test is the one the server chose.
    */
   private static final class Client implements Closeable {
     private final Socket socket;
@@ -270,7 +300,13 @@ public class MirrorServerTest {
     }
 
     void send(final String method, final String path) throws IOException {
-      final String request = method + " " + path + " HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
+      send(method, path, "");
+    }
+
+    void send(final String method, final String path, final String extraHeaders)
+        throws IOException {
+      final String request =
+          method + " " + path + " HTTP/1.1\r\nHost: 127.0.0.1\r\n" + extraHeaders + "\r\n";
       out.write(request.getBytes("US-ASCII"));
       out.flush();
     }

@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 package com.httrack.android;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -132,16 +133,22 @@ final class MirrorServer extends NanoHTTPD {
     return fileResponse(file, method == Method.HEAD);
   }
 
+  @Override
+  protected boolean useGzipWhenAccepted(final Response response) {
+    // Gzipping a HEAD emits a compressed empty body carrying neither a length nor chunk framing.
+    return response.getRequestMethod() != Method.HEAD && super.useGzipWhenAccepted(response);
+  }
+
   /**
-   * Response for {@code file}, chunked so that no declared length can contradict the bytes sent:
-   * the engine rewrites index.html in place, and a length taken before the reads may describe a
-   * state they never see. Only non-text files give up a Content-Length for this, as NanoHTTPD
-   * already gzips, and so chunks, text/ and /json whenever the client accepts it.
+   * Response for {@code file}. A GET is chunked because the engine rewrites index.html in place, so
+   * a length measured before the reads can contradict the bytes that go out. A HEAD instead answers
+   * the stat'd length and no body, opening nothing: chunking it would advertise the chunked
+   * response's own -1 as its Content-Length.
    *
    * @param file
    *          an existing regular file, already confined to the root
    * @param headOnly
-   *          true for a HEAD request, whose body NanoHTTPD skips
+   *          true for a HEAD request, answered with headers alone
    * @return a 200 streaming the file, or a 404 if it cannot be opened
    */
   static Response fileResponse(final File file, final boolean headOnly) {
@@ -149,15 +156,14 @@ final class MirrorServer extends NanoHTTPD {
     if (mime == null) {
       mime = "application/octet-stream";
     }
+    if (headOnly) {
+      // NanoHTTPD writes a body for HEAD too, so it gets an empty stream to write it from.
+      return newFixedLengthResponse(Response.Status.OK, mime,
+          new ByteArrayInputStream(new byte[0]), file.length());
+    }
     try {
       // NanoHTTPD owns the stream from here, and closes it on every path out of the response.
-      final FileInputStream data = new FileInputStream(file);
-      if (headOnly) {
-        // No body follows, so a stat'd length cannot desync from one; NanoHTTPD would meanwhile
-        // print a chunked response's own -1 verbatim, HEAD being where it skips the framing.
-        return newFixedLengthResponse(Response.Status.OK, mime, data, file.length());
-      }
-      return newChunkedResponse(Response.Status.OK, mime, data);
+      return newChunkedResponse(Response.Status.OK, mime, new FileInputStream(file));
     } catch (final IOException e) {
       return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
     }
