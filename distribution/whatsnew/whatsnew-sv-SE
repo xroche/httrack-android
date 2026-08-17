@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
+• Nya projekt ersätter inte längre externa länkar med felsidor och tar inte bort frågor ur de sparade filnamnen
+• Cachealternativet söker nu efter uppdateringar innan en fil återanvänds
 • Mycket långa regler, adresser och omdirigeringar avbryter inte längre kopieringen och försvinner inte ur den
 • En stor robots.txt-fil kapas inte längre efter de första kilobyten
-• I nya projekt försvinner det fasta årtalet i sidfoten, och egna fält fylls i
-• Hjälpsidan om filter stämmer nu med vad programmet accepterar
 
 Beta: rapportera problem på GitHub.

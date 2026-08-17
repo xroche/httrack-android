@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
+• Yeni projeler artık dış bağlantıları hata sayfalarıyla değiştirmiyor ve kaydedilen dosya adlarından sorguları atmıyor
+• Önbellek seçeneği artık bir dosyayı yeniden kullanmadan önce güncelleme denetliyor
 • Çok uzun kurallar, adresler ve yönlendirmeler artık kopyalamayı kesmiyor ve kopyadan kaybolmuyor
 • Büyük bir robots.txt dosyası artık ilk kilobayttan sonra kesilmiyor
-• Yeni projelerde altbilgideki sabit yıl kalkıyor ve eklediğiniz alanlar dolduruluyor
-• Filtrelerle ilgili yardım sayfası artık programın kabul ettiğiyle örtüşüyor
 
 Beta: sorunları GitHub'da bildirin.
