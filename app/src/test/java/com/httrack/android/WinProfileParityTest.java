@@ -89,11 +89,12 @@ public class WinProfileParityTest {
   public void olderProfileKeepsEveryRenamedSetting() {
     final Map<String, String> values = ProfileFormat.resolve(file("Dos", "1",
         "Iso9660", "1", "ProxyProtocol", "1", "KeepWwwPrefix", "1",
-        "KeepDoubleSlashes", "1"));
+        "KeepDoubleSlashes", "1", "Pause", "2:5"));
     assertArrayEquals(new String[] { "1", "1" }, boxes(values));
     assertEquals("1", values.get("ProxyType"));
     assertEquals("1", values.get("KeepWww"));
     assertEquals("1", values.get("KeepSlashes"));
+    assertEquals("2:5", values.get("PauseFiles"));
     assertFalse(values.containsKey("ProxyProtocol"));
   }
 
@@ -159,6 +160,8 @@ public class WinProfileParityTest {
     assertEquals("KeepWww", ProfileFormat.canonicalName("KeepWwwPrefix"));
     assertEquals("KeepSlashes",
         ProfileFormat.canonicalName("KeepDoubleSlashes"));
+    assertEquals("PauseFiles", ProfileFormat.canonicalName("Pause"));
+    assertEquals("Pause", ProfileFormat.legacyName("PauseFiles"));
     assertEquals("Near", ProfileFormat.canonicalName("Near"));
     assertNull(ProfileFormat.legacyName("Near"));
   }
@@ -184,9 +187,9 @@ public class WinProfileParityTest {
   public void keysUseTheWinHttrackSpelling() throws IOException {
     final List<String> keys = serializerKeys();
     assertTrue(keys.containsAll(Arrays.asList("ProxyType", "KeepWww",
-        "KeepSlashes")));
+        "KeepSlashes", "PauseFiles")));
     for (final String legacy : new String[] { "ProxyProtocol",
-        "KeepWwwPrefix", "KeepDoubleSlashes" }) {
+        "KeepWwwPrefix", "KeepDoubleSlashes", "Pause" }) {
       assertFalse(legacy + " still written", keys.contains(legacy));
     }
   }
@@ -203,7 +206,7 @@ public class WinProfileParityTest {
       }
     }
     for (final String legacy : new String[] { "ProxyProtocol",
-        "KeepWwwPrefix", "KeepDoubleSlashes" }) {
+        "KeepWwwPrefix", "KeepDoubleSlashes", "Pause" }) {
       assertTrue(legacy + " resolves to no stored key",
           keys.contains(ProfileFormat.canonicalName(legacy)));
     }
