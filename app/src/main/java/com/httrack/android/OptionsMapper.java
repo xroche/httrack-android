@@ -32,6 +32,7 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -499,15 +500,35 @@ public class OptionsMapper {
       return values;
     }
 
+    /* A key nobody chose: it holds no value, or still holds the seeded one. */
+    private static boolean isUnset(final String value, final String seeded) {
+      return value == null || value.equals(seeded != null ? seeded : "");
+    }
+
     /**
      * Inverse of {@link #resolve}: what the file holds for these settings.
      *
-     * @return the pairs to write, Iso9660 folded into Dos and so absent
+     * @param values
+     *          the settings, under their current names
+     * @param defaults
+     *          what a project with no profile of its own starts from
+     * @return the pairs to write, none of them null, Iso9660 folded into Dos
+     *         and so absent, and every key still holding its default left out
+     *         so that a reader keeps applying its own
      */
-    static Map<String, String> toFile(final Map<String, String> values) {
+    static Map<String, String> toFile(final Map<String, String> values,
+        final Map<String, String> defaults) {
       final Map<String, String> file = new LinkedHashMap<String, String>(values);
       file.put(DOS_KEY, pack(values.get(DOS_KEY), values.get(ISO9660_KEY)));
       file.remove(ISO9660_KEY);
+      final Iterator<Map.Entry<String, String>> entries = file.entrySet()
+          .iterator();
+      while (entries.hasNext()) {
+        final Map.Entry<String, String> entry = entries.next();
+        if (isUnset(entry.getValue(), defaults.get(entry.getKey()))) {
+          entries.remove();
+        }
+      }
       return file;
     }
   }
@@ -1492,39 +1513,40 @@ public class OptionsMapper {
     }
   }
 
-  /*
-   * Map special values, depending on the context.
+  /**
+   * What a project with no profile of its own starts from. Also the baseline
+   * {@link #serialize(OutputStream)} leaves out of the file, so the two must
+   * stay the same set of values.
+   *
+   * @return the defaults, by profile key
    */
-  private void setDynamicDefaults() {
+  private Map<String, String> seededDefaults() {
+    final Map<String, String> defaults = new LinkedHashMap<String, String>();
+    for (final Pair<String, String> field : fieldsDefaults) {
+      defaults.put(field.first, field.second);
+    }
     if (context != null) {
       // Derive the ISO code from the runtime locale, not a build-time placeholder.
       final String iso = Locale.getDefault().getLanguage();
-      map.put(fieldsNameToId.get("AcceptLanguage"),
-          (iso == null || iso.isEmpty() ? "en" : iso) + ",*");
+      defaults.put("AcceptLanguage", (iso == null || iso.isEmpty() ? "en"
+          : iso) + ",*");
     }
-  }
-
-  /*
-   * Fill the map with default values
-   */
-  protected static void initializeMap(final SparseArraySerializable map) {
-    map.clear();
-    for (final Pair<String, String> field : fieldsDefaults) {
-      final Integer id = fieldsNameToId.get(field.first);
-      if (id == null) {
-        throw new RuntimeException("unexpecter error: unknown key "
-            + field.first);
-      }
-      map.put(id, field.second);
-    }
+    return defaults;
   }
 
   /*
    * Fill the map with default values
    */
   public void initializeMap() {
-    initializeMap(map);
-    setDynamicDefaults();
+    map.clear();
+    for (final Map.Entry<String, String> field : seededDefaults().entrySet()) {
+      final Integer id = fieldsNameToId.get(field.getKey());
+      if (id == null) {
+        throw new RuntimeException("unexpecter error: unknown key "
+            + field.getKey());
+      }
+      map.put(id, field.getValue());
+    }
   }
 
   /**
@@ -1797,18 +1819,16 @@ public class OptionsMapper {
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
         values.put(field.second, getMap(field.first));
       }
-      final Map<String, String> file = ProfileFormat.toFile(values);
+      final Map<String, String> file = ProfileFormat.toFile(values,
+          seededDefaults());
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
         final String key = field.second;
         if (!file.containsKey(key)) {
           continue;
         }
-        final String value = file.get(key);
         lwriter.write(key);
         lwriter.write("=");
-        if (value != null) {
-          lwriter.write(OptionsMapper.profileEncode(value));
-        }
+        lwriter.write(OptionsMapper.profileEncode(file.get(key)));
         lwriter.write("\n");
       }
       lwriter.close();

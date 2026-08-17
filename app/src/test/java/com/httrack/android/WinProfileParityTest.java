@@ -130,11 +130,16 @@ public class WinProfileParityTest {
     assertEquals("0", ProfileFormat.pack(null, null));
   }
 
+  /* A project seeded with nothing, so every value written stands out. */
+  private static Map<String, String> noDefaults() {
+    return new LinkedHashMap<String, String>();
+  }
+
   /* WinHTTrack has no Iso9660 key, so ours must not survive into the file. */
   @Test
   public void writtenProfileFoldsIso9660IntoDos() {
     final Map<String, String> written = ProfileFormat.toFile(file("Dos", "0",
-        "Iso9660", "1", "ProxyType", "1"));
+        "Iso9660", "1", "ProxyType", "1"), noDefaults());
     assertEquals("2", written.get("Dos"));
     assertFalse(written.containsKey("Iso9660"));
     assertEquals("1", written.get("ProxyType"));
@@ -145,10 +150,67 @@ public class WinProfileParityTest {
     for (final String dos : new String[] { "0", "1" }) {
       for (final String iso9660 : new String[] { "0", "1" }) {
         final Map<String, String> values = ProfileFormat.resolve(ProfileFormat
-            .toFile(file("Dos", dos, "Iso9660", iso9660)));
+            .toFile(file("Dos", dos, "Iso9660", iso9660), noDefaults()));
         assertArrayEquals(dos + "/" + iso9660,
             new String[] { dos, iso9660 }, boxes(values));
       }
+    }
+  }
+
+  /* A key the file never had must not come back set, or the front end that
+     wrote the file stops applying its own default for it. */
+  @Test
+  public void aSettingNobodyChoseStaysOutOfTheFile() {
+    final Map<String, String> defaults = file("Footer", "ours", "UserID", "",
+        "Dos", "0");
+    final Map<String, String> written = ProfileFormat.toFile(
+        file("Footer", "ours", "UserID", "", "Sockets", null, "TimeOut", "",
+            "Dos", "0", "Iso9660", "0"), defaults);
+    assertFalse("default still held", written.containsKey("Footer"));
+    assertFalse("default is the empty string", written.containsKey("UserID"));
+    assertFalse("no value at all", written.containsKey("Sockets"));
+    assertFalse("no default and nothing typed",
+        written.containsKey("TimeOut"));
+    assertFalse("both boxes off", written.containsKey("Dos"));
+  }
+
+  @Test
+  public void aSettingThatDiffersIsWritten() {
+    final Map<String, String> defaults = file("Footer", "ours", "Dos", "0");
+    final Map<String, String> written = ProfileFormat.toFile(
+        file("Footer", "theirs", "Sockets", "8", "Dos", "0", "Iso9660", "1"),
+        defaults);
+    assertEquals("theirs", written.get("Footer"));
+    assertEquals("8", written.get("Sockets"));
+    assertEquals("2", written.get("Dos"));
+  }
+
+  /* Clearing a field is a choice, and the empty line is how it is recorded. */
+  @Test
+  public void aFieldTheUserClearedKeepsItsEmptyLine() {
+    final Map<String, String> written = ProfileFormat.toFile(
+        file("Footer", ""), file("Footer", "ours"));
+    assertTrue(written.containsKey("Footer"));
+    assertEquals("", written.get("Footer"));
+  }
+
+  /* Leaving a key out must not change what the project means, since the same
+     defaults are seeded again on the next load. */
+  @Test
+  public void droppingDefaultsLeavesTheProjectUnchanged() {
+    final Map<String, String> defaults = file("Footer", "ours", "UserID", "",
+        "MaxRate", "25000", "Dos", "0");
+    final Map<String, String> values = file("Footer", "theirs", "UserID", "",
+        "MaxRate", "25000", "Sockets", "8", "Dos", "1", "Iso9660", "0");
+    final Map<String, String> reloaded = new LinkedHashMap<String, String>(
+        defaults);
+    reloaded.putAll(ProfileFormat.resolve(ProfileFormat.toFile(values,
+        defaults)));
+    for (final Map.Entry<String, String> setting : values.entrySet()) {
+      final String was = setting.getValue();
+      final String now = reloaded.get(setting.getKey());
+      assertEquals(setting.getKey(), was == null ? "" : was, now == null ? ""
+          : now);
     }
   }
 
