@@ -404,6 +404,63 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
     setViewMenu();
   }
 
+  /** Index of a tab class in tabClasses, -1 when the menu is shown. */
+  protected static int paneIndexOf(final Class<?> cls) {
+    for (int i = 0; i < tabClasses.length; i++) {
+      if (tabClasses[i] == cls) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /** Whether index designates a tab; a bundle from another build may name one we no longer have. */
+  protected static boolean isPaneIndex(final int index) {
+    return index >= 0 && index < tabClasses.length;
+  }
+
+  /** Save instance state. **/
+  protected void saveInstanceState(final Bundle outState) {
+    // Edits on the visible tab only reach the map when that tab is left.
+    saveIfNeeded();
+
+    outState.putParcelable("com.httrack.android.map", mapper.serialize());
+    outState.putInt("com.httrack.android.pane_id", paneIndexOf(activityClass));
+  }
+
+  @Override
+  protected void onSaveInstanceState(final Bundle outState) {
+    Log.d(getClass().getSimpleName(), "onSaveInstanceState");
+    super.onSaveInstanceState(outState);
+    saveInstanceState(outState);
+  }
+
+  /** Restore a saved instance state. **/
+  protected void restoreInstanceState(final Bundle savedInstanceState) {
+    final Parcelable data = savedInstanceState
+        .getParcelable("com.httrack.android.map");
+
+    // Nothing saved: keep the map onCreate took from the intent.
+    if (data == null) {
+      return;
+    }
+    mapper.unserialize(data);
+
+    // Re-open the tab the user was on; setPane() reloads its fields from the restored map.
+    final int pane = savedInstanceState
+        .getInt("com.httrack.android.pane_id", -1);
+    if (isPaneIndex(pane)) {
+      setPane(pane);
+    }
+  }
+
+  @Override
+  protected void onRestoreInstanceState(final Bundle savedInstanceState) {
+    Log.d(getClass().getSimpleName(), "onRestoreInstanceState");
+    super.onRestoreInstanceState(savedInstanceState);
+    restoreInstanceState(savedInstanceState);
+  }
+
   /*
    * Map getter.
    */
