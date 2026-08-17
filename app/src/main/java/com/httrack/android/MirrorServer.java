@@ -119,18 +119,32 @@ final class MirrorServer extends NanoHTTPD {
       return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT,
           "405 Method Not Allowed");
     }
+    final boolean headOnly = method == Method.HEAD;
     final File target = resolveWithinRoot(root, session.getUri());
     if (target == null) {
-      return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "403 Forbidden");
+      return errorResponse(Response.Status.FORBIDDEN, "403 Forbidden", headOnly);
     }
     File file = target;
     if (file.isDirectory()) {
       file = new File(file, "index.html");
     }
     if (!file.exists() || file.isDirectory()) {
-      return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
+      return errorResponse(Response.Status.NOT_FOUND, "404 Not Found", headOnly);
     }
-    return fileResponse(file, method == Method.HEAD);
+    return fileResponse(file, headOnly);
+  }
+
+  /**
+   * Short text error page, bodiless for a HEAD: a body the client is entitled not to read gets
+   * parsed as the head of the next response on the connection.
+   */
+  private static Response errorResponse(final Response.Status status, final String text,
+      final boolean headOnly) {
+    if (headOnly) {
+      return newFixedLengthResponse(status, MIME_PLAINTEXT,
+          new ByteArrayInputStream(new byte[0]), text.length());
+    }
+    return newFixedLengthResponse(status, MIME_PLAINTEXT, text);
   }
 
   @Override
