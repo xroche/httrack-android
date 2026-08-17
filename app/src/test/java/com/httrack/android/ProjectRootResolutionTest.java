@@ -19,11 +19,17 @@ public class ProjectRootResolutionTest {
 
   private File base;
   private File fallback;
+  private File external;
+  private File internal;
+  private File shared;
 
   @Before
   public void setUp() throws Exception {
     base = tmp.newFolder("chosen");
-    fallback = tmp.newFolder("Android", "data", "com.httrack.android", "files", "Websites");
+    external = tmp.newFolder("ext", "Android", "data", "com.httrack.android", "files");
+    internal = tmp.newFolder("int", "data", "com.httrack.android", "files");
+    shared = tmp.newFolder("emulated"); // stands in for /storage/emulated/0
+    fallback = new File(external, "Websites");
   }
 
   @Test
@@ -31,9 +37,10 @@ public class ProjectRootResolutionTest {
     assertEquals(base, StoragePaths.resolveRoot(base, Boolean.TRUE, fallback));
   }
 
+  /** No base set means no verdict to pass either. */
   @Test
   public void fallsBackWithNoBaseSet() {
-    assertEquals(fallback, StoragePaths.resolveRoot(null, Boolean.TRUE, fallback));
+    assertEquals(fallback, StoragePaths.resolveRoot(null, null, fallback));
   }
 
   /** Only a decided yes: an unvettable base must not be honoured either. */
@@ -51,13 +58,58 @@ public class ProjectRootResolutionTest {
   }
 
   /**
-   * Granting access moves the default; the resolved root must follow it rather than wait for the
-   * next cold start.
+   * Losing access re-points the running session rather than waiting for the next cold start.
    */
   @Test
   public void theAnswerFollowsTheAccessHeld() {
     assertEquals(base, StoragePaths.resolveRoot(base, Boolean.TRUE, fallback));
     assertEquals(fallback, StoragePaths.resolveRoot(base, Boolean.FALSE, fallback));
+  }
+
+  @Test
+  public void defaultsToOurOwnExternalDirectory() {
+    assertEquals(new File(external, "Websites"),
+        StoragePaths.defaultRoot(null, external, internal));
+  }
+
+  /** With the volume unmounted there is no external dir, and internal always answers. */
+  @Test
+  public void defaultsToInternalWithoutAnExternalDirectory() {
+    assertEquals(new File(internal, "Websites"), StoragePaths.defaultRoot(null, null, internal));
+  }
+
+  /** The grant is the only input that changed, and the root the app writes moves with it. */
+  @Test
+  public void grantingAllFilesAccessMovesTheRoot() {
+    final File before = StoragePaths.defaultRoot(null, external, internal);
+    final File after = StoragePaths.defaultRoot(shared, external, internal);
+    assertEquals(new File(new File(shared, "HTTrack"), "Websites"), after);
+    assertTrue(StoragePaths.rootMoved(before, after));
+    assertTrue(StoragePaths.rootMoved(after, before));
+  }
+
+  /** Nothing was resolved before, so the once-per-move work must run. */
+  @Test
+  public void theFirstResolutionMoves() {
+    assertTrue(StoragePaths.rootMoved(null, fallback));
+  }
+
+  /** Resume after resume the answer is the same, and the once-per-move work must not repeat. */
+  @Test
+  public void anUnchangedRootDoesNotMoveAcrossResumes() {
+    File previous = null;
+    for (int resume = 0; resume < 3; resume++) {
+      final File resolved = StoragePaths.resolveRoot(base, Boolean.TRUE, fallback);
+      assertEquals("resume " + resume, resume == 0, StoragePaths.rootMoved(previous, resolved));
+      previous = resolved;
+    }
+    // Same path, freshly built: it is the path that must match, not the instance.
+    assertFalse(StoragePaths.rootMoved(new File(base.getPath()), base));
+  }
+
+  @Test
+  public void aDifferentRootMoves() {
+    assertTrue(StoragePaths.rootMoved(fallback, base));
   }
 
   /** computeStorageTarget, up to the next method. */
@@ -70,37 +122,47 @@ public class ProjectRootResolutionTest {
     return source.substring(from, to);
   }
 
+  /** The block HEAD opens, so a statement moved just past its closing brace stops matching. */
+  private static String guardedBlock(final String body, final String head) {
+    final int at = body.indexOf(head);
+    assertTrue(head + " not found", at != -1);
+    final int open = body.indexOf('{', at);
+    assertTrue("no block after " + head, open != -1);
+    int depth = 0;
+    for (int i = open; i < body.length(); i++) {
+      final char c = body.charAt(i);
+      if (c == '{') {
+        depth++;
+      } else if (c == '}' && --depth == 0) {
+        return body.substring(open, i);
+      }
+    }
+    throw new AssertionError("unterminated block after " + head);
+  }
+
   /**
    * Guards what the helper cannot: computeStorageTarget used to keep the current root if it
    * existed, and every grant then waited for the next launch.
    */
   @Test
   public void computeStorageTargetDoesNotKeepTheRootInUse() throws Exception {
-    final String body = computeStorageTargetBody();
     assertFalse("the fallback must not be conditioned on the root already in use",
-        body.contains("projectPath.exists()"));
-    // The vetting verdict has to reach the helper, not a constant standing in for it.
-    assertTrue("the root must come from resolveRoot, passed the real verdict",
-        body.contains("StoragePaths.resolveRoot(baseFile, writable,"));
+        computeStorageTargetBody().contains("projectPath.exists()"));
   }
 
   /** A base that is merely unreachable now must survive, or a remount cannot bring it back. */
   @Test
-  public void computeStorageTargetKeepsAnUnusableBasePath() throws Exception {
-    final String body = computeStorageTargetBody();
-    assertFalse("an unusable base path must not be erased",
-        body.contains("remove(BASE_NAME)"));
-    assertFalse("nor erased under the literal key",
-        body.contains("remove(\"BasePath\")"));
+  public void computeStorageTargetNeverWritesTheSettings() throws Exception {
+    assertFalse("resolving the root must not edit the stored BasePath, however spelled",
+        computeStorageTargetBody().contains(".edit()"));
   }
 
   /** initRootPath leaks a buffer per call, so a re-resolve that moved nothing must not repeat it. */
   @Test
   public void computeStorageTargetGatesTheNativeReinitOnAMove() throws Exception {
-    final String body = computeStorageTargetBody();
-    final int guard = body.indexOf("!previous.equals(projectPath)");
-    final int init = body.indexOf("HTTrackLib.initRootPath(");
-    assertTrue("the moved-root guard is gone", guard != -1);
-    assertTrue("initRootPath must sit behind the moved-root guard", init > guard);
+    final String guarded =
+        guardedBlock(computeStorageTargetBody(), "if (StoragePaths.rootMoved(");
+    assertTrue("initRootPath must sit inside the moved-root block",
+        guarded.contains("HTTrackLib.initRootPath("));
   }
 }

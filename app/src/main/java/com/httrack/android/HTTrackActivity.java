@@ -242,21 +242,14 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /*
-   * Default mirror root. With all-files access, the classic public HTTrack/Websites, so other apps
-   * can use the mirrors and upgraders find their old crawls. Without it (or while the volume is
-   * unmounted), our own private external dir, which needs no permission. The engine takes a POSIX
-   * path either way.
-   */
+  /* The public storage root when it is ours to write, else null: StoragePaths' shared root. */
+  private File sharedStorageRoot() {
+    return hasAllFilesAccess() ? Environment.getExternalStorageDirectory() : null;
+  }
+
+  /* Default mirror root, a POSIX path the engine takes; the policy is StoragePaths.defaultRoot. */
   private File getDefaultHTTrackPath() {
-    if (hasAllFilesAccess()) {
-      final File shared = Environment.getExternalStorageDirectory();
-      if (shared != null) {
-        return new File(new File(shared, "HTTrack"), "Websites");
-      }
-    }
-    final File external = getExternalFilesDir(null);
-    return new File(external != null ? external : getFilesDir(), "Websites");
+    return StoragePaths.defaultRoot(sharedStorageRoot(), getExternalFilesDir(null), getFilesDir());
   }
 
   /*
@@ -265,8 +258,8 @@ public class HTTrackActivity extends FragmentActivity {
    * never refused; see StoragePaths.isWritable.
    */
   private Boolean isWritableProjectPath(final File path) {
-    final File shared = hasAllFilesAccess() ? Environment.getExternalStorageDirectory() : null;
-    return StoragePaths.isWritable(path, getExternalFilesDir(null), getFilesDir(), shared);
+    return StoragePaths.isWritable(path, getExternalFilesDir(null), getFilesDir(),
+        sharedStorageRoot());
   }
 
   /*
@@ -289,9 +282,9 @@ public class HTTrackActivity extends FragmentActivity {
     final File previous = projectPath;
     projectPath = StoragePaths.resolveRoot(baseFile, writable, getDefaultHTTrackPath());
 
-    // Every resume re-resolves, so what must not repeat is gated on the root having moved:
-    // initRootPath leaks a buffer per call, and the warning would become a toast loop.
-    if (previous == null || !previous.equals(projectPath)) {
+    // Re-resolving on every resume must not repeat two things: initRootPath leaks a buffer per
+    // call, and the warning would loop as a toast.
+    if (StoragePaths.rootMoved(previous, projectPath)) {
       if (missingDir) {
         showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
       }

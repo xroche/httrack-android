@@ -4,9 +4,9 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * Where mirrors may be written. Pure path math, kept apart from the Context lookups so that it
- * can be exercised off-device: this is the boundary that decides whether a persisted setting is
- * honoured or destroyed.
+ * Where mirrors may be written, kept apart from the Context lookups so that it can be exercised
+ * off-device: this is the boundary that decides whether a persisted setting is honoured or
+ * destroyed. Mostly path math, but {@link #resolveRoot} stats the base it is handed.
  */
 final class StoragePaths {
   private StoragePaths() {
@@ -53,6 +53,36 @@ final class StoragePaths {
       return null;
     }
     return external != null ? Boolean.FALSE : null;
+  }
+
+  /**
+   * Default mirror root: the classic public HTTrack/Websites when shared storage is ours to
+   * write, so other apps and upgraders find the mirrors, else our own private Websites.
+   *
+   * @param shared
+   *          the public root (e.g. getExternalStorageDirectory()) when all-files access is held,
+   *          else null
+   * @param external
+   *          getExternalFilesDir(null), null while the volume is unmounted
+   * @param internal
+   *          getFilesDir(), the fallback root
+   */
+  static File defaultRoot(final File shared, final File external, final File internal) {
+    if (shared != null) {
+      return new File(new File(shared, "HTTrack"), "Websites");
+    }
+    return new File(external != null ? external : internal, "Websites");
+  }
+
+  /**
+   * Whether the freshly resolved root differs from the one in use, the first resolution counting
+   * as a move. Gates the work that must happen once per move, not once per resume.
+   *
+   * @param previous
+   *          the root in use, null before anything was resolved
+   */
+  static boolean rootMoved(final File previous, final File resolved) {
+    return previous == null || !previous.equals(resolved);
   }
 
   /**
