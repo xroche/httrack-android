@@ -6,6 +6,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -69,20 +73,20 @@ public class ProjectRootResolutionTest {
   @Test
   public void defaultsToOurOwnExternalDirectory() {
     assertEquals(new File(external, "Websites"),
-        StoragePaths.defaultRoot(null, external, internal));
+        StoragePaths.defaultRoot(external, internal, null));
   }
 
   /** With the volume unmounted there is no external dir, and internal always answers. */
   @Test
   public void defaultsToInternalWithoutAnExternalDirectory() {
-    assertEquals(new File(internal, "Websites"), StoragePaths.defaultRoot(null, null, internal));
+    assertEquals(new File(internal, "Websites"), StoragePaths.defaultRoot(null, internal, null));
   }
 
   /** The grant is the only input that changed, and the root the app writes moves with it. */
   @Test
   public void grantingAllFilesAccessMovesTheRoot() {
-    final File before = StoragePaths.defaultRoot(null, external, internal);
-    final File after = StoragePaths.defaultRoot(shared, external, internal);
+    final File before = StoragePaths.defaultRoot(external, internal, null);
+    final File after = StoragePaths.defaultRoot(external, internal, shared);
     assertEquals(new File(new File(shared, "HTTrack"), "Websites"), after);
     assertTrue(StoragePaths.rootMoved(before, after));
     assertTrue(StoragePaths.rootMoved(after, before));
@@ -122,22 +126,24 @@ public class ProjectRootResolutionTest {
     return source.substring(from, to);
   }
 
-  /** The block HEAD opens, so a statement moved just past its closing brace stops matching. */
-  private static String guardedBlock(final String body, final String head) {
-    final int at = body.indexOf(head);
-    assertTrue(head + " not found", at != -1);
-    final int open = body.indexOf('{', at);
-    assertTrue("no block after " + head, open != -1);
-    int depth = 0;
-    for (int i = open; i < body.length(); i++) {
-      final char c = body.charAt(i);
-      if (c == '{') {
-        depth++;
-      } else if (c == '}' && --depth == 0) {
-        return body.substring(open, i);
-      }
+  /** Stands in for the activity, so the gate is judged on what it called and with what. */
+  private static final class Recorder implements StoragePaths.RootMoveActions {
+    final List<String> calls = new ArrayList<String>();
+
+    @Override
+    public void warnMissingDirectory() {
+      calls.add("warn");
     }
-    throw new AssertionError("unterminated block after " + head);
+
+    @Override
+    public void initNativeRoot(final File root) {
+      calls.add("init " + root);
+    }
+
+    @Override
+    public void refreshProjectSuggestions() {
+      calls.add("refresh");
+    }
   }
 
   /**
@@ -157,12 +163,39 @@ public class ProjectRootResolutionTest {
         computeStorageTargetBody().contains(".edit()"));
   }
 
-  /** initRootPath leaks a buffer per call, so a re-resolve that moved nothing must not repeat it. */
+  /** A move re-points the native side at the root just resolved, and relists what is under it. */
   @Test
-  public void computeStorageTargetGatesTheNativeReinitOnAMove() throws Exception {
-    final String guarded =
-        guardedBlock(computeStorageTargetBody(), "if (StoragePaths.rootMoved(");
-    assertTrue("initRootPath must sit inside the moved-root block",
-        guarded.contains("HTTrackLib.initRootPath("));
+  public void aMoveReinitsAtTheNewRoot() {
+    final Recorder rec = new Recorder();
+    assertTrue(StoragePaths.applyRootMove(fallback, base, false, rec));
+    assertEquals(Arrays.asList("init " + base, "refresh"), rec.calls);
+  }
+
+  /** initRootPath leaks a buffer per call, so a re-resolve that moved nothing must do nothing. */
+  @Test
+  public void anUnchangedRootDoesNothing() {
+    final Recorder rec = new Recorder();
+    assertFalse(StoragePaths.applyRootMove(base, new File(base.getPath()), false, rec));
+    assertEquals(Collections.emptyList(), rec.calls);
+  }
+
+  /** Nothing was listed before the first resolution, so there are no stale suggestions to drop. */
+  @Test
+  public void theFirstResolutionSkipsTheSuggestionRefresh() {
+    final Recorder rec = new Recorder();
+    assertTrue(StoragePaths.applyRootMove(null, fallback, false, rec));
+    assertEquals(Arrays.asList("init " + fallback), rec.calls);
+  }
+
+  /** The warning rides the move, or it would toast again on every resume. */
+  @Test
+  public void theMissingDirectoryWarningRidesTheMove() {
+    final Recorder moved = new Recorder();
+    assertTrue(StoragePaths.applyRootMove(fallback, base, true, moved));
+    assertEquals(Arrays.asList("warn", "init " + base, "refresh"), moved.calls);
+
+    final Recorder stayed = new Recorder();
+    assertFalse(StoragePaths.applyRootMove(base, base, true, stayed));
+    assertEquals(Collections.emptyList(), stayed.calls);
   }
 }

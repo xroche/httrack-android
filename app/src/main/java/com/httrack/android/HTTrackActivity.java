@@ -247,9 +247,11 @@ public class HTTrackActivity extends FragmentActivity {
     return hasAllFilesAccess() ? Environment.getExternalStorageDirectory() : null;
   }
 
-  /* Default mirror root, a POSIX path the engine takes; the policy is StoragePaths.defaultRoot. */
+  /* Default mirror root, a POSIX path the engine takes; the policy is StoragePaths.defaultRoot.
+   * Both private-dir lookups create their directory even when shared storage wins: empty, hidden
+   * under Android/data, and isWritableProjectPath makes them anyway once a base is set. */
   private File getDefaultHTTrackPath() {
-    return StoragePaths.defaultRoot(sharedStorageRoot(), getExternalFilesDir(null), getFilesDir());
+    return StoragePaths.defaultRoot(getExternalFilesDir(null), getFilesDir(), sharedStorageRoot());
   }
 
   /*
@@ -282,25 +284,32 @@ public class HTTrackActivity extends FragmentActivity {
     final File previous = projectPath;
     projectPath = StoragePaths.resolveRoot(baseFile, writable, getDefaultHTTrackPath());
 
-    // Re-resolving on every resume must not repeat two things: initRootPath leaks a buffer per
-    // call, and the warning would loop as a toast.
-    if (StoragePaths.rootMoved(previous, projectPath)) {
-      if (missingDir) {
-        showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
-      }
-      if (HTTrackLib.loadedSuccessfully()) {
-        try {
-          HTTrackLib.initRootPath(projectPath.getAbsolutePath());
-        } catch (final Throwable t) {
-          // Recovered native fault: losing the crash log is better than losing the app.
-          Log.e(getClass().getSimpleName(), "could not set the log root path", t);
-        }
-      }
-      if (previous != null) {
-        // The listed projects are the ones under the root, so the suggestions are now stale.
-        refreshprojectNameSuggests();
-      }
-    }
+    StoragePaths.applyRootMove(previous, projectPath, missingDir,
+        new StoragePaths.RootMoveActions() {
+          @Override
+          public void warnMissingDirectory() {
+            showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
+          }
+
+          @Override
+          public void initNativeRoot(final File root) {
+            if (!HTTrackLib.loadedSuccessfully()) {
+              return;
+            }
+            try {
+              HTTrackLib.initRootPath(root.getAbsolutePath());
+            } catch (final Throwable t) {
+              // Recovered native fault: losing the crash log is better than losing the app.
+              Log.e(HTTrackActivity.this.getClass().getSimpleName(),
+                  "could not set the log root path", t);
+            }
+          }
+
+          @Override
+          public void refreshProjectSuggestions() {
+            refreshprojectNameSuggests();
+          }
+        });
 
     // Always refreshed: the field may have just been inflated.
     final View view = findViewById(R.id.fieldBasePath);

@@ -4,9 +4,9 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * Where mirrors may be written, kept apart from the Context lookups so that it can be exercised
- * off-device: this is the boundary that decides whether a persisted setting is honoured or
- * destroyed. Mostly path math, but {@link #resolveRoot} stats the base it is handed.
+ * Where mirrors may be written: decides whether a persisted setting is honoured or destroyed.
+ * Kept apart from the Context lookups so it can run off-device. Mostly path math, but
+ * {@link #resolveRoot} also stats the base it is handed.
  */
 final class StoragePaths {
   private StoragePaths() {
@@ -59,15 +59,18 @@ final class StoragePaths {
    * Default mirror root: the classic public HTTrack/Websites when shared storage is ours to
    * write, so other apps and upgraders find the mirrors, else our own private Websites.
    *
-   * @param shared
-   *          the public root (e.g. getExternalStorageDirectory()) when all-files access is held,
-   *          else null
+   * <p>Takes its roots in the same order as {@link #isWritable}, since a transposition between
+   * same-typed neighbours would compile and still return a plausible directory.
+   *
    * @param external
    *          getExternalFilesDir(null), null while the volume is unmounted
    * @param internal
    *          getFilesDir(), the fallback root
+   * @param shared
+   *          the public root (e.g. getExternalStorageDirectory()) when all-files access is held,
+   *          else null
    */
-  static File defaultRoot(final File shared, final File external, final File internal) {
+  static File defaultRoot(final File external, final File internal, final File shared) {
     if (shared != null) {
       return new File(new File(shared, "HTTrack"), "Websites");
     }
@@ -83,6 +86,44 @@ final class StoragePaths {
    */
   static boolean rootMoved(final File previous, final File resolved) {
     return previous == null || !previous.equals(resolved);
+  }
+
+  /** The side effects of a move, behind an interface so a test can record them instead. */
+  interface RootMoveActions {
+    /** The persisted base named a directory we could not create; worth saying once. */
+    void warnMissingDirectory();
+
+    /** Point the native side at the new root, so its logs land under it. */
+    void initNativeRoot(File root);
+
+    /** The listed projects are the ones under the root, so the suggestions went stale. */
+    void refreshProjectSuggestions();
+  }
+
+  /**
+   * Runs the work owed once per move, and nothing at all otherwise: initRootPath leaks a buffer
+   * per call and the warning would loop as a toast, both of which a resume would repeat.
+   *
+   * @param previous
+   *          the root in use, null before anything was resolved
+   * @param missingDir
+   *          whether the persisted base could not be created
+   * @return whether the root moved
+   */
+  static boolean applyRootMove(final File previous, final File resolved, final boolean missingDir,
+      final RootMoveActions actions) {
+    if (!rootMoved(previous, resolved)) {
+      return false;
+    }
+    if (missingDir) {
+      actions.warnMissingDirectory();
+    }
+    actions.initNativeRoot(resolved);
+    if (previous != null) {
+      // Nothing was listed before the first resolution.
+      actions.refreshProjectSuggestions();
+    }
+    return true;
   }
 
   /**
