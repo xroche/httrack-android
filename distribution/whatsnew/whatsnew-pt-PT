@@ -2,6 +2,7 @@ HTTrack 3.50 beta 5.
 
 • Os projetos novos deixam de substituir as ligações externas por páginas de erro e de remover as consultas dos nomes dos ficheiros guardados
 • A opção de cache verifica agora se há atualizações antes de reutilizar um ficheiro
-• As definições de projeto trocam-se com a versão para Windows, incluindo os nomes DOS e ISO 9660
+• Regras, endereços e redirecionamentos muito longos deixam de interromper a cópia ou de desaparecer dela
+• Um ficheiro robots.txt grande deixa de ser cortado após os primeiros kilobytes
 
 Beta: comunique os problemas no GitHub.

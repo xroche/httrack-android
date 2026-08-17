@@ -2,6 +2,7 @@ HTTrack 3.50 beta 5.
 
 • Nové projekty už nenahrazují externí odkazy chybovými stránkami ani neodstraňují dotazy z názvů uložených souborů
 • Volba mezipaměti nyní před opětovným použitím souboru ověří, zda nevyšla novější verze
-• Nastavení projektů si lze vyměňovat s verzí pro Windows, včetně názvů DOS a ISO 9660
+• Velmi dlouhá pravidla, adresy a přesměrování už kopírování nepřeruší ani z něj nezmizí
+• Velký soubor robots.txt se už neořízne po prvních kilobajtech
 
 Beta: problémy hlaste na GitHubu.

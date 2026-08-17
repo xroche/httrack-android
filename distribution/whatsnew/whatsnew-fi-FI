@@ -2,6 +2,7 @@ HTTrack 3.50 beeta 5.
 
 • Uudet projektit eivät enää korvaa ulkoisia linkkejä virhesivuilla eivätkä poista kyselyitä tallennettujen tiedostojen nimistä
 • Välimuistiasetus tarkistaa nyt päivitykset ennen tiedoston uudelleenkäyttöä
-• Projektin asetukset ovat vaihdettavissa Windows-version kanssa, mukaan lukien DOS- ja ISO 9660 -nimet
+• Hyvin pitkät säännöt, osoitteet ja uudelleenohjaukset eivät enää keskeytä kopiointia eivätkä katoa siitä
+• Suurta robots.txt-tiedostoa ei enää katkaista ensimmäisten kilotavujen jälkeen
 
 Beeta: ilmoita ongelmista GitHubissa.

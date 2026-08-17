@@ -2,6 +2,7 @@ HTTrack 3.50 beta 5.
 
 • Nowe projekty nie zastępują już odnośników zewnętrznych stronami błędu ani nie usuwają zapytań z nazw zapisanych plików
 • Opcja pamięci podręcznej sprawdza teraz aktualizacje przed ponownym użyciem pliku
-• Ustawienia projektu wymieniają się z wersją dla Windows, łącznie z nazwami DOS i ISO 9660
+• Bardzo długie reguły, adresy i przekierowania nie przerywają już kopiowania ani z niego nie znikają
+• Duży plik robots.txt nie jest już ucinany po pierwszych kilobajtach
 
 Beta: zgłaszaj problemy na GitHubie.

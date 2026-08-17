@@ -2,6 +2,7 @@ HTTrack 3.50 bèta 5.
 
 • Nieuwe projecten vervangen externe koppelingen niet meer door foutpagina's en laten query's in de opgeslagen bestandsnamen staan
 • De cache-optie controleert nu op updates voordat een bestand opnieuw wordt gebruikt
-• Projectinstellingen zijn uitwisselbaar met de Windows-versie, inclusief DOS- en ISO 9660-namen
+• Zeer lange regels, adressen en omleidingen breken de kopie niet meer af en verdwijnen er niet meer uit
+• Een groot robots.txt-bestand wordt niet meer na de eerste kilobytes afgekapt
 
 Bèta: meld problemen op GitHub.

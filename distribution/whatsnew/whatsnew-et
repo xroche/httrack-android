@@ -2,6 +2,7 @@ HTTrack 3.50 beeta 5.
 
 • Uued projektid ei asenda enam väliseid linke vealehtedega ega eemalda päringuid salvestatud failinimedest
 • Vahemälu valik kontrollib nüüd enne faili taaskasutamist, kas on uuendusi
-• Projekti sätteid saab vahetada Windowsi versiooniga, sealhulgas DOS- ja ISO 9660 nimed
+• Väga pikad reeglid, aadressid ja ümbersuunamised ei katkesta enam kopeerimist ega kao sellest
+• Suurt robots.txt-faili ei kärbita enam pärast esimesi kilobaite
 
 Beeta: teatage probleemidest GitHubis.

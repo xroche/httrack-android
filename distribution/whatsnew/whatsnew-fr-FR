@@ -1,7 +1,8 @@
 HTTrack 3.50 bêta 5.
 
-• Les nouveaux projets ne remplacent plus les liens externes par des pages d'erreur et ne suppriment plus les requêtes des noms de fichiers enregistrés
+• Les nouveaux projets ne remplacent plus les liens externes par des pages d'erreur et ne suppriment plus les requêtes des noms de fichiers
 • L'option de cache vérifie maintenant les mises à jour avant de réutiliser un fichier
-• Les réglages de projet s'échangent avec la version Windows, y compris les noms DOS et ISO 9660
+• Les règles, adresses et redirections très longues n'interrompent plus la copie et n'en disparaissent plus
+• Un fichier robots.txt volumineux n'est plus tronqué après les premiers kilo-octets
 
 Bêta : signalez les problèmes sur GitHub.

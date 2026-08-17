@@ -2,6 +2,7 @@ HTTrack 3.50 beta 5.
 
 • Novi projekti zunanjih povezav ne nadomeščajo več s stranmi z napako in ne odstranjujejo poizvedb iz imen shranjenih datotek
 • Možnost predpomnilnika zdaj pred ponovno uporabo datoteke preveri, ali je na voljo posodobitev
-• Nastavitve projekta si je mogoče izmenjati z različico za Windows, vključno z imeni DOS in ISO 9660
+• Zelo dolga pravila, naslovi in preusmeritve ne prekinejo več kopiranja in iz njega ne izginejo
+• Velika datoteka robots.txt se ne odreže več po prvih kilobajtih
 
 Beta: težave sporočite na GitHubu.
