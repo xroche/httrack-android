@@ -54,7 +54,8 @@ import androidx.fragment.app.FragmentActivity;
  * FragmentActivity rather than Activity: predictive back is dispatched through the AndroidX
  * OnBackPressedDispatcher, which a plain Activity does not have.
  */
-public class OptionsActivity extends FragmentActivity implements View.OnClickListener {
+public class OptionsActivity extends FragmentActivity implements
+    View.OnClickListener, OptionsInstanceState.Screen {
   /* List of all tabs. */
   @SuppressWarnings("unchecked")
   protected static Class<? extends Tab>[] tabClasses = new Class[] {
@@ -83,6 +84,9 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
   // use large screen ? (tablets)
   protected boolean isTabletMode;
+
+  // Build this instance belongs to, stamped on the bundle it saves
+  protected int versionCode;
 
   /**
    * The tab activit(ies) common interface.
@@ -370,6 +374,8 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
   protected void onCreate(final Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
+    versionCode = HTTrackActivity.packageInfo(this).versionCode;
+
     getOnBackPressedDispatcher().addCallback(this, backCallback);
 
     // Large screen ? Enable special tablet features in such case...
@@ -396,12 +402,75 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
     // Pinned to Parcelable: inlined, T infers as File & Parcelable and unserialize(File)
     // matches just as well, which javac rejects as ambiguous.
     final Parcelable savedMap =
-        getIntent().getParcelableExtra("com.httrack.android.map");
+        getIntent().getParcelableExtra(HTTrackActivity.MAP_NAME);
     mapper.unserialize(savedMap);
     Log.d(getClass().getSimpleName(), "map size: " + mapper.size());
 
     // Create tabs
     setViewMenu();
+  }
+
+  @Override
+  public void flushVisibleTab() {
+    saveIfNeeded();
+  }
+
+  @Override
+  public Parcelable serializeMap() {
+    return mapper.serialize();
+  }
+
+  @Override
+  public void unserializeMap(final Parcelable map) {
+    mapper.unserialize(map);
+  }
+
+  /** Index of CLS in tabClasses, NO_PANE when it names no tab. **/
+  protected static int paneIndexOf(final Class<?> cls) {
+    for (int i = 0; i < tabClasses.length; i++) {
+      if (tabClasses[i] == cls) {
+        return i;
+      }
+    }
+    return OptionsInstanceState.NO_PANE;
+  }
+
+  /** Number of tabs, as a static so a test can pin it without an Activity. **/
+  protected static int tabCount() {
+    return tabClasses.length;
+  }
+
+  @Override
+  public int paneCount() {
+    return tabCount();
+  }
+
+  @Override
+  public int visiblePane() {
+    return paneIndexOf(activityClass);
+  }
+
+  @Override
+  public void openPane(final int index) {
+    setPane(index);
+  }
+
+  @Override
+  protected void onSaveInstanceState(final Bundle outState) {
+    Log.d(getClass().getSimpleName(), "onSaveInstanceState");
+    super.onSaveInstanceState(outState);
+    OptionsInstanceState.save(this, new OptionsInstanceState.BundleStore(
+        outState), versionCode);
+  }
+
+  @Override
+  protected void onRestoreInstanceState(final Bundle savedInstanceState) {
+    Log.d(getClass().getSimpleName(), "onRestoreInstanceState");
+    super.onRestoreInstanceState(savedInstanceState);
+    if (!OptionsInstanceState.restore(this,
+        new OptionsInstanceState.BundleStore(savedInstanceState), versionCode)) {
+      Log.d(getClass().getSimpleName(), "refused bundle");
+    }
   }
 
   /*
@@ -425,7 +494,7 @@ public class OptionsActivity extends FragmentActivity implements View.OnClickLis
 
     // Declare result
     final Intent intent = new Intent();
-    intent.putExtra("com.httrack.android.map", mapper.serialize());
+    intent.putExtra(HTTrackActivity.MAP_NAME, mapper.serialize());
     setResult(Activity.RESULT_OK, intent);
     super.finish();
   }

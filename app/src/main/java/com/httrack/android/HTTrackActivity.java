@@ -123,6 +123,12 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final int LAYOUT_MIRROR_PROGRESS = 3;
   protected static final int LAYOUT_FINISHED = 4;
 
+  // The options map: carried on the intent both ways, and saved in either activity's bundle.
+  protected static final String MAP_NAME = "com.httrack.android.map";
+  // Build stamp of a bundle; another build's R.id values key that same map differently.
+  protected static final String VERSION_CODE_NAME = "com.httrack.android.version";
+  protected static final String PANE_NAME = "com.httrack.android.pane_id";
+
   // Preferences
   protected static final String PREFS_NAME = "HTTrackPreferences";
   protected static final String BASE_NAME = "BasePath";
@@ -669,6 +675,16 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
+  /** This build's own PackageInfo; not finding our own package is unrecoverable. **/
+  protected static PackageInfo packageInfo(final Context context) {
+    try {
+      return context.getPackageManager().getPackageInfo(
+          context.getPackageName(), 0);
+    } catch (final NameNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
     Log.d(getClass().getSimpleName(), "onCreate");
@@ -686,14 +702,9 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     // Android package version code
-    try {
-      final PackageInfo info = getPackageManager().getPackageInfo(
-          getPackageName(), 0);
-      versionCode = info.versionCode;
-      versionName = info.versionName;
-    } catch (final NameNotFoundException e) {
-      throw new RuntimeException(e);
-    }
+    final PackageInfo info = packageInfo(this);
+    versionCode = info.versionCode;
+    versionName = info.versionName;
 
     // Compute target directory on external storage
     ensureExternalStorage();
@@ -2639,7 +2650,7 @@ public class HTTrackActivity extends FragmentActivity {
     // Then start new activity
     final Intent intent = new Intent(this, OptionsActivity.class);
     fillExtra(intent);
-    intent.putExtra("com.httrack.android.map", mapper.serialize());
+    intent.putExtra(MAP_NAME, mapper.serialize());
     Log.d(getClass().getSimpleName(), "map size: " + mapper.size());
     startActivityForResult(intent, ACTIVITY_OPTIONS);
   }
@@ -2678,7 +2689,7 @@ public class HTTrackActivity extends FragmentActivity {
     case ACTIVITY_OPTIONS:
       if (resultCode == Activity.RESULT_OK) {
         // Load modified map
-        loadParcelable(data.getParcelableExtra("com.httrack.android.map"));
+        loadParcelable(data.getParcelableExtra(MAP_NAME));
       }
       break;
     case ACTIVITY_FILE_CHOOSER:
@@ -2936,16 +2947,16 @@ public class HTTrackActivity extends FragmentActivity {
     outState.putString("com.httrack.android.sessionID", sessionID);
 
     // Version ID
-    outState.putInt("com.httrack.android.version", versionCode);
+    outState.putInt(VERSION_CODE_NAME, versionCode);
 
     // Map keys
-    outState.putParcelable("com.httrack.android.map", mapper.serialize());
+    outState.putParcelable(MAP_NAME, mapper.serialize());
 
     // Which project's profile the map holds, so the reload guard survives recreation.
     outState.putString("com.httrack.android.loadedProjectName", loadedProjectName);
 
     // Current pane
-    outState.putInt("com.httrack.android.pane_id", pane_id);
+    outState.putInt(PANE_NAME, pane_id);
 
     // Current focus id
     outState.putIntArray("com.httrack.android.focus_id", getCurrentFocusId());
@@ -3059,8 +3070,7 @@ public class HTTrackActivity extends FragmentActivity {
   /** Restore a saved instance state. **/
   protected void restoreInstanceState(final Bundle savedInstanceState) {
     // Check version ID
-    final int version = savedInstanceState
-        .getInt("com.httrack.android.version");
+    final int version = savedInstanceState.getInt(VERSION_CODE_NAME);
     if (version != versionCode) {
       Log.d(getClass().getSimpleName(), "refused bundle version " + version);
       return;
@@ -3070,15 +3080,14 @@ public class HTTrackActivity extends FragmentActivity {
     sessionID = savedInstanceState.getString("com.httrack.android.sessionID");
 
     // Switch pane id
-    final int id = savedInstanceState.getInt("com.httrack.android.pane_id");
+    final int id = savedInstanceState.getInt(PANE_NAME);
 
     // Current focus
     final int[] focus_ids = savedInstanceState
         .getIntArray("com.httrack.android.focus_id");
 
     // Load map
-    final Parcelable data = savedInstanceState
-        .getParcelable("com.httrack.android.map");
+    final Parcelable data = savedInstanceState.getParcelable(MAP_NAME);
 
     // Load map
     if (data != null) {
