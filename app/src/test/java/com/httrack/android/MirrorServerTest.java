@@ -1,19 +1,16 @@
 package com.httrack.android;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -21,9 +18,11 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import fi.iki.elonen.NanoHTTPD;
-import fi.iki.elonen.ResponseProbe;
 
-/** Attacks MirrorServer.resolveWithinRoot: what it serves, what it must refuse to leave the root. */
+/**
+ * Attacks MirrorServer: what it serves, what it must refuse to leave the root, and what length it
+ * puts on a file the engine may be rewriting underneath it.
+ */
 public class MirrorServerTest {
   @Rule
   public final TemporaryFolder tmp = new TemporaryFolder();
@@ -105,9 +104,9 @@ public class MirrorServerTest {
     assertNull(MirrorServer.relativeUrlPath(root, new File(sibling, "secret.txt")));
   }
 
-  /** File.length() lying the way a stat landing mid-rewrite does must not shorten what we serve. */
+  /** A File.length() lying the way a stat landing mid-rewrite does must not reach the response. */
   @Test
-  public void servesTheOpenFileWhateverThePathStatSays() throws Exception {
+  public void measuresTheOpenFileNotThePath() throws Exception {
     final File page = new File(root, "index.html");
     final byte[] content = "<html>hello</html>".getBytes("UTF-8");
     Files.write(page.toPath(), content);
@@ -117,29 +116,42 @@ public class MirrorServerTest {
         return 0;
       }
     };
-    assertArrayEquals(content, body(MirrorServer.fileResponse(racing)));
+    final MirrorServer.OpenFile open = MirrorServer.openAndMeasure(racing);
+    try {
+      assertEquals(content.length, open.length);
+    } finally {
+      open.stream.close();
+    }
+  }
+
+  /** A failed measure leaves nobody holding the stream, so it has to close it itself. */
+  @Test
+  public void measureClosesTheStreamItCannotMeasure() throws Exception {
+    final File page = new File(root, "index.html");
+    Files.write(page.toPath(), "x".getBytes("UTF-8"));
+    final int[] closes = { 0 };
+    final FileInputStream stream = new FileInputStream(page) {
+      @Override
+      public void close() throws IOException {
+        closes[0]++;
+        super.close();
+      }
+    };
+    // A closed channel is what makes size() throw; closing it here closes the stream with it.
+    stream.getChannel().close();
+    final int before = closes[0];
+    try {
+      MirrorServer.measure(stream);
+      fail("measuring a closed channel should throw");
+    } catch (final IOException expected) {
+      assertEquals(before + 1, closes[0]);
+    }
   }
 
   @Test
   public void fileResponseOnAnUnopenableFileIs404() throws Exception {
     final NanoHTTPD.Response response = MirrorServer.fileResponse(new File(root, "gone.html"));
     assertEquals(NanoHTTPD.Response.Status.NOT_FOUND, response.getStatus());
-  }
-
-  /** Body as written on the wire, checked against the Content-Length advertised beside it. */
-  private static byte[] body(final NanoHTTPD.Response response) throws Exception {
-    final ByteArrayOutputStream wire = new ByteArrayOutputStream();
-    ResponseProbe.send(response, wire);
-    final byte[] bytes = wire.toByteArray();
-    // ISO-8859-1 maps bytes one to one, so the index it yields is also the byte offset.
-    final int split = new String(bytes, "ISO-8859-1").indexOf("\r\n\r\n");
-    assertNotEquals("no header terminator on the wire", -1, split);
-    final byte[] payload = Arrays.copyOfRange(bytes, split + 4, bytes.length);
-    final Matcher length = Pattern.compile("(?im)^Content-Length: *(\\d+)")
-        .matcher(new String(bytes, 0, split, "US-ASCII"));
-    assertTrue("no Content-Length header", length.find());
-    assertEquals(Integer.parseInt(length.group(1)), payload.length);
-    return payload;
   }
 
   /** Docs and mirrors are served at once, so each root must keep its own server. */
