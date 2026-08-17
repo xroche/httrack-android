@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
@@ -250,6 +251,31 @@ public class WinProfileParityTest {
       assertEquals(setting.getKey(), was == null ? "" : was, now == null ? ""
           : now);
     }
+  }
+
+  /* A default read off the device cannot be left out of the file, since the
+     device can change before the next load. seededDefaults overrides the table
+     for exactly those keys, so the two lists must name the same ones. */
+  @Test
+  public void everyDeviceDerivedDefaultIsAlwaysWritten() throws IOException {
+    final String source = TestSources.javaSource("OptionsMapper");
+    final Matcher declared = Pattern.compile(
+        "environmentKeys\\[\\] = \\{([^}]*)\\}").matcher(source);
+    assertTrue("environmentKeys parsed", declared.find());
+    final Set<String> always = new HashSet<String>();
+    final Matcher name = Pattern.compile("\"([^\"]+)\"").matcher(
+        declared.group(1));
+    while (name.find()) {
+      always.add(name.group(1));
+    }
+    final Set<String> derived = new HashSet<String>();
+    final Matcher put = Pattern.compile("defaults\\.put\\(\"([^\"]+)\"")
+        .matcher(source);
+    while (put.find()) {
+      derived.add(put.group(1));
+    }
+    assertEquals("device-derived defaults parsed", 1, derived.size());
+    assertEquals(derived, always);
   }
 
   @Test

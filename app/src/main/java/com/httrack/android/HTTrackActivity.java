@@ -23,6 +23,7 @@ package com.httrack.android;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -1405,7 +1406,7 @@ public class HTTrackActivity extends FragmentActivity {
             "starting engine: " + HTTrackActivity.printArray(cargs));
 
         // Serialize settings
-        parent.serialize(outLock);
+        parent.serialize(profile, outLock);
 
         // Progress info for slow phones
         setProgressLines(new String[] { string_starting_mirror });
@@ -1910,14 +1911,26 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Serialize current profile to an existing OutputStream.
-   * 
+   * Serialize the current profile through an already-open, locked stream,
+   * replacing what the file held.
+   *
+   * @param profile
+   *          the file that stream writes to
+   * @param os
+   *          the locked stream, opened in append mode
    * @throws IOException
    *           Upon I/O error.
    */
-  protected synchronized void serialize(final OutputStream os)
-      throws IOException {
-    mapper.serialize(os);
+  protected synchronized void serialize(final File profile,
+      final FileOutputStream os) throws IOException {
+    // The reader takes the last line for a key, so a key left out of this write
+    // would keep whatever an earlier block said. Build it first, so that a
+    // failure cannot leave the profile empty.
+    mapper.rememberProfileKeys(profile);
+    final ByteArrayOutputStream settings = new ByteArrayOutputStream();
+    mapper.serialize(settings);
+    os.getChannel().truncate(0);
+    os.write(settings.toByteArray());
     os.flush();
   }
 

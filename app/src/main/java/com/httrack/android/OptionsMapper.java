@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -587,10 +588,12 @@ public class OptionsMapper {
   // The options mapping
   protected final SparseArraySerializable map = new SparseArraySerializable();
 
-  // What a load puts back on its own, and which keys the profile carried.
-  // Empty means nothing is known, so serialize() writes every key it holds.
-  private Map<String, String> seededState = new LinkedHashMap<String, String>();
-  private final Set<String> heldKeys = new HashSet<String>();
+  // Keys that always get a line: those the loaded profile carried, and those a
+  // load rebuilds from the device rather than from a fixed default, whose value
+  // at save time would otherwise be lost when the device changes.
+  private static final String environmentKeys[] = { "AcceptLanguage" };
+  private final Set<String> heldKeys = new HashSet<String>(
+      Arrays.asList(environmentKeys));
 
   // Is the map dirty ?
   protected boolean dirty;
@@ -1602,11 +1605,6 @@ public class OptionsMapper {
     return values;
   }
 
-  /* Record what a load would put back, once the map holds it and no further. */
-  private void snapshotSeeded() {
-    seededState = ProfileFormat.packed(valuesByKey());
-    heldKeys.clear();
-  }
 
   /**
    * Cleanup a space-separated string.
@@ -1645,7 +1643,6 @@ public class OptionsMapper {
 
     // Initialize default values for map
     initializeMap();
-    snapshotSeeded();
   }
 
   /**
@@ -1693,8 +1690,9 @@ public class OptionsMapper {
     // Load default preferences if any
     loadDefaultPreferences();
 
-    // The preferences are part of what a load rebuilds, so snapshot after them
-    snapshotSeeded();
+    // Another project carries its own keys
+    heldKeys.clear();
+    heldKeys.addAll(Arrays.asList(environmentKeys));
 
     dirty = false;
   }
@@ -1886,7 +1884,8 @@ public class OptionsMapper {
     final BufferedWriter lwriter = new BufferedWriter(writer);
     try {
       final Map<String, String> file = ProfileFormat.toFile(valuesByKey(),
-          new ProfileFormat.Baseline(seededState, heldKeys));
+          new ProfileFormat.Baseline(ProfileFormat.packed(baselineValues()),
+              heldKeys));
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
         final String key = field.second;
         if (!file.containsKey(key)) {
@@ -1909,8 +1908,27 @@ public class OptionsMapper {
   }
 
   /**
+   * Keep the keys a profile already carries, so that writing it back cannot
+   * drop someone else's line. Call before overwriting: an activity restart
+   * leaves the map with no record of what it loaded.
+   *
+   * @param profile
+   *          The profile file, which need not exist
+   */
+  public void rememberProfileKeys(final File profile) {
+    if (!profile.exists()) {
+      return;
+    }
+    try {
+      heldKeys.addAll(unserialize(profile, new SparseArraySerializable()));
+    } catch (final IOException e) {
+      Log.d(getClass().getSimpleName(), "unreadable profile: " + e);
+    }
+  }
+
+  /**
    * Serialize settings on disk.
-   * 
+   *
    * @param profile
    *          The profile file.
    * @throws UnsupportedEncodingException
@@ -1920,15 +1938,7 @@ public class OptionsMapper {
    */
   public void serialize(final File profile)
       throws UnsupportedEncodingException, IOException {
-    // The file outlives an activity restart that leaves the map with no record
-    // of the keys it carried, and opening it below truncates it.
-    if (profile.exists()) {
-      try {
-        heldKeys.addAll(unserialize(profile, new SparseArraySerializable()));
-      } catch (final IOException e) {
-        Log.d(getClass().getSimpleName(), "unreadable profile: " + e);
-      }
-    }
+    rememberProfileKeys(profile);
     final FileOutputStream fos = new FileOutputStream(profile);
     try {
       serialize(fos);
@@ -1984,35 +1994,55 @@ public class OptionsMapper {
     return false;
   }
 
+  /**
+   * What a load rebuilds for a project with no profile of its own: the defaults
+   * with the saved default options over them. Derived on each call rather than
+   * remembered, so that changing the saved options cannot leave a stale copy
+   * behind; {@link OptionsActivity} holds its own mapper, and its changes reach
+   * this one only through the preferences.
+   *
+   * @return the values, by profile key, project identity excluded
+   */
+  private Map<String, String> baselineValues() {
+    final Map<String, String> values = seededDefaults();
+    if (context == null) {
+      return values;
+    }
+    final SharedPreferences settings = context.getSharedPreferences(PREFS_NAME,
+        0);
+    for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+      // A stale saved default must not resurrect a wrong project identity.
+      if (isIdentityField(field.first)) {
+        continue;
+      }
+      final String key = field.second;
+      String value = settings.getString(key, null);
+      if (value == null) {
+        final String legacy = ProfileFormat.legacyName(key);
+        if (legacy != null) {
+          value = settings.getString(legacy, null);
+        }
+      }
+      if (value != null) {
+        values.put(key, value);
+      }
+    }
+    return values;
+  }
+
   /*
    * Load default preferences.
    */
   public void loadDefaultPreferences() {
     if (context != null) {
-      final SharedPreferences settings = context.getSharedPreferences(
-          PREFS_NAME, 0);
       // Snapshot the current project identity before the map reset wipes it.
       final SparseArray<String> identity = new SparseArray<String>();
       for (final int id : OptionsMapper.identityFields) {
         identity.put(id, getMap(id));
       }
       initializeMap();
-      for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
-        // A stale saved default must not resurrect a wrong project identity.
-        if (isIdentityField(field.first)) {
-          continue;
-        }
-        final String key = field.second;
-        String value = settings.getString(key, null);
-        if (value == null) {
-          final String legacy = ProfileFormat.legacyName(key);
-          if (legacy != null) {
-            value = settings.getString(legacy, null);
-          }
-        }
-        if (value != null) {
-          setMap(field.first, value);
-        }
+      for (final Map.Entry<String, String> field : baselineValues().entrySet()) {
+        setMap(fieldsNameToId.get(field.getKey()), field.getValue());
       }
       // Restore the project identity the default options must not touch.
       for (int i = 0; i < identity.size(); i++) {
