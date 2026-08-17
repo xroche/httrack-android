@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
@@ -171,37 +172,46 @@ public class WinProfileParityTest {
     return TestSources.javaSource("OptionsMapper");
   }
 
-  private static List<String> serializerKeys() throws IOException {
-    final Matcher m = Pattern.compile(
-        "new Pair<Integer, String>\\(R\\.id\\.\\w+,\\s*\"([^\"]+)\"\\)")
-        .matcher(mapperTable());
+  private static int occurrences(final String source, final String text) {
+    int count = 0;
+    for (int at = source.indexOf(text); at != -1; at = source.indexOf(text,
+        at + 1)) {
+      count++;
+    }
+    return count;
+  }
+
+  /* Counting the declarations separately keeps a regex that quietly stops
+     matching from passing every key test on a short list. */
+  private static List<String> keysOf(final String declaration,
+      final String pattern) throws IOException {
+    final String source = mapperTable();
+    final Matcher m = Pattern.compile(pattern).matcher(source);
     final List<String> keys = new ArrayList<String>();
     while (m.find()) {
       keys.add(m.group(1));
     }
-    assertEquals("serializer keys parsed", 94, keys.size());
+    assertEquals(declaration + " entries parsed",
+        occurrences(source, declaration), keys.size());
     return keys;
+  }
+
+  private static List<String> serializerKeys() throws IOException {
+    return keysOf("new Pair<Integer, String>(R.id.",
+        "new Pair<Integer, String>\\(R\\.id\\.\\w+,\\s*\"([^\"]+)\"\\)");
   }
 
   private static List<String> mapperKeys() throws IOException {
-    final Matcher m = Pattern.compile(
-        "new Pair<String, OptionMapper>\\(\"([^\"]+)\"").matcher(mapperTable());
-    final List<String> keys = new ArrayList<String>();
-    while (m.find()) {
-      keys.add(m.group(1));
-    }
-    assertEquals("mapper keys parsed", 94, keys.size());
-    return keys;
+    return keysOf("new Pair<String, OptionMapper>(",
+        "new Pair<String, OptionMapper>\\(\"([^\"]+)\"");
   }
 
-  /* Renaming a key in one table only strands the other half: an option whose
-     mapper no longer matches a stored key emits nothing, in silence. */
+  /* The two tables are halves of one wiring: a key stored with no mapper never
+     reaches the engine, and a mapper under no stored key never runs. */
   @Test
-  public void everyMapperKeyIsStored() throws IOException {
-    final List<String> stored = serializerKeys();
-    for (final String key : mapperKeys()) {
-      assertTrue(key + " maps an option no field stores", stored.contains(key));
-    }
+  public void everyStoredKeyHasAMapper() throws IOException {
+    assertEquals(new TreeSet<String>(serializerKeys()),
+        new TreeSet<String>(mapperKeys()));
   }
 
   @Test
