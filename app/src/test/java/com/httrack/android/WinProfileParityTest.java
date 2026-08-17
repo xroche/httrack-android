@@ -108,6 +108,13 @@ public class WinProfileParityTest {
   }
 
   @Test
+  public void aDosWithNoValueAtAllLeavesTheBoxesAlone() {
+    final Map<String, String> values = ProfileFormat.resolve(file("Dos", null));
+    assertNull(values.get("Dos"));
+    assertFalse(values.containsKey("Iso9660"));
+  }
+
+  @Test
   public void unreadableDosLeavesTheBoxesAlone() {
     assertEquals("yes", ProfileFormat.resolve(file("Dos", "yes")).get("Dos"));
     assertNull(ProfileFormat.resolve(file("Dos", "yes")).get("Iso9660"));
@@ -161,8 +168,7 @@ public class WinProfileParityTest {
     return TestSources.javaSource("OptionsMapper");
   }
 
-  @Test
-  public void keysUseTheWinHttrackSpelling() throws IOException {
+  private static List<String> serializerKeys() throws IOException {
     final Matcher m = Pattern.compile(
         "new Pair<Integer, String>\\(R\\.id\\.\\w+,\\s*\"([^\"]+)\"\\)")
         .matcher(mapperTable());
@@ -171,11 +177,46 @@ public class WinProfileParityTest {
       keys.add(m.group(1));
     }
     assertEquals("serializer keys parsed", 94, keys.size());
+    return keys;
+  }
+
+  @Test
+  public void keysUseTheWinHttrackSpelling() throws IOException {
+    final List<String> keys = serializerKeys();
     assertTrue(keys.containsAll(Arrays.asList("ProxyType", "KeepWww",
         "KeepSlashes")));
     for (final String legacy : new String[] { "ProxyProtocol",
         "KeepWwwPrefix", "KeepDoubleSlashes" }) {
       assertFalse(legacy + " still written", keys.contains(legacy));
+    }
+  }
+
+  /* A rename that leaves canonicalName pointing at no field drops the setting
+     in silence, so the targets have to stay real keys. */
+  @Test
+  public void everyRenameTargetIsAStoredKey() throws IOException {
+    final List<String> keys = serializerKeys();
+    for (final String key : keys) {
+      final String legacy = ProfileFormat.legacyName(key);
+      if (legacy != null) {
+        assertEquals(key, ProfileFormat.canonicalName(legacy));
+      }
+    }
+    for (final String legacy : new String[] { "ProxyProtocol",
+        "KeepWwwPrefix", "KeepDoubleSlashes" }) {
+      assertTrue(legacy + " resolves to no stored key",
+          keys.contains(ProfileFormat.canonicalName(legacy)));
+    }
+  }
+
+  /* A hand-edited profile reaches the radio mappers with anything at all. */
+  @Test
+  public void aChoiceOutsideTheTableEmitsNothing() {
+    final OptionMapper cache = new MultipleChoicesOption(new String[] { "C0",
+        "C2" });
+    for (final String value : new String[] { "2", "99999999999", "", "abc",
+        null }) {
+      assertTrue("value " + value, emit(cache, value).isEmpty());
     }
   }
 

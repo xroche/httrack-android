@@ -461,6 +461,9 @@ public class OptionsMapper {
      * Split a packed value, or null when it holds no number.
      */
     private static String[] unpack(final String packed) {
+      if (packed == null) {
+        return null;
+      }
       final int bits;
       try {
         bits = Integer.parseInt(packed.trim());
@@ -1448,7 +1451,8 @@ public class OptionsMapper {
     @Override
     public void emit(final List<String> commandline, final String value) {
       if (OptionValues.isDigits(value)) {
-        final int choiceId = Integer.parseInt(value);
+        // All digits still overflows: a hand-edited profile reaches this.
+        final int choiceId = OptionValues.parseInt(value, -1);
         if (choiceId >= 0 && choiceId < choices.length) {
           final String choice = choices[choiceId];
           if (choice != null && choice.length() != 0) {
