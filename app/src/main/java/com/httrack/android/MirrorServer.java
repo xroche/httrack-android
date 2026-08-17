@@ -129,74 +129,37 @@ final class MirrorServer extends NanoHTTPD {
     if (!file.exists() || file.isDirectory()) {
       return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
     }
-    return fileResponse(file);
+    return fileResponse(file, method == Method.HEAD);
   }
 
   /**
-   * Response streaming {@code file}, its length measured from the descriptor we read rather than
-   * from the path. NanoHTTPD replaces this length with a chunked transfer whenever it gzips a
-   * response, so it is the non-text mime types that ride on it.
+   * Response for {@code file}, chunked so that no declared length can contradict the bytes sent:
+   * the engine rewrites index.html in place, and a length taken before the reads may describe a
+   * state they never see. Only non-text files give up a Content-Length for this, as NanoHTTPD
+   * already gzips, and so chunks, text/ and /json whenever the client accepts it.
    *
    * @param file
    *          an existing regular file, already confined to the root
+   * @param headOnly
+   *          true for a HEAD request, whose body NanoHTTPD skips
    * @return a 200 streaming the file, or a 404 if it cannot be opened
    */
-  static Response fileResponse(final File file) {
+  static Response fileResponse(final File file, final boolean headOnly) {
+    String mime = getMimeTypeForFile(file.getName());
+    if (mime == null) {
+      mime = "application/octet-stream";
+    }
     try {
-      final OpenFile open = openAndMeasure(file);
-      String mime = getMimeTypeForFile(file.getName());
-      if (mime == null) {
-        mime = "application/octet-stream";
+      // NanoHTTPD owns the stream from here, and closes it on every path out of the response.
+      final FileInputStream data = new FileInputStream(file);
+      if (headOnly) {
+        // No body follows, so a stat'd length cannot desync from one; NanoHTTPD would meanwhile
+        // print a chunked response's own -1 verbatim, HEAD being where it skips the framing.
+        return newFixedLengthResponse(Response.Status.OK, mime, data, file.length());
       }
-      return newFixedLengthResponse(Response.Status.OK, mime, open.stream, open.length);
+      return newChunkedResponse(Response.Status.OK, mime, data);
     } catch (final IOException e) {
       return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found");
-    }
-  }
-
-  /** An open file and the length its own descriptor reported. */
-  static final class OpenFile {
-    final FileInputStream stream;
-
-    final long length;
-
-    OpenFile(final FileInputStream stream, final long length) {
-      this.stream = stream;
-      this.length = length;
-    }
-  }
-
-  /**
-   * Open {@code file} and measure it. Stat'ing the path instead would leave the length describing
-   * whatever state the file is in by then, which is not the one the stream reads: the engine
-   * rewrites index.html in place, and mid-truncate that length is 0.
-   *
-   * @param file
-   *          the file to open
-   * @return the open stream and its length
-   * @throws IOException
-   *           if the file cannot be opened or measured, having closed it in the latter case
-   */
-  static OpenFile openAndMeasure(final File file) throws IOException {
-    return measure(new FileInputStream(file));
-  }
-
-  /**
-   * Pair {@code stream} with the length of the file behind it, closing it if that fails: nothing
-   * else holds the stream yet, so a throw here would leak the descriptor.
-   *
-   * @param stream
-   *          an open stream, adopted by the returned pair
-   * @return the stream and its length
-   * @throws IOException
-   *           if the length cannot be read
-   */
-  static OpenFile measure(final FileInputStream stream) throws IOException {
-    try {
-      return new OpenFile(stream, stream.getChannel().size());
-    } catch (final IOException e) {
-      stream.close();
-      throw e;
     }
   }
 
