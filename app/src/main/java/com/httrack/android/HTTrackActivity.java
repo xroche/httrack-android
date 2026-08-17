@@ -275,31 +275,22 @@ public class HTTrackActivity extends FragmentActivity {
   private void computeStorageTarget() {
     final SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
     final String base = settings.getString(BASE_NAME, null);
-    File baseFile = base != null ? new File(base) : null;
+    final File baseFile = base != null ? new File(base) : null;
+    final Boolean writable = baseFile != null ? isWritableProjectPath(baseFile) : null;
 
-    if (baseFile != null) {
-      final Boolean writable = isWritableProjectPath(baseFile);
-      if (Boolean.FALSE.equals(writable)) {
-        // Known foreign: the mirrors it names stay on disk, out of reach until imported.
-        Log.i(getClass().getSimpleName(), "dropping unusable base path " + base);
-        settings.edit().remove(BASE_NAME).apply();
-        baseFile = null;
-      } else if (writable == null) {
-        // Undecided: fall back for this run, but keep the setting for when the volume returns.
-        Log.i(getClass().getSimpleName(), "cannot vet base path yet: " + base);
-        baseFile = null;
-      }
-    }
-
-    if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
+    if (baseFile != null && !Boolean.TRUE.equals(writable)) {
+      // Unusable now is not forever: keep the setting so a remount or a regrant restores it.
+      Log.i(getClass().getSimpleName(), "cannot use base path now: " + base);
+    } else if (baseFile != null && !baseFile.exists() && !baseFile.mkdirs()) {
       showNotification(getString(R.string.directory_does_not_exist) + ": " + base);
     }
 
-    if (baseFile != null && baseFile.exists() && baseFile.isDirectory()) {
-      projectPath = baseFile;
-    } else if (projectPath == null || !projectPath.exists()) {
-      final File path = getDefaultHTTrackPath();
-      projectPath = path;
+    final File previous = projectPath;
+    projectPath = StoragePaths.resolveRoot(baseFile, writable,
+        baseFile != null && baseFile.isDirectory(), getDefaultHTTrackPath());
+    if (previous != null && !previous.equals(projectPath)) {
+      // The listed projects are the ones under the root, so the suggestions are now stale.
+      refreshprojectNameSuggests();
     }
 
     // Set root path for logs
@@ -3137,11 +3128,9 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onResume");
     super.onResume();
     paused = false;
-    // Returning from the all-files-access settings screen may have granted access: re-point the
-    // default to public storage. Never while a crawl runs, and only if the resolved default moved.
-    if (runner == null && projectPath != null
-        && !getDefaultHTTrackPath().getAbsolutePath().equals(projectPath.getAbsolutePath())
-        && getSharedPreferences(PREFS_NAME, 0).getString(BASE_NAME, null) == null) {
+    // Returning from the all-files-access settings screen may have changed what we may write.
+    // Never while a crawl runs, since the engine already holds the destination.
+    if (runner == null) {
       computeStorageTarget();
     }
     // A grant made on the settings screen flips the button/warning off (no-op off this panel).

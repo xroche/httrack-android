@@ -56,6 +56,28 @@ final class StoragePaths {
   }
 
   /**
+   * Mirror root to use: the persisted base when it is vetted writable and present, else the
+   * current default. Deliberately blind to the root in use, so that gaining or losing access
+   * re-points the running session instead of waiting for the next cold start.
+   *
+   * @param base
+   *          the persisted base path, or null when none is set
+   * @param writable
+   *          {@link #isWritable} verdict for base; only a decided yes is honoured
+   * @param baseIsDirectory
+   *          whether base is a directory, tested after any mkdirs attempt
+   * @param defaultRoot
+   *          the fallback root, which depends on the access currently held
+   */
+  static File resolveRoot(final File base, final Boolean writable, final boolean baseIsDirectory,
+      final File defaultRoot) {
+    if (base != null && Boolean.TRUE.equals(writable) && baseIsDirectory) {
+      return base;
+    }
+    return defaultRoot;
+  }
+
+  /**
    * Documents-provider id ("primary:&lt;relative&gt;") to open {@code dir} in the system Files app via
    * ACTION_VIEW, or null when it lies outside the primary shared volume or inside the Android/ subtree
    * (both hidden from file managers on Android 11+), so the caller falls back.
