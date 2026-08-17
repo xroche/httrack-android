@@ -94,9 +94,10 @@ public class OptionsInstanceStateTest {
       this.map = map;
     }
 
+    // The real one, so a wrong count fails here instead of only on a device.
     @Override
     public int paneCount() {
-      return OptionsActivity.tabClasses.length;
+      return OptionsActivity.tabCount();
     }
 
     @Override
@@ -213,7 +214,7 @@ public class OptionsInstanceStateTest {
 
   @Test
   public void aPaneIndexNamingNoTabLeavesTheMenu() {
-    // A rebuild at the same versionCode passes the version stamp, so the index reaches setPane.
+    // An out-of-range index still passes the version guard, but must not reach openPane.
     for (final int pane : new int[] { OptionsActivity.tabClasses.length, -2 }) {
       final FakeScreen restored = restorePane(pane);
       assertTrue("bundle refused for pane " + pane, restored.restored);
@@ -223,10 +224,21 @@ public class OptionsInstanceStateTest {
   }
 
   @Test
+  public void theCountStopsAtTheLastPane() {
+    // restore() bounds the saved index with the count, and setPane throws one past the end.
+    final int last = OptionsActivity.tabCount() - 1;
+    assertTrue("the count runs past the last tab",
+        last < OptionsActivity.tabClasses.length);
+    assertEquals(last,
+        OptionsActivity.paneIndexOf(OptionsActivity.tabClasses[last]));
+  }
+
+  @Test
   public void theSavedIndexIsTheVisibleTabs() throws IOException {
     // The fake screen answers visiblePane() itself, so only the source pins the real one.
     assertTrue("visiblePane() does not use paneIndexOf",
-        body("public int visiblePane(").contains("paneIndexOf(activityClass)"));
+        body("public int visiblePane(").contains(
+            "return paneIndexOf(activityClass);"));
   }
 
   @Test

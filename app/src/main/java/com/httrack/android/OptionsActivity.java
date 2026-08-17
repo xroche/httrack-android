@@ -435,9 +435,14 @@ public class OptionsActivity extends FragmentActivity implements
     return OptionsInstanceState.NO_PANE;
   }
 
+  /** Number of tabs, as a static so a test can pin it without an Activity. **/
+  protected static int tabCount() {
+    return tabClasses.length;
+  }
+
   @Override
   public int paneCount() {
-    return tabClasses.length;
+    return tabCount();
   }
 
   @Override
