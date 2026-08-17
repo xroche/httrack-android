@@ -32,8 +32,10 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import android.content.Context;
@@ -364,7 +366,10 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("Index", new SimpleOptionFlag("I0", true)),
       new Pair<String, OptionMapper>("WordIndex", new SimpleOptionFlag("%I")),
       new Pair<String, OptionMapper>("MailIndex", new SimpleOptionFlag("%M")),
-      new Pair<String, OptionMapper>("Cache", new SimpleOptionFlag("C0", true)), /* FIXME */
+      /* Checked is -C2, revalidate before reuse, not the engine's bare default
+         of preferring whatever the cache holds. */
+      new Pair<String, OptionMapper>("Cache", new MultipleChoicesOption(
+          new String[] { "C0", "C2" })),
       new Pair<String, OptionMapper>("PrimaryScan",
           primaryScanHandler.getTypeMapper()),
       new Pair<String, OptionMapper>("Travel", MultipleChoicesOption.TRAVEL),
@@ -406,16 +411,103 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("MIMEDefsMime8",
           mimeTypesHandlers[7].getMimeMapper()) };
 
-  // Spellings earlier builds wrote; accepted on read, never written back.
-  @SuppressWarnings("unchecked")
-  protected static final Pair<String, String> fieldsLegacyNames[] = new Pair[] {
-      new Pair<String, String>("ProxyProtocol", "ProxyType"),
-      new Pair<String, String>("KeepWwwPrefix", "KeepWww"),
-      new Pair<String, String>("KeepDoubleSlashes", "KeepSlashes") };
+  /**
+   * What a winprofile.ini key means, kept out of the tables above so tests can
+   * reach it: the stub android.jar nulls Pair's fields and throws on
+   * SparseArray.
+   */
+  public static class ProfileFormat {
+    // Spellings earlier builds wrote; accepted on read, never written back.
+    private static final String LEGACY_NAMES[][] = {
+        { "ProxyProtocol", "ProxyType" }, { "KeepWwwPrefix", "KeepWww" },
+        { "KeepDoubleSlashes", "KeepSlashes" } };
 
-  // WinHTTrack packs both name-mangling boxes in Dos; Iso9660 is ours alone.
-  private static final String DOS_KEY = "Dos";
-  private static final String ISO9660_KEY = "Iso9660";
+    // WinHTTrack packs both name-mangling boxes in Dos; Iso9660 is ours alone.
+    static final String DOS_KEY = "Dos";
+    static final String ISO9660_KEY = "Iso9660";
+
+    /** Current spelling of KEY, which is KEY itself unless it was renamed. */
+    static String canonicalName(final String key) {
+      for (final String[] legacy : LEGACY_NAMES) {
+        if (legacy[0].equals(key)) {
+          return legacy[1];
+        }
+      }
+      return key;
+    }
+
+    /** Spelling an earlier build used for KEY, or null if it never changed. */
+    static String legacyName(final String key) {
+      for (final String[] legacy : LEGACY_NAMES) {
+        if (legacy[1].equals(key)) {
+          return legacy[0];
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Pack both name-mangling boxes as WinHTTrack does: bit 0 is Dos, bit 1 is
+     * Iso9660, each "1" when checked.
+     *
+     * @return the packed value
+     */
+    static String pack(final String dos, final String iso9660) {
+      return String.valueOf(("1".equals(dos) ? 1 : 0)
+          | ("1".equals(iso9660) ? 2 : 0));
+    }
+
+    /*
+     * Split a packed value, or null when it holds no number.
+     */
+    private static String[] unpack(final String packed) {
+      final int bits;
+      try {
+        bits = Integer.parseInt(packed.trim());
+      } catch (final NumberFormatException nfe) {
+        return null;
+      }
+      return new String[] { (bits & 1) != 0 ? "1" : "0",
+          (bits & 2) != 0 ? "1" : "0" };
+    }
+
+    /**
+     * Settings the raw key/value pairs of a profile stand for, under their
+     * current names.
+     *
+     * @param raw
+     *          exactly what the file held, so an absent key stays absent
+     * @return the settings, with the Dos bitmask split into its two boxes
+     */
+    static Map<String, String> resolve(final Map<String, String> raw) {
+      final Map<String, String> values = new LinkedHashMap<String, String>();
+      for (final Map.Entry<String, String> entry : raw.entrySet()) {
+        values.put(canonicalName(entry.getKey()), entry.getValue());
+      }
+      // An explicit Iso9660 wins: older profiles wrote Dos as a plain boolean
+      // beside it.
+      if (raw.containsKey(DOS_KEY) && !raw.containsKey(ISO9660_KEY)) {
+        final String[] boxes = unpack(values.get(DOS_KEY));
+        if (boxes != null) {
+          values.put(DOS_KEY, boxes[0]);
+          values.put(ISO9660_KEY, boxes[1]);
+        }
+      }
+      return values;
+    }
+
+    /**
+     * Inverse of {@link #resolve}: what the file holds for these settings.
+     *
+     * @return the pairs to write, Iso9660 folded into Dos and so absent
+     */
+    static Map<String, String> toFile(final Map<String, String> values) {
+      final Map<String, String> file = new LinkedHashMap<String, String>(values);
+      file.put(DOS_KEY, pack(values.get(DOS_KEY), values.get(ISO9660_KEY)));
+      file.remove(ISO9660_KEY);
+      return file;
+    }
+  }
 
   // Name-to-ID hash map
   protected static final HashMap<String, Integer> fieldsNameToId = new HashMap<String, Integer>();
@@ -801,32 +893,6 @@ public class OptionsMapper {
       }
     }
 
-    /**
-     * Pack both boxes the way WinHTTrack stores them: bit 0 DOS names, bit 1
-     * ISO 9660, each box "1" when checked.
-     */
-    public static String pack(final String dos, final String iso9660) {
-      return String.valueOf(("1".equals(dos) ? 1 : 0)
-          | ("1".equals(iso9660) ? 2 : 0));
-    }
-
-    /**
-     * Split a packed value into { dos, iso9660 }, or null when it holds no
-     * number, which leaves both boxes on their defaults.
-     */
-    public static String[] unpack(final String packed) {
-      if (packed == null) {
-        return null;
-      }
-      final int bits;
-      try {
-        bits = Integer.parseInt(packed.trim());
-      } catch (final NumberFormatException nfe) {
-        return null;
-      }
-      return new String[] { (bits & 1) != 0 ? "1" : "0",
-          (bits & 2) != 0 ? "1" : "0" };
-    }
   }
 
   /**
@@ -1406,38 +1472,6 @@ public class OptionsMapper {
       }
       fieldsNameToId.put(fkey, id);
     }
-    for (final Pair<String, String> legacy : fieldsLegacyNames) {
-      final Integer id = fieldsNameToId.get(legacy.second);
-      if (id == null) {
-        throw new RuntimeException("unexpected internal error with "
-            + legacy.second);
-      }
-      fieldsNameToId.put(legacy.first, id);
-    }
-  }
-
-  /*
-   * The spelling an earlier build used for this key, or null if unchanged.
-   */
-  private static String legacyNameOf(final String key) {
-    for (final Pair<String, String> legacy : fieldsLegacyNames) {
-      if (legacy.second.equals(key)) {
-        return legacy.first;
-      }
-    }
-    return null;
-  }
-
-  /*
-   * Expand a stored Dos bitmask into the two boxes it packs.
-   */
-  private static void splitDosBitmask(final SparseArray<String> map) {
-    final String[] boxes = DosIso9660Handler.unpack(map.get(fieldsNameToId
-        .get(DOS_KEY)));
-    if (boxes != null) {
-      map.put(fieldsNameToId.get(DOS_KEY), boxes[0]);
-      map.put(fieldsNameToId.get(ISO9660_KEY), boxes[1]);
-    }
   }
 
   /*
@@ -1705,9 +1739,7 @@ public class OptionsMapper {
     final FileReader reader = new FileReader(profile);
     final BufferedReader lreader = new BufferedReader(reader);
     try {
-      // An explicit Iso9660 wins: older profiles of ours wrote Dos as a plain
-      // boolean beside it.
-      boolean hasIso9660 = false;
+      final Map<String, String> raw = new LinkedHashMap<String, String>();
       String rawline;
       while ((rawline = lreader.readLine()) != null) {
         final String line = rawline.trim();
@@ -1716,18 +1748,16 @@ public class OptionsMapper {
         }
         final int sep = line.indexOf('=');
         if (sep != -1) {
-          final String key = line.substring(0, sep);
-          final String value = OptionsMapper.profileDecode(line
-              .substring(sep + 1));
-          final Integer id = OptionsMapper.fieldsNameToId.get(key);
-          if (id != null) {
-            map.put(id, value);
-            hasIso9660 |= ISO9660_KEY.equals(key);
-          }
+          raw.put(line.substring(0, sep),
+              OptionsMapper.profileDecode(line.substring(sep + 1)));
         }
       }
-      if (!hasIso9660) {
-        splitDosBitmask(map);
+      for (final Map.Entry<String, String> field : ProfileFormat.resolve(raw)
+          .entrySet()) {
+        final Integer id = OptionsMapper.fieldsNameToId.get(field.getKey());
+        if (id != null) {
+          map.put(id, field.getValue());
+        }
       }
       lreader.close();
     } finally {
@@ -1759,14 +1789,17 @@ public class OptionsMapper {
     final OutputStreamWriter writer = new OutputStreamWriter(fos);
     final BufferedWriter lwriter = new BufferedWriter(writer);
     try {
+      final Map<String, String> values = new LinkedHashMap<String, String>();
+      for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+        values.put(field.second, getMap(field.first));
+      }
+      final Map<String, String> file = ProfileFormat.toFile(values);
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
         final String key = field.second;
-        if (ISO9660_KEY.equals(key)) {
-          continue; // folded into Dos
+        if (!file.containsKey(key)) {
+          continue;
         }
-        final String value = DOS_KEY.equals(key) ? DosIso9660Handler.pack(
-            getMap(field.first), getMap(fieldsNameToId.get(ISO9660_KEY)))
-            : getMap(field.first);
+        final String value = file.get(key);
         lwriter.write(key);
         lwriter.write("=");
         if (value != null) {
@@ -1873,7 +1906,7 @@ public class OptionsMapper {
         final String key = field.second;
         String value = settings.getString(key, null);
         if (value == null) {
-          final String legacy = legacyNameOf(key);
+          final String legacy = ProfileFormat.legacyName(key);
           if (legacy != null) {
             value = settings.getString(legacy, null);
           }
@@ -1905,6 +1938,11 @@ public class OptionsMapper {
         final String value = getMap(field.first);
         final String key = field.second;
         editor.putString(key, value);
+        // Make the rename one-way, so a stale copy can never win a later read.
+        final String legacy = ProfileFormat.legacyName(key);
+        if (legacy != null) {
+          editor.remove(legacy);
+        }
       }
       editor.commit();
     }
