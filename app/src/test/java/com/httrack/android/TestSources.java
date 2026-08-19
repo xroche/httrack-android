@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Checked-in sources the tests read; they run with the app project as
  *  working directory. */
@@ -59,5 +61,40 @@ final class TestSources {
   static String javaSource(final String name) throws IOException {
     return read(new File(dir("src/main/java"), "com/httrack/android/" + name
         + ".java"));
+  }
+
+  /** A file of the pinned engine submodule, such as "winprofile-keys.tsv". */
+  static File engineFile(final String name) {
+    return new File(dir("src/main/jni/httrack"), name);
+  }
+
+  static int occurrences(final String source, final String text) {
+    int count = 0;
+    for (int at = source.indexOf(text); at != -1; at = source.indexOf(text,
+        at + 1)) {
+      count++;
+    }
+    return count;
+  }
+
+  /** The winprofile.ini keys fieldsSerializer declares, in order. The table
+   *  pulls in R.id, which the stub android.jar cannot load, and three of its
+   *  entries wrap across two lines. */
+  static List<String> serializerKeys() throws IOException {
+    final String source = javaSource("OptionsMapper");
+    final String declaration = "new Pair<Integer, String>(R.id.";
+    final Matcher m = Pattern.compile(
+        "new Pair<Integer, String>\\(R\\.id\\.\\w+,\\s*\"([^\"]+)\"\\)")
+        .matcher(source);
+    final List<String> keys = new ArrayList<String>();
+    while (m.find()) {
+      keys.add(m.group(1));
+    }
+    // A regex that quietly stopped matching would shorten every list built here.
+    if (keys.size() != occurrences(source, declaration)) {
+      throw new IllegalStateException("parsed " + keys.size() + " of "
+          + occurrences(source, declaration) + " fieldsSerializer entries");
+    }
+    return keys;
   }
 }

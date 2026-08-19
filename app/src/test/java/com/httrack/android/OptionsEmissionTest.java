@@ -14,14 +14,10 @@ import com.httrack.android.OptionsMapper.PrimaryScanHandler;
 import com.httrack.android.OptionsMapper.ProxyHandler;
 import com.httrack.android.OptionsMapper.SimpleOptionFlag;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.Test;
 
 /** Guards the argv emitted for the engine options exposed by issue #6. */
@@ -368,22 +364,8 @@ public class OptionsEmissionTest {
     }
   }
 
-  /* fieldsSerializer fixes the emission order but pulls in R.id, which the stub
-     android.jar cannot load, so read the declared order out of the source. */
   private static List<String> serializerKeys() throws IOException {
-    final String src = new String(Files.readAllBytes(Paths
-        .get("src/main/java/com/httrack/android/OptionsMapper.java")), "UTF-8");
-    final int from = src.indexOf("fieldsSerializer[] = new Pair[] {");
-    final int to = src.indexOf("\n  };", from);
-    assertTrue("fieldsSerializer not found", from != -1 && to > from);
-    final Matcher m = Pattern.compile(", \"(\\w+)\"\\)").matcher(
-        src.substring(from, to));
-    final List<String> keys = new ArrayList<String>();
-    while (m.find()) {
-      keys.add(m.group(1));
-    }
-    assertTrue("no keys parsed", keys.size() > 80);
-    return keys;
+    return TestSources.serializerKeys();
   }
 
   /* The engine counts URLs positionally and -iC* carries its 'i': behind the
