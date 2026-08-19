@@ -1,0 +1,56 @@
+# Stop a track serving a build play-promote.yml already put there. Play refuses to halt a
+# release with nothing left to serve, so fallback_version_code names the build to put back.
+# Track names are the API's: alpha is Closed testing, beta is Open testing.
+name: Play halt
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: 'versionCode to stop serving (integer)'
+        required: true
+      track:
+        description: 'track it is served on (internal, alpha = closed, beta = open)'
+        default: beta
+      fallback_version_code:
+        description: 'build to put back on the track, needed when the halted one is its last'
+        default: ''
+      dry_run:
+        description: 'print the plan and commit nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:                             # concurrent edits on the same app collide
+  group: play-promote
+
+jobs:
+  halt:
+    name: halt on Play
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tools/ci/play-requirements.txt
+      - name: Halt
+        # Inputs go through the environment, never interpolated into the script body.
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          TRACK: ${{ inputs.track }}
+          FALLBACK: ${{ inputs.fallback_version_code }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/play-sa.json"' EXIT
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/play-sa.json"
+          args=()
+          if [ -n "$FALLBACK" ]; then args+=(--fallback "$FALLBACK"); fi
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python3 tools/ci/play_track_admin.py "$RUNNER_TEMP/play-sa.json" halt \
+            "$VERSION_CODE" "$TRACK" "${args[@]}"

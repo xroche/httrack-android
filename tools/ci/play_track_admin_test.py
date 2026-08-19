@@ -30,6 +30,13 @@ TRACKS = {
             "releases": [{"name": "3.49.14.86", "versionCodes": ["86"], "status": "completed"}],
         },
         {"track": "beta", "releases": []},
+        {
+            "track": "history",
+            "releases": [
+                {"name": "3.49.14.86", "versionCodes": ["86"], "status": "completed"},
+                {"name": "3.50-beta-1", "versionCodes": ["89"], "status": "completed"},
+            ],
+        },
         {"track": "empty", "releases": []},
         {"track": "production", "releases": []},
     ]
@@ -190,6 +197,61 @@ class Test(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 run(promote("--halt-track", "alpha"), s)
         self.assertEqual(s.puts, [])
+
+    def test_halt_stops_one_release_and_leaves_the_others_alone(self):
+        s = FakeSession()
+        run(["halt", "89", "history"], s)
+        self.assertEqual(
+            dict(s.puts)["history"]["releases"],
+            [
+                {"name": "3.49.14.86", "versionCodes": ["86"], "status": "completed"},
+                {"name": "3.50-beta-1", "versionCodes": ["89"], "status": "halted"},
+            ],
+        )
+        self.assertEqual(len(s.commits), 1)
+
+    def test_halting_the_last_release_needs_a_fallback(self):
+        s = FakeSession()
+        with self.assertRaises(SystemExit):
+            run(["halt", "86", "alpha"], s)  # Play answers a fallback-less halt with a 500
+        self.assertEqual(s.puts, [])
+
+    def test_the_fallback_is_released_in_the_same_put(self):
+        s = FakeSession()
+        run(["halt", "86", "alpha", "--fallback", "83"], s)
+        self.assertEqual(
+            dict(s.puts)["alpha"]["releases"],
+            [
+                {"name": "83", "versionCodes": ["83"], "status": "completed"},
+                {"name": "3.49.14.86", "versionCodes": ["86"], "status": "halted"},
+            ],
+        )
+
+    def test_halting_an_already_halted_release_aborts(self):
+        s = FakeSession()
+        halted = [{"name": "x", "versionCodes": ["86"], "status": "halted"}]
+        with mock.patch.dict(TRACKS["tracks"][1], {"releases": halted}):
+            with self.assertRaises(SystemExit):
+                run(["halt", "86", "alpha"], s)
+        self.assertEqual(s.puts, [])
+
+    def test_halting_a_version_the_track_does_not_serve_aborts(self):
+        s = FakeSession()
+        with self.assertRaises(SystemExit):
+            run(["halt", "999", "alpha"], s)
+        self.assertEqual(s.puts, [])
+
+    def test_halt_refuses_production(self):
+        s = FakeSession()
+        with self.assertRaises(SystemExit):
+            run(["halt", "63", "production"], s)
+        self.assertEqual(s.puts, [])
+
+    def test_halt_dry_run_commits_nothing(self):
+        s = FakeSession()
+        out = run(["halt", "89", "history", "--dry-run"], s)
+        self.assertEqual((s.puts, s.commits), ([], []))
+        self.assertIn("dry run", out)
 
     def test_dry_run_commits_nothing(self):
         s = FakeSession()
