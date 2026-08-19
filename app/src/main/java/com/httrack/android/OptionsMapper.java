@@ -22,14 +22,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 package com.httrack.android;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -665,6 +664,34 @@ public class OptionsMapper {
       } finally {
         pending.delete();
       }
+    }
+
+    /**
+     * Write LINES over whatever CHANNEL holds, leaving CHANNEL open.
+     *
+     * @param channel
+     *          Where to write, never opened for append; the crawl holds its
+     *          lock here, so this must not close it
+     * @param lines
+     *          The already-encoded values; iteration order is write order
+     * @throws IOException
+     *           Upon I/O error.
+     */
+    static void write(final FileChannel channel,
+        final Map<String, String> lines) throws IOException {
+      final StringBuilder text = new StringBuilder();
+      for (final Map.Entry<String, String> line : lines.entrySet()) {
+        text.append(line.getKey()).append('=').append(line.getValue())
+            .append('\n');
+      }
+      // Overwritten, then trimmed. The profile is the only copy of the
+      // settings, so emptying it first would lose them to a failed write.
+      final ByteBuffer bytes = ByteBuffer.wrap(text.toString().getBytes());
+      channel.position(0);
+      while (bytes.hasRemaining()) {
+        channel.write(bytes);
+      }
+      channel.truncate(channel.position());
     }
   }
 
@@ -2067,54 +2094,44 @@ public class OptionsMapper {
   }
 
   /**
-   * Serialize settings on disk.
+   * Serialize settings to a caller-owned channel, left open.
    * 
-   * @param fos
-   *          The Output Stream.
+   * @param channel
+   *          Where to write, over whatever it held.
    * @param profile
    *          The existing profile whose stated keys must be preserved; not
-   *          necessarily where the stream writes.
+   *          necessarily where the channel writes.
    * @throws UnsupportedEncodingException
    *           Upon encoding error
    * @throws IOException
    *           Upon I/O error.
    */
-  public void serialize(final OutputStream fos, final File profile)
+  public void serialize(final FileChannel channel, final File profile)
       throws UnsupportedEncodingException, IOException {
-    final OutputStreamWriter writer = new OutputStreamWriter(fos);
-    final BufferedWriter lwriter = new BufferedWriter(writer);
+    final Map<String, String> values = valuesOf(map);
+    Set<String> present;
     try {
-      final Map<String, String> values = valuesOf(map);
-      Set<String> present;
-      try {
-        present = ProfileFormat.statedKeys(profile);
-      } catch (final IOException e) {
-        // Nothing may be dropped from a profile we could not read back.
-        present = values.keySet();
+      present = ProfileFormat.statedKeys(profile);
+    } catch (final IOException e) {
+      // Nothing may be dropped from a profile we could not read back.
+      present = values.keySet();
+    }
+    final Map<String, String> file = ProfileFormat.toFile(values,
+        seededValues(), ourDefaults(), present);
+    final Map<String, String> lines = new LinkedHashMap<String, String>();
+    for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+      final String key = field.second;
+      if (!file.containsKey(key)) {
+        continue;
       }
-      final Map<String, String> file = ProfileFormat.toFile(values,
-          seededValues(), ourDefaults(), present);
-      for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
-        final String key = field.second;
-        if (!file.containsKey(key)) {
-          continue;
-        }
-        final String value = file.get(key);
-        lwriter.write(key);
-        lwriter.write("=");
-        if (value != null) {
-          lwriter.write(OptionsMapper.profileEncode(value));
-        }
-        lwriter.write("\n");
-      }
-      lwriter.close();
-      if (dirty) {
-        dirty = false;
-        Log.d(getClass().getSimpleName(),
-            "map set clean: serialize to file (sync'ed)");
-      }
-    } finally {
-      writer.close();
+      final String value = file.get(key);
+      lines.put(key, value != null ? OptionsMapper.profileEncode(value) : "");
+    }
+    ProfileFormat.write(channel, lines);
+    if (dirty) {
+      dirty = false;
+      Log.d(getClass().getSimpleName(),
+          "map set clean: serialize to file (sync'ed)");
     }
   }
 
@@ -2137,17 +2154,11 @@ public class OptionsMapper {
     try {
       final FileOutputStream fos = new FileOutputStream(pending);
       try {
-        serialize(fos, profile);
+        serialize(fos.getChannel(), profile);
+        // Reach the disk before the rename does.
+        fos.getFD().sync();
       } finally {
         fos.close();
-      }
-      // Reopened only to reach the disk before the rename does: serialize()
-      // closes the stream it is handed, taking the descriptor with it.
-      final FileOutputStream sync = new FileOutputStream(pending, true);
-      try {
-        sync.getFD().sync();
-      } finally {
-        sync.close();
       }
       ProfileFormat.commit(pending, profile);
     } finally {
