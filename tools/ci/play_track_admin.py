@@ -11,6 +11,9 @@ Usage:
                       [--notes-dir DIR] [--halt-track TRACK] [--dry-run]
   play_track_admin.py <sa_json> halt <versionCode> <track> [--fallback VC] [--dry-run]
 
+A plan is a list of stages, one committed edit each: promote is a single stage, and a
+halt that needs its fallback released first is two.
+
 Track names are the API's, not the Console's: alpha is Closed testing, beta is
 Open testing.
 """
@@ -146,26 +149,9 @@ def solo_release(track, version_code):
     return rel
 
 
-def halt_release(track, version_code, fallback):
-    """The track's releases with version_code stopped, every other one kept as it is.
-
-    Play refuses to halt a release with nothing left to serve, and signals it with a bogus 500
-    at commit, so `fallback` names an earlier build to put back on the track in the same PUT.
-    """
-    releases = [
-        dict(r, status="halted") if holds(r, version_code) else r
-        for r in track.get("releases") or []
-    ]
-    if not any(r.get("status") not in ("halted", "draft") for r in releases):
-        if not fallback:
-            sys.exit(
-                f"halting vc{version_code} would leave {track['track']} serving nothing; "
-                "name an earlier build with --fallback"
-            )
-        releases.insert(
-            0, {"name": str(fallback), "versionCodes": [str(fallback)], "status": "completed"}
-        )
-    return releases
+def serving(releases):
+    """Whether the track would still hand something out. A draft or halted release does not."""
+    return any(r.get("status") not in ("halted", "draft") for r in releases)
 
 
 def halted(track):
@@ -209,13 +195,19 @@ def unsupported_language(response, present):
         message = response.json().get("error", {}).get("message", "")
     except ValueError:
         return None
-    words = set(re.findall(r"[A-Za-z]{2}(?:-[A-Za-z]{2,4})?", message))
+    words = set(re.findall(r"\b[A-Za-z]{2}(?:-[A-Za-z]{2,4})?\b", message))
     named = [loc for loc in present if loc in words]
     return named[0] if len(named) == 1 else None
 
 
-def halt_plan(args, by_name):
-    """The single PUT that stops `args.version_code` serving on its track."""
+def halt_stages(args, by_name):
+    """The stages that stop `args.version_code` serving on its track.
+
+    Play refuses to halt a release with nothing left to serve (a bogus 500 at commit), and it
+    also refuses to halt one and fully roll another out inside a single edit. So when the track
+    has nothing else to fall back on, `--fallback` goes out as its own commit first and the halt
+    follows in a second one.
+    """
     if not (args.version_code and args.from_track):
         sys.exit("halt needs <versionCode> <track>")
     if args.from_track not in by_name:
@@ -226,11 +218,28 @@ def halt_plan(args, by_name):
     track = by_name[args.from_track]
     if solo_release(track, args.version_code).get("status") == "halted":
         sys.exit(f"vc{args.version_code} is already halted on {args.from_track}")
-    return [(args.from_track, halt_release(track, args.version_code, args.fallback))]
+
+    stopped = [
+        dict(r, status="halted") if holds(r, args.version_code) else r
+        for r in track.get("releases") or []
+    ]
+    if serving(stopped):
+        return [[(args.from_track, stopped)]]
+    if not args.fallback:
+        sys.exit(
+            f"halting vc{args.version_code} would leave {args.from_track} serving nothing; "
+            "name an earlier build with --fallback"
+        )
+    back = {
+        "name": str(args.fallback),
+        "versionCodes": [str(args.fallback)],
+        "status": "completed",
+    }
+    return [[(args.from_track, [back])], [(args.from_track, [back] + stopped)]]
 
 
 def promote_plan(args, by_name, notes):
-    """The PUT(s) that put `args.version_code` on the target track, and optionally halt another."""
+    """The one stage that puts `args.version_code` on the target track, and optionally halts another."""
     if not (args.version_code and args.from_track and args.to_track):
         sys.exit("promote needs <versionCode> <fromTrack> <toTrack>")
     if args.from_track not in by_name:
@@ -257,7 +266,7 @@ def promote_plan(args, by_name, notes):
         if args.halt_track == "production":
             sys.exit("refusing to halt production")
         plan.append((args.halt_track, halted(by_name[args.halt_track])))
-    return plan
+    return [plan]
 
 
 def main():
@@ -301,26 +310,34 @@ def main():
             return
 
         if args.mode == "halt":
-            plan = halt_plan(args, by_name)
+            stages = halt_stages(args, by_name)
         else:
-            plan = promote_plan(args, by_name, notes)
+            stages = promote_plan(args, by_name, notes)
 
         if args.dry_run:
             print("=== plan (dry run, nothing committed) ===")
-            print(json.dumps({t: rels for t, rels in plan}, indent=2, ensure_ascii=False))
+            for n, plan in enumerate(stages, 1):
+                print(f"--- edit {n} of {len(stages)} ---")
+                print(json.dumps({t: rels for t, rels in plan}, indent=2, ensure_ascii=False))
             return
 
-        for track, releases in plan:
-            print(f"=== PUT {track} ({len(releases)} release(s)) ===")
-            print(
-                json.dumps(put_track(session, eid, track, releases), indent=2, ensure_ascii=False)
-            )
-
-        c = session.post(f"{BASE}/edits/{eid}:commit", timeout=TIMEOUT)
-        if not c.ok:
-            sys.exit(f"commit failed: {c.status_code} {c.text}")
-        eid = None
-        print("committed")
+        for n, plan in enumerate(stages, 1):
+            if eid is None:  # each stage after the first needs an edit of its own
+                r = session.post(f"{BASE}/edits", timeout=TIMEOUT)
+                r.raise_for_status()
+                eid = r.json()["id"]
+            for track, releases in plan:
+                print(f"=== edit {n}: PUT {track} ({len(releases)} release(s)) ===")
+                print(
+                    json.dumps(
+                        put_track(session, eid, track, releases), indent=2, ensure_ascii=False
+                    )
+                )
+            c = session.post(f"{BASE}/edits/{eid}:commit", timeout=TIMEOUT)
+            if not c.ok:
+                sys.exit(f"commit failed: {c.status_code} {c.text}")
+            eid = None
+            print("committed")
 
         r = session.post(f"{BASE}/edits", timeout=TIMEOUT)  # fresh edit, just to read back
         r.raise_for_status()
