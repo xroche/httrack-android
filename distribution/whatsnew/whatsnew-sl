@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Dovoljenje za dostop do vseh datotek zdaj takoj premakne mapo kopije
 • Ponovna izgradnja kazala kopije ne vrne več nepopolne strani
 • Novi projekti zunanjih povezav ne nadomeščajo več s stranmi z napako
-• Možnost predpomnilnika zdaj pred ponovno uporabo datoteke preveri, ali je na voljo posodobitev
+• Nadaljevanje prekinjenega prenosa se ne izvede več kot posodobitev
 
 Beta: težave sporočite na GitHubu.

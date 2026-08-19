@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Permiterea accesului la toate fișierele mută acum imediat dosarul copiei
 • Reconstruirea indexului copiei nu mai afișează o pagină incompletă
 • Proiectele noi nu mai înlocuiesc legăturile externe cu pagini de eroare
-• Opțiunea de cache verifică acum dacă există actualizări înainte de a refolosi un fișier
+• Continuarea unei descărcări întrerupte nu mai rulează ca o actualizare
 
 Beta: raportați problemele pe GitHub.

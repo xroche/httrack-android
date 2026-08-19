@@ -4,6 +4,6 @@ HTTrack 3.50 beeta 5.
 • Kõigile failidele juurdepääsu lubamine teisaldab koopia kausta nüüd kohe
 • Koopia indeksi uuesti loomisel ei näidata enam poolikut lehte
 • Uued projektid ei asenda enam väliseid linke vealehtedega
-• Vahemälu valik kontrollib nüüd enne faili taaskasutamist, kas on uuendusi
+• Katkenud allalaadimise jätkamine ei toimu enam uuendusena
 
 Beeta: teatage probleemidest GitHubis.

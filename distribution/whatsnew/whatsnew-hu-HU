@@ -4,6 +4,6 @@ HTTrack 3.50 béta 5.
 • Az összes fájlhoz való hozzáférés engedélyezése mostantól azonnal áthelyezi a másolat mappáját
 • A másolat indexének újraépítésekor már nem jelenik meg hiányos oldal
 • Az új projektek már nem cserélik hibaoldalra a külső hivatkozásokat
-• A gyorsítótár beállítás mostantól frissítést keres, mielőtt újra felhasználna egy fájlt
+• A megszakadt letöltés folytatása már nem frissítésként fut
 
 Béta: a hibákat a GitHubon jelezze.

@@ -4,6 +4,6 @@ HTTrack 3.50 bêta 5.
 • Autoriser l'accès à tous les fichiers déplace aussitôt le dossier de la copie
 • La reconstruction de l'index de la copie ne renvoie plus de page incomplète
 • Les nouveaux projets ne remplacent plus les liens externes par des pages d'erreur
-• L'option de cache vérifie maintenant les mises à jour avant de réutiliser un fichier
+• La reprise d'un téléchargement interrompu ne s'exécute plus comme une mise à jour
 
 Bêta : signalez les problèmes sur GitHub.

@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Zezwolenie na dostęp do wszystkich plików przenosi teraz folder kopii od razu
 • Przebudowa indeksu kopii nie zwraca już niepełnej strony
 • Nowe projekty nie zastępują już odnośników zewnętrznych stronami błędu
-• Opcja pamięci podręcznej sprawdza teraz aktualizacje przed ponownym użyciem pliku
+• Wznowienie przerwanego pobierania nie działa już jak aktualizacja
 
 Beta: zgłaszaj problemy na GitHubie.

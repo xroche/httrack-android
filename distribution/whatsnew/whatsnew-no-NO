@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Å gi tilgang til alle filer flytter nå kopimappen med en gang
 • Gjenoppbygging av kopiens indeks gir ikke lenger en ufullstendig side
 • Nye prosjekter erstatter ikke lenger eksterne lenker med feilsider
-• Mellomlagringsvalget ser nå etter oppdateringer før en fil brukes på nytt
+• Å fortsette en avbrutt nedlasting kjøres ikke lenger som en oppdatering
 
 Beta: meld fra om problemer på GitHub.

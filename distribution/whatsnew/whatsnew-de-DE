@@ -4,6 +4,6 @@ HTTrack 3.50 Beta 5.
 • Die Freigabe für alle Dateien verschiebt den Ordner der Kopie jetzt sofort
 • Beim Neuaufbau des Index der Kopie wird keine unvollständige Seite mehr ausgeliefert
 • Neue Projekte ersetzen externe Links nicht mehr durch Fehlerseiten
-• Die Cache-Option prüft jetzt auf Aktualisierungen, bevor eine Datei wiederverwendet wird
+• Das Fortsetzen eines abgebrochenen Downloads läuft nicht mehr als Aktualisierung
 
 Beta: Probleme bitte auf GitHub melden.

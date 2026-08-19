@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Tüm dosyalara erişime izin vermek, kopya klasörünü artık hemen taşıyor
 • Kopyanın dizini yeniden oluşturulurken artık eksik sayfa dönmüyor
 • Yeni projeler artık dış bağlantıları hata sayfalarıyla değiştirmiyor
-• Önbellek seçeneği artık bir dosyayı yeniden kullanmadan önce güncelleme denetliyor
+• Yarıda kalan bir indirmeyi sürdürmek artık güncelleme olarak çalışmıyor
 
 Beta: sorunları GitHub'da bildirin.

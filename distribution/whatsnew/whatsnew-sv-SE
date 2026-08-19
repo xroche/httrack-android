@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Att ge åtkomst till alla filer flyttar nu kopians mapp direkt
 • Ombyggnad av kopians index ger inte längre en ofullständig sida
 • Nya projekt ersätter inte längre externa länkar med felsidor
-• Cachealternativet söker nu efter uppdateringar innan en fil återanvänds
+• Att fortsätta en avbruten nedladdning körs inte längre som en uppdatering
 
 Beta: rapportera problem på GitHub.
