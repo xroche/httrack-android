@@ -77,6 +77,7 @@ class FakeSession:
         self.fail_after_commit = fail_after_commit
         self.headers = {}
         self.puts = []
+        self.put_edits = []
         self.commits = []
         self.deleted = []
         self.reject_message = reject_message
@@ -108,11 +109,12 @@ class FakeSession:
 
     def put(self, url, json=None, **kw):
         track = url.rsplit("/", 1)[-1]
-        self._edit_id(url, f"/tracks/{track}")
+        eid = self._edit_id(url, f"/tracks/{track}")
         if self.reject_message is not None and self.reject_times > 0:
             self.reject_times -= 1
             return FakeResponse(400, {"error": {"message": self.reject_message}})
         self.puts.append((track, copy.deepcopy(json)))
+        self.put_edits.append(eid)
         return FakeResponse(200) if self.body_less_put else FakeResponse(200, json)
 
     def delete(self, url, **kw):
@@ -216,16 +218,31 @@ class Test(unittest.TestCase):
             run(["halt", "86", "alpha"], s)  # Play answers a fallback-less halt with a 500
         self.assertEqual(s.puts, [])
 
-    def test_the_fallback_is_released_in_the_same_put(self):
+    def test_the_fallback_is_released_in_its_own_edit_before_the_halt(self):
+        # Play rejects a halt and a new full rollout in one edit, so the two must not share one.
         s = FakeSession()
         run(["halt", "86", "alpha", "--fallback", "83"], s)
-        self.assertEqual(
-            dict(s.puts)["alpha"]["releases"],
-            [
-                {"name": "83", "versionCodes": ["83"], "status": "completed"},
-                {"name": "3.49.14.86", "versionCodes": ["86"], "status": "halted"},
-            ],
-        )
+        back = {"name": "83", "versionCodes": ["83"], "status": "completed"}
+        stopped = {"name": "3.49.14.86", "versionCodes": ["86"], "status": "halted"}
+        self.assertEqual([t for t, _ in s.puts], ["alpha", "alpha"])
+        self.assertEqual([body["releases"] for _, body in s.puts], [[back], [back, stopped]])
+        self.assertEqual(s.put_edits, ["edit-1", "edit-2"])
+        self.assertEqual(s.commits, ["edit-1", "edit-2"])
+        self.assertEqual(s.deleted, ["edit-3"])  # only the read-back edit is abandoned
+
+    def test_a_halt_needing_no_fallback_stays_in_one_edit(self):
+        s = FakeSession()
+        run(["halt", "89", "history"], s)
+        self.assertEqual(s.put_edits, ["edit-1"])
+        self.assertEqual(s.commits, ["edit-1"])
+
+    def test_an_error_naming_a_locale_inside_a_word_is_not_a_locale_rejection(self):
+        # "rolled" holds "ro", which is Romanian; matching it dropped a locale Play never named.
+        message = "You can't halt a fully rolled out release and create a new one in one edit."
+        r = FakeResponse(400, {"error": {"message": message}})
+        self.assertIsNone(pta.unsupported_language(r, {"ro", "en-US"}))
+        named = FakeResponse(400, {"error": {"message": "Invalid language: ro"}})
+        self.assertEqual(pta.unsupported_language(named, {"ro", "en-US"}), "ro")
 
     def test_halting_an_already_halted_release_aborts(self):
         s = FakeSession()

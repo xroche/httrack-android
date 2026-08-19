@@ -1,5 +1,6 @@
 # Stop a track serving a build play-promote.yml already put there. Play refuses to halt a
-# release with nothing left to serve, so fallback_version_code names the build to put back.
+# release with nothing left to serve, so fallback_version_code names the build to put back,
+# released as its own commit first because Play rejects both moves inside one edit.
 # Track names are the API's: alpha is Closed testing, beta is Open testing.
 name: Play halt
 
