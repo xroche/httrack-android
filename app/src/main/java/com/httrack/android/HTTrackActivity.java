@@ -31,10 +31,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -1355,7 +1357,7 @@ public class HTTrackActivity extends FragmentActivity {
     protected void runInternal() {
       // Rock'in!
       String message = null;
-      FileOutputStream outLock = null;
+      RandomAccessFile outLock = null;
       FileLock lock = null;
       File profile = null;
       try {
@@ -1381,9 +1383,9 @@ public class HTTrackActivity extends FragmentActivity {
         profile = parent.createProfileDirectory();
         markRunningInstance(profile);
 
-        // Lock winprofile.ini by opening it in append mode, and requesting an
-        // exclusive lock
-        outLock = new FileOutputStream(profile, true);
+        // "rw" creates winprofile.ini without emptying it, so a refused lock
+        // still leaves the settings behind.
+        outLock = new RandomAccessFile(profile, "rw");
         lock = outLock.getChannel().tryLock();
         if (lock == null) {
           throw new IOException("This project is already in progress");
@@ -1417,7 +1419,7 @@ public class HTTrackActivity extends FragmentActivity {
             "starting engine: " + HTTrackActivity.printArray(cargs));
 
         // Serialize settings
-        parent.serialize(outLock, profile);
+        parent.serialize(outLock.getChannel(), profile);
 
         // Progress info for slow phones
         setProgressLines(new String[] { string_starting_mirror });
@@ -1922,17 +1924,17 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Serialize current profile to an existing stream, left open.
+   * Serialize current profile to an existing channel, left open.
    * 
    * @param profile
    *          The existing profile whose stated keys must be preserved; not
-   *          necessarily where the stream writes.
+   *          necessarily where the channel writes.
    * @throws IOException
    *           Upon I/O error.
    */
-  protected synchronized void serialize(final FileOutputStream os,
+  protected synchronized void serialize(final FileChannel channel,
       final File profile) throws IOException {
-    mapper.serialize(os, profile);
+    mapper.serialize(channel, profile);
   }
 
   /**
