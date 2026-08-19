@@ -42,6 +42,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
@@ -102,6 +103,23 @@ public class OptionsActivity extends FragmentActivity implements
 
     /** Called when hiding the tab. **/
     public void onHide(final View view) {
+    }
+
+    /** Enable DEPENDENTS only while the box at BOXID is CHECKED; a disabled widget keeps
+     *  its value and is still saved. **/
+    protected static void enableWhile(final View view, final int boxId,
+        final boolean checked, final int... dependents) {
+      final CheckBox box = CheckBox.class.cast(view.findViewById(boxId));
+      setEnabled(view, dependents, box.isChecked() == checked);
+      box.setOnCheckedChangeListener((button, isChecked) -> setEnabled(view,
+          dependents, isChecked == checked));
+    }
+
+    private static void setEnabled(final View view, final int[] ids,
+        final boolean enabled) {
+      for (final int id : ids) {
+        view.findViewById(id).setEnabled(enabled);
+      }
     }
   }
 
@@ -195,6 +213,12 @@ public class OptionsActivity extends FragmentActivity implements
       R.id.checkHideQueryStrings, R.id.checkDoNotPurge, R.id.checkSingleFile,
       R.id.editSingleFileMaxSize, R.id.radioBuild, R.id.editCustomBuild })
   public static class BuildTab extends Tab {
+    @Override
+    public void onShow(final View view) {
+      super.onShow(view);
+      // Both boxes feed one -L token and -L0 wins, so ISO9660 cannot take effect here.
+      enableWhile(view, R.id.checkDosNames, false, R.id.checkIso9660);
+    }
   }
 
   @Title(R.string.browser_id)
@@ -214,6 +238,13 @@ public class OptionsActivity extends FragmentActivity implements
       R.id.checkUrlHacks, R.id.editHostAlias, R.id.checkTolerentRequests,
       R.id.checkForceHttp10 })
   public static class Spider extends Tab {
+    @Override
+    public void onShow(final View view) {
+      super.onShow(view);
+      // The engine reads the cookies file only when cookies are accepted.
+      enableWhile(view, R.id.checkAcceptCookies, true, R.id.textCookiesFile,
+          R.id.editCookiesFile);
+    }
   }
 
   @Title(R.string.proxy)
