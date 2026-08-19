@@ -40,6 +40,47 @@ public final class CommandlineTokens {
   }
 
   /**
+   * Split a line-separated field value into one value per line, dropping the
+   * blank ones. Blanks inside a line are collapsed rather than split on, since
+   * an extra header or a rule holds them.
+   */
+  public static List<String> lineTokens(final String value) {
+    final List<String> out = new ArrayList<String>();
+    if (value == null) {
+      return out;
+    }
+    for (final String line : value.split("\n")) {
+      final String trimmed = line.replaceAll("\\s+", " ").trim();
+      if (trimmed.length() != 0) {
+        out.add(trimmed);
+      }
+    }
+    return out;
+  }
+
+  /* -%Z is the checkbox; --single-file-max-size switches single-file on by
+     itself, so both spellings count. */
+  private static final String SINGLE_FILE_TOKENS[] = { "-%Z",
+      "--single-file-max-size" };
+
+  /**
+   * True if these arguments ask for both ways of making one self-contained
+   * page. The engine refuses to start on MHTML (-%M) and single-file HTML
+   * together, naming the flags rather than the two boxes.
+   */
+  public static boolean hasSelfContainedConflict(final List<String> commandline) {
+    if (!commandline.contains("-%M")) {
+      return false;
+    }
+    for (final String token : SINGLE_FILE_TOKENS) {
+      if (commandline.contains(token)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Split a rule-list field value into one rule per engine flag. Whitespace
    * separates two rules. Beside a ',' or an '=' it holds one rule together
    * instead, so it is dropped there rather than splitting the rule in three.

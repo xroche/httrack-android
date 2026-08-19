@@ -246,11 +246,10 @@ public class WinProfileParityTest {
   /* A hand-edited profile reaches the radio mappers with anything at all. */
   @Test
   public void aChoiceOutsideTheTableEmitsNothing() {
-    final OptionMapper cache = new MultipleChoicesOption(new String[] { "C0",
-        "C2" });
-    for (final String value : new String[] { "2", "99999999999", "", "abc",
+    for (final String value : new String[] { "4", "99999999999", "", "abc",
         null }) {
-      assertTrue("value " + value, emit(cache, value).isEmpty());
+      assertTrue("value " + value,
+          emit(MultipleChoicesOption.ACTION, value).isEmpty());
     }
   }
 
@@ -262,21 +261,53 @@ public class WinProfileParityTest {
         "new (SimpleOptionFlag|SimpleOption0)\\(\\s*\"([^\"]+)\""
             + "(?:\\s*,\\s*(?:/\\*[^*]*\\*/\\s*)?(true|false))?\\s*\\)")
         .matcher(mapperTable());
-    int reverted = 0;
-    int tristate = 0;
+    final List<String> reverted = new ArrayList<String>();
+    final List<String> tristate = new ArrayList<String>();
     while (m.find()) {
       final boolean isFlag = "SimpleOptionFlag".equals(m.group(1));
       if (isFlag && "true".equals(m.group(3))) {
-        reverted++;
+        reverted.add(m.group(2));
         assertTrue("-" + m.group(2) + " must carry its 0 form", m.group(2)
             .endsWith("0"));
       } else if (!isFlag) {
-        tristate++;
+        tristate.add(m.group(2));
         assertFalse("-" + m.group(2) + " emits both forms, so it may not be "
             + "spelled as its own off switch", m.group(2).endsWith("0"));
       }
     }
-    assertEquals("reverted flags parsed", 3, reverted);
-    assertEquals("tri-state options parsed", 4, tristate);
+    assertEquals("reverted flags", new TreeSet<String>(Arrays.asList("b0",
+        "j0", "I0", "C0")), new TreeSet<String>(reverted));
+    assertEquals("tri-state options", new TreeSet<String>(Arrays.asList("%P",
+        "%k", "%u", "%f")), new TreeSet<String>(tristate));
+  }
+
+  /* The engine reads -iC1 as -i followed by -C1, so a Cache token later in
+     argv decides the cache mode instead of the action radio. */
+  @Test
+  public void tickedCacheSaysNothingAboutTheCacheMode() throws IOException {
+    assertTrue("Cache must emit nothing when ticked", mapperTable().contains(
+        "new Pair<String, OptionMapper>(\"Cache\",\n"
+            + "          new SimpleOptionFlag(\"C0\", true)),"));
+    final OptionMapper cache = new SimpleOptionFlag("C0", true);
+    assertTrue(emit(cache, "1").isEmpty());
+    assertEquals(Arrays.asList("-C0"), emit(cache, "0"));
+  }
+
+  /* Each value is withheld until its box is ticked, as WinHTTrack does, and
+     the handler reads that box from the token emitted before it. */
+  @Test
+  public void everyGatedValueFollowsItsCheckbox() throws IOException {
+    final List<String> keys = serializerKeys();
+    final String pairs[][] = { { "Warc", "WarcFile" },
+        { "Sitemap", "SitemapUrl" },
+        { "SingleFile", "SingleFileMaxSize" } };
+    for (final String[] pair : pairs) {
+      assertTrue(pair[0] + " missing", keys.contains(pair[0]));
+      assertTrue(pair[1] + " missing", keys.contains(pair[1]));
+      assertTrue(pair[1] + " must follow " + pair[0],
+          keys.indexOf(pair[0]) < keys.indexOf(pair[1]));
+    }
+    assertEquals("gated pairs wired", pairs.length,
+        occurrences(mapperTable(), "Handler.getValueMapper()"));
   }
 }
