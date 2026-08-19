@@ -43,6 +43,7 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
@@ -105,21 +106,33 @@ public class OptionsActivity extends FragmentActivity implements
     public void onHide(final View view) {
     }
 
-    /** Enable DEPENDENTS only while the box at BOXID is CHECKED; a disabled widget keeps
-     *  its value and is still saved. **/
-    protected static void enableWhile(final View view, final int boxId,
-        final boolean checked, final int... dependents) {
-      final CheckBox box = CheckBox.class.cast(view.findViewById(boxId));
-      setEnabled(view, dependents, box.isChecked() == checked);
-      box.setOnCheckedChangeListener((button, isChecked) -> setEnabled(view,
-          dependents, isChecked == checked));
+    /** Enable DEPENDENTS only while the box at BOXID is ticked; a disabled widget keeps its
+     *  value and is still saved. **/
+    protected static void enableWhileChecked(final View view, final int boxId,
+        final int... dependents) {
+      gate(view, boxId, true, dependents);
     }
 
-    private static void setEnabled(final View view, final int[] ids,
-        final boolean enabled) {
-      for (final int id : ids) {
-        view.findViewById(id).setEnabled(enabled);
-      }
+    /** Enable DEPENDENTS only while the box at BOXID is clear. **/
+    protected static void enableWhileClear(final View view, final int boxId,
+        final int... dependents) {
+      gate(view, boxId, false, dependents);
+    }
+
+    /*
+     * One gate per box, since the second call on a box would replace the first. The starting
+     * state goes through the listener too, so it cannot drift from what a toggle does.
+     */
+    private static void gate(final View view, final int boxId,
+        final boolean enabledWhenChecked, final int[] dependents) {
+      final CheckBox box = CheckBox.class.cast(view.findViewById(boxId));
+      final CompoundButton.OnCheckedChangeListener gate = (button, isChecked) -> {
+        for (final int id : dependents) {
+          view.findViewById(id).setEnabled(isChecked == enabledWhenChecked);
+        }
+      };
+      gate.onCheckedChanged(box, box.isChecked());
+      box.setOnCheckedChangeListener(gate);
     }
   }
 
@@ -217,7 +230,7 @@ public class OptionsActivity extends FragmentActivity implements
     public void onShow(final View view) {
       super.onShow(view);
       // Both boxes feed one -L token and -L0 wins, so ISO9660 cannot take effect here.
-      enableWhile(view, R.id.checkDosNames, false, R.id.checkIso9660);
+      enableWhileClear(view, R.id.checkDosNames, R.id.checkIso9660);
     }
   }
 
@@ -242,7 +255,7 @@ public class OptionsActivity extends FragmentActivity implements
     public void onShow(final View view) {
       super.onShow(view);
       // The engine reads the cookies file only when cookies are accepted.
-      enableWhile(view, R.id.checkAcceptCookies, true, R.id.textCookiesFile,
+      enableWhileChecked(view, R.id.checkAcceptCookies, R.id.textCookiesFile,
           R.id.editCookiesFile);
     }
   }

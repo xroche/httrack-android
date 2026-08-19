@@ -18,18 +18,18 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * A widget greyed out because the engine would ignore it must still be saved: the profile
- * keeps the value either way.
+ * The gates the options screen wires. A greyed widget is still saved, so each one has to stay
+ * declared in its tab's fields and present in its layout.
  */
 public class OptionsGatedFieldTest {
   /** Layout, controlling box, box state that enables, gated views. */
   private static final String[] EXPECTED = {
-      "activity_options_build checkDosNames=false checkIso9660",
-      "activity_options_spider checkAcceptCookies=true "
+      "activity_options_build checkDosNames=Clear checkIso9660",
+      "activity_options_spider checkAcceptCookies=Checked "
           + "textCookiesFile,editCookiesFile" };
 
   private static final Pattern GATE = Pattern
-      .compile("enableWhile\\(view, R\\.id\\.(\\w+), (true|false),([^;]*)\\);");
+      .compile("enableWhile(Checked|Clear)\\(view, R\\.id\\.(\\w+),([^;]*)\\);");
 
   private static final Pattern TAB_LAYOUT = Pattern
       .compile("@ActivityId\\(R\\.layout\\.(\\w+)\\)");
@@ -54,8 +54,8 @@ public class OptionsGatedFieldTest {
       final List<String> gated = OptionsTabFieldsTest.ids(
           OptionsTabFieldsTest.FIELD_ID, m.group(3));
       assertFalse("gate on nothing: " + m.group(), gated.isEmpty());
-      gates.add(enclosingTab(source, m.start()) + " " + m.group(1) + "="
-          + m.group(2) + " " + String.join(",", gated));
+      gates.add(enclosingTab(source, m.start()) + " " + m.group(2) + "="
+          + m.group(1) + " " + String.join(",", gated));
     }
     return gates;
   }
@@ -66,7 +66,7 @@ public class OptionsGatedFieldTest {
   }
 
   @Test
-  public void aGatedViewIsInItsTabsLayoutAndStillSaved() throws IOException {
+  public void aGatedViewIsInItsTabsLayoutAndFields() throws IOException {
     final Set<String> mapped = new HashSet<String>(OptionsTabFieldsTest.ids(
         OptionsTabFieldsTest.FIELD_ID, TestSources.javaSource("OptionsMapper")));
     final Map<String, List<String>> tabs = OptionsTabFieldsTest.tabs();

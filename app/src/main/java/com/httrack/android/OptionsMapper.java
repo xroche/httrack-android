@@ -197,6 +197,7 @@ public class OptionsMapper {
       new Pair<String, String>("Cache", "1"),
       new Pair<String, String>("NoRecatch", "0"),
       new Pair<String, String>("Dos", "0"),
+      new Pair<String, String>("Iso9660", "0"),
       new Pair<String, String>("Index", "1"),
       new Pair<String, String>("WordIndex", "0"),
       new Pair<String, String>("MailIndex", "0"),
