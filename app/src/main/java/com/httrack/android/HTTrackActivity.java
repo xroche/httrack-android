@@ -1926,7 +1926,8 @@ public class HTTrackActivity extends FragmentActivity {
    * Serialize current profile to an existing OutputStream.
    * 
    * @param profile
-   *          The profile file the stream writes for.
+   *          The existing profile whose stated keys must be preserved; not
+   *          necessarily where the stream writes.
    * @throws IOException
    *           Upon I/O error.
    */

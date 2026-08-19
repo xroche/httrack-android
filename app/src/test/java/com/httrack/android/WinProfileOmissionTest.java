@@ -3,6 +3,7 @@ package com.httrack.android;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.httrack.android.OptionsMapper.ProfileFormat;
 import java.io.File;
@@ -20,9 +21,8 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * A save must not state a setting nobody chose: the other front ends read the
- * same file and substitute their own default for a key that is not there. The
- * policy is pinned to the engine's shared winprofile-keys.tsv.
+ * A save must not state a setting nobody chose, under the policy the engine's
+ * shared winprofile-keys.tsv pins.
  */
 public class WinProfileOmissionTest {
   /* Our default is the shared one for every agreed key but this: our action
@@ -30,13 +30,19 @@ public class WinProfileOmissionTest {
   private static final Set<String> KNOWN_DIVERGENCES = new TreeSet<String>(
       Arrays.asList("CurrentAction"));
 
+  /* Rows the defaults sweep cannot compare: a derived row counts as a skip the
+     same way an unresolved one does. */
+  private static final Set<String> NO_SHARED_DEFAULT = new TreeSet<String>(
+      Arrays.asList("AcceptLanguage", "Debugging", "Iso9660", "MaxRate",
+          "ProjectName", "Sockets", "UserID", "WarcFile"));
+
   private static final int KEY = 0;
+  private static final int OWNERS = 1;
   private static final int DEFAULT_STATE = 7;
   private static final int DEFAULT_VALUE = 8;
   private static final int EMPTY_MEANS = 9;
 
-  /* The shared key table, by key. A table we cannot read is a failure and
-     never a skip: a policy checked against nothing passes for no reason. */
+  /* A table we cannot read is a failure and never a skip. */
   private static Map<String, String[]> sharedTable() throws IOException {
     final File table = TestSources.engineFile("winprofile-keys.tsv");
     final Map<String, String[]> rows = new LinkedHashMap<String, String[]>();
@@ -76,8 +82,6 @@ public class WinProfileOmissionTest {
     return defaults;
   }
 
-  /* What the shared table says an absent key means, for a profile seeded with
-     BASELINE. */
   private static boolean tableSaysAbsentMeansSame(final String row[],
       final String baseline) {
     if (baseline.length() == 0 && "literal".equals(row[EMPTY_MEANS])) {
@@ -101,8 +105,36 @@ public class WinProfileOmissionTest {
         new TreeSet<String>(), unknown);
   }
 
-  /* The rule read back off the shared table, key by key and for each baseline
-     that changes the answer. */
+  /* The other direction: a key dropped from fieldsSerializer shortens every
+     list built off it, so nothing else here would notice. */
+  @Test
+  public void everyKeyTheTableGivesUsIsWritten() throws IOException {
+    final Set<String> ours = new TreeSet<String>(TestSources.serializerKeys());
+    final Set<String> missing = new TreeSet<String>();
+    for (final String row[] : sharedTable().values()) {
+      if (Arrays.asList(row[OWNERS].split(",")).contains("droid")
+          && !ours.contains(row[KEY])) {
+        missing.add(row[KEY]);
+      }
+    }
+    assertEquals("keys the table says we write but we do not",
+        new TreeSet<String>(), missing);
+  }
+
+  @Test
+  public void everyKeyTheFilterTablesNameIsWritten() throws IOException {
+    final Set<String> named = new TreeSet<String>();
+    named.addAll(Arrays.asList(ProfileFormat.DERIVED));
+    named.addAll(Arrays.asList(ProfileFormat.NO_DEFAULT));
+    named.addAll(Arrays.asList(ProfileFormat.EMPTY_IS_LITERAL));
+    for (final String shared[] : ProfileFormat.SHARED_DEFAULTS) {
+      named.add(shared[0]);
+    }
+    named.removeAll(TestSources.serializerKeys());
+    assertEquals("table entries naming a key we no longer write",
+        new TreeSet<String>(), named);
+  }
+
   @Test
   public void omissionAgreesWithTheSharedTable() throws IOException {
     final Map<String, String[]> shared = sharedTable();
@@ -123,16 +155,16 @@ public class WinProfileOmissionTest {
         TestSources.serializerKeys()), checked);
   }
 
-  /* Our default is what a reader of the shared table substitutes, or the two
-     disagree on what an absent key restores. */
   @Test
   public void ourDefaultsAreTheSharedOnes() throws IOException {
     final Map<String, String[]> shared = sharedTable();
     final Map<String, String> defaults = ourDefaults();
     final Set<String> diverging = new TreeSet<String>();
+    final Set<String> skipped = new TreeSet<String>();
     for (final String key : TestSources.serializerKeys()) {
       final String row[] = shared.get(key);
       if (!"agreed".equals(row[DEFAULT_STATE])) {
+        skipped.add(key);
         continue;
       }
       final String ours = defaults.containsKey(key) ? defaults.get(key) : "";
@@ -141,6 +173,7 @@ public class WinProfileOmissionTest {
       }
     }
     assertEquals(KNOWN_DIVERGENCES, diverging);
+    assertEquals("keys the sweep never compared", NO_SHARED_DEFAULT, skipped);
   }
 
   private static Map<String, String> values(final String... pairs) {
@@ -155,14 +188,18 @@ public class WinProfileOmissionTest {
     return new HashSet<String>(Arrays.asList(keys));
   }
 
-  /* A profile whose seeded values are exactly our defaults. */
+  /* What a reader substitutes for an absent key. Never the map a case passes
+     as the seed, so swapping the two arguments reds. */
+  private static final Map<String, String> OUR_DEFAULTS = values("Dos", "0",
+      "Footer", "<!-- ours -->", "WildCardFilters", "+*.png", "MaxRate",
+      "25000", "AcceptLanguage", "en,*");
+
   private static Map<String, String> written(final Map<String, String> values,
       final Map<String, String> seeded, final Set<String> present) {
-    return ProfileFormat.toFile(values, seeded, seeded, present);
+    return ProfileFormat.toFile(values, seeded, OUR_DEFAULTS, present);
   }
 
-  /* The bug: a WinHTTrack profile opened, changed in one field and saved came
-     back carrying our footer, our filter list and an empty Sockets line. */
+  /* The bug: a saved WinHTTrack profile came back with our footer. */
   @Test
   public void aSettingNobodyChoseStaysOutOfTheFile() {
     final Map<String, String> seeded = values("Depth", null, "Footer",
@@ -174,6 +211,17 @@ public class WinProfileOmissionTest {
     assertFalse("Footer restated", file.containsKey("Footer"));
     assertFalse("filters restated", file.containsKey("WildCardFilters"));
     assertFalse("Sockets restated", file.containsKey("Sockets"));
+  }
+
+  /* resetMap layers the user's saved defaults over the table, so what the seed
+     holds and what a reader substitutes are two different maps. */
+  @Test
+  public void aSavedDefaultMovesTheSeedOffOurTable() {
+    final Map<String, String> seeded = values("AcceptLanguage", "fr,*",
+        "MaxRate", "");
+    final Map<String, String> file = written(seeded, seeded, present());
+    assertFalse("AcceptLanguage stamped", file.containsKey("AcceptLanguage"));
+    assertFalse("MaxRate restated", file.containsKey("MaxRate"));
   }
 
   /* #127 in mirror image: an empty UserID is the user asking the engine to
@@ -263,8 +311,32 @@ public class WinProfileOmissionTest {
     assertTrue(ProfileFormat.statedKeys(missing).isEmpty());
   }
 
-  /* What a project that never had a profile writes: only the keys no reader
-     would put back on its own. */
+  @Test
+  public void commitReplacesTheProfile() throws IOException {
+    final File target = profile("old\n");
+    final File pending = profile("new\n");
+    ProfileFormat.commit(pending, target);
+    assertEquals("new\n", TestSources.read(target));
+    assertFalse("pending left behind", pending.exists());
+  }
+
+  @Test
+  public void commitThatCannotRenameLeavesTheProfileAlone() throws IOException {
+    final File target = profile("old\n");
+    assertTrue(target.delete() && target.mkdir());
+    final File pending = profile("new\n");
+    try {
+      ProfileFormat.commit(pending, target);
+      fail("renamed a file over a directory");
+    } catch (final IOException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains(pending.getPath()));
+      assertTrue(e.getMessage(), e.getMessage().contains(target.getPath()));
+    }
+    assertFalse("pending left behind", pending.exists());
+    assertTrue("profile clobbered", target.isDirectory());
+    assertTrue(target.delete());
+  }
+
   @Test
   public void aBrandNewProjectStatesOnlyWhatCannotBeInferred()
       throws IOException {

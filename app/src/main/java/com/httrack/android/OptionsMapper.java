@@ -520,22 +520,23 @@ public class OptionsMapper {
     }
 
     /* The four tables below are winprofile-keys.tsv columns for the keys we
-       write; WinProfileOmissionTest holds them against that table. */
+       write. */
 
     // default_state=derived: every front end computes its own value.
-    private static final String DERIVED[] = { "AcceptLanguage", "UserID" };
+    static final String DERIVED[] = { "AcceptLanguage", "UserID" };
 
     // default_state=none: no reader substitutes anything for an absent key.
-    private static final String NO_DEFAULT[] = { "Debugging", "Iso9660",
-        "MaxRate", "ProjectName", "Sockets", "WarcFile" };
+    static final String NO_DEFAULT[] = { "Debugging", "Iso9660", "MaxRate",
+        "ProjectName", "Sockets", "WarcFile" };
 
     // empty_means=literal: a reader takes an empty value at face value instead
     // of falling back, so a cleared field still has to be stated.
-    private static final String EMPTY_IS_LITERAL[] = { "AcceptLanguage",
-        "BuildString", "Footer", "UserID", "WildCardFilters" };
+    static final String EMPTY_IS_LITERAL[] = { "AcceptLanguage", "BuildString",
+        "Footer", "UserID", "WildCardFilters" };
 
     // Shared defaults that are not ours: our action radio seeds no value.
-    private static final String SHARED_DEFAULTS[][] = { { "CurrentAction", "0" } };
+    // A String[][] and not a Pair[]: the stub android.jar nulls Pair's fields.
+    static final String SHARED_DEFAULTS[][] = { { "CurrentAction", "0" } };
 
     private static boolean holds(final String set[], final String key) {
       for (final String entry : set) {
@@ -645,6 +646,24 @@ public class OptionsMapper {
         keys.add(DOS_KEY);
       }
       return keys;
+    }
+
+    /**
+     * Put PENDING in TARGET's place, dropping PENDING whichever way it goes.
+     *
+     * @throws IOException
+     *           When the rename fails, TARGET being left as it was.
+     */
+    static void commit(final File pending, final File target)
+        throws IOException {
+      try {
+        if (!pending.renameTo(target)) {
+          throw new IOException("could not rename " + pending + " over "
+              + target);
+        }
+      } finally {
+        pending.delete();
+      }
     }
   }
 
@@ -2021,7 +2040,6 @@ public class OptionsMapper {
     return dirty;
   }
 
-  /* The settings, by winprofile.ini key name. */
   private static Map<String, String> valuesOf(final SparseArray<String> map) {
     final Map<String, String> values = new LinkedHashMap<String, String>();
     for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
@@ -2053,8 +2071,8 @@ public class OptionsMapper {
    * @param fos
    *          The Output Stream.
    * @param profile
-   *          The profile file the stream writes for, read back to tell which
-   *          keys it already states.
+   *          The existing profile whose stated keys must be preserved; not
+   *          necessarily where the stream writes.
    * @throws UnsupportedEncodingException
    *           Upon encoding error
    * @throws IOException
@@ -2112,7 +2130,8 @@ public class OptionsMapper {
   public void serialize(final File profile)
       throws UnsupportedEncodingException, IOException {
     // Through a sibling: a write that dies half way must not leave a truncated
-    // profile behind.
+    // profile behind, and statedKeys reads the original, which writing in place
+    // would have emptied.
     final File pending = new File(profile.getPath() + ".tmp");
     try {
       final FileOutputStream fos = new FileOutputStream(pending);
@@ -2121,10 +2140,15 @@ public class OptionsMapper {
       } finally {
         fos.close();
       }
-      if (!pending.renameTo(profile)) {
-        throw new IOException("could not rename " + pending + " over "
-            + profile);
+      // Reopened only to reach the disk before the rename does: serialize()
+      // closes the stream it is handed, taking the descriptor with it.
+      final FileOutputStream sync = new FileOutputStream(pending, true);
+      try {
+        sync.getFD().sync();
+      } finally {
+        sync.close();
       }
+      ProfileFormat.commit(pending, profile);
     } finally {
       pending.delete();
     }
