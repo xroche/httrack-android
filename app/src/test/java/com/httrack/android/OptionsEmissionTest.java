@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.httrack.android.OptionsMapper.ArgumentOption;
 import com.httrack.android.OptionsMapper.GatedFeatureHandler;
+import com.httrack.android.OptionsMapper.NumberArgumentOption;
 import com.httrack.android.OptionsMapper.LogHandler;
 import com.httrack.android.OptionsMapper.MultipleChoicesOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
@@ -446,6 +447,26 @@ public class OptionsEmissionTest {
     assertEquals(Arrays.asList("X-One: 1", "X-Two: 2", "X-Three: 3"),
         CommandlineTokens.lineTokens("X-One: 1\n  X-Two: 2  \n\nX-Three: 3"));
     assertTrue(CommandlineTokens.lineTokens("  \n\n ").isEmpty());
+  }
+
+  /* An imported profile reaches the field through setText, past inputType, and
+     the engine panics on a size it cannot scan. */
+  @Test
+  public void aNumericCompanionDropsWhatIsNotANumber() {
+    final GatedFeatureHandler handler = new GatedFeatureHandler("%Z",
+        new NumberArgumentOption("--single-file-max-size"));
+    for (final String value : new String[] { "abc", "5000000abc", "-1", "1.5",
+        " 5000000", "" }) {
+      final List<String> cmd = new ArrayList<String>();
+      handler.getToggleMapper().emit(cmd, "1");
+      handler.getValueMapper().emit(cmd, value);
+      assertEquals("value " + value, Arrays.asList("-%Z"), cmd);
+    }
+    final List<String> cmd = new ArrayList<String>();
+    handler.getToggleMapper().emit(cmd, "1");
+    handler.getValueMapper().emit(cmd, "5000000");
+    assertEquals(
+        Arrays.asList("-%Z", "--single-file-max-size", "5000000"), cmd);
   }
 
   /* -%M and single-file HTML are two ways to fold a page into one file, and

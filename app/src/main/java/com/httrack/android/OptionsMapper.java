@@ -262,7 +262,8 @@ public class OptionsMapper {
   protected final GatedFeatureHandler sitemapHandler = new GatedFeatureHandler(
       "%m", "--sitemap-url");
   protected final GatedFeatureHandler singleFileHandler =
-      new GatedFeatureHandler("%Z", "--single-file-max-size");
+      new GatedFeatureHandler("%Z", new NumberArgumentOption(
+          "--single-file-max-size"));
   protected final PrimaryScanHandler primaryScanHandler = new PrimaryScanHandler();
   protected final MimeTypesHandler[] mimeTypesHandlers = new MimeTypesHandler[] {
       new MimeTypesHandler(), new MimeTypesHandler(), new MimeTypesHandler(),
@@ -1295,8 +1296,18 @@ public class OptionsMapper {
      *          The engine option the value follows
      */
     public GatedFeatureHandler(final String flag, final String option) {
+      this(flag, new ArgumentOption(option));
+    }
+
+    /**
+     * @param flag
+     *          The engine flag the checkbox emits
+     * @param value
+     *          The engine option the value follows
+     */
+    public GatedFeatureHandler(final String flag, final ArgumentOption value) {
       this.toggle = new SimpleOptionFlag(flag);
-      this.value = new ArgumentOption(option);
+      this.value = value;
     }
 
     /* fieldsSerializer emits the checkbox first, which is what lets the value
@@ -1463,6 +1474,25 @@ public class OptionsMapper {
       if (value != null && value.length() != 0) {
         commandline.add(option);
         commandline.add(value);
+      }
+    }
+  }
+
+  /**
+   * Argument option whose value must be a number. A field the engine scans as
+   * one panics on anything else, and no layout attribute can keep a non-digit
+   * out: inputType is a keyboard hint, and an imported profile reaches the
+   * field through setText.
+   */
+  public static class NumberArgumentOption extends ArgumentOption {
+    public NumberArgumentOption(final String option) {
+      super(option);
+    }
+
+    @Override
+    public void emit(final List<String> commandline, final String value) {
+      if (OptionValues.isDigits(value)) {
+        super.emit(commandline, value);
       }
     }
   }
