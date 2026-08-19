@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Al permitir el acceso a todos los archivos, la carpeta de la copia se mueve ahora de inmediato
 • Al reconstruir el índice de la copia ya no se sirve una página incompleta
 • Los proyectos nuevos ya no sustituyen los enlaces externos por páginas de error
-• La opción de caché ahora comprueba si hay actualizaciones antes de reutilizar un archivo
+• Continuar una descarga interrumpida ya no se ejecuta como una actualización
 
 Beta: informe de los problemas en GitHub.

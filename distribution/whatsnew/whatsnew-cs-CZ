@@ -4,6 +4,6 @@ HTTrack 3.50 beta 5.
 • Povolení přístupu ke všem souborům nyní ihned přesune složku kopie
 • Obnova indexu kopie už nevrací neúplnou stránku
 • Nové projekty už nenahrazují externí odkazy chybovými stránkami
-• Volba mezipaměti nyní před opětovným použitím souboru ověří, zda nevyšla novější verze
+• Pokračování v přerušeném stahování už neprobíhá jako aktualizace
 
 Beta: problémy hlaste na GitHubu.

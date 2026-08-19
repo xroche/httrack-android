@@ -4,6 +4,6 @@ HTTrack 3.50 beeta 5.
 • Kaikkien tiedostojen käyttöoikeuden myöntäminen siirtää kopiokansion nyt heti
 • Kopion hakemiston uudelleenluonti ei enää näytä keskeneräistä sivua
 • Uudet projektit eivät enää korvaa ulkoisia linkkejä virhesivuilla
-• Välimuistiasetus tarkistaa nyt päivitykset ennen tiedoston uudelleenkäyttöä
+• Keskeytyneen latauksen jatkaminen ei enää suoritu päivityksenä
 
 Beeta: ilmoita ongelmista GitHubissa.
