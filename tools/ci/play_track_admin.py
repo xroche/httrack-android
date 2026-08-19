@@ -9,6 +9,7 @@ Usage:
   play_track_admin.py <sa_json> list
   play_track_admin.py <sa_json> promote <versionCode> <fromTrack> <toTrack>
                       [--notes-dir DIR] [--halt-track TRACK] [--dry-run]
+  play_track_admin.py <sa_json> halt <versionCode> <track> [--fallback VC] [--dry-run]
 
 Track names are the API's, not the Console's: alpha is Closed testing, beta is
 Open testing.
@@ -120,11 +121,51 @@ def load_notes(notes_dir):
     return notes
 
 
+def holds(release, version_code):
+    return version_code in [int(c) for c in release.get("versionCodes") or []]
+
+
 def find_release(track, version_code):
     for rel in track.get("releases", []):
-        if version_code in [int(c) for c in rel.get("versionCodes") or []]:
+        if holds(rel, version_code):
             return rel
     return None
+
+
+def solo_release(track, version_code):
+    """The track's release holding version_code, refused when it carries sibling codes.
+
+    The PUT replaces the whole track, so a sibling would be dragged along with it.
+    """
+    rel = find_release(track, version_code)
+    if rel is None:
+        sys.exit(f"vc{version_code} is not on the {track['track']} track")
+    codes = rel.get("versionCodes") or []
+    if len(codes) > 1:
+        sys.exit(f"vc{version_code} shares a release with {', '.join(codes)}")
+    return rel
+
+
+def halt_release(track, version_code, fallback):
+    """The track's releases with version_code stopped, every other one kept as it is.
+
+    Play refuses to halt a release with nothing left to serve, and signals it with a bogus 500
+    at commit, so `fallback` names an earlier build to put back on the track in the same PUT.
+    """
+    releases = [
+        dict(r, status="halted") if holds(r, version_code) else r
+        for r in track.get("releases") or []
+    ]
+    if not any(r.get("status") not in ("halted", "draft") for r in releases):
+        if not fallback:
+            sys.exit(
+                f"halting vc{version_code} would leave {track['track']} serving nothing; "
+                "name an earlier build with --fallback"
+            )
+        releases.insert(
+            0, {"name": str(fallback), "versionCodes": [str(fallback)], "status": "completed"}
+        )
+    return releases
 
 
 def halted(track):
@@ -173,15 +214,62 @@ def unsupported_language(response, present):
     return named[0] if len(named) == 1 else None
 
 
+def halt_plan(args, by_name):
+    """The single PUT that stops `args.version_code` serving on its track."""
+    if not (args.version_code and args.from_track):
+        sys.exit("halt needs <versionCode> <track>")
+    if args.from_track not in by_name:
+        sys.exit(f"no such track: {args.from_track}")
+    # A live rollout has users on it; stopping one is a Console decision.
+    if args.from_track == "production":
+        sys.exit("refusing to halt production")
+    track = by_name[args.from_track]
+    if solo_release(track, args.version_code).get("status") == "halted":
+        sys.exit(f"vc{args.version_code} is already halted on {args.from_track}")
+    return [(args.from_track, halt_release(track, args.version_code, args.fallback))]
+
+
+def promote_plan(args, by_name, notes):
+    """The PUT(s) that put `args.version_code` on the target track, and optionally halt another."""
+    if not (args.version_code and args.from_track and args.to_track):
+        sys.exit("promote needs <versionCode> <fromTrack> <toTrack>")
+    if args.from_track not in by_name:
+        sys.exit(f"no such track: {args.from_track}")
+    src = solo_release(by_name[args.from_track], args.version_code)
+
+    release = {
+        "name": src.get("name", str(args.version_code)),
+        "versionCodes": [str(args.version_code)],
+        "status": "completed",
+    }
+    if notes:
+        release["releaseNotes"] = notes
+    elif src.get("releaseNotes"):
+        release["releaseNotes"] = src["releaseNotes"]
+
+    plan = [(args.to_track, [release])]
+    if args.halt_track:
+        if args.halt_track not in by_name:
+            sys.exit(f"no such track: {args.halt_track}")
+        # Both PUTs share one edit, so halting the target would undo the promote.
+        if args.halt_track == args.to_track:
+            sys.exit(f"--halt-track {args.halt_track} is also the promote target")
+        if args.halt_track == "production":
+            sys.exit("refusing to halt production")
+        plan.append((args.halt_track, halted(by_name[args.halt_track])))
+    return plan
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sa_json")
-    ap.add_argument("mode", choices=["list", "promote"])
+    ap.add_argument("mode", choices=["list", "promote", "halt"])
     ap.add_argument("version_code", nargs="?", type=int)
     ap.add_argument("from_track", nargs="?")
     ap.add_argument("to_track", nargs="?")
     ap.add_argument("--notes-dir", help="directory of <locale>.txt release notes")
     ap.add_argument("--halt-track", help="track to stop serving, in the same edit")
+    ap.add_argument("--fallback", type=int, help="halt: build to put back on the track")
     ap.add_argument("--dry-run", action="store_true", help="print the plan, commit nothing")
     args = ap.parse_args()
 
@@ -212,38 +300,10 @@ def main():
         if args.mode == "list":
             return
 
-        if not (args.version_code and args.from_track and args.to_track):
-            sys.exit("promote needs <versionCode> <fromTrack> <toTrack>")
-        if args.from_track not in by_name:
-            sys.exit(f"no such track: {args.from_track}")
-        src = find_release(by_name[args.from_track], args.version_code)
-        if src is None:
-            sys.exit(f"vc{args.version_code} is not on the {args.from_track} track")
-        # A multi-code release would lose its siblings, since the PUT replaces the track.
-        codes = src.get("versionCodes") or []
-        if len(codes) > 1:
-            sys.exit(f"vc{args.version_code} shares a release with {', '.join(codes)}")
-
-        release = {
-            "name": src.get("name", str(args.version_code)),
-            "versionCodes": [str(args.version_code)],
-            "status": "completed",
-        }
-        if notes:
-            release["releaseNotes"] = notes
-        elif src.get("releaseNotes"):
-            release["releaseNotes"] = src["releaseNotes"]
-
-        plan = [(args.to_track, [release])]
-        if args.halt_track:
-            if args.halt_track not in by_name:
-                sys.exit(f"no such track: {args.halt_track}")
-            # Both PUTs share one edit, so halting the target would undo the promote.
-            if args.halt_track == args.to_track:
-                sys.exit(f"--halt-track {args.halt_track} is also the promote target")
-            if args.halt_track == "production":
-                sys.exit("refusing to halt production")
-            plan.append((args.halt_track, halted(by_name[args.halt_track])))
+        if args.mode == "halt":
+            plan = halt_plan(args, by_name)
+        else:
+            plan = promote_plan(args, by_name, notes)
 
         if args.dry_run:
             print("=== plan (dry run, nothing committed) ===")
