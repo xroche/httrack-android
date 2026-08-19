@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• Nye projekter erstatter ikke længere eksterne links med fejlsider og fjerner ikke forespørgsler fra de gemte filnavne
+• Ændringer af indstillinger går ikke længere tabt, når indstillingsskærmen åbnes igen
+• Adgang til alle filer flytter nu kopimappen med det samme
+• Visning af en færdig kopi viser ikke længere en tom side
+• Nye projekter erstatter ikke længere eksterne links med fejlsider
 • Cache-indstillingen kontrollerer nu for opdateringer, før en fil genbruges
-• Meget lange regler, adresser og omdirigeringer afbryder ikke længere kopieringen og forsvinder ikke fra den
-• En stor robots.txt-fil bliver ikke længere skåret af efter de første kilobyte
 
 Beta: rapportér problemer på GitHub.

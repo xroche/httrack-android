@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• Novi projekti zunanjih povezav ne nadomeščajo več s stranmi z napako in ne odstranjujejo poizvedb iz imen shranjenih datotek
+• Spremembe možnosti se ne izgubijo več ob ponovnem odprtju zaslona z možnostmi
+• Dovoljenje za dostop do vseh datotek zdaj takoj premakne mapo kopije
+• Ogled dokončane kopije ne pokaže več prazne strani
+• Novi projekti zunanjih povezav ne nadomeščajo več s stranmi z napako
 • Možnost predpomnilnika zdaj pred ponovno uporabo datoteke preveri, ali je na voljo posodobitev
-• Zelo dolga pravila, naslovi in preusmeritve ne prekinejo več kopiranja in iz njega ne izginejo
-• Velika datoteka robots.txt se ne odreže več po prvih kilobajtih
 
 Beta: težave sporočite na GitHubu.

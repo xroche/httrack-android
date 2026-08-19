@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• Nye prosjekter erstatter ikke lenger eksterne lenker med feilsider og fjerner ikke spørringer fra de lagrede filnavnene
+• Endringer i valgene går ikke lenger tapt når valgskjermen åpnes på nytt
+• Tilgang til alle filer flytter nå kopimappen med en gang
+• Visning av en ferdig kopi viser ikke lenger en tom side
+• Nye prosjekter erstatter ikke lenger eksterne lenker med feilsider
 • Mellomlagringsvalget ser nå etter oppdateringer før en fil brukes på nytt
-• Svært lange regler, adresser og omdirigeringer avbryter ikke lenger kopieringen og forsvinner ikke fra den
-• En stor robots.txt-fil blir ikke lenger kuttet etter de første kilobytene
 
 Beta: meld fra om problemer på GitHub.

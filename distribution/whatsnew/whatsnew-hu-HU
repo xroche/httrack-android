@@ -1,8 +1,9 @@
 HTTrack 3.50 béta 5.
 
-• Az új projektek már nem cserélik hibaoldalra a külső hivatkozásokat, és nem hagyják el a lekérdezéseket a mentett fájlnevekből
+• A beállítások módosításai már nem vesznek el a beállítási képernyő újranyitásakor
+• Az összes fájlhoz való hozzáférés engedélyezése most azonnal áthelyezi a másolat mappáját
+• Egy kész másolat megtekintése már nem mutat üres oldalt
+• Az új projektek már nem cserélik hibaoldalra a külső hivatkozásokat
 • A gyorsítótár beállítás mostantól frissítést keres, mielőtt újra felhasználna egy fájlt
-• A nagyon hosszú szabályok, címek és átirányítások többé nem szakítják meg a másolást, és nem tűnnek el belőle
-• A nagy robots.txt fájl már nem szakad meg az első kilobájtok után
 
 Béta: a hibákat a GitHubon jelezze.

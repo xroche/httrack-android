@@ -1,8 +1,9 @@
 HTTrack 3.50 bêta 5.
 
-• Les nouveaux projets ne remplacent plus les liens externes par des pages d'erreur et ne suppriment plus les requêtes des noms de fichiers
+• Les modifications des options ne sont plus perdues à la réouverture de l'écran des options
+• L'accès à tous les fichiers déplace maintenant le dossier de copie immédiatement
+• La consultation d'une copie terminée n'affiche plus de page vide
+• Les nouveaux projets ne remplacent plus les liens externes par des pages d'erreur
 • L'option de cache vérifie maintenant les mises à jour avant de réutiliser un fichier
-• Les règles, adresses et redirections très longues n'interrompent plus la copie et n'en disparaissent plus
-• Un fichier robots.txt volumineux n'est plus tronqué après les premiers kilo-octets
 
 Bêta : signalez les problèmes sur GitHub.
