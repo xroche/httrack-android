@@ -1,8 +1,9 @@
 HTTrack 3.50 Beta 5.
 
-• Neue Projekte ersetzen externe Links nicht mehr durch Fehlerseiten und entfernen keine Abfragen mehr aus den gespeicherten Dateinamen
+• Änderungen an den Optionen gehen beim Drehen des Bildschirms nicht mehr verloren
+• Die Freigabe für alle Dateien verschiebt den Ordner der Kopie jetzt sofort
+• Beim Neuaufbau des Index der Kopie wird keine unvollständige Seite mehr ausgeliefert
+• Neue Projekte ersetzen externe Links nicht mehr durch Fehlerseiten
 • Die Cache-Option prüft jetzt auf Aktualisierungen, bevor eine Datei wiederverwendet wird
-• Sehr lange Regeln, Adressen und Weiterleitungen brechen die Kopie nicht mehr ab und verschwinden nicht mehr daraus
-• Eine große robots.txt wird nicht mehr nach den ersten Kilobyte abgeschnitten
 
 Beta: Probleme bitte auf GitHub melden.

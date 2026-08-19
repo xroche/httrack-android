@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• New projects no longer replace external links with error pages, or drop query strings from saved file names
+• Option changes are no longer lost when the screen rotates
+• Allowing access to all files now moves the mirror folder at once
+• Rebuilding the mirror index no longer serves a partial page
+• New projects no longer replace external links with error pages
 • The cache option now checks for updates before reusing a file
-• Very long rules, addresses and redirects no longer break the copy or disappear from it
-• A large robots.txt file is no longer cut off after the first few kilobytes
 
 Beta: report problems on GitHub.

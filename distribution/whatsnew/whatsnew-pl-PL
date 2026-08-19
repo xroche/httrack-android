@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• Nowe projekty nie zastępują już odnośników zewnętrznych stronami błędu ani nie usuwają zapytań z nazw zapisanych plików
+• Zmiany opcji nie są już tracone przy obracaniu ekranu
+• Zezwolenie na dostęp do wszystkich plików przenosi teraz folder kopii od razu
+• Przebudowa indeksu kopii nie zwraca już niepełnej strony
+• Nowe projekty nie zastępują już odnośników zewnętrznych stronami błędu
 • Opcja pamięci podręcznej sprawdza teraz aktualizacje przed ponownym użyciem pliku
-• Bardzo długie reguły, adresy i przekierowania nie przerywają już kopiowania ani z niego nie znikają
-• Duży plik robots.txt nie jest już ucinany po pierwszych kilobajtach
 
 Beta: zgłaszaj problemy na GitHubie.

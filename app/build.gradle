@@ -16,7 +16,7 @@ android {
         // insets (EdgeToEdge) are now mandatory: the platform ignores the opt-out at this level.
         targetSdk 36
         // Must exceed the versionCode currently live on the Play listing before uploading.
-        versionCode 95
+        versionCode 96
         // Deliberately off the engine's 3.49.22: this is the cross-platform 3.50 beta, named to
         // match the Windows release. Realign the prefix with HTTRACK_VERSIONID once 3.50 is final.
         versionName "3.50-beta-5"

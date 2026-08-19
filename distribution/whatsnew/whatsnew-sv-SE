@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• Nya projekt ersätter inte längre externa länkar med felsidor och tar inte bort frågor ur de sparade filnamnen
+• Ändringar av alternativen går inte längre förlorade när skärmen roteras
+• Att ge åtkomst till alla filer flyttar nu kopians mapp direkt
+• Ombyggnad av kopians index ger inte längre en ofullständig sida
+• Nya projekt ersätter inte längre externa länkar med felsidor
 • Cachealternativet söker nu efter uppdateringar innan en fil återanvänds
-• Mycket långa regler, adresser och omdirigeringar avbryter inte längre kopieringen och försvinner inte ur den
-• En stor robots.txt-fil kapas inte längre efter de första kilobyten
 
 Beta: rapportera problem på GitHub.

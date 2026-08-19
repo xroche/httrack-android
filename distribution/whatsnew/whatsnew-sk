@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• Nové projekty už nenahrádzajú externé odkazy chybovými stránkami ani neodstraňujú dopyty z názvov uložených súborov
+• Zmeny volieb sa už nestrácajú pri otočení obrazovky
+• Povolenie prístupu ku všetkým súborom teraz ihneď presunie priečinok kópie
+• Prestavba indexu kópie už nevracia neúplnú stránku
+• Nové projekty už nenahrádzajú externé odkazy chybovými stránkami
 • Voľba vyrovnávacej pamäte teraz pred opätovným použitím súboru overí, či nevyšla novšia verzia
-• Veľmi dlhé pravidlá, adresy a presmerovania už kopírovanie neprerušia ani z neho nezmiznú
-• Veľký súbor robots.txt sa už neoreže po prvých kilobajtoch
 
 Beta: problémy hláste na GitHube.

@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• Novi projekti više ne zamjenjuju vanjske poveznice stranicama pogreške niti uklanjaju upite iz naziva spremljenih datoteka
+• Promjene mogućnosti više se ne gube pri zakretanju zaslona
+• Dopuštanje pristupa svim datotekama sada odmah premješta mapu kopije
+• Ponovna izgradnja indeksa kopije više ne prikazuje nepotpunu stranicu
+• Novi projekti više ne zamjenjuju vanjske poveznice stranicama pogreške
 • Mogućnost predmemorije sada prije ponovne uporabe datoteke provjerava ima li novije verzije
-• Vrlo duga pravila, adrese i preusmjeravanja više ne prekidaju kopiranje niti iz njega nestaju
-• Velika datoteka robots.txt više se ne reže nakon prvih kilobajta
 
 Beta: probleme prijavite na GitHubu.

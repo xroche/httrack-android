@@ -1,8 +1,9 @@
 HTTrack 3.50 beta 5.
 
-• I nuovi progetti non sostituiscono più i collegamenti esterni con pagine di errore né tolgono le query dai nomi dei file salvati
+• Le modifiche alle opzioni non vanno più perse quando si ruota lo schermo
+• Se si consente l'accesso a tutti i file, la cartella della copia viene spostata subito
+• La ricostruzione dell'indice della copia non restituisce più una pagina incompleta
+• I nuovi progetti non sostituiscono più i collegamenti esterni con pagine di errore
 • L'opzione cache ora verifica la presenza di aggiornamenti prima di riutilizzare un file
-• Regole, indirizzi e reindirizzamenti molto lunghi non interrompono più la copia né scompaiono da essa
-• Un file robots.txt di grandi dimensioni non viene più troncato dopo i primi kilobyte
 
 Beta: segnalate i problemi su GitHub.
