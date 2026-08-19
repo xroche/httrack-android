@@ -670,8 +670,8 @@ public class OptionsMapper {
      * Write LINES over whatever CHANNEL holds, leaving CHANNEL open.
      *
      * @param channel
-     *          Where to write; the crawl holds its lock here, so this must not
-     *          close it
+     *          Where to write, never opened for append; the crawl holds its
+     *          lock here, so this must not close it
      * @param lines
      *          The already-encoded values; iteration order is write order
      * @throws IOException
