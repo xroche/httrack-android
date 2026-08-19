@@ -101,7 +101,7 @@ public class OptionsMapper {
 
       /* Build */
       new Pair<Integer, String>(R.id.checkDosNames, "Dos"),
-      new Pair<Integer, String>(R.id.checkIso9660, "Iso9660"), /* FIXME with Dos */
+      new Pair<Integer, String>(R.id.checkIso9660, "Iso9660"),
       new Pair<Integer, String>(R.id.checkNoErrorPages, "NoErrorPages"),
       new Pair<Integer, String>(R.id.checkNoExternalPages, "NoExternalPages"),
       new Pair<Integer, String>(R.id.checkHidePasswords, "NoPwdInPages"),
@@ -197,6 +197,7 @@ public class OptionsMapper {
       new Pair<String, String>("Cache", "1"),
       new Pair<String, String>("NoRecatch", "0"),
       new Pair<String, String>("Dos", "0"),
+      new Pair<String, String>("Iso9660", "0"),
       new Pair<String, String>("Index", "1"),
       new Pair<String, String>("WordIndex", "0"),
       new Pair<String, String>("MailIndex", "0"),

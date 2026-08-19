@@ -42,6 +42,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
@@ -102,6 +104,35 @@ public class OptionsActivity extends FragmentActivity implements
 
     /** Called when hiding the tab. **/
     public void onHide(final View view) {
+    }
+
+    /** Enable DEPENDENTS only while the box at BOXID is ticked; a disabled widget keeps its
+     *  value and is still saved. **/
+    protected static void enableWhileChecked(final View view, final int boxId,
+        final int... dependents) {
+      gate(view, boxId, true, dependents);
+    }
+
+    /** Enable DEPENDENTS only while the box at BOXID is clear. **/
+    protected static void enableWhileClear(final View view, final int boxId,
+        final int... dependents) {
+      gate(view, boxId, false, dependents);
+    }
+
+    /*
+     * One gate per box, since the second call on a box would replace the first. The starting
+     * state goes through the listener too, so it cannot drift from what a toggle does.
+     */
+    private static void gate(final View view, final int boxId,
+        final boolean enabledWhenChecked, final int[] dependents) {
+      final CheckBox box = CheckBox.class.cast(view.findViewById(boxId));
+      final CompoundButton.OnCheckedChangeListener gate = (button, isChecked) -> {
+        for (final int id : dependents) {
+          view.findViewById(id).setEnabled(isChecked == enabledWhenChecked);
+        }
+      };
+      gate.onCheckedChanged(box, box.isChecked());
+      box.setOnCheckedChangeListener(gate);
     }
   }
 
@@ -195,6 +226,12 @@ public class OptionsActivity extends FragmentActivity implements
       R.id.checkHideQueryStrings, R.id.checkDoNotPurge, R.id.checkSingleFile,
       R.id.editSingleFileMaxSize, R.id.radioBuild, R.id.editCustomBuild })
   public static class BuildTab extends Tab {
+    @Override
+    public void onShow(final View view) {
+      super.onShow(view);
+      // Both boxes feed one -L token and -L0 wins, so ISO9660 cannot take effect here.
+      enableWhileClear(view, R.id.checkDosNames, R.id.checkIso9660);
+    }
   }
 
   @Title(R.string.browser_id)
@@ -214,6 +251,13 @@ public class OptionsActivity extends FragmentActivity implements
       R.id.checkUrlHacks, R.id.editHostAlias, R.id.checkTolerentRequests,
       R.id.checkForceHttp10 })
   public static class Spider extends Tab {
+    @Override
+    public void onShow(final View view) {
+      super.onShow(view);
+      // The engine reads the cookies file only when cookies are accepted.
+      enableWhileChecked(view, R.id.checkAcceptCookies, R.id.textCookiesFile,
+          R.id.editCookiesFile);
+    }
   }
 
   @Title(R.string.proxy)
