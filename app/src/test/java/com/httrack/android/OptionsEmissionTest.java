@@ -1,9 +1,11 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.httrack.android.OptionsMapper.ArgumentOption;
+import com.httrack.android.OptionsMapper.GatedFeatureHandler;
 import com.httrack.android.OptionsMapper.LogHandler;
 import com.httrack.android.OptionsMapper.MultipleChoicesOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
@@ -398,5 +400,64 @@ public class OptionsEmissionTest {
   @Test
   public void hostAliasIsWiredIntoTheProfile() throws IOException {
     assertTrue("HostAlias missing", serializerKeys().contains("HostAlias"));
+  }
+
+  private static List<String> emitGated(final String flag, final String option,
+      final String ticked, final String value) {
+    final GatedFeatureHandler handler = new GatedFeatureHandler(flag, option);
+    final List<String> cmd = new ArrayList<String>();
+    handler.getToggleMapper().emit(cmd, ticked);
+    handler.getValueMapper().emit(cmd, value);
+    return cmd;
+  }
+
+  /* The value switches the feature on by itself in the engine, so an unticked
+     box has to withhold it or nothing ever turns the feature off. */
+  @Test
+  public void aGatedValueNeedsItsBoxTicked() {
+    assertEquals(Arrays.asList("-%r", "--warc-file", "site.warc.gz"),
+        emitGated("%r", "--warc-file", "1", "site.warc.gz"));
+    assertTrue(emitGated("%r", "--warc-file", "0", "site.warc.gz").isEmpty());
+    assertEquals(Arrays.asList("-%Z"),
+        emitGated("%Z", "--single-file-max-size", "1", ""));
+    assertTrue(emitGated("%Z", "--single-file-max-size", "0", "5000000")
+        .isEmpty());
+  }
+
+  /* A second crawl must not inherit the first one's answer. */
+  @Test
+  public void aGatedValueRereadsItsBoxEachTime() {
+    final GatedFeatureHandler handler = new GatedFeatureHandler("%m",
+        "--sitemap-url");
+    final List<String> first = new ArrayList<String>();
+    handler.getToggleMapper().emit(first, "1");
+    handler.getValueMapper().emit(first, "http://example.com/sitemap.xml");
+    assertEquals(3, first.size());
+    final List<String> second = new ArrayList<String>();
+    handler.getToggleMapper().emit(second, "0");
+    handler.getValueMapper().emit(second, "http://example.com/sitemap.xml");
+    assertTrue(second.isEmpty());
+  }
+
+  /* Collapsing the blanks first turns every line into one, so "Other headers"
+     reached the engine as a single malformed header. */
+  @Test
+  public void aLineSeparatedFieldKeepsOneValuePerLine() {
+    assertEquals(Arrays.asList("X-One: 1", "X-Two: 2", "X-Three: 3"),
+        CommandlineTokens.lineTokens("X-One: 1\n  X-Two: 2  \n\nX-Three: 3"));
+    assertTrue(CommandlineTokens.lineTokens("  \n\n ").isEmpty());
+  }
+
+  /* -%M and single-file HTML are two ways to fold a page into one file, and
+     the engine refuses to start on both. */
+  @Test
+  public void bothWaysToOneSelfContainedPageAreRefused() {
+    assertTrue(CommandlineTokens.hasSelfContainedConflict(Arrays.asList("-%M",
+        "-%Z")));
+    assertTrue(CommandlineTokens.hasSelfContainedConflict(Arrays.asList("-%M",
+        "--single-file-max-size", "5000000")));
+    assertFalse(CommandlineTokens.hasSelfContainedConflict(Arrays.asList("-%M",
+        "-%I")));
+    assertFalse(CommandlineTokens.hasSelfContainedConflict(Arrays.asList("-%Z")));
   }
 }

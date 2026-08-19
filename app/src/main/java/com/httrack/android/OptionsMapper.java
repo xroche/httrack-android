@@ -257,6 +257,12 @@ public class OptionsMapper {
   protected final BuildHandler buildHandler = new BuildHandler();
   protected final ProxyHandler proxyHandler = new ProxyHandler();
   protected final LogHandler logHandler = new LogHandler();
+  protected final GatedFeatureHandler warcHandler = new GatedFeatureHandler(
+      "%r", "--warc-file");
+  protected final GatedFeatureHandler sitemapHandler = new GatedFeatureHandler(
+      "%m", "--sitemap-url");
+  protected final GatedFeatureHandler singleFileHandler =
+      new GatedFeatureHandler("%Z", "--single-file-max-size");
   protected final PrimaryScanHandler primaryScanHandler = new PrimaryScanHandler();
   protected final MimeTypesHandler[] mimeTypesHandlers = new MimeTypesHandler[] {
       new MimeTypesHandler(), new MimeTypesHandler(), new MimeTypesHandler(),
@@ -309,16 +315,16 @@ public class OptionsMapper {
           "%q0")),
       new Pair<String, OptionMapper>("NoPurgeOldFiles", new SimpleOptionFlag(
           "X0")),
-      new Pair<String, OptionMapper>("Warc", new SimpleOptionFlag("%r")),
-      /* each companion enables its own feature; the toggle is optional */
-      new Pair<String, OptionMapper>("WarcFile", new ArgumentOption(
-          "--warc-file")),
-      new Pair<String, OptionMapper>("Sitemap", new SimpleOptionFlag("%m")),
-      new Pair<String, OptionMapper>("SitemapUrl", new ArgumentOption(
-          "--sitemap-url")),
-      new Pair<String, OptionMapper>("SingleFile", new SimpleOptionFlag("%Z")),
-      new Pair<String, OptionMapper>("SingleFileMaxSize", new ArgumentOption(
-          "--single-file-max-size")),
+      new Pair<String, OptionMapper>("Warc", warcHandler.getToggleMapper()),
+      new Pair<String, OptionMapper>("WarcFile", warcHandler.getValueMapper()),
+      new Pair<String, OptionMapper>("Sitemap",
+          sitemapHandler.getToggleMapper()),
+      new Pair<String, OptionMapper>("SitemapUrl",
+          sitemapHandler.getValueMapper()),
+      new Pair<String, OptionMapper>("SingleFile",
+          singleFileHandler.getToggleMapper()),
+      new Pair<String, OptionMapper>("SingleFileMaxSize",
+          singleFileHandler.getValueMapper()),
       new Pair<String, OptionMapper>("Changes", new SimpleOptionFlag("%d")),
       new Pair<String, OptionMapper>("Build", buildHandler.getTypeMapper()),
       new Pair<String, OptionMapper>("BuildString",
@@ -327,8 +333,7 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("Footer", new ArgumentOption("-%F")),
       new Pair<String, OptionMapper>("AcceptLanguage",
           new ArgumentOption("-%l")),
-      new Pair<String, OptionMapper>("OtherHeaders", new StringSplit(
-          Pattern.quote("\n"), "-%X")),
+      new Pair<String, OptionMapper>("OtherHeaders", new LineListOption("-%X")),
       new Pair<String, OptionMapper>("DefaultReferer",
           new ArgumentOption("-%R")),
       new Pair<String, OptionMapper>("Cookies",
@@ -366,10 +371,10 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("Index", new SimpleOptionFlag("I0", true)),
       new Pair<String, OptionMapper>("WordIndex", new SimpleOptionFlag("%I")),
       new Pair<String, OptionMapper>("MailIndex", new SimpleOptionFlag("%M")),
-      /* Checked is -C2, revalidate before reuse, not the engine's bare default
-         of preferring whatever the cache holds. */
-      new Pair<String, OptionMapper>("Cache", new MultipleChoicesOption(
-          new String[] { "C0", "C2" })),
+      /* Ticked emits nothing: the action token carries the cache mode in its
+         own digit (-iC1), and a -C here would overwrite it. */
+      new Pair<String, OptionMapper>("Cache",
+          new SimpleOptionFlag("C0", true)),
       new Pair<String, OptionMapper>("PrimaryScan",
           primaryScanHandler.getTypeMapper()),
       new Pair<String, OptionMapper>("Travel", MultipleChoicesOption.TRAVEL),
@@ -647,6 +652,25 @@ public class OptionsMapper {
     @Override
     public void emit(final List<String> commandline, final String value) {
       commandline.addAll(CommandlineTokens.urlTokens(value));
+    }
+  }
+
+  /**
+   * Line-separated list: emit the option once per line. Collapsing the blanks
+   * first, as StringSplit does, would eat the newlines and merge every line
+   * into one option.
+   */
+  public static class LineListOption extends StringSplit {
+    public LineListOption(final String option) {
+      super(option);
+    }
+
+    @Override
+    public void emit(final List<String> commandline, final String value) {
+      for (final String line : CommandlineTokens.lineTokens(value)) {
+        commandline.add(option);
+        commandline.add(line);
+      }
     }
   }
 
@@ -1251,6 +1275,65 @@ public class OptionsMapper {
           break;
         }
       }
+    }
+  }
+
+  /**
+   * A feature checkbox and the value option that configures it. The engine
+   * switches the feature on for either one, so the value only reaches it while
+   * the box is ticked, as WinHTTrack does.
+   */
+  public static class GatedFeatureHandler {
+    protected final SimpleOptionFlag toggle;
+    protected final ArgumentOption value;
+    protected boolean enabled;
+
+    /**
+     * @param flag
+     *          The engine flag the checkbox emits
+     * @param option
+     *          The engine option the value follows
+     */
+    public GatedFeatureHandler(final String flag, final String option) {
+      this.toggle = new SimpleOptionFlag(flag);
+      this.value = new ArgumentOption(option);
+    }
+
+    /* fieldsSerializer emits the checkbox first, which is what lets the value
+       read its state. */
+    private class Toggle implements OptionMapper {
+      @Override
+      public void emit(final List<String> commandline, final String value) {
+        GatedFeatureHandler.this.enabled = "1".equals(value);
+        toggle.emit(commandline, value);
+      }
+    }
+
+    private class Value implements OptionMapper {
+      @Override
+      public void emit(final List<String> commandline, final String value) {
+        if (GatedFeatureHandler.this.enabled) {
+          GatedFeatureHandler.this.value.emit(commandline, value);
+        }
+      }
+    }
+
+    /**
+     * Get the checkbox mapper
+     *
+     * @return the checkbox mapper
+     */
+    public OptionMapper getToggleMapper() {
+      return new Toggle();
+    }
+
+    /**
+     * Get the value mapper
+     *
+     * @return the value mapper
+     */
+    public OptionMapper getValueMapper() {
+      return new Value();
     }
   }
 

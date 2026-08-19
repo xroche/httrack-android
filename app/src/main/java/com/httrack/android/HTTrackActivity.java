@@ -1263,6 +1263,7 @@ public class HTTrackActivity extends FragmentActivity {
     private String string_ready;
     private String string_creating_project;
     private String string_starting_mirror;
+    private String string_self_contained_conflict;
     private String string_mirror_finished;
 
     /**
@@ -1310,6 +1311,8 @@ public class HTTrackActivity extends FragmentActivity {
       string_ready = getParentString(R.string.ready);
       string_creating_project = getParentString(R.string.creating_project);
       string_starting_mirror = getParentString(R.string.starting_mirror);
+      string_self_contained_conflict = getParentString(
+          R.string.self_contained_conflict);
       string_mirror_finished = getParentString(R.string.mirror_finished);
 
       // Execute pending actions now we are attached
@@ -1403,9 +1406,11 @@ public class HTTrackActivity extends FragmentActivity {
         args.add(target.getAbsolutePath());
 
         // Get args from mapper
-        for (final String cmd : parent.buildCommandline()) {
-          args.add(cmd);
+        final List<String> options = parent.buildCommandline();
+        if (CommandlineTokens.hasSelfContainedConflict(options)) {
+          throw new IOException(string_self_contained_conflict);
         }
+        args.addAll(options);
 
         // Final args array
         final String[] cargs = args.toArray(new String[] {});
