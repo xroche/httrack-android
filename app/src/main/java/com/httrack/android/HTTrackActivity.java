@@ -30,7 +30,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Inet6Address;
 import java.net.InetAddress;
@@ -1923,7 +1922,7 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Serialize current profile to an existing OutputStream.
+   * Serialize current profile to an existing stream, left open.
    * 
    * @param profile
    *          The existing profile whose stated keys must be preserved; not
@@ -1931,10 +1930,9 @@ public class HTTrackActivity extends FragmentActivity {
    * @throws IOException
    *           Upon I/O error.
    */
-  protected synchronized void serialize(final OutputStream os,
+  protected synchronized void serialize(final FileOutputStream os,
       final File profile) throws IOException {
     mapper.serialize(os, profile);
-    os.flush();
   }
 
   /**
