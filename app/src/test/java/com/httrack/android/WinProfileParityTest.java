@@ -172,15 +172,6 @@ public class WinProfileParityTest {
     return TestSources.javaSource("OptionsMapper");
   }
 
-  private static int occurrences(final String source, final String text) {
-    int count = 0;
-    for (int at = source.indexOf(text); at != -1; at = source.indexOf(text,
-        at + 1)) {
-      count++;
-    }
-    return count;
-  }
-
   /* Counting the declarations separately keeps a regex that quietly stops
      matching from passing every key test on a short list. */
   private static List<String> keysOf(final String declaration,
@@ -192,13 +183,12 @@ public class WinProfileParityTest {
       keys.add(m.group(1));
     }
     assertEquals(declaration + " entries parsed",
-        occurrences(source, declaration), keys.size());
+        TestSources.occurrences(source, declaration), keys.size());
     return keys;
   }
 
   private static List<String> serializerKeys() throws IOException {
-    return keysOf("new Pair<Integer, String>(R.id.",
-        "new Pair<Integer, String>\\(R\\.id\\.\\w+,\\s*\"([^\"]+)\"\\)");
+    return TestSources.serializerKeys();
   }
 
   private static List<String> mapperKeys() throws IOException {
@@ -308,6 +298,6 @@ public class WinProfileParityTest {
           keys.indexOf(pair[0]) < keys.indexOf(pair[1]));
     }
     assertEquals("gated pairs wired", pairs.length,
-        occurrences(mapperTable(), "Handler.getValueMapper()"));
+        TestSources.occurrences(mapperTable(), "Handler.getValueMapper()"));
   }
 }

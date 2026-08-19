@@ -1418,7 +1418,7 @@ public class HTTrackActivity extends FragmentActivity {
             "starting engine: " + HTTrackActivity.printArray(cargs));
 
         // Serialize settings
-        parent.serialize(outLock);
+        parent.serialize(outLock, profile);
 
         // Progress info for slow phones
         setProgressLines(new String[] { string_starting_mirror });
@@ -1925,12 +1925,14 @@ public class HTTrackActivity extends FragmentActivity {
   /**
    * Serialize current profile to an existing OutputStream.
    * 
+   * @param profile
+   *          The profile file the stream writes for.
    * @throws IOException
    *           Upon I/O error.
    */
-  protected synchronized void serialize(final OutputStream os)
-      throws IOException {
-    mapper.serialize(os);
+  protected synchronized void serialize(final OutputStream os,
+      final File profile) throws IOException {
+    mapper.serialize(os, profile);
     os.flush();
   }
 

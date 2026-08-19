@@ -32,10 +32,12 @@ import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import android.content.Context;
@@ -246,7 +248,7 @@ public class OptionsMapper {
       new Pair<String, String>("MaxRate", "25000"),
       new Pair<String, String>(
           "WildCardFilters",
-          "+*.png +*.gif +*.jpg +*.css +*.js -ad.doubleclick.net/* -mime:application/foobar"),
+          "+*.png +*.gif +*.jpg +*.jpeg +*.css +*.js -ad.doubleclick.net/* -mime:application/foobar"),
   // new Pair<String, String>("CurrentAction", "0")
   };
 
@@ -515,6 +517,134 @@ public class OptionsMapper {
       file.put(DOS_KEY, pack(values.get(DOS_KEY), values.get(ISO9660_KEY)));
       file.remove(ISO9660_KEY);
       return file;
+    }
+
+    /* The four tables below are winprofile-keys.tsv columns for the keys we
+       write; WinProfileOmissionTest holds them against that table. */
+
+    // default_state=derived: every front end computes its own value.
+    private static final String DERIVED[] = { "AcceptLanguage", "UserID" };
+
+    // default_state=none: no reader substitutes anything for an absent key.
+    private static final String NO_DEFAULT[] = { "Debugging", "Iso9660",
+        "MaxRate", "ProjectName", "Sockets", "WarcFile" };
+
+    // empty_means=literal: a reader takes an empty value at face value instead
+    // of falling back, so a cleared field still has to be stated.
+    private static final String EMPTY_IS_LITERAL[] = { "AcceptLanguage",
+        "BuildString", "Footer", "UserID", "WildCardFilters" };
+
+    // Shared defaults that are not ours: our action radio seeds no value.
+    private static final String SHARED_DEFAULTS[][] = { { "CurrentAction", "0" } };
+
+    private static boolean holds(final String set[], final String key) {
+      for (final String entry : set) {
+        if (entry.equals(key)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private static String text(final String value) {
+      return value != null ? value : "";
+    }
+
+    /**
+     * Whether leaving KEY out says the same thing as writing BASELINE for it.
+     *
+     * @param baseline
+     *          the value a freshly reset profile holds
+     * @param ourDefault
+     *          the value we substitute for an absent key
+     * @return true when every reader rebuilds BASELINE from nothing
+     */
+    static boolean absentMeansSame(final String key, final String baseline,
+        final String ourDefault) {
+      final String value = text(baseline);
+      if (value.length() == 0 && holds(EMPTY_IS_LITERAL, key)) {
+        return false;
+      }
+      if (holds(DERIVED, key)) {
+        return true;
+      }
+      if (holds(NO_DEFAULT, key)) {
+        return value.length() == 0;
+      }
+      for (final String[] shared : SHARED_DEFAULTS) {
+        if (shared[0].equals(key)) {
+          return shared[1].equals(value);
+        }
+      }
+      return text(ourDefault).equals(value);
+    }
+
+    /**
+     * The subset of {@link #toFile(Map)} a save has to state: what the file
+     * already carries, what differs from a freshly reset profile, and what
+     * another front end would not put back on its own.
+     *
+     * @param values
+     *          the settings to save
+     * @param baseline
+     *          the settings a freshly reset profile holds
+     * @param defaults
+     *          what we substitute for an absent key, by key
+     * @param present
+     *          the keys the file already states
+     * @return the pairs to write
+     */
+    static Map<String, String> toFile(final Map<String, String> values,
+        final Map<String, String> baseline, final Map<String, String> defaults,
+        final Set<String> present) {
+      final Map<String, String> file = toFile(values);
+      final Map<String, String> was = toFile(baseline);
+      final Map<String, String> stated = new LinkedHashMap<String, String>();
+      for (final Map.Entry<String, String> entry : file.entrySet()) {
+        final String key = entry.getKey();
+        final String seeded = was.get(key);
+        if (present.contains(key)
+            || !text(entry.getValue()).equals(text(seeded))
+            || !absentMeansSame(key, seeded, defaults.get(key))) {
+          stated.put(key, entry.getValue());
+        }
+      }
+      return stated;
+    }
+
+    /**
+     * The keys a profile file already states, under their current spelling.
+     *
+     * @param profile
+     *          The profile file (winprofile.ini)
+     * @return the keys, empty when there is no such file
+     * @throws IOException
+     *           Upon I/O error.
+     */
+    static Set<String> statedKeys(final File profile) throws IOException {
+      final Set<String> keys = new HashSet<String>();
+      if (!profile.exists()) {
+        return keys;
+      }
+      final BufferedReader reader = new BufferedReader(new FileReader(profile));
+      try {
+        String rawline;
+        while ((rawline = reader.readLine()) != null) {
+          final String line = rawline.trim();
+          final int sep = line.indexOf('=');
+          if (line.length() == 0 || line.charAt(0) == ';' || sep == -1) {
+            continue;
+          }
+          keys.add(canonicalName(line.substring(0, sep)));
+        }
+      } finally {
+        reader.close();
+      }
+      // Both name-mangling boxes live on the Dos line, so either states it.
+      if (keys.contains(ISO9660_KEY)) {
+        keys.add(DOS_KEY);
+      }
+      return keys;
     }
   }
 
@@ -1891,26 +2021,60 @@ public class OptionsMapper {
     return dirty;
   }
 
+  /* The settings, by winprofile.ini key name. */
+  private static Map<String, String> valuesOf(final SparseArray<String> map) {
+    final Map<String, String> values = new LinkedHashMap<String, String>();
+    for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+      values.put(field.second, map.get(field.first));
+    }
+    return values;
+  }
+
+  /* What a freshly reset profile holds, on a throwaway mapper: the saved
+     defaults resetMap() layers on top are part of the baseline. */
+  private Map<String, String> seededValues() {
+    final OptionsMapper seed = new OptionsMapper(context);
+    seed.resetMap();
+    return valuesOf(seed.map);
+  }
+
+  /* What we substitute for an absent key, by key. */
+  private static Map<String, String> ourDefaults() {
+    final Map<String, String> defaults = new LinkedHashMap<String, String>();
+    for (final Pair<String, String> field : OptionsMapper.fieldsDefaults) {
+      defaults.put(field.first, field.second);
+    }
+    return defaults;
+  }
+
   /**
    * Serialize settings on disk.
    * 
    * @param fos
    *          The Output Stream.
+   * @param profile
+   *          The profile file the stream writes for, read back to tell which
+   *          keys it already states.
    * @throws UnsupportedEncodingException
    *           Upon encoding error
    * @throws IOException
    *           Upon I/O error.
    */
-  public void serialize(final OutputStream fos)
+  public void serialize(final OutputStream fos, final File profile)
       throws UnsupportedEncodingException, IOException {
     final OutputStreamWriter writer = new OutputStreamWriter(fos);
     final BufferedWriter lwriter = new BufferedWriter(writer);
     try {
-      final Map<String, String> values = new LinkedHashMap<String, String>();
-      for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
-        values.put(field.second, getMap(field.first));
+      final Map<String, String> values = valuesOf(map);
+      Set<String> present;
+      try {
+        present = ProfileFormat.statedKeys(profile);
+      } catch (final IOException e) {
+        // Nothing may be dropped from a profile we could not read back.
+        present = values.keySet();
       }
-      final Map<String, String> file = ProfileFormat.toFile(values);
+      final Map<String, String> file = ProfileFormat.toFile(values,
+          seededValues(), ourDefaults(), present);
       for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
         final String key = field.second;
         if (!file.containsKey(key)) {
@@ -1947,11 +2111,22 @@ public class OptionsMapper {
    */
   public void serialize(final File profile)
       throws UnsupportedEncodingException, IOException {
-    final FileOutputStream fos = new FileOutputStream(profile);
+    // Through a sibling: a write that dies half way must not leave a truncated
+    // profile behind.
+    final File pending = new File(profile.getPath() + ".tmp");
     try {
-      serialize(fos);
+      final FileOutputStream fos = new FileOutputStream(pending);
+      try {
+        serialize(fos, profile);
+      } finally {
+        fos.close();
+      }
+      if (!pending.renameTo(profile)) {
+        throw new IOException("could not rename " + pending + " over "
+            + profile);
+      }
     } finally {
-      fos.close();
+      pending.delete();
     }
   }
 
