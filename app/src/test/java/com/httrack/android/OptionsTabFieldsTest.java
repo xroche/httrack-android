@@ -26,12 +26,12 @@ public class OptionsTabFieldsTest {
       "@ActivityId\\(R\\.layout\\.(\\w+)\\)(.*?)public static class",
       Pattern.DOTALL);
 
-  private static final Pattern FIELD_ID = Pattern.compile("R\\.id\\.(\\w+)");
+  static final Pattern FIELD_ID = Pattern.compile("R\\.id\\.(\\w+)");
 
-  private static final Pattern LAYOUT_ID = Pattern
+  static final Pattern LAYOUT_ID = Pattern
       .compile("android:id=\"@\\+?id/(\\w+)\"");
 
-  private static List<String> ids(final Pattern pattern, final String text) {
+  static List<String> ids(final Pattern pattern, final String text) {
     final List<String> ids = new ArrayList<String>();
     final Matcher m = pattern.matcher(text);
     while (m.find()) {
@@ -41,7 +41,7 @@ public class OptionsTabFieldsTest {
   }
 
   /** Layout of each option tab, with the field ids that tab declares. */
-  private static Map<String, List<String>> tabs() throws IOException {
+  static Map<String, List<String>> tabs() throws IOException {
     final Map<String, List<String>> tabs = new LinkedHashMap<String, List<String>>();
     final Matcher tab = TAB.matcher(TestSources.javaSource("OptionsActivity"));
     while (tab.find()) {
