@@ -1,8 +1,8 @@
 HTTrack 3.50 Beta 5.
 
-• Änderungen an den Optionen gehen nicht mehr verloren, wenn der Optionsbildschirm neu geöffnet wird
-• Die Freigabe für alle Dateien verschiebt den Kopierordner jetzt sofort
-• Beim Ansehen einer fertigen Kopie erscheint keine leere Seite mehr
+• Änderungen an den Optionen gehen beim Drehen des Bildschirms nicht mehr verloren
+• Die Freigabe für alle Dateien verschiebt den Ordner der Kopie jetzt sofort
+• Beim Neuaufbau des Index der Kopie wird keine unvollständige Seite mehr ausgeliefert
 • Neue Projekte ersetzen externe Links nicht mehr durch Fehlerseiten
 • Die Cache-Option prüft jetzt auf Aktualisierungen, bevor eine Datei wiederverwendet wird
 

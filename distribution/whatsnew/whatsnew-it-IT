@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Le modifiche alle opzioni non vanno più perse alla riapertura della schermata delle opzioni
-• Consentire l'accesso a tutti i file ora sposta subito la cartella della copia
-• La consultazione di una copia completata non mostra più una pagina vuota
+• Le modifiche alle opzioni non vanno più perse quando si ruota lo schermo
+• Se si consente l'accesso a tutti i file, la cartella della copia viene spostata subito
+• La ricostruzione dell'indice della copia non restituisce più una pagina incompleta
 • I nuovi progetti non sostituiscono più i collegamenti esterni con pagine di errore
 • L'opzione cache ora verifica la presenza di aggiornamenti prima di riutilizzare un file
 

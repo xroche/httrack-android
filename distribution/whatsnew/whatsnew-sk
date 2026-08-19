@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Zmeny volieb sa už nestrácajú pri opätovnom otvorení obrazovky volieb
-• Povolenie prístupu ku všetkým súborom teraz presunie priečinok kópie ihneď
-• Prehliadanie dokončenej kópie už nezobrazuje prázdnu stránku
+• Zmeny volieb sa už nestrácajú pri otočení obrazovky
+• Povolenie prístupu ku všetkým súborom teraz ihneď presunie priečinok kópie
+• Prestavba indexu kópie už nevracia neúplnú stránku
 • Nové projekty už nenahrádzajú externé odkazy chybovými stránkami
 • Voľba vyrovnávacej pamäte teraz pred opätovným použitím súboru overí, či nevyšla novšia verzia
 

@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Modificările opțiunilor nu se mai pierd la redeschiderea ecranului de opțiuni
+• Modificările opțiunilor nu se mai pierd la rotirea ecranului
 • Permiterea accesului la toate fișierele mută acum imediat dosarul copiei
-• Vizualizarea unei copii terminate nu mai afișează o pagină goală
+• Reconstruirea indexului copiei nu mai afișează o pagină incompletă
 • Proiectele noi nu mai înlocuiesc legăturile externe cu pagini de eroare
 • Opțiunea de cache verifică acum dacă există actualizări înainte de a refolosi un fișier
 

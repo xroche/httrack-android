@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Spremembe možnosti se ne izgubijo več ob ponovnem odprtju zaslona z možnostmi
+• Spremembe možnosti se ne izgubijo več ob zasuku zaslona
 • Dovoljenje za dostop do vseh datotek zdaj takoj premakne mapo kopije
-• Ogled dokončane kopije ne pokaže več prazne strani
+• Ponovna izgradnja kazala kopije ne vrne več nepopolne strani
 • Novi projekti zunanjih povezav ne nadomeščajo več s stranmi z napako
 • Možnost predpomnilnika zdaj pred ponovno uporabo datoteke preveri, ali je na voljo posodobitev
 

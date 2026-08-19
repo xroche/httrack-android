@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Zmiany opcji nie są już tracone po ponownym otwarciu ekranu opcji
-• Zezwolenie na dostęp do wszystkich plików od razu przenosi folder kopii
-• Przeglądanie ukończonej kopii nie pokazuje już pustej strony
+• Zmiany opcji nie są już tracone przy obracaniu ekranu
+• Zezwolenie na dostęp do wszystkich plików przenosi teraz folder kopii od razu
+• Przebudowa indeksu kopii nie zwraca już niepełnej strony
 • Nowe projekty nie zastępują już odnośników zewnętrznych stronami błędu
 • Opcja pamięci podręcznej sprawdza teraz aktualizacje przed ponownym użyciem pliku
 

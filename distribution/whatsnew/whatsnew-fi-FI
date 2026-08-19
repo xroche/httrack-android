@@ -1,8 +1,8 @@
 HTTrack 3.50 beeta 5.
 
-• Asetusmuutokset eivät enää katoa, kun asetusnäkymä avataan uudelleen
-• Kaikkien tiedostojen käyttöoikeus siirtää kopiokansion nyt heti
-• Valmiin kopion selaaminen ei enää näytä tyhjää sivua
+• Asetusmuutokset eivät enää katoa näyttöä käännettäessä
+• Kaikkien tiedostojen käyttöoikeuden myöntäminen siirtää kopiokansion nyt heti
+• Kopion hakemiston uudelleenluonti ei enää näytä keskeneräistä sivua
 • Uudet projektit eivät enää korvaa ulkoisia linkkejä virhesivuilla
 • Välimuistiasetus tarkistaa nyt päivitykset ennen tiedoston uudelleenkäyttöä
 

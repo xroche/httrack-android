@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• As alterações às opções deixam de se perder ao reabrir o ecrã de opções
-• Permitir o acesso a todos os ficheiros move agora a pasta da cópia de imediato
-• A consulta de uma cópia concluída deixa de mostrar uma página em branco
+• As alterações às opções deixam de se perder ao rodar o ecrã
+• Ao permitir o acesso a todos os ficheiros, a pasta da cópia é movida de imediato
+• Ao reconstruir o índice da cópia, deixa de ser apresentada uma página incompleta
 • Os projetos novos deixam de substituir as ligações externas por páginas de erro
 • A opção de cache verifica agora se há atualizações antes de reutilizar um ficheiro
 

@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Option changes are no longer lost when the options screen reopens
+• Option changes are no longer lost when the screen rotates
 • Allowing access to all files now moves the mirror folder at once
-• Browsing a finished mirror no longer shows a blank page
+• Rebuilding the mirror index no longer serves a partial page
 • New projects no longer replace external links with error pages
 • The cache option now checks for updates before reusing a file
 

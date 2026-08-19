@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Ändringar av alternativen går inte längre förlorade när alternativskärmen öppnas igen
-• Åtkomst till alla filer flyttar nu kopieringsmappen direkt
-• Att visa en färdig kopia ger inte längre en tom sida
+• Ändringar av alternativen går inte längre förlorade när skärmen roteras
+• Att ge åtkomst till alla filer flyttar nu kopians mapp direkt
+• Ombyggnad av kopians index ger inte längre en ofullständig sida
 • Nya projekt ersätter inte längre externa länkar med felsidor
 • Cachealternativet söker nu efter uppdateringar innan en fil återanvänds
 

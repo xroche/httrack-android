@@ -1,8 +1,8 @@
 HTTrack 3.50 béta 5.
 
-• A beállítások módosításai már nem vesznek el a beállítási képernyő újranyitásakor
-• Az összes fájlhoz való hozzáférés engedélyezése most azonnal áthelyezi a másolat mappáját
-• Egy kész másolat megtekintése már nem mutat üres oldalt
+• A beállítások módosításai a képernyő elforgatásakor már nem vesznek el
+• Az összes fájlhoz való hozzáférés engedélyezése mostantól azonnal áthelyezi a másolat mappáját
+• A másolat indexének újraépítésekor már nem jelenik meg hiányos oldal
 • Az új projektek már nem cserélik hibaoldalra a külső hivatkozásokat
 • A gyorsítótár beállítás mostantól frissítést keres, mielőtt újra felhasználna egy fájlt
 

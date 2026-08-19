@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Ændringer af indstillinger går ikke længere tabt, når indstillingsskærmen åbnes igen
-• Adgang til alle filer flytter nu kopimappen med det samme
-• Visning af en færdig kopi viser ikke længere en tom side
+• Ændringer af indstillinger går ikke længere tabt, når skærmen roteres
+• At give adgang til alle filer flytter nu kopimappen med det samme
+• Genopbygning af kopiens indeks viser ikke længere en ufuldstændig side
 • Nye projekter erstatter ikke længere eksterne links med fejlsider
 • Cache-indstillingen kontrollerer nu for opdateringer, før en fil genbruges
 

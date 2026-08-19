@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Endringer i valgene går ikke lenger tapt når valgskjermen åpnes på nytt
-• Tilgang til alle filer flytter nå kopimappen med en gang
-• Visning av en ferdig kopi viser ikke lenger en tom side
+• Endringer i valgene går ikke lenger tapt når skjermen roteres
+• Å gi tilgang til alle filer flytter nå kopimappen med en gang
+• Gjenoppbygging av kopiens indeks gir ikke lenger en ufullstendig side
 • Nye prosjekter erstatter ikke lenger eksterne lenker med feilsider
 • Mellomlagringsvalget ser nå etter oppdateringer før en fil brukes på nytt
 

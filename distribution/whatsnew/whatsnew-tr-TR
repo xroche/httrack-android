@@ -1,8 +1,8 @@
 HTTrack 3.50 beta 5.
 
-• Seçenek değişiklikleri, seçenekler ekranı yeniden açıldığında artık kaybolmuyor
-• Tüm dosyalara erişim izni artık kopya klasörünü hemen taşıyor
-• Tamamlanmış bir kopyayı görüntülemek artık boş sayfa göstermiyor
+• Seçenek değişiklikleri ekran döndürüldüğünde artık kaybolmuyor
+• Tüm dosyalara erişime izin vermek, kopya klasörünü artık hemen taşıyor
+• Kopyanın dizini yeniden oluşturulurken artık eksik sayfa dönmüyor
 • Yeni projeler artık dış bağlantıları hata sayfalarıyla değiştirmiyor
 • Önbellek seçeneği artık bir dosyayı yeniden kullanmadan önce güncelleme denetliyor
 
