@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Promjene mogućnosti više se ne gube pri zakretanju zaslona
-• Dopuštanje pristupa svim datotekama sada odmah premješta mapu kopije
-• Ponovna izgradnja indeksa kopije više ne prikazuje nepotpunu stranicu
-• Novi projekti više ne zamjenjuju vanjske poveznice stranicama pogreške
-• Nastavak prekinutog preuzimanja više se ne izvodi kao ažuriranje
+• Dodirnite prikazanu putanju nakon završetka kopije da otvorite njezinu mapu
+• Mogućnosti koje program zanemaruje sada su zasivljene
+• Spremanje projekta više ne uključuje mogućnosti koje nikada niste postavili
 
 Beta: probleme prijavite na GitHubu.

@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• As alterações às opções deixam de se perder ao rodar o ecrã
-• Ao permitir o acesso a todos os ficheiros, a pasta da cópia é movida de imediato
-• Ao reconstruir o índice da cópia, deixa de ser apresentada uma página incompleta
-• Os projetos novos deixam de substituir as ligações externas por páginas de erro
-• Continuar uma transferência interrompida deixa de ser executado como atualização
+• Toque no caminho apresentado ao terminar uma cópia para abrir a sua pasta
+• As opções que o programa ignora aparecem agora esbatidas
+• Guardar um projeto já não ativa opções que nunca definiu
 
 Beta: comunique os problemas no GitHub.

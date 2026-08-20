@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Změny voleb se už neztrácejí při otočení obrazovky
-• Povolení přístupu ke všem souborům nyní ihned přesune složku kopie
-• Obnova indexu kopie už nevrací neúplnou stránku
-• Nové projekty už nenahrazují externí odkazy chybovými stránkami
-• Pokračování v přerušeném stahování už neprobíhá jako aktualizace
+• Klepnutím na zobrazenou cestu po dokončení kopie otevřete její složku
+• Volby, které program ignoruje, jsou nyní neaktivní
+• Uložení projektu už nezapíná volby, které jste nikdy nenastavili
 
 Beta: problémy hlaste na GitHubu.

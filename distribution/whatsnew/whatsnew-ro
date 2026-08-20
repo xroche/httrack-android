@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Modificările opțiunilor nu se mai pierd la rotirea ecranului
-• Permiterea accesului la toate fișierele mută acum imediat dosarul copiei
-• Reconstruirea indexului copiei nu mai afișează o pagină incompletă
-• Proiectele noi nu mai înlocuiesc legăturile externe cu pagini de eroare
-• Continuarea unei descărcări întrerupte nu mai rulează ca o actualizare
+• Atingeți calea afișată la terminarea unei copii pentru a deschide dosarul
+• Opțiunile ignorate de program sunt acum estompate
+• Salvarea unui proiect nu mai activează opțiuni pe care nu le-ați setat
 
 Beta: raportați problemele pe GitHub.
