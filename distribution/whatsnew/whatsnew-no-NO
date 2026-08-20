@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Endringer i valgene går ikke lenger tapt når skjermen roteres
-• Å gi tilgang til alle filer flytter nå kopimappen med en gang
-• Gjenoppbygging av kopiens indeks gir ikke lenger en ufullstendig side
-• Nye prosjekter erstatter ikke lenger eksterne lenker med feilsider
-• Å fortsette en avbrutt nedlasting kjøres ikke lenger som en oppdatering
+• Trykk på den viste stien når en kopi er ferdig for å åpne mappen
+• Valg som programmet ignorerer er nå nedtonet
+• Å lagre et prosjekt slår ikke lenger på valg du aldri har satt
 
 Beta: meld fra om problemer på GitHub.

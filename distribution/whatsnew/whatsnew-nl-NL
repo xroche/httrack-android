@@ -1,9 +1,7 @@
-HTTrack 3.50 bèta 5.
+HTTrack 3.50 bèta 6.
 
-• Wijzigingen in de opties gaan niet meer verloren bij het draaien van het scherm
-• Toegang tot alle bestanden toestaan verplaatst de kopiemap nu meteen
-• Bij het opnieuw opbouwen van de index van de kopie verschijnt geen onvolledige pagina meer
-• Nieuwe projecten vervangen externe koppelingen niet meer door foutpagina's
-• Het hervatten van een onderbroken download verloopt niet meer als een update
+• Tik na het voltooien van een kopie op het getoonde pad om de map te openen
+• Opties die het programma negeert zijn nu grijs
+• Een project opslaan schakelt geen opties meer in die u nooit hebt ingesteld
 
 Bèta: meld problemen op GitHub.

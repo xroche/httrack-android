@@ -1,9 +1,7 @@
-HTTrack 3.50 béta 5.
+HTTrack 3.50 béta 6.
 
-• A beállítások módosításai a képernyő elforgatásakor már nem vesznek el
-• Az összes fájlhoz való hozzáférés engedélyezése mostantól azonnal áthelyezi a másolat mappáját
-• A másolat indexének újraépítésekor már nem jelenik meg hiányos oldal
-• Az új projektek már nem cserélik hibaoldalra a külső hivatkozásokat
-• A megszakadt letöltés folytatása már nem frissítésként fut
+• A másolás végén koppintson a megjelenített útvonalra a mappa megnyitásához
+• A program által figyelmen kívül hagyott beállítások mostantól szürkék
+• A projekt mentése többé nem kapcsol be soha be nem állított beállításokat
 
 Béta: a hibákat a GitHubon jelezze.

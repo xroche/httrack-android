@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Los cambios en las opciones ya no se pierden al girar la pantalla
-• Al permitir el acceso a todos los archivos, la carpeta de la copia se mueve ahora de inmediato
-• Al reconstruir el índice de la copia ya no se sirve una página incompleta
-• Los proyectos nuevos ya no sustituyen los enlaces externos por páginas de error
-• Continuar una descarga interrumpida ya no se ejecuta como una actualización
+• Toque la ruta mostrada al terminar una copia para abrir su carpeta
+• Las opciones que el programa ignora ahora aparecen atenuadas
+• Guardar un proyecto ya no activa opciones que nunca definió
 
 Beta: informe de los problemas en GitHub.

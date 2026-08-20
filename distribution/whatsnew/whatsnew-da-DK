@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Ændringer af indstillinger går ikke længere tabt, når skærmen roteres
-• At give adgang til alle filer flytter nu kopimappen med det samme
-• Genopbygning af kopiens indeks viser ikke længere en ufuldstændig side
-• Nye projekter erstatter ikke længere eksterne links med fejlsider
-• Fortsættelse af en afbrudt overførsel køres ikke længere som en opdatering
+• Tryk på den viste sti, når en kopi er færdig, for at åbne dens mappe
+• Indstillinger, som programmet ignorerer, er nu deaktiveret
+• At gemme et projekt slår ikke længere indstillinger til, du aldrig har valgt
 
 Beta: rapportér problemer på GitHub.

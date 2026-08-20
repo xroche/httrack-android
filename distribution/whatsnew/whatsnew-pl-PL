@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Zmiany opcji nie są już tracone przy obracaniu ekranu
-• Zezwolenie na dostęp do wszystkich plików przenosi teraz folder kopii od razu
-• Przebudowa indeksu kopii nie zwraca już niepełnej strony
-• Nowe projekty nie zastępują już odnośników zewnętrznych stronami błędu
-• Wznowienie przerwanego pobierania nie działa już jak aktualizacja
+• Po zakończeniu kopii dotknij wyświetlonej ścieżki, aby otworzyć jej folder
+• Opcje ignorowane przez program są teraz wyszarzone
+• Zapisanie projektu nie włącza już opcji, których nigdy nie ustawiono
 
 Beta: zgłaszaj problemy na GitHubie.

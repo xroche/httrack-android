@@ -1,9 +1,7 @@
-HTTrack 3.50 beeta 5.
+HTTrack 3.50 beeta 6.
 
-• Asetusmuutokset eivät enää katoa näyttöä käännettäessä
-• Kaikkien tiedostojen käyttöoikeuden myöntäminen siirtää kopiokansion nyt heti
-• Kopion hakemiston uudelleenluonti ei enää näytä keskeneräistä sivua
-• Uudet projektit eivät enää korvaa ulkoisia linkkejä virhesivuilla
-• Keskeytyneen latauksen jatkaminen ei enää suoritu päivityksenä
+• Napauta kopioinnin päätyttyä näkyvää polkua avataksesi sen kansion
+• Ohjelman sivuuttamat asetukset näkyvät nyt harmaina
+• Projektin tallennus ei enää kytke päälle asetuksia, joita et ole valinnut
 
 Beeta: ilmoita ongelmista GitHubissa.

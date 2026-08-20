@@ -1,9 +1,7 @@
-HTTrack 3.50 beta 5.
+HTTrack 3.50 beta 6.
 
-• Option changes are no longer lost when the screen rotates
-• Allowing access to all files now moves the mirror folder at once
-• Rebuilding the mirror index no longer serves a partial page
-• New projects no longer replace external links with error pages
-• Continuing an interrupted download no longer runs as an update
+• Tap the path shown when a copy finishes to open its folder
+• Options the engine ignores are now greyed out
+• Saving a project no longer turns on options you never set
 
 Beta: report problems on GitHub.

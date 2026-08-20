@@ -1,9 +1,7 @@
-HTTrack 3.50 bêta 5.
+HTTrack 3.50 bêta 6.
 
-• Les modifications des options ne sont plus perdues lors d'une rotation de l'écran
-• Autoriser l'accès à tous les fichiers déplace aussitôt le dossier de la copie
-• La reconstruction de l'index de la copie ne renvoie plus de page incomplète
-• Les nouveaux projets ne remplacent plus les liens externes par des pages d'erreur
-• La reprise d'un téléchargement interrompu ne s'exécute plus comme une mise à jour
+• Touchez le chemin affiché à la fin d'une copie pour ouvrir son dossier
+• Les options que le programme ignore sont désormais grisées
+• L'enregistrement d'un projet n'active plus des options jamais définies
 
 Bêta : signalez les problèmes sur GitHub.
