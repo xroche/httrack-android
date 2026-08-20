@@ -114,6 +114,15 @@ public class StoragePathsTest {
         StoragePaths.externalStorageDocId(mirror, shared));
   }
 
+  /** The finish panel opens the project folder, one level below the mirror root. */
+  @Test
+  public void mapsAProjectFolderBelowTheMirrorRoot() throws Exception {
+    final File shared = tmp.newFolder("shared4");
+    final File root = new File(new File(shared, "HTTrack"), "Websites");
+    assertEquals("primary:HTTrack" + File.separator + "Websites" + File.separator + "my site",
+        StoragePaths.externalStorageDocId(new File(root, "my site"), shared));
+  }
+
   /** The Android/ subtree is hidden from file managers, so it must not map. */
   @Test
   public void refusesThePrivateAndroidSubtree() throws Exception {
