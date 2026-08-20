@@ -76,8 +76,13 @@ import android.provider.DocumentsContract;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.Html;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.text.style.URLSpan;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.Menu;
@@ -147,6 +152,10 @@ public class HTTrackActivity extends FragmentActivity {
   
   // ".nomedia" ; prevents media scanner from reading media files
   public static final String NOMEDIA_FILE = ".nomedia";
+
+  // Marks the mirror path in the finish message; the panel swaps it for a span, so it never
+  // resolves as a URL.
+  private static final String MIRROR_FOLDER_HREF = "httrack:mirror-folder";
 
   // Channel carrying every notification we post. Never rename: the user's sound/importance
   // choices are keyed on it, and a new id silently resets them.
@@ -509,19 +518,24 @@ public class HTTrackActivity extends FragmentActivity {
     requestAllFilesAccess();
   }
 
-  // Base-path panel button. Tries a viewer then the SAF picker; if neither resolves (e.g. private
-  // storage), copies the path to the clipboard so the user can paste it into a file manager.
+  // Base-path panel button.
   public void onClickBrowseFolder(final View view) {
-    final File dir = getProjectRootFile();
-    if (!openFolderInFilesApp(dir)) {
-      final String path = dir.getAbsolutePath();
-      final ClipboardManager clipboard =
-          ClipboardManager.class.cast(getSystemService(CLIPBOARD_SERVICE));
-      if (clipboard != null) {
-        clipboard.setPrimaryClip(ClipData.newPlainText("path", path));
-      }
-      Toast.makeText(this, getString(R.string.base_path_toast, path), Toast.LENGTH_LONG).show();
+    openFolderOrCopyPath(getProjectRootFile());
+  }
+
+  /* Show dir in a file manager, or copy its path when none can reach it, so the user can paste
+   * it into one. */
+  private void openFolderOrCopyPath(final File dir) {
+    if (openFolderInFilesApp(dir)) {
+      return;
     }
+    final String path = dir.getAbsolutePath();
+    final ClipboardManager clipboard =
+        ClipboardManager.class.cast(getSystemService(CLIPBOARD_SERVICE));
+    if (clipboard != null) {
+      clipboard.setPrimaryClip(ClipData.newPlainText("path", path));
+    }
+    Toast.makeText(this, getString(R.string.base_path_toast, path), Toast.LENGTH_LONG).show();
   }
 
   /* Open dir in a file viewer, else the SAF picker pre-navigated to it. False if neither resolves
@@ -1357,6 +1371,8 @@ public class HTTrackActivity extends FragmentActivity {
     protected void runInternal() {
       // Rock'in!
       String message = null;
+      // Null unless the mirror completed, leaving the finish message unlinked.
+      File mirrorFolder = null;
       RandomAccessFile outLock = null;
       FileLock lock = null;
       File profile = null;
@@ -1440,8 +1456,10 @@ public class HTTrackActivity extends FragmentActivity {
             message = "<b>Failed</b>! (" + lastStats.errorsCount
                 + " errors, no files written)";
           }
-          message += "<br /><br />Mirror copied in <i>"
-              + target.getAbsolutePath() + "</i>";
+          mirrorFolder = target;
+          message += "<br /><br />Mirror copied in <i><a href=\""
+              + MIRROR_FOLDER_HREF + "\">"
+              + TextUtils.htmlEncode(target.getAbsolutePath()) + "</a></i>";
         } else {
           message = "<b>Error</b> (<i>code " + code + "</i>)";
         }
@@ -1477,7 +1495,7 @@ public class HTTrackActivity extends FragmentActivity {
       // Ensure we switch to the final pane
       final String displayMessage = string_mirror_finished + ": " + message;
       final long errorsCount = lastStats != null ? lastStats.errorsCount : 0;
-      displayFinishedPanel(displayMessage, errorsCount);
+      displayFinishedPanel(displayMessage, errorsCount, mirrorFolder);
     }
 
     /*
@@ -1500,14 +1518,14 @@ public class HTTrackActivity extends FragmentActivity {
      * Trunk to parent.displayFinishedPanel().
      */
     private synchronized void displayFinishedPanel(final String displayMessage,
-        final long errorsCount) {
+        final long errorsCount, final File mirrorFolder) {
       if (parent != null) {
-        parent.displayFinishedPanel(displayMessage, errorsCount);
+        parent.displayFinishedPanel(displayMessage, errorsCount, mirrorFolder);
       } else {
         pendingParentActions.add(new Runnable() {
           @Override
           public void run() {
-            parent.displayFinishedPanel(displayMessage, errorsCount);
+            parent.displayFinishedPanel(displayMessage, errorsCount, mirrorFolder);
           }
         });
       }
@@ -2300,7 +2318,7 @@ public class HTTrackActivity extends FragmentActivity {
    * Display the final "finished" panel.
    */
   protected void displayFinishedPanel(final String displayMessage,
-      final long errorsCount) {
+      final long errorsCount, final File mirrorFolder) {
     handlerUI.post(new Runnable() {
       @Override
       public void run() {
@@ -2311,7 +2329,12 @@ public class HTTrackActivity extends FragmentActivity {
         if (displayMessage != null) {
           final View view = findViewById(R.id.fieldDisplay);
           if (view != null) {
-            TextView.class.cast(view).setText(Html.fromHtml(displayMessage));
+            final Spanned text = renderFinishedMessage(displayMessage, mirrorFolder);
+            TextView.class.cast(view).setText(text);
+            // Without a movement method the span is styled but never receives the tap.
+            TextView.class.cast(view).setMovementMethod(
+                text.getSpans(0, text.length(), ClickableSpan.class).length != 0
+                    ? LinkMovementMethod.getInstance() : null);
           }
         }
         if (errorsCount != 0) {
@@ -2329,10 +2352,35 @@ public class HTTrackActivity extends FragmentActivity {
           /* FIXME TODO check intent */
           final Intent current = getCurrentIntentReference();
           sendSystemNotification(current, finished + ": " + name,
-              Html.fromHtml(displayMessage));
+              renderFinishedMessage(displayMessage, null));
         }
       }
     });
+  }
+
+  /* Rewrite our own mirror-path link to open folder, or drop it when folder is null, since a
+   * notification cannot follow a tap. */
+  private Spanned renderFinishedMessage(final String message, final File folder) {
+    final Spanned rendered = Html.fromHtml(message);
+    final SpannableStringBuilder text = new SpannableStringBuilder(rendered);
+    for (final URLSpan link : rendered.getSpans(0, rendered.length(), URLSpan.class)) {
+      if (!MIRROR_FOLDER_HREF.equals(link.getURL())) {
+        continue;
+      }
+      final int start = text.getSpanStart(link);
+      final int end = text.getSpanEnd(link);
+      final int flags = text.getSpanFlags(link);
+      text.removeSpan(link);
+      if (folder != null) {
+        text.setSpan(new ClickableSpan() {
+          @Override
+          public void onClick(final View widget) {
+            openFolderOrCopyPath(folder);
+          }
+        }, start, end, flags);
+      }
+    }
+    return text;
   }
 
   /** Whether the setup pane should (re)load the selected project's saved profile; see loadedProjectName. */
