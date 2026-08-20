@@ -155,7 +155,7 @@ public class HTTrackActivity extends FragmentActivity {
 
   // Marks the mirror path in the finish message; the panel swaps it for a span, so it never
   // resolves as a URL.
-  protected static final String MIRROR_FOLDER_HREF = "httrack:mirror-folder";
+  private static final String MIRROR_FOLDER_HREF = "httrack:mirror-folder";
 
   // Channel carrying every notification we post. Never rename: the user's sound/importance
   // choices are keyed on it, and a new id silently resets them.
@@ -2329,11 +2329,12 @@ public class HTTrackActivity extends FragmentActivity {
         if (displayMessage != null) {
           final View view = findViewById(R.id.fieldDisplay);
           if (view != null) {
-            final TextView text = TextView.class.cast(view);
-            text.setText(renderFinishedMessage(displayMessage, mirrorFolder));
+            final Spanned text = renderFinishedMessage(displayMessage, mirrorFolder);
+            TextView.class.cast(view).setText(text);
             // Without a movement method the span is styled but never receives the tap.
-            text.setMovementMethod(
-                mirrorFolder != null ? LinkMovementMethod.getInstance() : null);
+            TextView.class.cast(view).setMovementMethod(
+                text.getSpans(0, text.length(), ClickableSpan.class).length != 0
+                    ? LinkMovementMethod.getInstance() : null);
           }
         }
         if (errorsCount != 0) {
@@ -2357,16 +2358,15 @@ public class HTTrackActivity extends FragmentActivity {
     });
   }
 
-  /* Render the finish message: a folder makes the mirror path open it, null drops the link,
-   * which a notification could not act on. */
+  /* Rewrite our own mirror-path link to open folder, or drop it when folder is null, since a
+   * notification cannot follow a tap. */
   private Spanned renderFinishedMessage(final String message, final File folder) {
     final Spanned rendered = Html.fromHtml(message);
-    final URLSpan[] links = rendered.getSpans(0, rendered.length(), URLSpan.class);
-    if (links.length == 0) {
-      return rendered;
-    }
     final SpannableStringBuilder text = new SpannableStringBuilder(rendered);
-    for (final URLSpan link : links) {
+    for (final URLSpan link : rendered.getSpans(0, rendered.length(), URLSpan.class)) {
+      if (!MIRROR_FOLDER_HREF.equals(link.getURL())) {
+        continue;
+      }
       final int start = text.getSpanStart(link);
       final int end = text.getSpanEnd(link);
       final int flags = text.getSpanFlags(link);
