@@ -56,22 +56,13 @@ jobs:
             echo "keyPassword=$KEY_PW"
           } > keystore.properties
       - name: Bundle release (signed)
-        run: ./gradlew --no-daemon bundleRelease assembleRelease
-      - name: Assert 16 KB .so alignment
-        run: |
-          tools/ci/check-so-alignment.sh app/build/outputs/bundle/release/app-release.aab
-          tools/ci/check-so-alignment.sh app/build/outputs/apk/release/app-release.apk
+        run: ./gradlew --no-daemon bundleRelease
+      - name: Check 16 KB .so alignment
+        run: tools/ci/check-so-alignment.sh app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
           name: release-aab
           path: app/build/outputs/bundle/release/app-release.aab
-          if-no-files-found: error
-      # Upload-key signed, so it will not update a Play install: Play re-signs with the
-      # app signing key. For one that does, take the universal APK from the Console.
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-apk-upload-key
-          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
   publish:
