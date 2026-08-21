@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Toque no caminho exibido ao terminar uma cópia para abrir sua pasta
-• As opções que o programa ignora agora aparecem esmaecidas
-• Salvar um projeto não ativa mais opções que você nunca definiu
+• Os cabeçalhos que você define não são mais enviados duas vezes
+• Atualizado para o motor HTTrack 3.49.23
 
 Beta: relate os problemas no GitHub.

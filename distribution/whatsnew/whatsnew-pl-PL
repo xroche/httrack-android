@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Po zakończeniu kopii dotknij wyświetlonej ścieżki, aby otworzyć jej folder
-• Opcje ignorowane przez program są teraz wyszarzone
-• Zapisanie projektu nie włącza już opcji, których nigdy nie ustawiono
+• Nagłówki ustawione przez Ciebie nie są już wysyłane dwa razy
+• Zaktualizowano do silnika HTTrack 3.49.23
 
 Beta: zgłaszaj problemy na GitHubie.

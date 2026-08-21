@@ -1,7 +1,6 @@
-HTTrack 3.50 bêta 6.
+HTTrack 3.50 bêta 7.
 
-• Touchez le chemin affiché à la fin d'une copie pour ouvrir son dossier
-• Les options que le programme ignore sont désormais grisées
-• L'enregistrement d'un projet n'active plus des options jamais définies
+• Les en-têtes que vous définissez ne sont plus envoyés deux fois
+• Mise à jour vers le moteur HTTrack 3.49.23
 
 Bêta : signalez les problèmes sur GitHub.

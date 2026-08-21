@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Tryk på den viste sti, når en kopi er færdig, for at åbne dens mappe
-• Indstillinger, som programmet ignorerer, er nu deaktiveret
-• At gemme et projekt slår ikke længere indstillinger til, du aldrig har valgt
+• Headere, du selv angiver, sendes ikke længere to gange
+• Opdateret til HTTrack 3.49.23-motoren
 
 Beta: rapportér problemer på GitHub.

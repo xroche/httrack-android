@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Toque la ruta mostrada al terminar una copia para abrir su carpeta
-• Las opciones que el programa ignora ahora aparecen atenuadas
-• Guardar un proyecto ya no activa opciones que nunca definió
+• Las cabeceras que usted define ya no se envían dos veces
+• Actualizado al motor HTTrack 3.49.23
 
 Beta: informe de los problemas en GitHub.

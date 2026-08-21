@@ -1,7 +1,6 @@
-HTTrack 3.50 Beta 6.
+HTTrack 3.50 Beta 7.
 
-• Tippen Sie nach Abschluss einer Kopie auf den angezeigten Pfad, um deren Ordner zu öffnen
-• Optionen, die das Programm ignoriert, sind jetzt ausgegraut
-• Das Speichern eines Projekts aktiviert keine Optionen mehr, die Sie nie gesetzt haben
+• Selbst gesetzte Header werden nicht mehr doppelt gesendet
+• Aktualisiert auf die HTTrack-3.49.23-Engine
 
 Beta: Probleme bitte auf GitHub melden.
