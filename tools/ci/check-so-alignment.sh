@@ -4,8 +4,14 @@
 # at targetSdk 35+, and nothing in a normal build says so — the regression is silent.
 set -euo pipefail
 
-APK="${1:?usage: $0 <apk>}"
+ARCHIVE="${1:?usage: $0 <apk|aab>}"
 WANT=16384
+
+# An AAB keeps its libs under the module directory; an .apk has them at the root.
+case "$ARCHIVE" in
+*.aab) libdir="base/lib" ;;
+*) libdir="lib" ;;
+esac
 
 # The toolchain image carries the NDK but no binutils, so fall back to its llvm-readelf.
 READELF="$(command -v llvm-readelf || command -v readelf || true)"
@@ -21,12 +27,12 @@ fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/lib"
+mkdir -p "$tmp/$libdir"
 # 11 is "nothing matched", which the count check below reports in its own words.
 rc=0
-unzip -q -o "$APK" 'lib/*' -d "$tmp" || rc=$?
+unzip -q -o "$ARCHIVE" "$libdir/*" -d "$tmp" || rc=$?
 if [ "$rc" -ne 0 ] && [ "$rc" -ne 11 ]; then
-    echo "check-so-alignment: cannot extract $APK (unzip rc=$rc)" >&2
+    echo "check-so-alignment: cannot extract $ARCHIVE (unzip rc=$rc)" >&2
     exit 1
 fi
 
@@ -35,13 +41,13 @@ fi
 # still report success; comparing counts asserts completeness, not merely non-emptiness.
 # unzip -Z1 exits 11 when the pattern matches nothing, which is the likely regression here
 # (a build shipping no native libs at all), so name that case rather than blame the archive.
-listed="$(unzip -Z1 "$APK" 'lib/*.so' | wc -l)" || {
-    echo "check-so-alignment: no lib/*.so in $APK, or it is unreadable" >&2
+listed="$(unzip -Z1 "$ARCHIVE" "$libdir/*.so" | wc -l)" || {
+    echo "check-so-alignment: no $libdir/*.so in $ARCHIVE, or it is unreadable" >&2
     exit 1
 }
-mapfile -t sos < <(find "$tmp/lib" -type f -name '*.so' | sort)
+mapfile -t sos < <(find "$tmp/$libdir" -type f -name '*.so' | sort)
 if [ "${#sos[@]}" -ne "$listed" ]; then
-    echo "check-so-alignment: $APK lists $listed .so, walked ${#sos[@]}" >&2
+    echo "check-so-alignment: $ARCHIVE lists $listed .so, walked ${#sos[@]}" >&2
     exit 1
 fi
 
@@ -61,5 +67,5 @@ for so in "${sos[@]}"; do
     done
 done
 
-[ "$rc" -eq 0 ] && echo "16 KB aligned: ${#sos[@]} .so in $(basename "$APK")"
+[ "$rc" -eq 0 ] && echo "16 KB aligned: ${#sos[@]} .so in $(basename "$ARCHIVE")"
 exit "$rc"
