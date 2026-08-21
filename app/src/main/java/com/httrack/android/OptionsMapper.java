@@ -1656,10 +1656,9 @@ public class OptionsMapper {
   }
 
   /**
-   * Argument option whose value must be a number. A field the engine scans as
-   * one panics on anything else, and no layout attribute can keep a non-digit
-   * out: inputType is a keyboard hint, and an imported profile reaches the
-   * field through setText.
+   * Argument option whose value must be a positive number: the engine panics
+   * on zero or a non-digit, and no layout attribute can filter either.
+   * inputType is a keyboard hint, and a saved profile sets the value directly.
    */
   public static class NumberArgumentOption extends ArgumentOption {
     public NumberArgumentOption(final String option) {
@@ -1668,7 +1667,7 @@ public class OptionsMapper {
 
     @Override
     public void emit(final List<String> commandline, final String value) {
-      if (OptionValues.isDigits(value)) {
+      if (OptionValues.isPositive(value)) {
         super.emit(commandline, value);
       }
     }

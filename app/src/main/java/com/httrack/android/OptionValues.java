@@ -36,6 +36,9 @@ public final class OptionValues {
   private static final Pattern patternDecimal = Pattern
       .compile("^[0-9]+(\\.[0-9]+)?$");
 
+  private static final Pattern patternPositive = Pattern
+      .compile("^0*[1-9][0-9]*$");
+
   /**
    * True if the value is a non-empty run of ASCII digits.
    *
@@ -56,6 +59,26 @@ public final class OptionValues {
    */
   public static boolean isDecimal(final String value) {
     return value != null && patternDecimal.matcher(value).matches();
+  }
+
+  /**
+   * True if the value is a positive integer within int64_t range. The engine
+   * panics on a digit run too long to hold, as it does on a zero.
+   *
+   * @param value
+   *          The value, possibly null
+   * @return true if the value is a positive integer within int64_t range
+   */
+  public static boolean isPositive(final String value) {
+    if (value == null || !patternPositive.matcher(value).matches()) {
+      return false;
+    }
+    try {
+      Long.parseLong(value);
+    } catch (final NumberFormatException nfe) {
+      return false;
+    }
+    return true;
   }
 
   /**

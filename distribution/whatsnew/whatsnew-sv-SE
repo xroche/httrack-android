@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Tryck på den visade sökvägen när en kopia är klar för att öppna dess mapp
-• Alternativ som programmet ignorerar visas nu nedtonade
-• Att spara ett projekt slår inte längre på alternativ du aldrig valt
+• Rubriker du själv anger skickas inte längre två gånger
+• Uppdaterad till HTTrack 3.49.23-motorn
 
 Beta: rapportera problem på GitHub.

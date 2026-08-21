@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Tocca il percorso mostrato al termine di una copia per aprire la sua cartella
-• Le opzioni che il programma ignora ora appaiono disattivate
-• Il salvataggio di un progetto non attiva più opzioni mai impostate
+• Le intestazioni che impostate voi non vengono più inviate due volte
+• Aggiornato al motore HTTrack 3.49.23
 
 Beta: segnalate i problemi su GitHub.

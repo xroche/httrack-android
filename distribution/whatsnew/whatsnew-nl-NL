@@ -1,7 +1,6 @@
-HTTrack 3.50 bèta 6.
+HTTrack 3.50 bèta 7.
 
-• Tik na het voltooien van een kopie op het getoonde pad om de map te openen
-• Opties die het programma negeert zijn nu grijs
-• Een project opslaan schakelt geen opties meer in die u nooit hebt ingesteld
+• Headers die u zelf instelt worden niet meer dubbel verzonden
+• Bijgewerkt naar de HTTrack 3.49.23-engine
 
 Bèta: meld problemen op GitHub.

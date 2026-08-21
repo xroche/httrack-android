@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Tap the path shown when a copy finishes to open its folder
-• Options the engine ignores are now greyed out
-• Saving a project no longer turns on options you never set
+• Headers you set yourself are no longer sent twice
+• Updated to the HTTrack 3.49.23 engine
 
 Beta: report problems on GitHub.

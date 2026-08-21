@@ -1,7 +1,6 @@
-HTTrack 3.50 beta 6.
+HTTrack 3.50 beta 7.
 
-• Po dokončení kópie ťuknite na zobrazenú cestu a otvorte jej priečinok
-• Voľby, ktoré program ignoruje, sú teraz neaktívne
-• Uloženie projektu už nezapína voľby, ktoré ste nikdy nenastavili
+• Hlavičky, ktoré nastavíte sami, sa už neodosielajú dvakrát
+• Aktualizované na jadro HTTrack 3.49.23
 
 Beta: problémy hláste na GitHube.

@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.httrack.android.OptionsMapper.NumberArgumentOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.SimpleOption;
 import java.io.IOException;
@@ -102,6 +103,40 @@ public class NumericOptionValueTest {
       assertTrue("-%c kept " + value,
           emit(new SimpleOption("%c", true), value).isEmpty());
     }
+  }
+
+  /** The largest size the engine accepts as int64_t; one more overflows it. */
+  private static final String INT64_MAX = "9223372036854775807";
+
+  private static final String INT64_MAX_PLUS_ONE = "9223372036854775808";
+
+  private static final String SIZE_OPTION = "--single-file-max-size";
+
+  /* Engine 3.49.23 panics on a zero or oversized value 3.49.22 ignored, so
+     the mapper drops both. */
+  @Test
+  public void aSizeTheEngineWouldPanicOnNeverReachesIt() {
+    final OptionMapper mapper = new NumberArgumentOption(SIZE_OPTION);
+    for (final String value : new String[] { "0", "00", "000",
+        INT64_MAX_PLUS_ONE, "99999999999999999999", "-1", "+5", "5MB", " 12",
+        "1.5", "", null }) {
+      assertTrue("kept " + value, emit(mapper, value).isEmpty());
+    }
+    for (final String value : new String[] { "1", "007", "0000000000000000001",
+        INT64_MAX }) {
+      assertEquals(Arrays.asList(SIZE_OPTION, value), emit(mapper, value));
+    }
+  }
+
+  @Test
+  public void isPositiveRejectsWhatIsDigitsAccepts() {
+    assertTrue(OptionValues.isDigits("0"));
+    assertFalse(OptionValues.isPositive("0"));
+    assertTrue(OptionValues.isDigits(INT64_MAX_PLUS_ONE));
+    assertFalse(OptionValues.isPositive(INT64_MAX_PLUS_ONE));
+    assertTrue(OptionValues.isPositive(INT64_MAX));
+    assertTrue(OptionValues.isPositive("12"));
+    assertFalse(OptionValues.isPositive(null));
   }
 
   @Test
