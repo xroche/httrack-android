@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.httrack.android.OptionsMapper.NumberArgumentOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.SimpleOption;
 import java.io.IOException;
@@ -102,6 +103,29 @@ public class NumericOptionValueTest {
       assertTrue("-%c kept " + value,
           emit(new SimpleOption("%c", true), value).isEmpty());
     }
+  }
+
+  /* Engine 3.49.23 turned a silently-ignored zero into a run-aborting panic
+     ("needs a positive size"), so the mapper has to drop it here. */
+  @Test
+  public void aZeroSizeNeverReachesTheEngine() {
+    final OptionMapper mapper = new NumberArgumentOption(
+        "--single-file-max-size");
+    for (final String value : new String[] { "0", "00" }) {
+      assertTrue("kept " + value, emit(mapper, value).isEmpty());
+    }
+    assertEquals(Arrays.asList("--single-file-max-size", "1"),
+        emit(mapper, "1"));
+    assertEquals(Arrays.asList("--single-file-max-size", "007"),
+        emit(mapper, "007"));
+  }
+
+  @Test
+  public void isPositiveRejectsZeroAndIsDigitsDoesNot() {
+    assertTrue(OptionValues.isDigits("0"));
+    assertFalse(OptionValues.isPositive("0"));
+    assertTrue(OptionValues.isPositive("12"));
+    assertFalse(OptionValues.isPositive(null));
   }
 
   @Test
