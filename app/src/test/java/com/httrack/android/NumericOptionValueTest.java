@@ -105,25 +105,26 @@ public class NumericOptionValueTest {
     }
   }
 
-  /** The largest size the engine's int64_t holds; one more sets ERANGE. */
+  /** The largest size the engine accepts as int64_t; one more overflows it. */
   private static final String INT64_MAX = "9223372036854775807";
 
   private static final String INT64_MAX_PLUS_ONE = "9223372036854775808";
 
-  /* Engine 3.49.23 turned a silently-ignored bad size into a run-aborting
-     panic ("needs a positive size"), so the mapper has to drop it here. It
-     aborts on zero and on overflow alike, so both have to go. */
+  private static final String SIZE_OPTION = "--single-file-max-size";
+
+  /* Engine 3.49.23 panics on a zero or oversized value 3.49.22 ignored, so
+     the mapper drops both. */
   @Test
   public void aSizeTheEngineWouldPanicOnNeverReachesIt() {
-    final OptionMapper mapper = new NumberArgumentOption(
-        "--single-file-max-size");
-    for (final String value : new String[] { "0", "00", INT64_MAX_PLUS_ONE,
-        "99999999999999999999", "-1", "+5", "5MB", " 12", "1.5", "", null }) {
+    final OptionMapper mapper = new NumberArgumentOption(SIZE_OPTION);
+    for (final String value : new String[] { "0", "00", "000",
+        INT64_MAX_PLUS_ONE, "99999999999999999999", "-1", "+5", "5MB", " 12",
+        "1.5", "", null }) {
       assertTrue("kept " + value, emit(mapper, value).isEmpty());
     }
-    for (final String value : new String[] { "1", "007", INT64_MAX }) {
-      assertEquals(Arrays.asList("--single-file-max-size", value),
-          emit(mapper, value));
+    for (final String value : new String[] { "1", "007", "0000000000000000001",
+        INT64_MAX }) {
+      assertEquals(Arrays.asList(SIZE_OPTION, value), emit(mapper, value));
     }
   }
 

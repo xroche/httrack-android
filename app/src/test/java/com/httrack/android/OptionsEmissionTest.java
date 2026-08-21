@@ -432,13 +432,14 @@ public class OptionsEmissionTest {
   }
 
   /* An imported profile reaches the field through setText, past inputType, and
-     the engine panics on a size it cannot scan. */
+     the engine panics on a size it cannot scan, hold, or use: zero and
+     overflow abort the run just as a non-number does. */
   @Test
   public void aNumericCompanionDropsWhatIsNotANumber() {
     final GatedFeatureHandler handler = new GatedFeatureHandler("%Z",
         new NumberArgumentOption("--single-file-max-size"));
     for (final String value : new String[] { "abc", "5000000abc", "-1", "1.5",
-        " 5000000", "" }) {
+        " 5000000", "", "0", "000", "9223372036854775808" }) {
       final List<String> cmd = new ArrayList<String>();
       handler.getToggleMapper().emit(cmd, "1");
       handler.getValueMapper().emit(cmd, value);
