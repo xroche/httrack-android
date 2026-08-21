@@ -57,22 +57,8 @@ jobs:
           } > keystore.properties
       - name: Bundle release (signed)
         run: ./gradlew --no-daemon bundleRelease
-      - name: Assert 16 KB .so alignment in the AAB
-        run: |
-          set -eu    # steps run under dash here; no pipefail (a readelf failure yields a="" -> $((a))=0, still trips the guard)
-          aab=app/build/outputs/bundle/release/app-release.aab
-          readelf="$(command -v llvm-readelf || command -v readelf || true)"
-          [ -n "$readelf" ] || readelf="$(ls "${ANDROID_NDK_ROOT:-/nonexistent}"/toolchains/llvm/prebuilt/*/bin/llvm-readelf 2>/dev/null | head -1)"
-          [ -n "$readelf" ] || { echo "no readelf/llvm-readelf found"; exit 1; }
-          tmp="$(mktemp -d)"; unzip -q -o "$aab" 'base/lib/*' -d "$tmp"
-          n=0
-          for so in $(find "$tmp" -name '*.so'); do
-            n=$((n + 1))
-            a="$("$readelf" -lW "$so" | awk '$1 == "LOAD" { print $NF; exit }')"
-            [ "$((a))" -ge 16384 ] || { echo "FAIL $so p_align $a < 16384"; exit 1; }
-          done
-          [ "$n" -gt 0 ] || { echo "no .so in AAB"; exit 1; }
-          echo "16 KB aligned: $n .so in the AAB"
+      - name: Check 16 KB .so alignment
+        run: tools/ci/check-so-alignment.sh app/build/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
           name: release-aab
