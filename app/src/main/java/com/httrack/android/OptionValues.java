@@ -62,14 +62,23 @@ public final class OptionValues {
   }
 
   /**
-   * True if the value is a run of ASCII digits worth more than zero.
+   * True if the value is a positive integer within int64_t range. The engine
+   * panics on a digit run too long to hold, as it does on a zero.
    *
    * @param value
    *          The value, possibly null
-   * @return true if the value is a positive integer
+   * @return true if the value is a positive integer within int64_t range
    */
   public static boolean isPositive(final String value) {
-    return value != null && patternPositive.matcher(value).matches();
+    if (value == null || !patternPositive.matcher(value).matches()) {
+      return false;
+    }
+    try {
+      Long.parseLong(value);
+    } catch (final NumberFormatException nfe) {
+      return false;
+    }
+    return true;
   }
 
   /**
