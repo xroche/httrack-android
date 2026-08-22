@@ -75,13 +75,20 @@ def b64url(b):
     return base64.urlsafe_b64encode(b).rstrip(b"=")
 
 
-def access_token(sa):
-    """Mint an OAuth token from the service-account JSON (RS256 JWT bearer flow)."""
+PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher"
+
+
+def access_token(sa, scope=PUBLISHER_SCOPE):
+    """Mint an OAuth token from the service-account JSON (RS256 JWT bearer flow).
+
+    The scope is a parameter because the bulk report bucket needs a storage scope,
+    not the publishing one.
+    """
     now = int(time.time())
     header = {"alg": "RS256", "typ": "JWT"}
     claim = {
         "iss": sa["client_email"],
-        "scope": "https://www.googleapis.com/auth/androidpublisher",
+        "scope": scope,
         "aud": sa["token_uri"],
         "iat": now,
         "exp": now + 3600,
