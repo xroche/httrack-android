@@ -1,0 +1,55 @@
+# Collect Play reviews. reviews.list carries only the last week and only reviews with
+# text, so the history and the bare star ratings come from the monthly CSVs in the
+# report bucket, which the service account can read only once it holds
+# "View app information and download bulk reports".
+name: Play reviews
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket:
+        description: 'report bucket, pubsite_prod_rev_<developer id> (blank = last week only)'
+        default: ''
+      since:
+        description: 'earliest monthly report, YYYYMM (blank = all of them)'
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  reviews:
+    name: collect reviews
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tools/ci/play-requirements.txt
+      - name: Collect
+        # Inputs go through the environment, never interpolated into the script body.
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          BUCKET: ${{ inputs.bucket }}
+          SINCE: ${{ inputs.since }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/play-sa.json"' EXIT
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/play-sa.json"
+          args=()
+          if [ -n "$SINCE" ]; then args+=(--since "$SINCE"); fi
+          if [ -n "$BUCKET" ]; then
+            python3 tools/ci/play_reviews.py "$RUNNER_TEMP/play-sa.json" all "$BUCKET" "${args[@]}" \
+              > reviews.csv
+          else
+            python3 tools/ci/play_reviews.py "$RUNNER_TEMP/play-sa.json" recent > reviews.csv
+          fi
+          echo "rows: $(($(wc -l < reviews.csv) - 1))" >> "$GITHUB_STEP_SUMMARY"
+      # The reviews name users and quote them, so they stay an artifact rather than a log.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-reviews
+          path: reviews.csv
+          if-no-files-found: error
