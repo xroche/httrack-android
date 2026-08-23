@@ -1,28 +1,25 @@
 #!/usr/bin/env python3
 """Collect Play reviews for com.httrack.android from both sources Play offers.
 
-Neither source alone is complete. reviews.list carries only reviews created or
-modified in the last week, and only those with text, so a bare star rating never
-appears. The monthly CSVs in the report bucket hold the history, including
-ratings without text, but lag three to seven days.
-
-So "every review" means the bucket for the history and the API for the tail, and
-this merges the two on review id.
+reviews.list carries only the last week, and only reviews with text. The monthly
+CSVs in the report bucket hold the history and the textless ratings, and lag three
+to seven days. So "every review" means both, merged on review id.
 
 Usage:
   play_reviews.py <sa_json> recent [--json]
-  play_reviews.py <sa_json> bulk <bucket> [--since YYYYMM] [--out DIR]
-  play_reviews.py <sa_json> all <bucket> [--out DIR]
+  play_reviews.py <sa_json> bulk <bucket> [--since YYYYMM]
+  play_reviews.py <sa_json> all <bucket> [--since YYYYMM]
 
-<bucket> is the report bucket, pubsite_prod_rev_<developer id>, whose name the
-Console shows under Download reports as "Copy Cloud Storage URI". Reading it needs
-the service account to hold "View app information and download bulk reports".
+<bucket> is pubsite_prod_rev_<developer id>, shown in the Console under Download
+reports as "Copy Cloud Storage URI". Reading it needs the service account to hold
+"View app information and download bulk reports".
 """
 
 import argparse
 import csv
 import io
 import json
+import re
 import sys
 
 import requests
@@ -32,11 +29,12 @@ from play_track_admin import PKG, TIMEOUT, access_token
 REVIEWS = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PKG}/reviews"
 STORAGE = "https://storage.googleapis.com/storage/v1/b"
 STORAGE_SCOPE = "https://www.googleapis.com/auth/devstorage.read_only"
+FIELDS = ["id", "author", "rating", "text", "version", "device", "modified", "source"]
 
 
 def fetch_recent(token):
     """Every review the API will admit to, following pagination to the end."""
-    out, page = [], None
+    out, page, seen = [], None, set()
     while True:
         params = {"maxResults": 100}
         if page:
@@ -51,14 +49,15 @@ def fetch_recent(token):
         body = r.json()
         out.extend(body.get("reviews", []))
         page = body.get("tokenPagination", {}).get("nextPageToken")
-        if not page:
+        if not page or page in seen:
             return out
+        seen.add(page)
 
 
 def list_report_objects(token, bucket, since=None):
     """Names of the monthly review CSVs, oldest first, optionally from YYYYMM on."""
     prefix = f"reviews/reviews_{PKG}_"
-    names, page = [], None
+    names, page, pages = [], None, set()
     while True:
         params = {"prefix": prefix}
         if page:
@@ -74,12 +73,20 @@ def list_report_objects(token, bucket, since=None):
                 f"cannot read gs://{bucket}/{prefix}* ({r.status_code}). Grant the service "
                 "account 'View app information and download bulk reports' in the Console."
             )
+        if r.status_code == 404:
+            raise SystemExit(f"no such bucket: gs://{bucket}. Check the Cloud Storage URI.")
         r.raise_for_status()
         body = r.json()
         names.extend(o["name"] for o in body.get("items", []))
         page = body.get("nextPageToken")
-        if not page:
+        if not page or page in pages:
             break
+        pages.add(page)
+    if not names:
+        raise SystemExit(
+            f"no {prefix}* objects in gs://{bucket}. Wrong bucket, or the reports are not "
+            "generated yet. Refusing to report an empty history as no history."
+        )
     if since:
         names = [n for n in names if report_month(n) >= since]
     return sorted(names)
@@ -99,7 +106,10 @@ def decode_report(raw):
     ):
         if raw.startswith(bom):
             return raw.decode(enc)
-    return raw.decode("utf-8")
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("utf-16-le")
 
 
 def fetch_report(token, bucket, name):
@@ -128,6 +138,12 @@ def normalise_api(review):
     }
 
 
+def review_id(link):
+    """The bare reviewId out of a Review Link, so bulk and api rows can meet."""
+    m = re.search(r"[?&]reviewId=([^&]+)", link)
+    return m.group(1) if m else link
+
+
 def normalise_csv(row):
     def col(*names):
         for n in names:
@@ -137,19 +153,34 @@ def normalise_csv(row):
         return ""
 
     return {
-        "id": col("review link", "review id"),
-        "author": col("reviewer language", "review submit date and time"),
+        "id": review_id(col("review link", "review id")),
+        # The export carries no reviewer name, only a locale, so this stays empty.
+        "author": "",
         "rating": col("star rating"),
-        "text": " ".join(x for x in (col("review title"), col("review text")) if x),
-        "version": col("app version name", "app version code"),
+        "text": " ".join(x for x in (col("review title"), col("review text")) if x).replace(
+            "\n", " "
+        ),
+        "version": col("app version name"),
         "device": col("device"),
         "modified": col("review last update date and time", "review submit date and time"),
         "source": "bulk",
     }
 
 
+def merge(rows):
+    """Drop reviews present in both sources, keeping the bucket row: it carries the
+    rating even when the user left no text. Rows with no id are all kept."""
+    seen, merged = set(), []
+    for row in sorted(rows, key=lambda r: r["source"] != "bulk"):
+        if row["id"] and row["id"] in seen:
+            continue
+        seen.add(row["id"])
+        merged.append(row)
+    return merged
+
+
 def write_rows(rows, out):
-    w = csv.DictWriter(out, fieldnames=list(rows[0].keys()) if rows else ["id"])
+    w = csv.DictWriter(out, fieldnames=FIELDS)
     w.writeheader()
     w.writerows(rows)
 
@@ -167,6 +198,8 @@ def main():
         sa = json.load(f)
     if args.command in ("bulk", "all") and not args.bucket:
         raise SystemExit(f"{args.command} needs the report bucket name")
+    if args.json and args.command != "recent":
+        raise SystemExit("--json carries the api shape only, so it fits recent")
 
     rows = []
     if args.command in ("recent", "all"):
@@ -186,14 +219,7 @@ def main():
             rows += [normalise_csv(r) for r in got]
             print(f"  {name}: {len(got)}", file=sys.stderr)
 
-    # The API tail overlaps the newest CSV; the bucket row wins because it carries
-    # the rating even when the user left no text.
-    seen, merged = set(), []
-    for row in sorted(rows, key=lambda r: r["source"]):
-        if row["id"] and row["id"] in seen:
-            continue
-        seen.add(row["id"])
-        merged.append(row)
+    merged = merge(rows)
     write_rows(merged, sys.stdout)
     print(f"total: {len(merged)} review(s)", file=sys.stderr)
 

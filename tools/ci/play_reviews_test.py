@@ -49,16 +49,31 @@ class Decode(unittest.TestCase):
 
 class Recent(unittest.TestCase):
     def test_follows_pagination_to_the_end(self):
+        """Three pages, so stopping after two fails."""
+        page = {"reviews": [{"reviewId": "a"}], "tokenPagination": {"nextPageToken": "t1"}}
         pages = [
+            Resp(payload=page),
             Resp(
-                payload={"reviews": [{"reviewId": "a"}], "tokenPagination": {"nextPageToken": "t"}}
+                payload={
+                    "reviews": [{"reviewId": "b"}],
+                    "tokenPagination": {"nextPageToken": "t2"},
+                }
             ),
-            Resp(payload={"reviews": [{"reviewId": "b"}]}),
+            Resp(payload={"reviews": [{"reviewId": "c"}]}),
         ]
         with mock.patch.object(pr.requests, "get", side_effect=pages) as g:
             got = pr.fetch_recent("tok")
-        self.assertEqual([r["reviewId"] for r in got], ["a", "b"])
-        self.assertEqual(g.call_args_list[1].kwargs["params"]["token"], "t")
+        self.assertEqual([r["reviewId"] for r in got], ["a", "b", "c"])
+        self.assertEqual(g.call_count, 3)
+        self.assertEqual(g.call_args_list[1].kwargs["params"]["token"], "t1")
+        self.assertEqual(g.call_args_list[2].kwargs["params"]["token"], "t2")
+
+    def test_a_repeated_token_does_not_loop_forever(self):
+        """A server echoing one token must not spin until the mock runs dry."""
+        same = {"reviews": [{"reviewId": "a"}], "tokenPagination": {"nextPageToken": "t"}}
+        with mock.patch.object(pr.requests, "get", side_effect=[Resp(payload=same)] * 50) as g:
+            pr.fetch_recent("tok")
+        self.assertLessEqual(g.call_count, 3)
 
     def test_empty_week_is_not_an_error(self):
         with mock.patch.object(pr.requests, "get", return_value=Resp(payload={})):
@@ -67,10 +82,19 @@ class Recent(unittest.TestCase):
 
 class Bucket(unittest.TestCase):
     def test_denied_names_the_missing_grant(self):
-        with mock.patch.object(pr.requests, "get", return_value=Resp(status=403)):
+        for status in (401, 403):
+            with mock.patch.object(pr.requests, "get", return_value=Resp(status=status)):
+                with self.assertRaises(SystemExit) as e:
+                    pr.list_report_objects("tok", "pubsite_prod_rev_1")
+            self.assertIn("View app information", str(e.exception))
+            self.assertNotEqual(e.exception.code, 0)
+
+    def test_a_readable_bucket_with_no_reports_is_not_reported_as_none(self):
+        """An empty listing must not read as an empty history."""
+        with mock.patch.object(pr.requests, "get", return_value=Resp(payload={})):
             with self.assertRaises(SystemExit) as e:
                 pr.list_report_objects("tok", "pubsite_prod_rev_1")
-        self.assertIn("View app information", str(e.exception))
+        self.assertNotEqual(e.exception.code, 0)
 
     def test_lists_every_page_and_filters_by_month(self):
         name = "reviews/reviews_com.httrack.android_%s.csv"
@@ -85,6 +109,71 @@ class Bucket(unittest.TestCase):
         ):
             got = pr.list_report_objects("tok", "b", since="202000")
         self.assertEqual(got, [name % "202608"])
+
+
+# The header Play actually emits, verbatim. The normalise tests are circular
+# without it: they would pass on names invented to match the code.
+PLAY_HEADER = (
+    "Package Name,App Version Code,App Version Name,Reviewer Language,Device,"
+    "Review Submit Date and Time,Review Submit Millis Since Epoch,"
+    "Review Last Update Date and Time,Review Last Update Millis Since Epoch,"
+    "Star Rating,Review Title,Review Text,Developer Reply Date and Time,"
+    "Developer Reply Millis Since Epoch,Developer Reply Text,Review Link"
+)
+
+
+class RealHeader(unittest.TestCase):
+    """Guards against a schema the code names but Play does not emit."""
+
+    def rows(self, body):
+        raw = (PLAY_HEADER + "\n" + body).encode("utf-16")
+        import csv as _csv
+
+        return list(_csv.DictReader(io.StringIO(pr.decode_report(raw))))
+
+    def test_every_field_the_tool_reads_is_populated(self):
+        link = "https://play.google.com/console/developers/x/app/y/review-details?reviewId=abc123"
+        row = self.rows(
+            "com.httrack.android,99,3.50-beta-7,en,Pixel,2026-08-01T10:00:00Z,1,"
+            "2026-08-02T10:00:00Z,2,4,Nice,Works well,,,," + link
+        )[0]
+        got = pr.normalise_csv(row)
+        self.assertEqual(got["id"], "abc123")
+        self.assertEqual(got["rating"], "4")
+        self.assertEqual(got["text"], "Nice Works well")
+        self.assertEqual(got["version"], "3.50-beta-7")
+        self.assertEqual(got["device"], "Pixel")
+        self.assertEqual(got["modified"], "2026-08-02T10:00:00Z")
+
+    def test_a_rating_with_no_text_still_carries_its_id(self):
+        link = "https://example/review-details?reviewId=zz9"
+        row = self.rows(
+            "com.httrack.android,99,3.50,en,Pixel,2026-08-01T10:00:00Z,1,"
+            "2026-08-02T10:00:00Z,2,5,,,,,," + link
+        )[0]
+        got = pr.normalise_csv(row)
+        self.assertEqual((got["rating"], got["text"], got["id"]), ("5", "", "zz9"))
+
+
+class Merge(unittest.TestCase):
+    """The bucket row must win, because only it carries a textless rating."""
+
+    def test_bulk_wins_and_the_review_is_not_duplicated(self):
+        rows = [
+            {"id": "a1", "source": "api", "text": "from api"},
+            {"id": "a1", "source": "bulk", "text": "from bulk"},
+        ]
+        merged = pr.merge(rows)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0]["text"], "from bulk")
+
+    def test_rows_without_an_id_are_all_kept(self):
+        merged = pr.merge([{"id": "", "source": "bulk"}, {"id": "", "source": "bulk"}])
+        self.assertEqual(len(merged), 2)
+
+    def test_a_review_link_and_a_bare_id_meet(self):
+        self.assertEqual(pr.review_id("https://x/review-details?reviewId=q7&hl=en"), "q7")
+        self.assertEqual(pr.review_id("q7"), "q7")
 
 
 class Normalise(unittest.TestCase):

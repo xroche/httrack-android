@@ -1,7 +1,4 @@
-# Collect Play reviews. reviews.list carries only the last week and only reviews with
-# text, so the history and the bare star ratings come from the monthly CSVs in the
-# report bucket, which the service account can read only once it holds
-# "View app information and download bulk reports".
+# Collect Play reviews; play_reviews.py explains why two sources are needed.
 name: Play reviews
 
 on:
@@ -53,3 +50,5 @@ jobs:
           name: play-reviews
           path: reviews.csv
           if-no-files-found: error
+          # This repo is public, so anyone can download the artifact.
+          retention-days: 1
