@@ -470,6 +470,18 @@ public class MirrorServerTest {
 
   /** Docs and mirrors are served at once, so each root must keep its own server. */
   @Test
+  public void handingOutAServerCountsAsUsingIt() throws Exception {
+    // Otherwise one idle since just before the timeout is handed back, then killed
+    // under the browser that was about to connect to it.
+    final MirrorServer first = MirrorServer.forRoot(root);
+    first.lastActivityMs = 0;
+    final MirrorServer again = MirrorServer.forRoot(root);
+    assertSame("the same server should have been handed back", first, again);
+    assertTrue("handing the server out did not count as activity", again.lastActivityMs > 0);
+    again.stop();
+  }
+
+  @Test
   public void forRootKeepsOneServerPerTree() throws Exception {
     final File resources = tmp.newFolder("resources");
     final MirrorServer mirrors = MirrorServer.forRoot(root);

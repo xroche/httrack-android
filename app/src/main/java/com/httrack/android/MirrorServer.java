@@ -68,7 +68,7 @@ final class MirrorServer extends NanoHTTPD {
   private final long idleTimeoutMs;
 
   /** When the last response ended: the only evidence available that something is still reading. */
-  private volatile long lastActivityMs = System.currentTimeMillis();
+  volatile long lastActivityMs = System.currentTimeMillis();
 
   private final AtomicInteger streaming = new AtomicInteger();
 
