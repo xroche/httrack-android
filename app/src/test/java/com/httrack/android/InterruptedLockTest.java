@@ -135,4 +135,17 @@ public class InterruptedLockTest {
     assertTrue("ended must be set before the finished pane asks for a stop",
         body.contains("ended = true"));
   }
+
+  /* The predicate below only ever sees what wasStopped() reports, so the engine's
+     two abort flags are pinned here: stop alone misses a fatal disk error. */
+  @Test
+  public void wasStoppedWeighsBothOfTheEnginesAbortFlags() throws Exception {
+    final String jni = TestSources.jniSource();
+    final int at = jni.indexOf("HTTrackLib_wasStopped");
+    assertTrue("wasStopped is gone", at > 0);
+    final String body = jni.substring(at, jni.indexOf("\n}", at));
+    assertTrue("wasStopped must read state.stop", body.contains("state.stop"));
+    assertTrue("wasStopped must also read exit_xh, which stop never sets",
+        body.contains("hts_is_exiting"));
+  }
 }

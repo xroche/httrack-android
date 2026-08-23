@@ -63,6 +63,11 @@ final class TestSources {
         + ".java"));
   }
 
+  /** Source of the JNI glue, for contracts no JUnit test can reach at runtime. */
+  static String jniSource() throws IOException {
+    return read(new File(dir("src/main/jni"), "htslibjni.c"));
+  }
+
   /** A file of the pinned engine submodule, such as "winprofile-keys.tsv". */
   static File engineFile(final String name) {
     return new File(dir("src/main/jni/httrack"), name);
