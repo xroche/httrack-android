@@ -166,11 +166,14 @@ public class ProjectRootResolutionTest {
   public void computeStorageTargetNeverWritesTheStoredBasePath() throws Exception {
     final String body = computeStorageTargetBody();
     assertFalse("resolving the root must not rewrite the stored BasePath, however spelled",
-        body.contains("putString(BASE_NAME") || body.contains("remove(BASE_NAME"));
+        body.contains("putString(BASE_NAME") || body.contains("remove(BASE_NAME")
+            || body.contains("\"BasePath\"") || body.contains(".clear()"));
     // Counted, so a second edit has to come back through this test.
     assertEquals("only the previous-root hint may be persisted while resolving", 1,
         body.split("\\.edit\\(\\)", -1).length - 1);
-    assertTrue(body.contains("PREVIOUS_BASE_NAME"));
+    // The one edit chain must be the hint, not something that happens to mention it later.
+    assertTrue("the only edit while resolving must write the previous-root hint",
+        body.matches("(?s).*\\.edit\\(\\)\\s*\\.putString\\(PREVIOUS_BASE_NAME.*"));
   }
 
   /** Wiring, not behaviour: the recorder tests below cannot see the call site at all. */

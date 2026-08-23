@@ -594,11 +594,18 @@ public class HTTrackActivity extends FragmentActivity {
     }
     final TextView moved = TextView.class.cast(findViewById(R.id.textPreviousRoot));
     if (moved != null) {
+      // Offer it only while we could actually take it back, or the tap just toasts a refusal.
       final File previous = getPreviousRootFile();
-      if (previous != null) {
-        moved.setText(getString(R.string.storage_previous_root, previous.getAbsolutePath()));
+      final boolean offer = previous != null
+          && Boolean.TRUE.equals(isWritableProjectPath(previous));
+      if (offer) {
+        // The mirrors left behind in a private root are the ones an uninstall takes.
+        final int text = StoragePaths.externalStorageDocId(previous,
+            Environment.getExternalStorageDirectory()) == null
+                ? R.string.storage_previous_root_private : R.string.storage_previous_root;
+        moved.setText(getString(text, previous.getAbsolutePath()));
       }
-      moved.setVisibility(previous != null ? View.VISIBLE : View.GONE);
+      moved.setVisibility(offer ? View.VISIBLE : View.GONE);
     }
   }
 
