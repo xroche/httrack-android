@@ -5,10 +5,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.httrack.android.OptionsMapper.MultipleChoicesOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.ProfileFormat;
+import com.httrack.android.OptionsMapper.SimpleOption0;
 import com.httrack.android.OptionsMapper.SimpleOptionFlag;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,15 +64,6 @@ public class WinProfileParityTest {
     assertEquals(Arrays.asList("-j0"),
         emit(new SimpleOptionFlag("j0", true), "0"));
     assertTrue(emit(new SimpleOptionFlag("j0", true), "1").isEmpty());
-  }
-
-  /* Checked must revalidate, which is -C2; the engine's own default is -C1. */
-  @Test
-  public void cacheChecksForUpdatesWhenChecked() {
-    final OptionMapper cache = new MultipleChoicesOption(new String[] { "C0",
-        "C2" });
-    assertEquals(Arrays.asList("-C2"), emit(cache, "1"));
-    assertEquals(Arrays.asList("-C0"), emit(cache, "0"));
   }
 
   @Test
@@ -172,19 +165,54 @@ public class WinProfileParityTest {
     return TestSources.javaSource("OptionsMapper");
   }
 
-  /* Counting the declarations separately keeps a regex that quietly stops
-     matching from passing every key test on a short list. */
-  private static List<String> keysOf(final String declaration,
-      final String pattern) throws IOException {
-    final String source = mapperTable();
-    final Matcher m = Pattern.compile(pattern).matcher(source);
-    final List<String> keys = new ArrayList<String>();
-    while (m.find()) {
-      keys.add(m.group(1));
+  /* The mapper fieldsMapper declares for KEY, source text, spacing squeezed. */
+  private static String mapperDeclaration(final String key) throws IOException {
+    final String body = TestSources.tableBody("fieldsMapper");
+    final String head = "new Pair<String, OptionMapper>(\"" + key + "\"";
+    final int at = body.indexOf(head);
+    assertTrue(key + " is not in fieldsMapper", at != -1);
+    int depth = 1;
+    int from = -1;
+    int i = at + head.length();
+    for (; i < body.length() && depth > 0; i++) {
+      final char c = body.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+      } else if (c == ',' && depth == 1 && from == -1) {
+        from = i + 1;
+      }
     }
-    assertEquals(declaration + " entries parsed",
-        TestSources.occurrences(source, declaration), keys.size());
-    return keys;
+    assertTrue(key + " declares no mapper", from != -1 && depth == 0);
+    return body.substring(from, i - 1).trim().replaceAll("\\s+", " ");
+  }
+
+  /* Rebuilds what fieldsMapper wires KEY to, so the emission tests below run
+     production's choice of primitive rather than one this file picked. */
+  private static OptionMapper wiredMapper(final String key) throws IOException {
+    final String declaration = mapperDeclaration(key);
+    Matcher m = Pattern.compile("new (SimpleOptionFlag|SimpleOption0)\\(\\s*"
+        + "\"([^\"]+)\"\\s*(?:,\\s*(true|false)\\s*)?\\)").matcher(declaration);
+    if (m.matches()) {
+      if ("SimpleOption0".equals(m.group(1))) {
+        return new SimpleOption0(m.group(2));
+      }
+      return new SimpleOptionFlag(m.group(2), "true".equals(m.group(3)));
+    }
+    m = Pattern.compile("new MultipleChoicesOption\\(\\s*new String\\[\\]"
+        + "\\s*\\{(.*)\\}\\s*\\)").matcher(declaration);
+    if (m.matches()) {
+      final List<String> choices = new ArrayList<String>();
+      final Matcher choice = Pattern.compile("\"([^\"]*)\"").matcher(m.group(1));
+      while (choice.find()) {
+        choices.add(choice.group(1));
+      }
+      return new MultipleChoicesOption(choices.toArray(new String[0]));
+    }
+    fail(key + " is wired to " + declaration + ", which this test cannot "
+        + "rebuild; assert its emission by hand or widen this helper");
+    return null;
   }
 
   private static List<String> serializerKeys() throws IOException {
@@ -192,8 +220,8 @@ public class WinProfileParityTest {
   }
 
   private static List<String> mapperKeys() throws IOException {
-    return keysOf("new Pair<String, OptionMapper>(",
-        "new Pair<String, OptionMapper>\\(\"([^\"]+)\"");
+    return TestSources.tableKeys("fieldsMapper",
+        "new Pair<String, OptionMapper>\\(\\s*\"([^\"]+)\"");
   }
 
   /* The two tables are halves of one wiring: a key stored with no mapper never
@@ -275,12 +303,10 @@ public class WinProfileParityTest {
      argv decides the cache mode instead of the action radio. */
   @Test
   public void tickedCacheSaysNothingAboutTheCacheMode() throws IOException {
-    assertTrue("Cache must emit nothing when ticked", mapperTable().contains(
-        "new Pair<String, OptionMapper>(\"Cache\",\n"
-            + "          new SimpleOptionFlag(\"C0\", true)),"));
-    final OptionMapper cache = new SimpleOptionFlag("C0", true);
-    assertTrue(emit(cache, "1").isEmpty());
-    assertEquals(Arrays.asList("-C0"), emit(cache, "0"));
+    final OptionMapper cache = wiredMapper("Cache");
+    assertEquals("ticked Cache must leave the mode to the action token",
+        Arrays.asList(), emit(cache, "1"));
+    assertEquals("unticked Cache", Arrays.asList("-C0"), emit(cache, "0"));
   }
 
   /* Each value is withheld until its box is ticked, as WinHTTrack does, and
