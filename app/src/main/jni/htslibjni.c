@@ -46,6 +46,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef USE_COFFEECATCH
 #include "coffeecatch.h"
 #include "coffeejni.h"
+
+/* COFFEE_TRY_JNI leaves coffeecatch's 30s SIGALRM watchdog armed; we report the
+ * fault as a Java Error and keep running, so disarm it. After the throw, whose
+ * allocations are the hang it guards, and before COFFEE_END() frees its state.
+ * The body is copied from upstream's COFFEE_TRY_JNI: re-copy it if that changes. */
+#define COFFEE_TRY_JNI_RECOVER(ENV, CODE)  \
+  do {                                     \
+    COFFEE_TRY() {                         \
+      CODE;                                \
+    } COFFEE_CATCH() {                     \
+      coffeecatch_throw_exception(ENV);    \
+      coffeecatch_cancel_pending_alarm();  \
+    } COFFEE_END();                        \
+  } while(0)
 #endif
 
 #include "htslibjni.h"
@@ -411,7 +425,7 @@ Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
                                                      jclass clazz,
                                                      jstring opath) {
 #ifdef USE_COFFEECATCH
-  COFFEE_TRY_JNI(env, HTTrackLib_initRootPath(env, clazz, opath));
+  COFFEE_TRY_JNI_RECOVER(env, HTTrackLib_initRootPath(env, clazz, opath));
 #else
   HTTrackLib_initRootPath(env, clazz, opath);
 #endif
@@ -814,7 +828,7 @@ Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
                                                       jstring opath, jstring otemplates) {
 #ifdef USE_COFFEECATCH
   volatile jint ret = -1;
-  COFFEE_TRY_JNI(env, ret = HTTrackLib_buildTopIndex(env, clazz, opath, otemplates));
+  COFFEE_TRY_JNI_RECOVER(env, ret = HTTrackLib_buildTopIndex(env, clazz, opath, otemplates));
   return ret;
 #else
   return HTTrackLib_buildTopIndex(env, clazz, opath, otemplates);
@@ -922,7 +936,7 @@ Java_com_httrack_android_jni_HTTrackLib_main(JNIEnv* env, jobject object,
                                              jobjectArray stringArray) {
 #ifdef USE_COFFEECATCH
   volatile jint code = -1;
-  COFFEE_TRY_JNI(env, code = HTTrackLib_main(env, object, stringArray));
+  COFFEE_TRY_JNI_RECOVER(env, code = HTTrackLib_main(env, object, stringArray));
   return code;
 #else
   return HTTrackLib_main(env, object, stringArray);

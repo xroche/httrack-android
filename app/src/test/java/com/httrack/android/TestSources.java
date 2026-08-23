@@ -63,6 +63,11 @@ final class TestSources {
         + ".java"));
   }
 
+  /** Source of the JNI glue file NAME, such as "htslibjni.c". */
+  static String jniSource(final String name) throws IOException {
+    return read(new File(dir("src/main/jni"), name));
+  }
+
   /** A file of the pinned engine submodule, such as "winprofile-keys.tsv". */
   static File engineFile(final String name) {
     return new File(dir("src/main/jni/httrack"), name);
