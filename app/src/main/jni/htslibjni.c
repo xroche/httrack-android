@@ -49,7 +49,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 /* COFFEE_TRY_JNI leaves coffeecatch's 30s SIGALRM watchdog armed; we report the
  * fault as a Java Error and keep running, so disarm it. After the throw, whose
- * allocations are the hang it guards, and before COFFEE_END() frees its state. */
+ * allocations are the hang it guards, and before COFFEE_END() frees its state.
+ * The body is copied from upstream's COFFEE_TRY_JNI: re-copy it if that changes. */
 #define COFFEE_TRY_JNI_RECOVER(ENV, CODE)  \
   do {                                     \
     COFFEE_TRY() {                         \
