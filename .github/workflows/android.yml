@@ -118,6 +118,8 @@ jobs:
           python-version: '3.12'
       - run: pip install -r tools/ci/play-requirements.txt
       - run: python3 tools/ci/play_track_admin_test.py
+      # No job builds an .aab, so the alignment script's bundle branch has no other cover.
+      - run: tools/ci/check-so-alignment-test.sh
 
   # --- Phases below land with the app modernization (see the plan) ---
   #
