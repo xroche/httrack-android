@@ -580,6 +580,25 @@ public class MirrorServerTest {
     assertFalse("the idle watchdog never stopped the server", server.isAlive());
   }
 
+  /** Half the defence is that the port dies; a caller we refuse must not be able to postpone it. */
+  @Test
+  public void aRefusedCallerCannotHoldThePortOpen() throws Exception {
+    Files.write(new File(root, "index.html").toPath(), "<html>hi</html>".getBytes("UTF-8"));
+    final MirrorServer server = MirrorServer.start(root, 400);
+    final long deadline = System.currentTimeMillis() + 10000;
+    while (server.isAlive() && System.currentTimeMillis() < deadline) {
+      // Exactly what a rebound page sends, faster than the watchdog's own timeout.
+      try (Client client = new Client(server.getPort())) {
+        client.sendWithHost("GET", "/index.html", "evil.example.com", "");
+        client.read(false);
+      } catch (final IOException stopped) {
+        break;
+      }
+      Thread.sleep(100);
+    }
+    assertFalse("a refused caller kept the server alive", server.isAlive());
+  }
+
   /** A browser reading slowly must not be cut off, so a live transfer holds the server open. */
   @Test
   public void aSlowReadKeepsTheServerAlive() throws Exception {

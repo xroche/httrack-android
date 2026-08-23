@@ -126,6 +126,8 @@ final class MirrorServer extends NanoHTTPD {
       server = start(root);
       servers.put(key, server);
     }
+    // Handing one out is use: without this the watchdog can kill it before the browser connects.
+    server.lastActivityMs = System.currentTimeMillis();
     return server;
   }
 
@@ -186,13 +188,14 @@ final class MirrorServer extends NanoHTTPD {
 
   @Override
   public Response serve(final IHTTPSession session) {
-    lastActivityMs = System.currentTimeMillis();
     final Method method = session.getMethod();
     final boolean headOnly = method == Method.HEAD;
     if (!isOwnAuthority(session.getHeaders().get("host"), getListeningPort())) {
       // Bodiless: a page probing us through a rebound name is told nothing, not even an error text.
+      // Stamped only below, so a refused caller cannot hold the port open by poking us.
       return errorResponse(Response.Status.FORBIDDEN, "", headOnly);
     }
+    lastActivityMs = System.currentTimeMillis();
     if (method != Method.GET && !headOnly) {
       return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT,
           "405 Method Not Allowed");
