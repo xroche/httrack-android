@@ -1,5 +1,6 @@
 package com.httrack.android;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -39,7 +40,7 @@ public class JniCallbackExceptionTest {
   /** NewGlobalRef is not one of the calls allowed while an exception is pending. */
   @Test
   public void theCaptureClearsBeforeItAllocates() throws Exception {
-    final String capture = body(glue(), "static void capturePendingException(");
+    final String capture = body(glue(), "static int capturePendingException(");
     final int clear = capture.indexOf("ExceptionClear");
     final int global = capture.indexOf("NewGlobalRef");
     assertTrue("the capture no longer clears", clear != -1);
@@ -52,5 +53,16 @@ public class JniCallbackExceptionTest {
     final String main = body(glue(), "jint HTTrackLib_main(");
     assertTrue("a callback exception no longer reaches Java",
         main.contains("Throw(env, t.pendingException)"));
+  }
+
+  /* Keeping the throwable can fail under OOM. If the abort hangs off that, the
+     whole fix evaporates exactly when memory is short. */
+  @Test
+  public void theAbortDoesNotHangOnKeepingTheThrowable() throws Exception {
+    final String loop = body(glue(), "static int htsshow_loop_internal(");
+    assertTrue("the abort must follow capturePendingException's own verdict",
+        loop.contains("if (capturePendingException(t)) {"));
+    assertFalse("the abort must not hang on NewGlobalRef having succeeded",
+        loop.contains("if (t->pendingException != NULL) {\n      code = 0;"));
   }
 }

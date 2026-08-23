@@ -693,8 +693,9 @@ static jobject build_stats(jni_context_t *const t, httrackp * opt,
 }
 
 /* Almost every JNI call is illegal while an exception is pending, so clear it
-   here and keep the first one for the caller to rethrow. */
-static void capturePendingException(jni_context_t *const t) {
+   here and keep the first one for the caller to rethrow. Returns whether one was
+   seen: keeping it can fail under OOM, and the abort must not hinge on that. */
+static int capturePendingException(jni_context_t *const t) {
   if ((*t->env)->ExceptionCheck(t->env)) {
     jthrowable exc = (*t->env)->ExceptionOccurred(t->env);
     (*t->env)->ExceptionDescribe(t->env);
@@ -706,7 +707,9 @@ static void capturePendingException(jni_context_t *const t) {
       (*t->env)->DeleteLocalRef(t->env, exc);
     }
     error("progress callback threw, aborting the mirror");
+    return 1;
   }
+  return 0;
 }
 
 static int htsshow_loop_internal(jni_context_t *t, httrackp * opt,
@@ -755,8 +758,7 @@ static int htsshow_loop_internal(jni_context_t *t, httrackp * opt,
     }
 
     /* Clear before returning to the engine, which keeps making JNI calls. */
-    capturePendingException(t);
-    if (t->pendingException != NULL) {
+    if (capturePendingException(t)) {
       code = 0;
     }
 
