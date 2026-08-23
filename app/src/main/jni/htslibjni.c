@@ -785,6 +785,27 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
   return stopped;
 }
 
+JNICALL jboolean
+Java_com_httrack_android_jni_HTTrackLib_wasStopped(JNIEnv* env, jobject object) {
+  HTTrackLib_context *const context = getNativeOpt(env, object);
+  jboolean stopped = JNI_FALSE;
+
+  if (context == NULL) {
+    throwRuntimeException(env, "null context");
+    return JNI_FALSE;
+  }
+
+  MUTEX_LOCK(context->lock);
+  /* The engine raises this on its own when a size or time cap cuts the mirror
+     short, which no return code of hts_main2() distinguishes from a completion. */
+  if (context->opt != NULL) {
+    stopped = context->opt->state.stop != 0 ? JNI_TRUE : JNI_FALSE;
+  }
+  MUTEX_UNLOCK(context->lock);
+
+  return stopped;
+}
+
 static jint HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz, jstring opath,
                                      jstring otemplates) {
   if (opath != NULL && otemplates != NULL) {

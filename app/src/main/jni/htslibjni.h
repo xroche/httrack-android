@@ -48,6 +48,9 @@ JNIEXPORT jboolean JNICALL
 Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
                                              jboolean force);
 
+JNIEXPORT jboolean JNICALL
+Java_com_httrack_android_jni_HTTrackLib_wasStopped(JNIEnv* env, jobject object);
+
 JNIEXPORT jint JNICALL
 Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
                                                       jstring opath, jstring otemplates);

@@ -110,6 +110,14 @@ public class HTTrackLib {
   public native boolean stop(boolean force);
 
   /**
+   * Was the last run cut short ? True for a stop() request, and for the size and time caps the
+   * engine enforces itself, which no return code of main() tells apart from a completion.
+   *
+   * @return true if the engine stopped before draining its queue
+   */
+  public native boolean wasStopped();
+
+  /**
    * Default constructor.
    */
   public HTTrackLib() {
