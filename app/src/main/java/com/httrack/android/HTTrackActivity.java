@@ -145,6 +145,8 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final String IMPORT_OFFERED_NAME = "LegacyImportOffered";
   // Whether all-files storage access was ever offered; a refusal keeps mirrors in private storage.
   protected static final String STORAGE_ASKED_NAME = "StorageAccessAsked";
+  // The root we left on the last move: nothing is migrated, so the older projects are still there.
+  protected static final String PREVIOUS_BASE_NAME = "PreviousBasePath";
 
   // <br /> Pattern
   protected static final Pattern brHtmlPattern = Pattern.compile(Pattern
@@ -323,6 +325,14 @@ public class HTTrackActivity extends FragmentActivity {
           public void refreshProjectSuggestions() {
             refreshprojectNameSuggests();
           }
+
+          @Override
+          public void noteMovedFrom(final File previousRoot) {
+            getSharedPreferences(PREFS_NAME, 0).edit()
+                .putString(PREVIOUS_BASE_NAME, previousRoot.getAbsolutePath()).apply();
+            showNotification(getString(previousRootText(previousRoot),
+                previousRoot.getAbsolutePath()), true);
+          }
         });
 
     // Always refreshed: the field may have just been inflated.
@@ -348,6 +358,7 @@ public class HTTrackActivity extends FragmentActivity {
     // Load it
     computeStorageTarget();
     refreshprojectNameSuggests();
+    refreshStorageAccessHints();
   }
 
   /*
@@ -478,8 +489,7 @@ public class HTTrackActivity extends FragmentActivity {
     }
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
       new AlertDialog.Builder(this)
-          .setMessage("Allow HTTrack all-files access so your mirrors are saved in a public "
-              + "HTTrack folder other apps can open. Without it, mirrors stay private to HTTrack.")
+          .setMessage(R.string.storage_access_prompt)
           .setPositiveButton(android.R.string.ok, (dialog, which) -> {
             getSharedPreferences(PREFS_NAME, 0).edit()
                 .putBoolean(STORAGE_ASKED_NAME, true).apply();
@@ -581,6 +591,51 @@ public class HTTrackActivity extends FragmentActivity {
     final View warning = findViewById(R.id.textStorageWarning);
     if (warning != null) {
       warning.setVisibility(browsable ? View.GONE : View.VISIBLE);
+    }
+    final TextView moved = TextView.class.cast(findViewById(R.id.textPreviousRoot));
+    if (moved != null) {
+      // Offer it only while we could actually take it back, or the tap just toasts a refusal.
+      final File previous = getPreviousRootFile();
+      final boolean offer = previous != null
+          && Boolean.TRUE.equals(isWritableProjectPath(previous));
+      if (offer) {
+        moved.setText(getString(previousRootText(previous), previous.getAbsolutePath())
+            + " " + getString(R.string.storage_previous_root_tap));
+      }
+      moved.setVisibility(offer ? View.VISIBLE : View.GONE);
+    }
+  }
+
+  /* The mirrors left behind in a private root are the ones an uninstall takes. */
+  private int previousRootText(final File previous) {
+    return StoragePaths.externalStorageDocId(previous,
+        Environment.getExternalStorageDirectory()) == null
+            ? R.string.storage_previous_root_private : R.string.storage_previous_root;
+  }
+
+  /*
+   * The root we left on the last move, or null when there was none or we are back on it. Only a
+   * hint: it is offered, never applied behind the user's back, and nothing was ever migrated.
+   */
+  private File getPreviousRootFile() {
+    final String previous = getSharedPreferences(PREFS_NAME, 0)
+        .getString(PREVIOUS_BASE_NAME, null);
+    if (previous == null) {
+      return null;
+    }
+    final File file = new File(previous);
+    return file.equals(getProjectRootFile()) ? null : file;
+  }
+
+  /*
+   * Base-path panel hint: go back to the root the last move left behind, where the older projects
+   * still are. Refused like any other base path when it is no longer ours to write.
+   */
+  public void onClickUsePreviousRoot(final View view) {
+    final File previous = getPreviousRootFile();
+    if (previous != null) {
+      // setBasePath refreshes the panel, hint included.
+      setBasePath(previous.getAbsolutePath());
     }
   }
 

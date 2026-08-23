@@ -2,6 +2,7 @@ package com.httrack.android;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -28,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -48,6 +50,11 @@ public class MirrorServerTest {
   @Before
   public void setUp() throws Exception {
     root = tmp.newFolder("Websites");
+  }
+
+  @After
+  public void tearDown() {
+    MirrorServer.stopAll();
   }
 
   @Test
@@ -359,7 +366,10 @@ public class MirrorServerTest {
 
     private final OutputStream out;
 
+    private final int port;
+
     Client(final int port) throws IOException {
+      this.port = port;
       socket = new Socket();
       // A small receive window keeps the server blocked mid-body while a test rewrites the file.
       socket.setReceiveBufferSize(4096);
@@ -375,8 +385,14 @@ public class MirrorServerTest {
 
     void send(final String method, final String path, final String extraHeaders)
         throws IOException {
-      final String request =
-          method + " " + path + " HTTP/1.1\r\nHost: 127.0.0.1\r\n" + extraHeaders + "\r\n";
+      sendWithHost(method, path, "127.0.0.1:" + port, extraHeaders);
+    }
+
+    /** Sends whatever Host the caller names, or none at all when {@code host} is null. */
+    void sendWithHost(final String method, final String path, final String host,
+        final String extraHeaders) throws IOException {
+      final String request = method + " " + path + " HTTP/1.1\r\n"
+          + (host == null ? "" : "Host: " + host + "\r\n") + extraHeaders + "\r\n";
       out.write(request.getBytes("US-ASCII"));
       out.flush();
     }
@@ -454,6 +470,18 @@ public class MirrorServerTest {
 
   /** Docs and mirrors are served at once, so each root must keep its own server. */
   @Test
+  public void handingOutAServerCountsAsUsingIt() throws Exception {
+    // Otherwise one idle since just before the timeout is handed back, then killed
+    // under the browser that was about to connect to it.
+    final MirrorServer first = MirrorServer.forRoot(root);
+    first.lastActivityMs = 0;
+    final MirrorServer again = MirrorServer.forRoot(root);
+    assertSame("the same server should have been handed back", first, again);
+    assertTrue("handing the server out did not count as activity", again.lastActivityMs > 0);
+    again.stop();
+  }
+
+  @Test
   public void forRootKeepsOneServerPerTree() throws Exception {
     final File resources = tmp.newFolder("resources");
     final MirrorServer mirrors = MirrorServer.forRoot(root);
@@ -466,5 +494,147 @@ public class MirrorServerTest {
   @Test
   public void forRootFoldsAliasesOfTheSameTree() throws Exception {
     assertSame(MirrorServer.forRoot(root), MirrorServer.forRoot(new File(root, "html/..")));
+  }
+
+  @Test
+  public void ownAuthorityAcceptsBothLoopbackNamesOnOurPort() {
+    assertTrue(MirrorServer.isOwnAuthority("127.0.0.1:8080", 8080));
+    assertTrue(MirrorServer.isOwnAuthority("localhost:8080", 8080));
+    assertTrue(MirrorServer.isOwnAuthority("LocalHost:8080", 8080));
+  }
+
+  @Test
+  public void ownAuthorityRefusesEverythingElse() {
+    assertFalse(MirrorServer.isOwnAuthority("evil.example.com:8080", 8080));
+    assertFalse(MirrorServer.isOwnAuthority("127.0.0.1:8081", 8080));
+    assertFalse(MirrorServer.isOwnAuthority("127.0.0.1", 8080));
+    assertFalse(MirrorServer.isOwnAuthority("localhost.evil.example.com:8080", 8080));
+    assertFalse(MirrorServer.isOwnAuthority("[::1]:8080", 8080));
+    assertFalse(MirrorServer.isOwnAuthority(null, 8080));
+  }
+
+  @Test
+  public void serverAnswersOurOwnAuthority() throws Exception {
+    assertHostIsServed("127.0.0.1");
+    assertHostIsServed("localhost");
+  }
+
+  private void assertHostIsServed(final String name) throws Exception {
+    final byte[] content = "<html>hello</html>".getBytes("UTF-8");
+    Files.write(new File(root, "index.html").toPath(), content);
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.sendWithHost("GET", "/index.html", name + ":" + server.getPort(), "");
+      final Reply reply = client.read(false);
+      assertEquals("HTTP/1.1 200 OK", reply.status);
+      assertArrayEquals(content, reply.body);
+    } finally {
+      server.stop();
+    }
+  }
+
+  /** A page on a name rebound to 127.0.0.1 reads the mirror unless a foreign Host is refused. */
+  @Test
+  public void aForeignHostIsRefusedWithoutABody() throws Exception {
+    assertHostIsRefused("evil.example.com:PORT");
+  }
+
+  /** The port is half of the identity: our name on someone else's port is not us. */
+  @Test
+  public void theRightNameOnTheWrongPortIsRefused() throws Exception {
+    assertHostIsRefused("127.0.0.1:1");
+  }
+
+  @Test
+  public void aMissingHostIsRefused() throws Exception {
+    assertHostIsRefused(null);
+  }
+
+  private void assertHostIsRefused(final String host) throws Exception {
+    Files.write(new File(root, "index.html").toPath(), "<html>hello</html>".getBytes("UTF-8"));
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      final String sent = host == null ? null
+          : host.replace("PORT", String.valueOf(server.getPort()));
+      client.sendWithHost("GET", "/index.html", sent, "");
+      final Reply reply = client.read(false);
+      assertEquals("HTTP/1.1 403 Forbidden", reply.status);
+      assertEquals(0, reply.body.length);
+    } finally {
+      server.stop();
+    }
+  }
+
+  /** The Host check runs first, so the escape refusal has to stay reachable behind it. */
+  @Test
+  public void traversalIsStillRefusedWithAGoodHost() throws Exception {
+    final File secret = tmp.newFile("secret.txt");
+    Files.write(secret.toPath(), "top secret".getBytes("UTF-8"));
+    final MirrorServer server = MirrorServer.start(root);
+    try (Client client = new Client(server.getPort())) {
+      client.send("GET", "/../secret.txt");
+      final Reply reply = client.read(false);
+      assertEquals("HTTP/1.1 403 Forbidden", reply.status);
+      assertArrayEquals("403 Forbidden".getBytes("US-ASCII"), reply.body);
+    } finally {
+      server.stop();
+    }
+  }
+
+  /** The reader is another app, so nothing but the absence of requests can close the port. */
+  @Test
+  public void anIdleServerStopsItself() throws Exception {
+    final MirrorServer server = MirrorServer.start(root, 100);
+    final long deadline = System.currentTimeMillis() + 10000;
+    while (server.isAlive() && System.currentTimeMillis() < deadline) {
+      Thread.sleep(20);
+    }
+    assertFalse("the idle watchdog never stopped the server", server.isAlive());
+  }
+
+  /** Half the defence is that the port dies; a caller we refuse must not be able to postpone it. */
+  @Test
+  public void aRefusedCallerCannotHoldThePortOpen() throws Exception {
+    Files.write(new File(root, "index.html").toPath(), "<html>hi</html>".getBytes("UTF-8"));
+    final MirrorServer server = MirrorServer.start(root, 400);
+    final long deadline = System.currentTimeMillis() + 10000;
+    while (server.isAlive() && System.currentTimeMillis() < deadline) {
+      // Exactly what a rebound page sends, faster than the watchdog's own timeout.
+      try (Client client = new Client(server.getPort())) {
+        client.sendWithHost("GET", "/index.html", "evil.example.com", "");
+        client.read(false);
+      } catch (final IOException stopped) {
+        break;
+      }
+      Thread.sleep(100);
+    }
+    assertFalse("a refused caller kept the server alive", server.isAlive());
+  }
+
+  /** A browser reading slowly must not be cut off, so a live transfer holds the server open. */
+  @Test
+  public void aSlowReadKeepsTheServerAlive() throws Exception {
+    final byte[] content = new byte[2 * 1024 * 1024];
+    Files.write(new File(root, "big.html").toPath(), content);
+    final MirrorServer server = MirrorServer.start(root, 500);
+    try (Client client = new Client(server.getPort())) {
+      client.send("GET", "/big.html");
+      assertEquals("HTTP/1.1 200 OK", client.readHead().status);
+      for (int i = 0; i < 15; i++) {
+        Thread.sleep(100);
+        assertTrue("the server stopped under a reader still asking for bytes",
+            client.readChunk().length > 0);
+      }
+      assertTrue(server.isAlive());
+    } finally {
+      server.stop();
+    }
+  }
+
+  @Test
+  public void stopDropsTheRegistryEntry() throws Exception {
+    final MirrorServer server = MirrorServer.forRoot(root);
+    server.stop();
+    assertNotSame(server, MirrorServer.forRoot(root));
   }
 }

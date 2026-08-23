@@ -224,6 +224,8 @@ public class CleanupActivity extends ListActivity {
     new Thread(new Runnable() {
       @Override
       public void run() {
+        // Stop serving before the files go: nothing may keep reading a mirror being deleted.
+        MirrorServer.stopAll();
         final HashSet<Integer> deleted = new HashSet<Integer>();
         for (final int position : positions) {
           if (deleteRecursively(new File(projectRootFile, projects[position]))) {

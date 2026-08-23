@@ -142,6 +142,16 @@
             android:text="@string/storage_private_warning"
             android:textStyle="italic"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/textPreviousRoot"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:onClick="onClickUsePreviousRoot"
+            android:paddingTop="4dp"
+            android:textStyle="italic"
+            android:visibility="gone" />
     </LinearLayout>
 
     <LinearLayout

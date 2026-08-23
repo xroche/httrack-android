@@ -24,10 +24,15 @@ package com.httrack.android;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import fi.iki.elonen.NanoHTTPD;
 
@@ -36,6 +41,10 @@ import fi.iki.elonen.NanoHTTPD;
  * browser file:// access to our scoped storage, so the mirror is served over http://127.0.0.1 and
  * read as an ordinary web site. Filenames come from crawled URLs, so path resolution is hostile
  * input and lives in the unit-tested {@link #resolveWithinRoot(File, String)}.
+ *
+ * Loopback is not by itself a boundary: a page can point a name it controls at 127.0.0.1 and read
+ * the mirror through the browser. So a request must name us ({@link #isOwnAuthority}), and the
+ * port must not outlive the reading ({@link #watchForIdle}).
  *
  * Plain thread (NanoHTTPD owns it): reliability while browsing backgrounded relies on us staying
  * the most-recently-used cached process. A foreground service (needs an Android-14 type) is a
@@ -46,15 +55,27 @@ final class MirrorServer extends NanoHTTPD {
   // ephemeral fallback. Privileged (<1024) ports are omitted: Android forbids binding them.
   private static final int[] PORTS = { 8080, 3128, 8081, 3129, 0 };
 
+  // Long enough to read one page and follow a link. Short enough that a forgotten browse does
+  // not leave the port open for the life of the process.
+  private static final long IDLE_TIMEOUT_MS = 30 * 60 * 1000L;
+
   // One server per served tree, keyed by canonical path: docs and mirrors live in different trees,
   // and restarting a shared server on every switch would cut off whatever is reading the other one.
   private static final Map<String, MirrorServer> servers = new HashMap<String, MirrorServer>();
 
   private final File root;
 
-  private MirrorServer(final File root, final int port) {
+  private final long idleTimeoutMs;
+
+  /** When the last response ended: the only evidence available that something is still reading. */
+  volatile long lastActivityMs = System.currentTimeMillis();
+
+  private final AtomicInteger streaming = new AtomicInteger();
+
+  private MirrorServer(final File root, final int port, final long idleTimeoutMs) {
     super("127.0.0.1", port);
     this.root = root;
+    this.idleTimeoutMs = idleTimeoutMs;
   }
 
   /**
@@ -68,11 +89,17 @@ final class MirrorServer extends NanoHTTPD {
    *           if no candidate port could be bound
    */
   static MirrorServer start(final File root) throws IOException {
+    return start(root, IDLE_TIMEOUT_MS);
+  }
+
+  /** Same, with the idle lifetime spelled out, so a test need not wait out the real one. */
+  static MirrorServer start(final File root, final long idleTimeoutMs) throws IOException {
     IOException last = null;
     for (final int port : PORTS) {
-      final MirrorServer server = new MirrorServer(root, port);
+      final MirrorServer server = new MirrorServer(root, port, idleTimeoutMs);
       try {
         server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, true);
+        server.watchForIdle();
         return server;
       } catch (final IOException e) {
         last = e;
@@ -82,24 +109,71 @@ final class MirrorServer extends NanoHTTPD {
   }
 
   /**
-   * Started server for {@code root}, reusing the one already serving that tree. Servers outlive the
-   * activity that opened them: the browser reading a mirror is a separate app, and stopping the
-   * server on our onDestroy would break its page.
+   * Started server for {@code root}, reusing the one already serving that tree unless it has since
+   * gone idle. Servers outlive the activity that opened them: the browser reading a mirror is a
+   * separate app, and stopping the server on our onDestroy would break its page.
    *
    * @param root
    *          the served tree; every request is confined to it
-   * @return a started server, valid until the process exits
+   * @return a started server, valid until it goes idle
    * @throws IOException
    *           if the tree cannot be canonicalised, or no port could be bound
    */
   static synchronized MirrorServer forRoot(final File root) throws IOException {
     final String key = root.getCanonicalPath();
     MirrorServer server = servers.get(key);
-    if (server == null) {
+    if (server == null || !server.isAlive()) {
       server = start(root);
       servers.put(key, server);
     }
+    // Handing one out is use: without this the watchdog can kill it before the browser connects.
+    server.lastActivityMs = System.currentTimeMillis();
     return server;
+  }
+
+  /** Stops serving and drops the registry entry, so the next browse starts a fresh server. */
+  @Override
+  public void stop() {
+    synchronized (MirrorServer.class) {
+      servers.values().remove(this);
+    }
+    super.stop();
+  }
+
+  /** Stops every server; the ports are what an attacker needs open, so none may be left running. */
+  static synchronized void stopAll() {
+    for (final MirrorServer server : new ArrayList<MirrorServer>(servers.values())) {
+      server.stop();
+    }
+    servers.clear();
+  }
+
+  /**
+   * Daemon watchdog stopping us once nothing has read for {@link #idleTimeoutMs}. The reader is
+   * another app, so no callback of ours says it is done; only the absence of requests does.
+   */
+  private void watchForIdle() {
+    final Thread watchdog = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          for (;;) {
+            final long left = idleTimeoutMs - (System.currentTimeMillis() - lastActivityMs);
+            if (left <= 0 && streaming.get() == 0) {
+              break;
+            }
+            Thread.sleep(left > 0 ? left : idleTimeoutMs);
+          }
+        } catch (final InterruptedException interrupted) {
+          return;
+        }
+        if (isAlive()) {
+          stop();
+        }
+      }
+    }, "mirror-idle-" + getListeningPort());
+    watchdog.setDaemon(true);
+    watchdog.start();
   }
 
   /** Actual bound port, valid once started. */
@@ -115,11 +189,17 @@ final class MirrorServer extends NanoHTTPD {
   @Override
   public Response serve(final IHTTPSession session) {
     final Method method = session.getMethod();
-    if (method != Method.GET && method != Method.HEAD) {
+    final boolean headOnly = method == Method.HEAD;
+    if (!isOwnAuthority(session.getHeaders().get("host"), getListeningPort())) {
+      // Bodiless: a page probing us through a rebound name is told nothing, not even an error text.
+      // Stamped only below, so a refused caller cannot hold the port open by poking us.
+      return errorResponse(Response.Status.FORBIDDEN, "", headOnly);
+    }
+    lastActivityMs = System.currentTimeMillis();
+    if (method != Method.GET && !headOnly) {
       return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT,
           "405 Method Not Allowed");
     }
-    final boolean headOnly = method == Method.HEAD;
     final File target = resolveWithinRoot(root, session.getUri());
     if (target == null) {
       return errorResponse(Response.Status.FORBIDDEN, "403 Forbidden", headOnly);
@@ -131,7 +211,62 @@ final class MirrorServer extends NanoHTTPD {
     if (!file.exists() || file.isDirectory()) {
       return errorResponse(Response.Status.NOT_FOUND, "404 Not Found", headOnly);
     }
-    return fileResponse(file, headOnly);
+    final Response response = fileResponse(file, headOnly);
+    response.setData(new ActiveStream(response.getData()));
+    return response;
+  }
+
+  /**
+   * A browser fills Host in from the URL and forbids a page to forge it. Refusing every other
+   * name is what stops a name an attacker rebound to 127.0.0.1 from reading the mirror. A missing
+   * Host is refused too, since the only clients are browsers and they always send one.
+   *
+   * @param host
+   *          the request's Host header, or null when it had none
+   * @param port
+   *          the port this server is listening on
+   * @return true if the request addressed us by a loopback name and our own port
+   */
+  static boolean isOwnAuthority(final String host, final int port) {
+    if (host == null) {
+      return false;
+    }
+    final int colon = host.lastIndexOf(':');
+    // No port means 80, which is privileged and so never ours.
+    if (colon < 0) {
+      return false;
+    }
+    final String name = host.substring(0, colon);
+    if (!"127.0.0.1".equals(name) && !"localhost".equalsIgnoreCase(name)) {
+      return false;
+    }
+    return String.valueOf(port).equals(host.substring(colon + 1));
+  }
+
+  /**
+   * Holds the idle watchdog off while a response is streaming, however slowly the client reads.
+   * A server blocked writing to a browser makes no progress of its own to measure.
+   */
+  private final class ActiveStream extends FilterInputStream {
+    // NanoHTTPD closes the body both after sending it and again with the response.
+    private final AtomicBoolean done = new AtomicBoolean();
+
+    ActiveStream(final InputStream data) {
+      super(data);
+      streaming.incrementAndGet();
+    }
+
+    @Override
+    public void close() throws IOException {
+      try {
+        super.close();
+      } finally {
+        if (done.compareAndSet(false, true)) {
+          lastActivityMs = System.currentTimeMillis();
+          streaming.decrementAndGet();
+        }
+      }
+    }
   }
 
   /**

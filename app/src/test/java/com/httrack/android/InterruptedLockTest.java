@@ -140,7 +140,7 @@ public class InterruptedLockTest {
      two abort flags are pinned here: stop alone misses a fatal disk error. */
   @Test
   public void wasStoppedWeighsBothOfTheEnginesAbortFlags() throws Exception {
-    final String jni = TestSources.jniSource();
+    final String jni = TestSources.jniSource("htslibjni.c");
     final int at = jni.indexOf("HTTrackLib_wasStopped");
     assertTrue("wasStopped is gone", at > 0);
     final String body = jni.substring(at, jni.indexOf("\n}", at));

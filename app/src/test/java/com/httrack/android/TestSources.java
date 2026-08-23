@@ -63,9 +63,9 @@ final class TestSources {
         + ".java"));
   }
 
-  /** Source of the JNI glue, for contracts no JUnit test can reach at runtime. */
-  static String jniSource() throws IOException {
-    return read(new File(dir("src/main/jni"), "htslibjni.c"));
+  /** Source of the JNI glue file NAME, such as "htslibjni.c". */
+  static String jniSource(final String name) throws IOException {
+    return read(new File(dir("src/main/jni"), name));
   }
 
   /** A file of the pinned engine submodule, such as "winprofile-keys.tsv". */
@@ -82,24 +82,61 @@ final class TestSources {
     return count;
   }
 
-  /** The winprofile.ini keys fieldsSerializer declares, in order. The table
-   *  pulls in R.id, which the stub android.jar cannot load, and three of its
-   *  entries wrap across two lines. */
-  static List<String> serializerKeys() throws IOException {
+  /** Body of the OptionsMapper table NAME, comments dropped. */
+  static String tableBody(final String name) throws IOException {
     final String source = javaSource("OptionsMapper");
-    final String declaration = "new Pair<Integer, String>(R.id.";
-    final Matcher m = Pattern.compile(
-        "new Pair<Integer, String>\\(R\\.id\\.\\w+,\\s*\"([^\"]+)\"\\)")
-        .matcher(source);
+    final int head = source.indexOf(name + "[] = new Pair[] {");
+    if (head == -1) {
+      throw new IllegalStateException("no " + name + " table");
+    }
+    final int from = source.indexOf('{', head) + 1;
+    int depth = 1;
+    int at = from;
+    for (; at < source.length() && depth > 0; at++) {
+      final char c = source.charAt(at);
+      if (c == '"') {
+        // A footer default holds {url}, which must not close the table.
+        while (++at < source.length() && source.charAt(at) != '"') {
+          if (source.charAt(at) == '\\') {
+            at++;
+          }
+        }
+      } else if (c == '{') {
+        depth++;
+      } else if (c == '}') {
+        depth--;
+      }
+    }
+    if (depth != 0) {
+      throw new IllegalStateException(name + " table does not end");
+    }
+    return source.substring(from, at - 1).replaceAll("(?s)/\\*.*?\\*/", "")
+        .replaceAll("(?m)^\\s*//.*$", "");
+  }
+
+  /** Keys the table NAME declares, in order; PATTERN captures one entry's key.
+   *  Entries are counted by a "new Pair" no line break can split, so a
+   *  declaration PATTERN cannot read fails the scrape instead of vanishing. */
+  static List<String> tableKeys(final String name, final String pattern)
+      throws IOException {
+    final String body = tableBody(name);
+    final Matcher m = Pattern.compile(pattern).matcher(body);
     final List<String> keys = new ArrayList<String>();
     while (m.find()) {
       keys.add(m.group(1));
     }
-    // A regex that quietly stopped matching would shorten every list built here.
-    if (keys.size() != occurrences(source, declaration)) {
+    final int declared = occurrences(body, "new Pair");
+    if (keys.size() != declared) {
       throw new IllegalStateException("parsed " + keys.size() + " of "
-          + occurrences(source, declaration) + " fieldsSerializer entries");
+          + declared + " " + name + " entries");
     }
     return keys;
+  }
+
+  /** The winprofile.ini keys fieldsSerializer declares, in order. The table
+   *  pulls in R.id, which the stub android.jar cannot load. */
+  static List<String> serializerKeys() throws IOException {
+    return tableKeys("fieldsSerializer",
+        "new Pair<Integer, String>\\(\\s*R\\.id\\.\\w+\\s*,\\s*\"([^\"]+)\"\\s*\\)");
   }
 }
