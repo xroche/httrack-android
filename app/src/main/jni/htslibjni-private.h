@@ -118,6 +118,9 @@ typedef struct jni_context_t {
   jobject callbacks;
   /* Context */
   HTTrackLib_context *context;
+  /* First exception a callback threw (global ref); non-NULL also gates the
+     callbacks off until the engine has unwound. */
+  jthrowable pendingException;
 } jni_context_t;
 
 typedef enum hts_state_id_t {

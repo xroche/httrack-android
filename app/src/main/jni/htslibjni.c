@@ -706,6 +706,26 @@ static jobject build_stats(jni_context_t *const t, httrackp * opt,
   return ostats;
 }
 
+/* Almost every JNI call is illegal while an exception is pending, so clear it
+   here and keep the first one for the caller to rethrow. Returns whether one was
+   seen: keeping it can fail under OOM, and the abort must not hinge on that. */
+static int capturePendingException(jni_context_t *const t) {
+  if ((*t->env)->ExceptionCheck(t->env)) {
+    jthrowable exc = (*t->env)->ExceptionOccurred(t->env);
+    (*t->env)->ExceptionDescribe(t->env);
+    (*t->env)->ExceptionClear(t->env);
+    if (exc != NULL) {
+      if (t->pendingException == NULL) {
+        t->pendingException = (jthrowable) (*t->env)->NewGlobalRef(t->env, exc);
+      }
+      (*t->env)->DeleteLocalRef(t->env, exc);
+    }
+    error("progress callback threw, aborting the mirror");
+    return 1;
+  }
+  return 0;
+}
+
 static int htsshow_loop_internal(jni_context_t *t, httrackp * opt,
   lien_back * back, int back_max, int back_index, int lien_n,
   int lien_tot, int stat_time, hts_stat_struct * stats) {
@@ -728,6 +748,11 @@ static int htsshow_loop_internal(jni_context_t *t, httrackp * opt,
     return 1;
   }
 
+  /* a callback already threw: stay out of Java, and keep asking for the abort */
+  if (t->pendingException != NULL) {
+    return 0;
+  }
+
   /* create a new local frame for local objects (stats, strings ...) */
   if ((*t->env)->PushLocalFrame(t->env, capacity) == 0) {
     /* build stats object */
@@ -739,19 +764,22 @@ static int htsshow_loop_internal(jni_context_t *t, httrackp * opt,
     }
 
     /* Call refresh method */
-    if (ostats != NULL || stats == NULL) {
+    if (ostats != NULL) {
       (*t->env)->CallVoidMethod(t->env, t->callbacks,
                                 meth_HTTrackCallbacks_onRefresh, ostats);
-      if ((*t->env)->ExceptionOccurred(t->env)) {
-        code = 0;
-      }
     } else {
+      code = 0;  /* build_stats failed, usually with an exception pending */
+    }
+
+    /* Clear before returning to the engine, which keeps making JNI calls. */
+    if (capturePendingException(t)) {
       code = 0;
     }
 
     /* wipe local frame */
     (void) (*t->env)->PopLocalFrame(t->env, NULL);
   } else {
+    capturePendingException(t);  /* PushLocalFrame threw OutOfMemoryError */
     return 0;  /* error */
   }
 
@@ -852,6 +880,7 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
     t.env = env;
     t.callbacks = (*env)->GetObjectField(env, object, field_callbacks);
     t.context = context;
+    t.pendingException = NULL;
 
     /* Create options and reference it */
     MUTEX_LOCK(context->lock);
@@ -892,7 +921,7 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
           (hts_stat_struct*) stats);
 
       /* Raise error if suitable */
-      if (code == -1) {
+      if (code == -1 && t.pendingException == NULL) {
         const char *message = hts_errmsg(context->opt);
         if (message != NULL && *message != '\0') {
           throwIOException(env, message);
@@ -918,6 +947,14 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
       } else {
         throwRuntimeException(env, "not enough native memory to create an httrack context");
       }
+    }
+
+    /* A callback threw: the engine aborted, and hts_main2 returns the same 0 as
+       a completed mirror, so the exception is the only honest outcome. */
+    if (t.pendingException != NULL) {
+      (*env)->Throw(env, t.pendingException);
+      (*env)->DeleteGlobalRef(env, t.pendingException);
+      code = -1;
     }
 
     /* Return exit code. */
