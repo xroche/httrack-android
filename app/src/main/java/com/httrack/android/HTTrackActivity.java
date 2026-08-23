@@ -330,8 +330,8 @@ public class HTTrackActivity extends FragmentActivity {
           public void noteMovedFrom(final File previousRoot) {
             getSharedPreferences(PREFS_NAME, 0).edit()
                 .putString(PREVIOUS_BASE_NAME, previousRoot.getAbsolutePath()).apply();
-            showNotification(
-                getString(R.string.storage_previous_root, previousRoot.getAbsolutePath()), true);
+            showNotification(getString(previousRootText(previousRoot),
+                previousRoot.getAbsolutePath()), true);
           }
         });
 
@@ -599,14 +599,18 @@ public class HTTrackActivity extends FragmentActivity {
       final boolean offer = previous != null
           && Boolean.TRUE.equals(isWritableProjectPath(previous));
       if (offer) {
-        // The mirrors left behind in a private root are the ones an uninstall takes.
-        final int text = StoragePaths.externalStorageDocId(previous,
-            Environment.getExternalStorageDirectory()) == null
-                ? R.string.storage_previous_root_private : R.string.storage_previous_root;
-        moved.setText(getString(text, previous.getAbsolutePath()));
+        moved.setText(getString(previousRootText(previous), previous.getAbsolutePath())
+            + " " + getString(R.string.storage_previous_root_tap));
       }
       moved.setVisibility(offer ? View.VISIBLE : View.GONE);
     }
+  }
+
+  /* The mirrors left behind in a private root are the ones an uninstall takes. */
+  private int previousRootText(final File previous) {
+    return StoragePaths.externalStorageDocId(previous,
+        Environment.getExternalStorageDirectory()) == null
+            ? R.string.storage_previous_root_private : R.string.storage_previous_root;
   }
 
   /*

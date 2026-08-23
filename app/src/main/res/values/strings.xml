@@ -232,8 +232,9 @@
     <string name="enable_all_files_access">Grant all-files access</string>
     <string name="storage_private_warning">Without all-files access, mirrors are saved in a private folder that other apps and file managers can\'t open. Android also erases that folder if you uninstall HTTrack or clear its storage. Grant access to keep mirrors in a public HTTrack folder instead.</string>
     <string name="storage_access_prompt">Allow HTTrack all-files access so your mirrors are saved in a public HTTrack folder other apps can open. Without it, mirrors stay in a private folder that Android erases if you uninstall HTTrack or clear its storage.</string>
-    <string name="storage_previous_root">Mirrors used to be saved in %1$s. Older projects are still there. Tap to switch back.</string>
-    <string name="storage_previous_root_private">Mirrors used to be saved in %1$s. Older projects are still there, and Android erases that folder if you uninstall HTTrack. Tap to switch back.</string>
+    <string name="storage_previous_root">Mirrors used to be saved in %1$s. Older projects are still there.</string>
+    <string name="storage_previous_root_private">Mirrors used to be saved in %1$s. Older projects are still there, and Android erases that folder if you uninstall HTTrack.</string>
+    <string name="storage_previous_root_tap">Tap to switch back.</string>
     <string name="base_path_toast">Folder path copied to clipboard: %s</string>
     <string name="title_activity_file_chooser">FileChooserActivity</string>
     <string name="apply_base_path">Save prefs</string>
