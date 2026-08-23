@@ -46,24 +46,23 @@ public class WinProfileParityTest {
 
   /* -x turns external links into error pages, and the engine defaults it off. */
   @Test
-  public void noExternalPagesEmitsWhenChecked() {
-    assertEquals(Arrays.asList("-x"), emit(new SimpleOptionFlag("x"), "1"));
-    assertTrue(emit(new SimpleOptionFlag("x"), "0").isEmpty());
+  public void noExternalPagesEmitsWhenChecked() throws IOException {
+    assertEquals(Arrays.asList("-x"), emit(wiredMapper("NoExternalPages"), "1"));
+    assertTrue(emit(wiredMapper("NoExternalPages"), "0").isEmpty());
   }
 
   /* -%q includes query strings and -%q0 drops them; the box hides them. */
   @Test
-  public void hideQueryStringsEmitsTheDisablingForm() {
-    assertEquals(Arrays.asList("-%q0"), emit(new SimpleOptionFlag("%q0"), "1"));
-    assertTrue(emit(new SimpleOptionFlag("%q0"), "0").isEmpty());
+  public void hideQueryStringsEmitsTheDisablingForm() throws IOException {
+    assertEquals(Arrays.asList("-%q0"), emit(wiredMapper("NoQueryStrings"), "1"));
+    assertTrue(emit(wiredMapper("NoQueryStrings"), "0").isEmpty());
   }
 
   /* Bare -j re-asserts the engine default, so unticking the box needs -j0. */
   @Test
-  public void parseJavaTurnsOffWithTheZeroForm() {
-    assertEquals(Arrays.asList("-j0"),
-        emit(new SimpleOptionFlag("j0", true), "0"));
-    assertTrue(emit(new SimpleOptionFlag("j0", true), "1").isEmpty());
+  public void parseJavaTurnsOffWithTheZeroForm() throws IOException {
+    assertEquals(Arrays.asList("-j0"), emit(wiredMapper("ParseJava"), "0"));
+    assertTrue(emit(wiredMapper("ParseJava"), "1").isEmpty());
   }
 
   @Test
