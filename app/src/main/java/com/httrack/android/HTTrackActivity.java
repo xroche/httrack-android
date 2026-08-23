@@ -1431,6 +1431,9 @@ public class HTTrackActivity extends FragmentActivity {
       RandomAccessFile outLock = null;
       FileLock lock = null;
       File profile = null;
+      // Did the engine get as far as running, and if so did it leave anything to resume?
+      boolean engineRan = false;
+      boolean pendingWork = true;
       try {
         // Sanity checks
         if (parent == null) {
@@ -1496,7 +1499,9 @@ public class HTTrackActivity extends FragmentActivity {
         setProgressLines(new String[] { string_starting_mirror });
 
         // Run engine
+        engineRan = true;
         final int code = engine.main(cargs);
+        pendingWork = leavesPendingWork(interrupted || engine.wasStopped(), code);
 
         // Result
         if (code == 0) {
@@ -1545,6 +1550,16 @@ public class HTTrackActivity extends FragmentActivity {
           } catch (IOException io) {
           }
         }
+        // Stamp what the run actually was; a project the engine never touched keeps its marker.
+        if (engineRan) {
+          try {
+            setInterruptedProfile(pendingWork);
+          } catch (final IOException io) {
+            Log.w(getClass().getSimpleName(), "could not update the resume marker", io);
+          }
+        }
+        // Before the finished pane, whose own stopMirror() must not read as an interruption.
+        ended = true;
       }
 
       // Ensure we switch to the final pane
@@ -1591,15 +1606,10 @@ public class HTTrackActivity extends FragmentActivity {
      */
     private synchronized void setInterruptedProfile(final boolean interrupted)
         throws IOException {
-      if (parent != null) {
-        if (interrupted) {
-          parent.setInterruptedProfile(true);
-        } else {
-          parent.setInterruptedProfile(false);
-        }
-      } else {
+      if (parent == null) {
         throw new IOException("parent has been detached");
       }
+      parent.setInterruptedProfile(interrupted);
     }
 
     /*
@@ -1622,12 +1632,14 @@ public class HTTrackActivity extends FragmentActivity {
       }
       // Stop engine
       final boolean stopSent = engine.stop(force);
-      // If not yet stopped, mark as dirty
-      // ("Continue an interrupted mirror ...")
-      try {
-        setInterruptedProfile(stopSent);
-      } catch (final IOException io) {
-        Log.w(getClass().getSimpleName(), "could not lock file", io);
+      // Only a stop that lands on a live crawl leaves work behind: the finished pane asks for one
+      // too, and the engine answers it long after runInternal recorded the real outcome.
+      if (!ended) {
+        try {
+          setInterruptedProfile(true);
+        } catch (final IOException io) {
+          Log.w(getClass().getSimpleName(), "could not write the resume marker", io);
+        }
       }
       return stopSent;
     }
@@ -1852,18 +1864,73 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
+   * Does a crawl that ended this way leave the mirror resumable ?
+   *
+   * @param stopped
+   *          Was the crawl cut short, by the user or by a cap the engine enforces itself ?
+   * @param engineCode
+   *          The engine return code; nonzero means it gave up rather than finished.
+   * @return true if the project should reopen offering "Continue an interrupted download"
+   */
+  protected static boolean leavesPendingWork(final boolean stopped,
+      final int engineCode) {
+    // Errors are not a criterion: the engine returns 0 once it has drained its queue, however
+    // many links failed on the way, and there is nothing left to continue.
+    return stopped || engineCode != 0;
+  }
+
+  /**
+   * The marker a stopped or aborted crawl leaves behind.
+   *
+   * @param target
+   *          The project directory
+   * @return The lock file
+   */
+  protected static File getInterruptedLockFile(final File target) {
+    return new File(new File(target, "hts-cache"), "interrupted.lock");
+  }
+
+  /**
+   * Interrupted profile ?
+   *
+   * @param target
+   *          The project directory
+   * @return true if the mirror was interrupted
+   */
+  protected static boolean isInterruptedProfile(final File target) {
+    // The engine's own lock only outlives a crawl it never got to end, such as a killed process.
+    return new File(target, "hts-in_progress.lock").exists()
+        || getInterruptedLockFile(target).exists();
+  }
+
+  /**
    * Interrupted profile ?
    * 
    * @return true if the mirror was interrupted
    */
   protected boolean isInterruptedProfile() {
     final File target = getTargetFile();
-    if (target != null) {
-      final File cache = new File(target, "hts-cache");
-      return new File(target, "hts-in_progress.lock").exists()
-          || new File(cache, "interrupted.lock").exists();
+    return target != null && isInterruptedProfile(target);
+  }
+
+  /**
+   * Set the "interrupted" flag.
+   *
+   * @param target
+   *          The project directory
+   * @param interrupted
+   *          Interrupted mirror ?
+   * @throws IOException
+   *           Upon I/O error.
+   */
+  protected static void setInterruptedProfile(final File target,
+      final boolean interrupted) throws IOException {
+    final File lock = getInterruptedLockFile(target);
+    if (interrupted) {
+      final FileWriter wr = new FileWriter(lock);
+      wr.close();
     } else {
-      return false;
+      lock.delete();
     }
   }
 
@@ -1878,14 +1945,10 @@ public class HTTrackActivity extends FragmentActivity {
   protected synchronized void setInterruptedProfile(final boolean interrupted)
       throws IOException {
     final File target = getTargetFile();
-    final File cache = new File(target, "hts-cache");
-    final File lock = new File(cache, "interrupted.lock");
-    if (interrupted) {
-      final FileWriter wr = new FileWriter(lock);
-      wr.close();
-    } else {
-      lock.delete();
+    if (target == null) {
+      throw new IOException("no project name defined!");
     }
+    setInterruptedProfile(target, interrupted);
   }
 
   /**

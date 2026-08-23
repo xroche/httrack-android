@@ -827,6 +827,29 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
   return stopped;
 }
 
+JNICALL jboolean
+Java_com_httrack_android_jni_HTTrackLib_wasStopped(JNIEnv* env, jobject object) {
+  HTTrackLib_context *const context = getNativeOpt(env, object);
+  jboolean stopped = JNI_FALSE;
+
+  if (context == NULL) {
+    throwRuntimeException(env, "null context");
+    return JNI_FALSE;
+  }
+
+  MUTEX_LOCK(context->lock);
+  /* hts_main2() returns 0 for nearly every abort, so ask the engine instead.
+     stop is a cap or a user stop; exit_xh is a fatal disk error, a full link
+     table, an aborting callback, or a rolled-back session. */
+  if (context->opt != NULL) {
+    stopped = context->opt->state.stop != 0
+        || hts_is_exiting(context->opt) != 0 ? JNI_TRUE : JNI_FALSE;
+  }
+  MUTEX_UNLOCK(context->lock);
+
+  return stopped;
+}
+
 static jint HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz, jstring opath,
                                      jstring otemplates) {
   if (opath != NULL && otemplates != NULL) {
@@ -929,7 +952,7 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
       }
 
       /* Unreference global option tab */
-      /* Nope - do this at destructor time */
+      /* Freed at destructor time, not here: wasStopped() reads opt after main returns. */
       /*MUTEX_LOCK(context->lock);
       hts_free_opt(context->opt);
       context->opt = NULL;
