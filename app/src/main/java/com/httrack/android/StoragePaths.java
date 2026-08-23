@@ -98,6 +98,9 @@ final class StoragePaths {
 
     /** The listed projects are the ones under the root, so the suggestions went stale. */
     void refreshProjectSuggestions();
+
+    /** Nothing is migrated, so the projects made before a move stay where they were. */
+    void noteMovedFrom(final File previous);
   }
 
   /**
@@ -126,6 +129,7 @@ final class StoragePaths {
     if (previous != null) {
       // Nothing was listed before the first resolution.
       actions.refreshProjectSuggestions();
+      actions.noteMovedFrom(previous);
     }
     return true;
   }

@@ -144,6 +144,11 @@ public class ProjectRootResolutionTest {
     public void refreshProjectSuggestions() {
       calls.add("refresh");
     }
+
+    @Override
+    public void noteMovedFrom(final File previous) {
+      calls.add("from " + previous);
+    }
   }
 
   /**
@@ -158,9 +163,14 @@ public class ProjectRootResolutionTest {
 
   /** A base that is merely unreachable now must survive, or a remount cannot bring it back. */
   @Test
-  public void computeStorageTargetNeverWritesTheSettings() throws Exception {
-    assertFalse("resolving the root must not edit the stored BasePath, however spelled",
-        computeStorageTargetBody().contains(".edit()"));
+  public void computeStorageTargetNeverWritesTheStoredBasePath() throws Exception {
+    final String body = computeStorageTargetBody();
+    assertFalse("resolving the root must not rewrite the stored BasePath, however spelled",
+        body.contains("putString(BASE_NAME") || body.contains("remove(BASE_NAME"));
+    // Counted, so a second edit has to come back through this test.
+    assertEquals("only the previous-root hint may be persisted while resolving", 1,
+        body.split("\\.edit\\(\\)", -1).length - 1);
+    assertTrue(body.contains("PREVIOUS_BASE_NAME"));
   }
 
   /** Wiring, not behaviour: the recorder tests below cannot see the call site at all. */
@@ -175,7 +185,7 @@ public class ProjectRootResolutionTest {
   public void aMoveReinitsAtTheNewRoot() {
     final Recorder rec = new Recorder();
     assertTrue(StoragePaths.applyRootMove(fallback, base, false, rec));
-    assertEquals(Arrays.asList("init " + base, "refresh"), rec.calls);
+    assertEquals(Arrays.asList("init " + base, "refresh", "from " + fallback), rec.calls);
   }
 
   /** initRootPath leaks a buffer per call, so a re-resolve that moved nothing must do nothing. */
@@ -199,10 +209,26 @@ public class ProjectRootResolutionTest {
   public void theMissingDirectoryWarningRidesTheMove() {
     final Recorder moved = new Recorder();
     assertTrue(StoragePaths.applyRootMove(fallback, base, true, moved));
-    assertEquals(Arrays.asList("warn", "init " + base, "refresh"), moved.calls);
+    assertEquals(Arrays.asList("warn", "init " + base, "refresh", "from " + fallback), moved.calls);
 
     final Recorder stayed = new Recorder();
     assertFalse(StoragePaths.applyRootMove(base, base, true, stayed));
     assertEquals(Collections.emptyList(), stayed.calls);
+  }
+
+  /**
+   * Granting all-files access re-points the root and migrates nothing, so the move must name the
+   * root it left; a resume that moved nothing must stay silent, or the offer would toast forever.
+   */
+  @Test
+  public void aMoveNamesTheRootItLeft() {
+    final Recorder moved = new Recorder();
+    assertTrue(StoragePaths.applyRootMove(fallback, base, false, moved));
+    assertTrue(moved.calls.contains("from " + fallback));
+
+    final Recorder first = new Recorder();
+    assertTrue(StoragePaths.applyRootMove(null, fallback, false, first));
+    assertFalse("there is no earlier root on the first resolution",
+        first.calls.contains("from null"));
   }
 }
