@@ -42,9 +42,9 @@ import fi.iki.elonen.NanoHTTPD;
  * read as an ordinary web site. Filenames come from crawled URLs, so path resolution is hostile
  * input and lives in the unit-tested {@link #resolveWithinRoot(File, String)}.
  *
- * Loopback is not by itself a boundary: any page the user visits can point a name it controls at
- * 127.0.0.1 and read the mirror through the browser, so requests must also name us
- * ({@link #isOwnAuthority}) and the port must not outlive the reading ({@link #watchForIdle}).
+ * Loopback is not by itself a boundary: a page can point a name it controls at 127.0.0.1 and read
+ * the mirror through the browser. So a request must name us ({@link #isOwnAuthority}), and the
+ * port must not outlive the reading ({@link #watchForIdle}).
  *
  * Plain thread (NanoHTTPD owns it): reliability while browsing backgrounded relies on us staying
  * the most-recently-used cached process. A foreground service (needs an Android-14 type) is a
@@ -55,8 +55,8 @@ final class MirrorServer extends NanoHTTPD {
   // ephemeral fallback. Privileged (<1024) ports are omitted: Android forbids binding them.
   private static final int[] PORTS = { 8080, 3128, 8081, 3129, 0 };
 
-  // Long enough to read one page and follow a link, short enough that a forgotten browse does not
-  // leave the port open for the rest of the process's life.
+  // Long enough to read one page and follow a link. Short enough that a forgotten browse does
+  // not leave the port open for the life of the process.
   private static final long IDLE_TIMEOUT_MS = 30 * 60 * 1000L;
 
   // One server per served tree, keyed by canonical path: docs and mirrors live in different trees,
@@ -214,10 +214,9 @@ final class MirrorServer extends NanoHTTPD {
   }
 
   /**
-   * True if {@code host} is the authority this server itself listens on. A browser fills Host in
-   * from the URL and forbids a page to forge it, so refusing every other name is what stops a name
-   * the attacker rebound to 127.0.0.1 from reading the mirror. A missing Host is refused too: the
-   * only clients are browsers, which always send one.
+   * A browser fills Host in from the URL and forbids a page to forge it. Refusing every other
+   * name is what stops a name an attacker rebound to 127.0.0.1 from reading the mirror. A missing
+   * Host is refused too, since the only clients are browsers and they always send one.
    *
    * @param host
    *          the request's Host header, or null when it had none
@@ -242,8 +241,8 @@ final class MirrorServer extends NanoHTTPD {
   }
 
   /**
-   * Holds the idle watchdog off while a response is streaming, however slowly the client reads it:
-   * a server blocked writing to a browser makes no progress of its own to measure.
+   * Holds the idle watchdog off while a response is streaming, however slowly the client reads.
+   * A server blocked writing to a browser makes no progress of its own to measure.
    */
   private final class ActiveStream extends FilterInputStream {
     // NanoHTTPD closes the body both after sending it and again with the response.
