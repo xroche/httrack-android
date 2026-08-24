@@ -27,8 +27,21 @@ public class EngineAbortReportedTest {
   public void theFinishedPaneWeighsBothTheStopAndTheEnginesVerdict() throws Exception {
     final String call = TestSources.between(TestSources.javaSource("HTTrackActivity"),
         "MirrorOutcome.of(", ");");
-    assertTrue("the user's own stop must reach the choice", call.contains("interrupted"));
+    assertTrue("the stop source must reach the choice", call.contains("stop"));
     assertTrue("the engine's verdict must reach the choice", call.contains("engine.abortCode()"));
+  }
+
+  /** The pane and the resume offer must read one verdict, or they contradict each other. */
+  @Test
+  public void oneStopSourceFeedsBoththePaneAndTheResumeOffer() throws Exception {
+    final String source = TestSources.javaSource("HTTrackActivity");
+    final String assigned = TestSources.between(source, "final MirrorOutcome.Stop stop", ";");
+    assertTrue("a user stop must outrank the engine's", assigned.contains("interrupted ?"));
+    assertTrue("a cap the engine hit must be told apart from a clean run",
+        assigned.contains("engine.wasStopped()"));
+    assertTrue("the resume offer must read the same stop the pane does",
+        TestSources.between(source, "pendingWork = leavesPendingWork(", ";")
+            .contains("stop != MirrorOutcome.Stop.NONE"));
   }
 
   /** Swapping two abort messages is invisible to the enum, so each is pinned to its cause. */

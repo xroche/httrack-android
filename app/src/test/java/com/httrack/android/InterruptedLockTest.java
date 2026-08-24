@@ -129,7 +129,9 @@ public class InterruptedLockTest {
         from != -1 && to > from);
     final String body = source.substring(from, to);
     assertTrue("runInternal must weigh the engine's own stop, not just the user's",
-        body.contains("leavesPendingWork(interrupted || engine.wasStopped(), code)"));
+        body.contains("engine.wasStopped()"));
+    assertFalse("the resume offer must not be decided by the user's stop alone",
+        TestSources.between(body, "leavesPendingWork(", ",").endsWith("interrupted"));
     assertTrue("runInternal must write the verdict before the finished pane opens",
         body.contains("setInterruptedProfile(pendingWork)"));
     assertTrue("ended must be set before the finished pane asks for a stop",
