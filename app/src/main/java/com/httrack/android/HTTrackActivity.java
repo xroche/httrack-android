@@ -800,7 +800,8 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     // First launch only, so a rotation does not bring the offer back; and not stacked on top
-    // of the native-load failure dialog.
+    // of the native-load failure dialog. Silent unless mirrors are already visible; onResume()
+    // asks again once a storage grant makes them so.
     if (savedInstanceState == null && HTTrackLib.loadedSuccessfully()) {
       offerLegacyMirrorImportOnce();
     }
@@ -2790,6 +2791,11 @@ public class HTTrackActivity extends FragmentActivity {
     if (settings.getBoolean(IMPORT_OFFERED_NAME, false)) {
       return;
     }
+    // Nothing found means nothing asked: without access we cannot look, and a question the user
+    // has no way to answer is worse than never offering the import at all.
+    if (StoragePaths.legacyMirrors(sharedStorageRoot()) == null) {
+      return;
+    }
     new AlertDialog.Builder(this)
         .setMessage(R.string.import_mirrors_offer)
         .setPositiveButton(R.string.import_mirrors_offer_yes, (dialog, which) -> {
@@ -3352,6 +3358,10 @@ public class HTTrackActivity extends FragmentActivity {
     }
     // A grant made on the settings screen flips the button/warning off (no-op off this panel).
     refreshStorageAccessHints();
+    // A grant is the first moment we can see the legacy folder, so this is where the offer belongs.
+    if (runner == null) {
+      offerLegacyMirrorImportOnce();
+    }
   }
 
   @Override

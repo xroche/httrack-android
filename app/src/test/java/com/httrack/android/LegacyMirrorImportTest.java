@@ -370,4 +370,18 @@ public class LegacyMirrorImportTest {
 
     assertArrayEquals(raw, Files.readAllBytes(new File(dest, "blob.bin").toPath()));
   }
+
+  /**
+   * Without access the shared root is null, so the detector cannot look and the offer must not
+   * appear. Only the wiring can say that; the detector alone cannot tell "no access" from "empty".
+   */
+  @Test
+  public void theOfferIsGatedOnFindingSomething() throws IOException {
+    final String body = TestSources.between(TestSources.javaSource("HTTrackActivity"),
+        "private void offerLegacyMirrorImportOnce", "new AlertDialog.Builder");
+    assertTrue("the offer must ask the detector before it shows anything",
+        body.contains("StoragePaths.legacyMirrors(sharedStorageRoot())"));
+    assertTrue("finding nothing must return before the dialog is built",
+        body.contains("== null") && body.contains("return;"));
+  }
 }

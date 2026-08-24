@@ -78,6 +78,32 @@ final class StoragePaths {
   }
 
   /**
+   * Mirrors left by builds before versionCode 61, which wrote under Download/ rather than the
+   * shared HTTrack/ root every build since uses. Returns the folder only when it holds at least
+   * one project, so a caller can stay silent rather than ask about nothing.
+   *
+   * @param shared
+   *          the shared storage root, null when we have no access to look
+   * @return the legacy folder, or null when there is nothing to offer
+   */
+  static File legacyMirrors(final File shared) {
+    if (shared == null) {
+      return null;
+    }
+    final File legacy = new File(new File(new File(shared, "Download"), "HTTrack"), "Websites");
+    final File[] entries = legacy.listFiles();
+    if (entries == null) {
+      return null;
+    }
+    for (final File entry : entries) {
+      if (entry.isDirectory()) {
+        return legacy;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Whether the freshly resolved root differs from the one in use, the first resolution counting
    * as a move. Gates the work that must happen once per move, not once per resume.
    *

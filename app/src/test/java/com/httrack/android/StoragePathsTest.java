@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 
 import org.junit.Before;
@@ -128,5 +129,44 @@ public class StoragePathsTest {
     assertNull(StoragePaths.externalStorageDocId(new File(tmp.getRoot(), "elsewhere"), shared));
     assertNull(StoragePaths.externalStorageDocId(shared, shared)); // the root itself, no sub-path
     assertNull(StoragePaths.externalStorageDocId(new File(shared, "HTTrack"), null));
+  }
+
+  private static File legacyTree(final File shared, final boolean withProject) throws IOException {
+    final File websites = new File(new File(new File(shared, "Download"), "HTTrack"), "Websites");
+    assertTrue(websites.mkdirs());
+    if (withProject) {
+      assertTrue(new File(websites, "someproject").mkdir());
+    }
+    return websites;
+  }
+
+  /** A question the user cannot answer is worse than no question, so silence is the default. */
+  @Test
+  public void anAbsentLegacyFolderIsNotOffered() throws IOException {
+    assertNull(StoragePaths.legacyMirrors(tmp.newFolder("bare")));
+  }
+
+  /** Builds before versionCode 61 wrote here; an empty folder is not a reason to ask. */
+  @Test
+  public void anEmptyLegacyFolderIsNotOffered() throws IOException {
+    final File shared = tmp.newFolder("empty");
+    legacyTree(shared, false);
+    assertNull(StoragePaths.legacyMirrors(shared));
+  }
+
+  /** A stray file is not a project; only a project directory earns the question. */
+  @Test
+  public void aFileIsNotAProject() throws IOException {
+    final File shared = tmp.newFolder("stray");
+    final File websites = legacyTree(shared, false);
+    assertTrue(new File(websites, "notes.txt").createNewFile());
+    assertNull(StoragePaths.legacyMirrors(shared));
+  }
+
+  @Test
+  public void aLegacyProjectIsOffered() throws IOException {
+    final File shared = tmp.newFolder("real");
+    final File websites = legacyTree(shared, true);
+    assertEquals(websites, StoragePaths.legacyMirrors(shared));
   }
 }
