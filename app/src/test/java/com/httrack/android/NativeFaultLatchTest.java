@@ -83,20 +83,27 @@ public class NativeFaultLatchTest {
   }
 
   @Test
-  public void theCallsTheUiThreadMakesRefuseWithoutTakingTheEngineLock()
-      throws IOException {
+  public void theEntryPointsThatCannotThrowRefuseQuietly() throws IOException {
     final String source = jni();
-    // Stop is a click handler, and free() runs on the finalizer thread: the fault may have
-    // happened with that very lock held, so neither may take it, and neither may throw.
-    for (final String name : new String[] { "stop", "abortCode", "wasStopped", "free" }) {
+    // stop() is a click handler, free() the finalizer thread, and init() a constructor whose
+    // throw would take the activity down before the crawl reports the fault at all.
+    for (final String name : new String[] { "stop", "abortCode", "wasStopped", "free", "init" }) {
+      assertFalse(name + " must refuse without an exception",
+          body(source, name).contains("refuseIfFaulted"));
+    }
+  }
+
+  @Test
+  public void theEngineLockIsNeverTakenAfterAFault() throws IOException {
+    final String source = jni();
+    // The fault may have happened with that very lock held, and stop() is called from the UI.
+    for (final String name : new String[] { "stop", "abortCode", "wasStopped" }) {
       final String body = body(source, name);
       final int latch = body.indexOf("engineFaulted");
       final int locked = body.indexOf("MUTEX_LOCK");
       assertTrue(name + " must read the latch", latch != -1);
       assertTrue(name + " must refuse before it takes the lock",
-          locked == -1 || latch < locked);
-      assertFalse(name + " must not throw into a click handler",
-          body.contains("refuseIfFaulted"));
+          locked != -1 && latch < locked);
     }
   }
 

@@ -508,7 +508,10 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject o
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_init");
 
-  if (refuseIfFaulted(env)) {
+  /* Silent: this is a constructor, and throwing here would take the activity down before the
+     crawl it belongs to ever gets to report the fault. Every call on the object is refused. */
+  if (engineFaulted) {
+    error("not creating an engine context: the engine faulted");
     return;
   }
   context = (HTTrackLib_context*) calloc(sizeof(HTTrackLib_context), 1);
