@@ -1504,41 +1504,42 @@ public class HTTrackActivity extends FragmentActivity {
         pendingWork = leavesPendingWork(interrupted || engine.wasStopped(), code);
 
         // Result
-        final MirrorOutcome outcome = MirrorOutcome.of(code, interrupted,
-            engine.abortCode(), lastStats.errorsCount, lastStats.filesWritten);
-        if (outcome == MirrorOutcome.ERROR) {
-          message = "<b>Error</b> (<i>code " + code + "</i>)";
-        } else {
+        if (code == 0) {
+          final MirrorOutcome outcome = MirrorOutcome.of(interrupted,
+              engine.abortCode(), lastStats);
           switch (outcome) {
-            case INTERRUPTED:
-              message = "<b>Interrupted</b>! (" + lastStats.errorsCount
-                  + " errors)";
-              break;
-            case ABORTED_IO:
-              message = "<b>Aborted</b>! (a write failed, most likely a full disk)";
-              break;
-            case ABORTED_ROLLBACK:
-              message = "<b>Aborted</b>! (nothing was transferred, so the previous"
-                  + " mirror was kept)";
-              break;
-            case ABORTED:
-              message = "<b>Aborted</b>! (the engine could not continue)";
-              break;
-            case SUCCESS:
-              message = "<b>Success</b>!";
-              break;
-            case SUCCESS_WITH_ERRORS:
-              message = "<b>Success</b>! (" + lastStats.errorsCount + " errors)";
-              break;
-            default:
-              message = "<b>Failed</b>! (" + lastStats.errorsCount
-                  + " errors, no files written)";
-              break;
+          case INTERRUPTED:
+            message = "<b>Interrupted</b>! (" + lastStats.errorsCount
+                + " errors)";
+            break;
+          case ABORTED_FATAL:
+            message = "<b>Aborted</b>! (out of disk space, too many links, or"
+                + " another fatal error)";
+            break;
+          case ABORTED_ROLLBACK:
+            message = "<b>Aborted</b>! (nothing was transferred, so the mirror"
+                + " was left as it was)";
+            break;
+          case ABORTED_OTHER:
+            message = "<b>Aborted</b>! (the engine could not continue)";
+            break;
+          case SUCCESS:
+            message = "<b>Success</b>!";
+            break;
+          case SUCCESS_WITH_ERRORS:
+            message = "<b>Success</b>! (" + lastStats.errorsCount + " errors)";
+            break;
+          case FAILED:
+            message = "<b>Failed</b>! (" + lastStats.errorsCount
+                + " errors, no files written)";
+            break;
           }
           mirrorFolder = target;
           message += "<br /><br />Mirror copied in <i><a href=\""
               + MIRROR_FOLDER_HREF + "\">"
               + TextUtils.htmlEncode(target.getAbsolutePath()) + "</a></i>";
+        } else {
+          message = "<b>Error</b> (<i>code " + code + "</i>)";
         }
 
         // Build top index

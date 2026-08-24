@@ -2,54 +2,60 @@ package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
 
+import com.httrack.android.jni.HTTrackStats;
 import org.junit.Test;
 
 /** MirrorOutcome.of() has no android.* dependency, so unlike the pane it builds it can be run. */
 public class MirrorOutcomeTest {
-  private static final int NOT_ABORTED = 0;
-  private static final int ABORT_IO = -1;
   private static final int ABORT_CALLBACK = 1;
-  private static final int ABORT_ROLLBACK = 2;
+  private static final int ABORT_UNKNOWN = 3;
 
-  private static void check(final MirrorOutcome expected, final int code, final boolean interrupted,
-      final int abortCode, final long errorsCount, final long filesWritten) {
-    assertEquals("code=" + code + " interrupted=" + interrupted + " abortCode=" + abortCode
-        + " errors=" + errorsCount + " written=" + filesWritten, expected,
-        MirrorOutcome.of(code, interrupted, abortCode, errorsCount, filesWritten));
+  private static HTTrackStats stats(final long errorsCount, final long filesWritten) {
+    final HTTrackStats stats = new HTTrackStats();
+    stats.errorsCount = errorsCount;
+    stats.filesWritten = filesWritten;
+    return stats;
   }
 
-  @Test
-  public void aFailedMainOutranksEverythingElse() {
-    check(MirrorOutcome.ERROR, -1, false, NOT_ABORTED, 0, 12);
-    check(MirrorOutcome.ERROR, -1, true, ABORT_IO, 3, 0);
+  private static void check(final MirrorOutcome expected, final boolean interrupted,
+      final int abortCode, final long errorsCount, final long filesWritten) {
+    assertEquals("interrupted=" + interrupted + " abortCode=" + abortCode + " errors="
+        + errorsCount + " written=" + filesWritten, expected,
+        MirrorOutcome.of(interrupted, abortCode, stats(errorsCount, filesWritten)));
   }
 
   /**
-   * The engine sets exit_xh on its own for two of the commonest ways a user stops a crawl: an early
-   * stop is rolled back for want of data, and a forced stop refuses the loop callback. Weighing the
-   * abort first would report every one of those as an abort the user never asked for.
+   * The engine sets its abort flag on its own for the two commonest ways a user stops a crawl: an
+   * early stop is rolled back for want of data (htscore.c:2088), and a forced stop refuses the loop
+   * callback (htscore.c:951). Weighing the abort first would report both as unwanted aborts.
    */
   @Test
   public void aStopTheUserAskedForIsNeverAnAbort() {
-    check(MirrorOutcome.INTERRUPTED, 0, true, ABORT_ROLLBACK, 0, 0);
-    check(MirrorOutcome.INTERRUPTED, 0, true, ABORT_CALLBACK, 2, 40);
-    check(MirrorOutcome.INTERRUPTED, 0, true, ABORT_IO, 0, 7);
-    check(MirrorOutcome.INTERRUPTED, 0, true, NOT_ABORTED, 0, 7);
+    check(MirrorOutcome.INTERRUPTED, true, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    check(MirrorOutcome.INTERRUPTED, true, ABORT_CALLBACK, 2, 40);
+    check(MirrorOutcome.INTERRUPTED, true, MirrorOutcome.ABORT_FATAL, 0, 7);
+    check(MirrorOutcome.INTERRUPTED, true, MirrorOutcome.ABORT_NONE, 0, 7);
   }
 
-  /** main() returns 0 for these, so without exit_xh they would all read as a success. */
+  /** main() returns 0 for these, so without the abort flag they would all read as a success. */
   @Test
   public void anAbortTheUserDidNotAskForIsNamedByItsCause() {
-    check(MirrorOutcome.ABORTED_IO, 0, false, ABORT_IO, 0, 3);
-    check(MirrorOutcome.ABORTED_ROLLBACK, 0, false, ABORT_ROLLBACK, 0, 0);
-    check(MirrorOutcome.ABORTED, 0, false, ABORT_CALLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_FATAL, false, MirrorOutcome.ABORT_FATAL, 0, 3);
+    check(MirrorOutcome.ABORTED_ROLLBACK, false, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+  }
+
+  /** An abort code nobody has mapped must still abort, not fall through to success. */
+  @Test
+  public void anUnrecognisedAbortCodeIsStillAnAbort() {
+    check(MirrorOutcome.ABORTED_OTHER, false, ABORT_CALLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_OTHER, false, ABORT_UNKNOWN, 0, 40);
   }
 
   @Test
   public void aCompletedRunIsStillJudgedOnItsErrorCount() {
-    check(MirrorOutcome.SUCCESS, 0, false, NOT_ABORTED, 0, 40);
-    check(MirrorOutcome.SUCCESS, 0, false, NOT_ABORTED, 0, 0);
-    check(MirrorOutcome.SUCCESS_WITH_ERRORS, 0, false, NOT_ABORTED, 5, 40);
-    check(MirrorOutcome.FAILED, 0, false, NOT_ABORTED, 5, 0);
+    check(MirrorOutcome.SUCCESS, false, MirrorOutcome.ABORT_NONE, 0, 40);
+    check(MirrorOutcome.SUCCESS, false, MirrorOutcome.ABORT_NONE, 0, 0);
+    check(MirrorOutcome.SUCCESS_WITH_ERRORS, false, MirrorOutcome.ABORT_NONE, 5, 40);
+    check(MirrorOutcome.FAILED, false, MirrorOutcome.ABORT_NONE, 5, 0);
   }
 }
