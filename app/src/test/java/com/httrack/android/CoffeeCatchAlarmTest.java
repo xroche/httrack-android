@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Test;
 
 /** A caught native fault arms coffeecatch's 30s alarm(), and SIGALRM kills the
@@ -16,8 +18,13 @@ public class CoffeeCatchAlarmTest {
 
   @Test
   public void noEntryPointUsesTheBareMacro() throws IOException {
-    assertEquals("upstream COFFEE_TRY_JNI leaves the alarm armed", 0,
-        TestSources.occurrences(jni(), "COFFEE_TRY_JNI("));
+    // "COFFEE_TRY_JNI (" is legal C, so match the call rather than a literal.
+    final Matcher m = Pattern.compile("COFFEE_TRY_JNI\\s*\\(").matcher(jni());
+    int count = 0;
+    while (m.find()) {
+      count++;
+    }
+    assertEquals("upstream COFFEE_TRY_JNI leaves the alarm armed", 0, count);
   }
 
   @Test
@@ -40,7 +47,9 @@ public class CoffeeCatchAlarmTest {
     final int end = source.indexOf("COFFEE_END()");
     assertTrue("cancel must not disarm the watchdog before the throw allocates",
         thrown != -1 && cancel > thrown);
-    assertTrue("COFFEE_END() frees the state the cancel reads",
+    assertTrue("a cancel past COFFEE_END() would run on success too, and the"
+        + " pending flag is process-wide, so it would clear another thread's"
+        + " watchdog mid-throw",
         end != -1 && cancel < end);
   }
 }
