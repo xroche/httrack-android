@@ -43,8 +43,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define USE_COFFEECATCH
 
-/* Recovering a fault is a siglongjmp, which unwinds nothing: the engine keeps the state, the open
- * cache file and the held lock it faulted with, so it is refused from here on. */
+/* Recovering a fault is a siglongjmp, which unwinds nothing: the engine's process-wide mutexes
+ * and the heap stay as the faulting frame left them, so the engine is refused from here on. */
 static volatile int engineFaulted = 0;
 
 #ifdef USE_COFFEECATCH
@@ -52,7 +52,7 @@ static volatile int engineFaulted = 0;
 #include "coffeejni.h"
 
 /* COFFEE_TRY_JNI leaves coffeecatch's 30s SIGALRM watchdog armed; we report the
- * fault as a Java Error and keep crawling, so disarm it. Do that after the
+ * fault as a Java Error rather than dying, so disarm it. Do that after the
  * throw: allocating the exception is the hang the watchdog guards.
  * The body is copied from upstream's COFFEE_TRY_JNI: re-copy it if that changes. */
 #define COFFEE_TRY_JNI_RECOVER(ENV, CODE)  \
@@ -60,7 +60,9 @@ static volatile int engineFaulted = 0;
     COFFEE_TRY() {                         \
       CODE;                                \
     } COFFEE_CATCH() {                     \
-      engineFaulted = 1;                   \
+      if (coffeecatch_get_signal() > 0) {  \
+        engineFaulted = 1;                 \
+      }                                    \
       coffeecatch_throw_exception(ENV);    \
       coffeecatch_cancel_pending_alarm();  \
     } COFFEE_END();                        \
@@ -507,8 +509,7 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject o
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_init");
 
-  /* Silent: a throw from this constructor would take the activity down before the crawl that
-     faulted ever reports it. Every call on the object is refused anyway. */
+  /* Silent: a throw from this constructor would kill the activity before it reports the fault. */
   if (engineFaulted) {
     error("not creating an engine context: the engine faulted");
     return;
@@ -531,8 +532,8 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_free(JNIEnv* env, jobject o
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_free");
 
-  /* Leaked on purpose: hts_free_opt() over a faulted opt would fault again, on the finalizer
-     thread this time. */
+  /* Leaked on purpose: hts_free_opt() over a faulted opt would fault again, here on the
+     finalizer thread. */
   if (engineFaulted) {
     error("not freeing the engine context: it faulted");
     return;
@@ -850,14 +851,14 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
   HTTrackLib_context *const context = getNativeOpt(env, object);
   jboolean stopped = JNI_FALSE;
 
-  /* The fault may have happened with this very lock held, and the Stop button is a click
-     handler: taking it would hang the UI thread, and throwing would crash it. */
+  /* The fault may have left this lock held; stop() runs on the UI thread and must not block. */
   if (engineFaulted) {
     return JNI_FALSE;
   }
 
   if (context == NULL) {
     throwRuntimeException(env, "null context");
+    return JNI_FALSE;
   }
 
   MUTEX_LOCK(context->lock);
@@ -953,8 +954,7 @@ static jint HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz, jstring opath,
 JNICALL jint
 Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
                                                       jstring opath, jstring otemplates) {
-  /* Refused without a throw: the Java callers dump whatever they catch here, which would
-     overwrite the dump describing the fault itself. */
+  /* Refused without a throw: the Java callers dump what they catch, over the fault's own dump. */
   if (engineFaulted) {
     error("not building the top index: the engine faulted");
     return -1;

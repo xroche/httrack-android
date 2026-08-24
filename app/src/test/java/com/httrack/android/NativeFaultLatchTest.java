@@ -26,41 +26,53 @@ public class NativeFaultLatchTest {
   private static final Pattern ENTRY_POINT = Pattern.compile(
       "(?m)^(?:JNICALL\\s+\\w+\\s+)?Java_com_httrack_android_jni_HTTrackLib_(\\w+)\\s*\\(");
 
+  /** htslibjni.c with comments and string literals blanked, so a commented-out guard cannot
+   *  pass for one. */
   private String jni() throws IOException {
-    return TestSources.jniSource("htslibjni.c");
+    return TestSources.withoutCommentsAndStrings(TestSources.jniSource("htslibjni.c"));
   }
 
   /** Body of the entry point NAME, braces balanced, the outer pair left out. */
   private static String body(final String source, final String name) {
     final Matcher m = ENTRY_POINT.matcher(source);
     while (m.find()) {
-      if (!m.group(1).equals(name)) {
-        continue;
+      if (m.group(1).equals(name)) {
+        return TestSources.balancedBlock(source, m.end());
       }
-      final int from = source.indexOf('{', m.end());
-      int depth = 0;
-      for (int i = from; i < source.length(); i++) {
-        if (source.charAt(i) == '{') {
-          depth++;
-        } else if (source.charAt(i) == '}' && --depth == 0) {
-          return source.substring(from + 1, i);
-        }
-      }
-      throw new IllegalStateException(name + " has no closing brace");
     }
     throw new IllegalStateException("no entry point " + name);
   }
 
+  /** The body of the CONDITION block inside the entry point NAME. */
+  private static String blockBody(final String source, final String name,
+      final String condition) {
+    final String body = body(source, name);
+    final int at = body.indexOf(condition);
+    assertTrue(name + " must test " + condition, at != -1);
+    return TestSources.balancedBlock(body, at);
+  }
+
+  /** The body of NAME's `if (engineFaulted)` block, which is what has to refuse. */
+  private static String guardBody(final String source, final String name) {
+    return blockBody(source, name, "if (engineFaulted)");
+  }
+
   @Test
-  public void theLatchIsSetBeforeTheExceptionIsAllocated() throws IOException {
+  public void theLatchIsSetInTheCatchArmBeforeTheExceptionIsAllocated() throws IOException {
     final String macro = TestSources.between(jni(),
-        "#define COFFEE_TRY_JNI_RECOVER", "#include \"htslibjni.h\"");
+        "#define COFFEE_TRY_JNI_RECOVER", "#endif");
+    final int caught = macro.indexOf("COFFEE_CATCH()");
     final int latched = macro.indexOf("engineFaulted = 1");
     final int thrown = macro.indexOf("coffeecatch_throw_exception(ENV)");
-    assertTrue("the fault must be latched inside COFFEE_CATCH", latched != -1);
+    assertTrue("latching in the COFFEE_TRY arm would refuse the first call",
+        caught != -1 && latched > caught);
     assertTrue("allocating the exception is what the watchdog may kill us over,"
         + " and a fault we did not latch is a fault we would keep running on",
         thrown > latched);
+    // COFFEE_CATCH is also entered when coffeecatch_setup() fails, with no signal delivered.
+    final int signal = macro.indexOf("coffeecatch_get_signal()");
+    assertTrue("a setup failure must not latch an engine that never faulted",
+        signal != -1 && signal < latched);
   }
 
   @Test
@@ -89,8 +101,10 @@ public class NativeFaultLatchTest {
     // stop() is a click handler, free() the finalizer thread, and init() a constructor whose
     // throw would take the activity down before the crawl reports the fault at all.
     for (final String name : new String[] { "stop", "abortCode", "wasStopped", "free", "init" }) {
-      assertFalse(name + " must refuse without an exception",
-          body(source, name).contains("refuseIfFaulted"));
+      final String guard = guardBody(source, name);
+      assertFalse(name + " must refuse without an exception", guard.contains("throw"));
+      assertTrue(name + " must return from the guard, not fall through it",
+          guard.contains("return"));
     }
   }
 
@@ -100,11 +114,23 @@ public class NativeFaultLatchTest {
     // The fault may have happened with that very lock held, and stop() is called from the UI.
     for (final String name : new String[] { "stop", "abortCode", "wasStopped" }) {
       final String body = body(source, name);
-      final int latch = body.indexOf("engineFaulted");
+      final int latch = body.indexOf("if (engineFaulted)");
       final int locked = body.indexOf("MUTEX_LOCK");
-      assertTrue(name + " must read the latch", latch != -1);
+      assertTrue(name + " must refuse on the latch being SET, not cleared", latch != -1);
       assertTrue(name + " must refuse before it takes the lock",
           locked != -1 && latch < locked);
+      assertTrue(name + " must return before the lock",
+          guardBody(source, name).contains("return"));
+    }
+  }
+
+  @Test
+  public void aNullContextNeverReachesTheLock() throws IOException {
+    // Throwing does not return: without one, the next line dereferences the NULL it just refused.
+    final String source = jni();
+    for (final String name : new String[] { "stop", "abortCode", "wasStopped" }) {
+      assertTrue(name + " must return after refusing a null context",
+          blockBody(source, name, "if (context == NULL)").contains("return"));
     }
   }
 
@@ -140,15 +166,36 @@ public class NativeFaultLatchTest {
     final String pane = TestSources.between(source, "private void setPane(final int position)",
         "if (pane_id != position)");
     assertTrue("nothing may run past the error panel in this process",
-        pane.contains("HTTrackLib.hasFaulted()")
-            && pane.contains("exitAfterNativeFault()"));
+        pane.contains("NativeFaultPolicy.closeOnPaneChange(")
+            && pane.contains("closeAfterNativeFault()"));
     final String restart = TestSources.between(source, "protected void restartActivity()",
         "final Intent intent");
     assertTrue("restarting the activity keeps the process the fault poisoned",
-        restart.contains("exitAfterNativeFault()"));
-    final String exit = TestSources.between(source,
-        "private void exitAfterNativeFault()", "\n  }");
-    assertTrue("finish() alone leaves the process alive", exit.contains("System.exit(0)"));
+        restart.contains("closeAfterNativeFault()"));
+    // finish() only schedules the destroy, so exiting here would beat onDestroy's serialize().
+    final String close = TestSources.between(source,
+        "private void closeAfterNativeFault()", "\n  }");
+    assertFalse("the exit belongs in onDestroy, after the profile is saved",
+        close.contains("System.exit"));
+  }
+
+  @Test
+  public void everyNativeDeclarationHasItsCDefinition() throws IOException {
+    // A name that does not match is an UnsatisfiedLinkError on the first call, and hasFaulted()
+    // is now called from setPane() and onDestroy() on an ordinary run.
+    final String java = TestSources.javaSource("jni/HTTrackLib");
+    final Matcher declared = Pattern.compile(
+        "native\\s+(?:\\w+\\s+)*?(\\w+)\\s*\\(").matcher(java);
+    final Set<String> names = new TreeSet<String>();
+    while (declared.find()) {
+      names.add(declared.group(1));
+    }
+    assertTrue("no native declaration parsed", names.size() >= 8);
+    final String source = jni();
+    for (final String name : names) {
+      assertTrue("no C definition for native " + name,
+          source.contains("Java_com_httrack_android_jni_HTTrackLib_" + name + "("));
+    }
   }
 
   @Test
@@ -158,7 +205,9 @@ public class NativeFaultLatchTest {
     final String destroy = TestSources.between(
         TestSources.javaSource("HTTrackActivity"), "\n  public void onDestroy()", "\n  }");
     assertTrue("a finished activity leaves the faulted process behind",
-        destroy.contains("isFinishing() && HTTrackLib.hasFaulted()")
-            && destroy.contains("exitAfterNativeFault()"));
+        destroy.contains("NativeFaultPolicy.exitOnDestroy(")
+            && destroy.contains("System.exit(0)"));
+    assertTrue("the exit must follow the profile save, not precede it",
+        destroy.indexOf("serialize()") < destroy.indexOf("System.exit(0)"));
   }
 }

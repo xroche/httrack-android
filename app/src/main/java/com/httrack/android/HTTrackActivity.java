@@ -2638,11 +2638,10 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   private void setPane(final int position) {
-    // Leaving the panel that reported a native fault: the engine is unusable and nothing but a
-    // new process can clear it, so the next screen has to come from one.
-    if (pane_id == LAYOUT_FINISHED && position != LAYOUT_FINISHED
-        && HTTrackLib.hasFaulted()) {
-      exitAfterNativeFault();
+    // Only a new process can clear a fault reported from this panel.
+    if (NativeFaultPolicy.closeOnPaneChange(HTTrackLib.hasFaulted(), pane_id, position,
+        LAYOUT_FINISHED)) {
+      closeAfterNativeFault();
       return;
     }
     if (pane_id != position) {
@@ -2947,13 +2946,11 @@ public class HTTrackActivity extends FragmentActivity {
         // Exit because otherwise we can't recreate the directory (!)
         if (rootWasDeleted
             && android.os.Build.VERSION.SDK_INT >= VERSION_CODES.KITKAT) {
+          // Restarting the activity is not enough; the deleted directory needs a new process.
           Log.w("httrack",
               "exiting because root path was deleted (Android >= Kitkat issue)");
-          // restartActivity();
+          exitWhenDestroyed = true;
           finish();
-          // darn, this is not clean, but otherwise restarting the activity
-          // won't be enough. I suspect FUSE-related issue here
-          System.exit(0);
         }
       }
       break;
@@ -3040,7 +3037,7 @@ public class HTTrackActivity extends FragmentActivity {
   protected void restartActivity() {
     if (HTTrackLib.hasFaulted()) {
       // Restarting the activity keeps the process, which is what the fault poisoned.
-      exitAfterNativeFault();
+      closeAfterNativeFault();
       return;
     }
     final Intent intent = getIntent();
@@ -3049,14 +3046,17 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Close the app after a recovered native fault. The next launch then gets a new process, which
-   * is the only way back to a working engine.
+   * Close the app after a recovered native fault, so the next launch gets a working engine.
+   * finish() is asynchronous, so onDestroy() ends the process once it has saved the profile.
    */
-  private void exitAfterNativeFault() {
+  private void closeAfterNativeFault() {
     Log.w(getClass().getSimpleName(), "closing: the native engine faulted");
+    exitWhenDestroyed = true;
     finish();
-    System.exit(0);
   }
+
+  // Set when the process itself has to go, not just the activity.
+  private boolean exitWhenDestroyed;
 
   /**
    * "New project"
@@ -3400,6 +3400,10 @@ public class HTTrackActivity extends FragmentActivity {
       offerLegacyMirrorImportOnce();
     }
     hadStorageAccess = access;
+    if (NativeFaultPolicy.reportOnResume(HTTrackLib.hasFaulted(), pane_id, LAYOUT_FINISHED)) {
+      displayFinishedPanel("<b>Error</b>: "
+          + TextUtils.htmlEncode(getString(R.string.engine_faulted)), 0, null);
+    }
   }
 
   @Override
@@ -3436,10 +3440,11 @@ public class HTTrackActivity extends FragmentActivity {
       }
     }
     super.onDestroy();
-    // The next launch may be handed this very process, latch and all; a configuration change
-    // is not finishing, and has to keep it.
-    if (isFinishing() && HTTrackLib.hasFaulted()) {
-      exitAfterNativeFault();
+    // A relaunch can be handed this very process, latch and all.
+    if (NativeFaultPolicy.exitOnDestroy(isFinishing(), exitWhenDestroyed,
+        HTTrackLib.hasFaulted())) {
+      Log.w(getClass().getSimpleName(), "ending the process");
+      System.exit(0);
     }
   }
 

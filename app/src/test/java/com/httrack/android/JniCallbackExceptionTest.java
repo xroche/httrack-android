@@ -15,14 +15,11 @@ public class JniCallbackExceptionTest {
     return TestSources.jniSource("htslibjni.c");
   }
 
-  /** Body of the top-level function whose signature contains NAME, up to its closing brace. */
+  /** Body of the top-level function whose signature contains NAME. */
   private static String body(final String source, final String name) {
     final int at = source.indexOf(name);
     assertTrue(name + " is gone from htslibjni.c", at != -1);
-    final int from = source.indexOf('{', at);
-    final int to = source.indexOf("\n}", from);
-    assertTrue(name + " has no closing brace", from != -1 && to > from);
-    return source.substring(from, to);
+    return TestSources.balancedBlock(source, at);
   }
 
   /** The refresh path must hand a pending exception over before it returns to the engine. */

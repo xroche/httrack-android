@@ -80,12 +80,9 @@ public class HTTrackLib {
   public static native String getFeatures();
 
   /**
-   * Has a native fault been recovered in this process ? coffeecatch turns a SIGSEGV into a Java
-   * Error by siglongjmp'ing out of the engine, which unwinds nothing: the engine is left
-   * mid-operation and every later call to it is refused, here and natively, until the process
-   * is replaced.
+   * Has a native fault been recovered in this process ?
    *
-   * @return true once a fault has been caught
+   * @return true once a fault has been caught, after which every engine call is refused
    */
   public static boolean hasFaulted() {
     return loadDone && loadedSuccessfully() && nativeHasFaulted();
@@ -101,7 +98,7 @@ public class HTTrackLib {
    * @return 1 upon success
    */
   public static int buildTopIndex(final File path, final File templatesPath) {
-    // Refused natively too; stopping here keeps the crash path out of JNI entirely.
+    // Refused natively too; answering here spares the callers a fault they only log.
     if (hasFaulted()) {
       return 0;
     }
