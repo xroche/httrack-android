@@ -17,11 +17,11 @@ public class MirrorOutcomeTest {
     return stats;
   }
 
-  private static void check(final MirrorOutcome expected, final boolean interrupted,
+  private static void check(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
       final int abortCode, final long errorsCount, final long filesWritten) {
-    assertEquals("interrupted=" + interrupted + " abortCode=" + abortCode + " errors="
-        + errorsCount + " written=" + filesWritten, expected,
-        MirrorOutcome.of(interrupted, abortCode, stats(errorsCount, filesWritten)));
+    assertEquals("stop=" + stop + " abortCode=" + abortCode + " errors=" + errorsCount
+        + " written=" + filesWritten, expected,
+        MirrorOutcome.of(stop, abortCode, stats(errorsCount, filesWritten)));
   }
 
   /**
@@ -31,31 +31,53 @@ public class MirrorOutcomeTest {
    */
   @Test
   public void aStopTheUserAskedForIsNeverAnAbort() {
-    check(MirrorOutcome.INTERRUPTED, true, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
-    check(MirrorOutcome.INTERRUPTED, true, ABORT_CALLBACK, 2, 40);
-    check(MirrorOutcome.INTERRUPTED, true, MirrorOutcome.ABORT_FATAL, 0, 7);
-    check(MirrorOutcome.INTERRUPTED, true, MirrorOutcome.ABORT_NONE, 0, 7);
+    check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, ABORT_CALLBACK, 2, 40);
+    check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, MirrorOutcome.ABORT_FATAL, 0, 7);
+    check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, MirrorOutcome.ABORT_NONE, 0, 7);
   }
 
-  /** main() returns 0 for these, so without the abort flag they would all read as a success. */
+  /**
+   * main() returns 0 for these, so without the abort flag they would all read as a success. An
+   * abort sets wasStopped() as well, but must be named by its cause whether or not it did.
+   */
   @Test
   public void anAbortTheUserDidNotAskForIsNamedByItsCause() {
-    check(MirrorOutcome.ABORTED_FATAL, false, MirrorOutcome.ABORT_FATAL, 0, 3);
-    check(MirrorOutcome.ABORTED_ROLLBACK, false, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_FATAL, 0, 3);
+    check(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_FATAL, 0, 3);
+    check(MirrorOutcome.ABORTED_ROLLBACK, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_ROLLBACK, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
   }
 
   /** An abort code nobody has mapped must still abort, not fall through to success. */
   @Test
   public void anUnrecognisedAbortCodeIsStillAnAbort() {
-    check(MirrorOutcome.ABORTED_OTHER, false, ABORT_CALLBACK, 0, 0);
-    check(MirrorOutcome.ABORTED_OTHER, false, ABORT_UNKNOWN, 0, 40);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.ENGINE, ABORT_CALLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, ABORT_CALLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.ENGINE, ABORT_UNKNOWN, 0, 40);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, ABORT_UNKNOWN, 0, 40);
+  }
+
+  /**
+   * back_checkmirror() asks for a smooth stop on the max-size and max-time caps, which sets the
+   * engine's stop flag but no abort flag. The mirror is short, so a clean error count is not a
+   * success, and pendingWork already offers the resume that says so.
+   */
+  @Test
+  public void aCapTheEngineHitIsNotASuccess() {
+    check(MirrorOutcome.STOPPED_AT_LIMIT, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE,
+        0, 400);
+    check(MirrorOutcome.STOPPED_AT_LIMIT, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE,
+        5, 400);
+    check(MirrorOutcome.STOPPED_AT_LIMIT, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE,
+        5, 0);
   }
 
   @Test
   public void aCompletedRunIsStillJudgedOnItsErrorCount() {
-    check(MirrorOutcome.SUCCESS, false, MirrorOutcome.ABORT_NONE, 0, 40);
-    check(MirrorOutcome.SUCCESS, false, MirrorOutcome.ABORT_NONE, 0, 0);
-    check(MirrorOutcome.SUCCESS_WITH_ERRORS, false, MirrorOutcome.ABORT_NONE, 5, 40);
-    check(MirrorOutcome.FAILED, false, MirrorOutcome.ABORT_NONE, 5, 0);
+    check(MirrorOutcome.SUCCESS, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 40);
+    check(MirrorOutcome.SUCCESS, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 0);
+    check(MirrorOutcome.SUCCESS_WITH_ERRORS, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 5, 40);
+    check(MirrorOutcome.FAILED, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 5, 0);
   }
 }

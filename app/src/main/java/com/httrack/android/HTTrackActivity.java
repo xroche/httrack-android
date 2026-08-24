@@ -1501,16 +1501,23 @@ public class HTTrackActivity extends FragmentActivity {
         // Run engine
         engineRan = true;
         final int code = engine.main(cargs);
-        pendingWork = leavesPendingWork(interrupted || engine.wasStopped(), code);
+        // One reading of the engine's verdict, so the pane and the resume offer cannot disagree.
+        final MirrorOutcome.Stop stop = interrupted ? MirrorOutcome.Stop.USER
+            : engine.wasStopped() ? MirrorOutcome.Stop.ENGINE : MirrorOutcome.Stop.NONE;
+        pendingWork = leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code);
 
         // Result
         if (code == 0) {
-          final MirrorOutcome outcome = MirrorOutcome.of(interrupted,
-              engine.abortCode(), lastStats);
+          final MirrorOutcome outcome = MirrorOutcome.of(stop, engine.abortCode(),
+              lastStats);
           switch (outcome) {
           case INTERRUPTED:
             message = "<b>Interrupted</b>! (" + lastStats.errorsCount
                 + " errors)";
+            break;
+          case STOPPED_AT_LIMIT:
+            message = "<b>Stopped</b>! (size or time limit reached, "
+                + lastStats.errorsCount + " errors)";
             break;
           case ABORTED_FATAL:
             message = "<b>Aborted</b>! (out of disk space, too many links, or"

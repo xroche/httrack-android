@@ -128,8 +128,13 @@ public class InterruptedLockTest {
     assertTrue("runInternal no longer bounded by its displayFinishedPanel call",
         from != -1 && to > from);
     final String body = source.substring(from, to);
-    assertTrue("runInternal must weigh the engine's own stop, not just the user's",
-        body.contains("leavesPendingWork(interrupted || engine.wasStopped(), code)"));
+    final String resumeOffer = TestSources.arguments(body, "leavesPendingWork");
+    assertTrue("the resume offer must read the run's own stop verdict",
+        resumeOffer.contains("stop"));
+    assertFalse("the resume offer must not read the user's flag alone",
+        resumeOffer.contains("interrupted"));
+    assertFalse("the resume offer must not narrow to one kind of stop",
+        resumeOffer.contains("=="));
     assertTrue("runInternal must write the verdict before the finished pane opens",
         body.contains("setInterruptedProfile(pendingWork)"));
     assertTrue("ended must be set before the finished pane asks for a stop",

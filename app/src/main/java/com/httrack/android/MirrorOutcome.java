@@ -15,10 +15,21 @@ enum MirrorOutcome {
   ABORTED_ROLLBACK,
   /** The engine gave up for a reason it does not name. */
   ABORTED_OTHER,
+  /** A size or time cap the user set was reached, so the mirror is short. */
+  STOPPED_AT_LIMIT,
   SUCCESS,
   SUCCESS_WITH_ERRORS,
   /** Errors, and no file written. */
   FAILED;
+
+  /** Who asked the run to end early, if anyone. */
+  enum Stop {
+    NONE,
+    /** The user tapped Stop. */
+    USER,
+    /** The engine stopped itself, at a cap or on an abort; of() tells the two apart. */
+    ENGINE
+  }
 
   /** The values HTTrackLib.abortCode() reports; anything else is ABORTED_OTHER. */
   static final int ABORT_NONE = 0;
@@ -26,13 +37,13 @@ enum MirrorOutcome {
   static final int ABORT_ROLLBACK = 2;
 
   /**
-   * Weigh ABORTCODE, from HTTrackLib.abortCode(), against what the run recorded. INTERRUPTED must
-   * come first: a user stop sets the engine's abort flag two ways of its own, so the verdict alone
-   * reads it as an abort nobody asked for.
+   * Weigh STOP and ABORTCODE, from HTTrackLib.abortCode(), against what the run recorded. A user
+   * stop must come first: it sets the engine's abort flag two ways of its own, so the verdict
+   * alone reads it as an abort nobody asked for. An abort outranks a cap, because reaching a cap
+   * also makes the engine report itself stopped.
    */
-  static MirrorOutcome of(final boolean interrupted, final int abortCode,
-      final HTTrackStats stats) {
-    if (interrupted) {
+  static MirrorOutcome of(final Stop stop, final int abortCode, final HTTrackStats stats) {
+    if (stop == Stop.USER) {
       return INTERRUPTED;
     }
     switch (abortCode) {
@@ -44,6 +55,9 @@ enum MirrorOutcome {
         return ABORTED_ROLLBACK;
       default:
         return ABORTED_OTHER;
+    }
+    if (stop == Stop.ENGINE) {
+      return STOPPED_AT_LIMIT;
     }
     if (stats.errorsCount == 0) {
       return SUCCESS;
