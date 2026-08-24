@@ -827,6 +827,31 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
   return stopped;
 }
 
+JNICALL jstring
+Java_com_httrack_android_jni_HTTrackLib_abortReason(JNIEnv* env, jobject object) {
+  HTTrackLib_context *const context = getNativeOpt(env, object);
+  jstring reason = NULL;
+
+  if (context == NULL) {
+    throwRuntimeException(env, "null context");
+    return NULL;
+  }
+
+  /* The engine reports a full disk, a full link table or a rolled-back session
+     through exit_xh, and hts_main2() still returns 0, so a caller that only reads
+     the code calls a dead mirror a success. */
+  MUTEX_LOCK(context->lock);
+  if (context->opt != NULL && hts_is_exiting(context->opt) != 0) {
+    const char *const msg = hts_errmsg(context->opt);
+
+    reason = (*env)->NewStringUTF(env, msg != NULL && *msg != '\0'
+        ? msg : "mirror aborted");
+  }
+  MUTEX_UNLOCK(context->lock);
+
+  return reason;
+}
+
 JNICALL jboolean
 Java_com_httrack_android_jni_HTTrackLib_wasStopped(JNIEnv* env, jobject object) {
   HTTrackLib_context *const context = getNativeOpt(env, object);

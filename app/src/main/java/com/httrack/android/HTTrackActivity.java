@@ -1504,8 +1504,13 @@ public class HTTrackActivity extends FragmentActivity {
         pendingWork = leavesPendingWork(interrupted || engine.wasStopped(), code);
 
         // Result
+        final String aborted = engine.abortReason();
         if (code == 0) {
-          if (interrupted) {
+          /* The engine gave up on its own: a full disk reaches here with code 0,
+             and would otherwise be announced as a success. */
+          if (aborted != null) {
+            message = "<b>Aborted</b>! (" + TextUtils.htmlEncode(aborted) + ")";
+          } else if (interrupted) {
             message = "<b>Interrupted</b>! (" + lastStats.errorsCount
                 + " errors)";
           } else if (lastStats.errorsCount == 0) {

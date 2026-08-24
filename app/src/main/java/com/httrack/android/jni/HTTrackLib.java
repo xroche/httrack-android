@@ -118,6 +118,15 @@ public class HTTrackLib {
   public native boolean wasStopped();
 
   /**
+   * Why the engine gave up, when it did. hts_main2() returns 0 for nearly every
+   * abort, so a run that stopped on a full disk is otherwise indistinguishable
+   * from one that finished.
+   *
+   * @return the engine's reason, or null when the mirror was not aborted
+   */
+  public native String abortReason();
+
+  /**
    * Default constructor.
    */
   public HTTrackLib() {
