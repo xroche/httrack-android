@@ -73,6 +73,20 @@ final class TestSources {
     return new File(dir("src/main/jni/httrack"), name);
   }
 
+  /** SOURCE from STARTMARKER up to the next ENDMARKER, which is left out. */
+  static String between(final String source, final String startMarker,
+      final String endMarker) {
+    final int from = source.indexOf(startMarker);
+    if (from == -1) {
+      throw new IllegalStateException("no " + startMarker);
+    }
+    final int to = source.indexOf(endMarker, from);
+    if (to == -1) {
+      throw new IllegalStateException(startMarker + " has no " + endMarker);
+    }
+    return source.substring(from, to);
+  }
+
   static int occurrences(final String source, final String text) {
     int count = 0;
     for (int at = source.indexOf(text); at != -1; at = source.indexOf(text,
