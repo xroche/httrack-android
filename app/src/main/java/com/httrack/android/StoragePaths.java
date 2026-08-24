@@ -78,6 +78,19 @@ final class StoragePaths {
   }
 
   /**
+   * Whether a resume is the moment storage access appeared, which is the only resume that can
+   * newly reveal anything. Every other one must stay silent rather than re-ask.
+   *
+   * @param hadAccess
+   *          access as it stood at the previous check
+   * @param hasAccess
+   *          access as it stands now
+   */
+  static boolean accessJustAppeared(final boolean hadAccess, final boolean hasAccess) {
+    return hasAccess && !hadAccess;
+  }
+
+  /**
    * Whether the freshly resolved root differs from the one in use, the first resolution counting
    * as a move. Gates the work that must happen once per move, not once per resume.
    *
@@ -153,6 +166,33 @@ final class StoragePaths {
       return base;
     }
     return defaultRoot;
+  }
+
+  /**
+   * Mirrors left by builds before versionCode 61, which wrote under Download/ rather than the
+   * shared HTTrack/ root every build since uses. Returns the folder only when it holds a project
+   * with something in it, so a caller can stay silent rather than ask about nothing.
+   *
+   * @param shared
+   *          the shared storage root, null when we have no access to look
+   * @return the legacy folder, or null when there is nothing to offer
+   */
+  static File legacyMirrorRoot(final File shared) {
+    if (shared == null) {
+      return null;
+    }
+    final File legacy = new File(new File(new File(shared, "Download"), "HTTrack"), "Websites");
+    final File[] entries = legacy.listFiles();
+    if (entries == null) {
+      return null;
+    }
+    for (final File entry : entries) {
+      final String[] project = entry.list();
+      if (project != null && project.length != 0) {
+        return legacy;
+      }
+    }
+    return null;
   }
 
   /**

@@ -370,4 +370,29 @@ public class LegacyMirrorImportTest {
 
     assertArrayEquals(raw, Files.readAllBytes(new File(dest, "blob.bin").toPath()));
   }
+
+  /**
+   * Without access the shared root is null, so the detector cannot look and the offer must not
+   * appear. Only the wiring can say that; the detector alone cannot tell "no access" from "empty".
+   */
+  @Test
+  public void findingNothingReturnsBeforeTheDialog() throws IOException {
+    final String body = TestSources.between(TestSources.javaSource("HTTrackActivity"),
+        "private void offerLegacyMirrorImportOnce", "new AlertDialog.Builder");
+    // One pattern, so the test cannot be satisfied by a stray "== null" and the pref check's
+    // own "return;" the way two independent substrings could.
+    assertTrue("finding nothing must return before the dialog is built", body.matches(
+        "(?s).*StoragePaths\\.legacyMirrorRoot\\(sharedStorageRoot\\(\\)\\)\\s*==\\s*null\\)\\s*\\{\\s*return;.*"));
+  }
+
+  /** The resume that brings access is the only one that can reveal the folder. */
+  @Test
+  public void theResumeOfferIsGatedOnTheGrant() throws IOException {
+    final String body = TestSources.between(TestSources.javaSource("HTTrackActivity"),
+        "protected void onResume", "\n  }");
+    assertTrue("a plain resume must not re-ask", body.matches(
+        "(?s).*StoragePaths\\.accessJustAppeared\\([^)]*\\)\\)\\s*\\{\\s*offerLegacyMirrorImportOnce\\(\\);.*"));
+    assertTrue("the next resume must compare against this one",
+        body.contains("hadStorageAccess = access;"));
+  }
 }
