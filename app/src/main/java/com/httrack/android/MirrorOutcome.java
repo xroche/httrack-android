@@ -9,14 +9,14 @@ import com.httrack.android.jni.HTTrackStats;
 enum MirrorOutcome {
   /** The user asked for the stop. */
   INTERRUPTED,
-  /** A size or time cap the user set was reached, so the mirror is short. */
-  STOPPED_AT_LIMIT,
   /** Out of room: a write that failed, or a link the table could not record. */
   ABORTED_FATAL,
   /** Nothing arrived, so the engine rolled the session back. */
   ABORTED_ROLLBACK,
   /** The engine gave up for a reason it does not name. */
   ABORTED_OTHER,
+  /** A size or time cap the user set was reached, so the mirror is short. */
+  STOPPED_AT_LIMIT,
   SUCCESS,
   SUCCESS_WITH_ERRORS,
   /** Errors, and no file written. */
@@ -27,7 +27,7 @@ enum MirrorOutcome {
     NONE,
     /** The user tapped Stop. */
     USER,
-    /** back_checkmirror() hit the max-size or max-time cap and asked for a smooth stop. */
+    /** The engine stopped itself, at a cap or on an abort; of() tells the two apart. */
     ENGINE
   }
 

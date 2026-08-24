@@ -37,18 +37,25 @@ public class MirrorOutcomeTest {
     check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, MirrorOutcome.ABORT_NONE, 0, 7);
   }
 
-  /** main() returns 0 for these, so without the abort flag they would all read as a success. */
+  /**
+   * main() returns 0 for these, so without the abort flag they would all read as a success. An
+   * abort sets wasStopped() as well, but must be named by its cause whether or not it did.
+   */
   @Test
   public void anAbortTheUserDidNotAskForIsNamedByItsCause() {
     check(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_FATAL, 0, 3);
+    check(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_FATAL, 0, 3);
     check(MirrorOutcome.ABORTED_ROLLBACK, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_ROLLBACK, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
   }
 
   /** An abort code nobody has mapped must still abort, not fall through to success. */
   @Test
   public void anUnrecognisedAbortCodeIsStillAnAbort() {
     check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.ENGINE, ABORT_CALLBACK, 0, 0);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, ABORT_CALLBACK, 0, 0);
     check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.ENGINE, ABORT_UNKNOWN, 0, 40);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, ABORT_UNKNOWN, 0, 40);
   }
 
   /**

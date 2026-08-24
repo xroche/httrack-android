@@ -73,6 +73,24 @@ final class TestSources {
     return new File(dir("src/main/jni/httrack"), name);
   }
 
+  /** Arguments of the call to NAME, parentheses balanced and the outer pair left out. */
+  static String arguments(final String source, final String name) {
+    final int at = source.indexOf(name + "(");
+    if (at == -1) {
+      throw new IllegalStateException("no call to " + name);
+    }
+    final int from = source.indexOf('(', at);
+    int depth = 0;
+    for (int i = from; i < source.length(); i++) {
+      if (source.charAt(i) == '(') {
+        depth++;
+      } else if (source.charAt(i) == ')' && --depth == 0) {
+        return source.substring(from + 1, i);
+      }
+    }
+    throw new IllegalStateException(name + "( is never closed");
+  }
+
   /** SOURCE from STARTMARKER up to the next ENDMARKER, which is left out. */
   static String between(final String source, final String startMarker,
       final String endMarker) {
