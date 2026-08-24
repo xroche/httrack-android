@@ -2946,11 +2946,12 @@ public class HTTrackActivity extends FragmentActivity {
         // Exit because otherwise we can't recreate the directory (!)
         if (rootWasDeleted
             && android.os.Build.VERSION.SDK_INT >= VERSION_CODES.KITKAT) {
-          // Restarting the activity is not enough; the deleted directory needs a new process.
+          // Exit here, not from onDestroy(): its serialize() would mkdirs the tree just
+          // deleted. Restarting the activity is not enough either, a FUSE issue is suspected.
           Log.w("httrack",
               "exiting because root path was deleted (Android >= Kitkat issue)");
-          exitWhenDestroyed = true;
           finish();
+          System.exit(0);
         }
       }
       break;
