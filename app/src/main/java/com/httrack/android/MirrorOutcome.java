@@ -13,7 +13,7 @@ enum MirrorOutcome {
   ABORTED_FATAL,
   /** Nothing arrived, so the engine rolled the session back. */
   ABORTED_ROLLBACK,
-  /** The engine gave up for a reason it does not name. No path is known to reach this. */
+  /** The engine gave up for a reason it does not name. */
   ABORTED_OTHER,
   SUCCESS,
   SUCCESS_WITH_ERRORS,

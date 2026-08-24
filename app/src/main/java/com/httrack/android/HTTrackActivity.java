@@ -1533,6 +1533,9 @@ public class HTTrackActivity extends FragmentActivity {
             message = "<b>Failed</b>! (" + lastStats.errorsCount
                 + " errors, no files written)";
             break;
+          default:
+            // No build-time check catches a new constant; a null message would ship as "null".
+            throw new IllegalStateException(outcome.name());
           }
           mirrorFolder = target;
           message += "<br /><br />Mirror copied in <i><a href=\""
