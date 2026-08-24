@@ -38,6 +38,9 @@ Java_com_httrack_android_jni_HTTrackLib_getVersion(JNIEnv* env, jclass clazz);
 JNIEXPORT jstring JNICALL
 Java_com_httrack_android_jni_HTTrackLib_getFeatures(JNIEnv* env, jclass clazz);
 
+JNIEXPORT jboolean JNICALL
+Java_com_httrack_android_jni_HTTrackLib_nativeHasFaulted(JNIEnv* env, jclass clazz);
+
 JNIEXPORT void JNICALL
 Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject object);
 

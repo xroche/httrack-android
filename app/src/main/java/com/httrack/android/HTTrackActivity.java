@@ -1339,6 +1339,7 @@ public class HTTrackActivity extends FragmentActivity {
     private String string_creating_project;
     private String string_starting_mirror;
     private String string_self_contained_conflict;
+    private String string_engine_faulted;
     private String string_mirror_finished;
 
     /**
@@ -1388,6 +1389,7 @@ public class HTTrackActivity extends FragmentActivity {
       string_starting_mirror = getParentString(R.string.starting_mirror);
       string_self_contained_conflict = getParentString(
           R.string.self_contained_conflict);
+      string_engine_faulted = getParentString(R.string.engine_faulted);
       string_mirror_finished = getParentString(R.string.mirror_finished);
 
       // Execute pending actions now we are attached
@@ -1443,6 +1445,10 @@ public class HTTrackActivity extends FragmentActivity {
         // Sanity checks
         if (parent == null) {
           throw new IOException("no parent!");
+        }
+        // A recovered fault left the engine mid-operation; only a new process clears it.
+        if (HTTrackLib.hasFaulted()) {
+          throw new IOException(string_engine_faulted);
         }
         final File target = parent.getTargetFile();
         if (target == null) {
@@ -1570,6 +1576,10 @@ public class HTTrackActivity extends FragmentActivity {
         HTTrackActivity.emergencyDump(appContext, t);
         message = "<b>Error</b>: "
             + TextUtils.htmlEncode(HTTrackActivity.describeCrash(t));
+        // Anything else here is an ordinary Java failure, which leaves the engine usable.
+        if (HTTrackLib.hasFaulted()) {
+          message += "<br /><br />" + TextUtils.htmlEncode(string_engine_faulted);
+        }
       } finally {
         // Release inter-thread lock
         if (profile != null) {
@@ -2628,6 +2638,13 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   private void setPane(final int position) {
+    // Leaving the panel that reported a native fault: the engine is unusable and nothing but a
+    // new process can clear it, so the next screen has to come from one.
+    if (pane_id == LAYOUT_FINISHED && position != LAYOUT_FINISHED
+        && HTTrackLib.hasFaulted()) {
+      exitAfterNativeFault();
+      return;
+    }
     if (pane_id != position) {
       // Leaving a pane: save data
       savePaneFields();
@@ -3021,9 +3038,24 @@ public class HTTrackActivity extends FragmentActivity {
    * Restart activity. (exit current app)
    */
   protected void restartActivity() {
+    if (HTTrackLib.hasFaulted()) {
+      // Restarting the activity keeps the process, which is what the fault poisoned.
+      exitAfterNativeFault();
+      return;
+    }
     final Intent intent = getIntent();
     finish();
     startActivity(intent);
+  }
+
+  /**
+   * Close the app after a recovered native fault. Android starts a fresh process the next time
+   * the user opens HTTrack, and that is the only way back to a working engine.
+   */
+  private void exitAfterNativeFault() {
+    Log.w(getClass().getSimpleName(), "closing: the native engine faulted");
+    finish();
+    System.exit(0);
   }
 
   /**

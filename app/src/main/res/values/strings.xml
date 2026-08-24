@@ -244,6 +244,7 @@
     <string name="creating_project">Creating the project…</string>
     <string name="starting_mirror">Starting the mirror…</string>
     <string name="self_contained_conflict">The mirror cannot make a self-contained page two ways at once. Untick either \"Build a single-file MHTML archive\" (Log, index, cache) or \"Inline assets as data: URIs\" (Build).</string>
+    <string name="engine_faulted">The copier engine crashed and cannot run again here. HTTrack closes when you leave this screen; open it again to start another mirror.</string>
     <string name="load_default">Load default options</string>
     <string name="save_default">Save default options</string>
     <string name="reset_default">Reset to default options</string>
