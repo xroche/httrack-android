@@ -72,7 +72,8 @@ public class NativeFaultLatchTest {
     while (m.find()) {
       seen.add(m.group(1));
     }
-    assertTrue("no entry point parsed", seen.size() > 8);
+    assertTrue("the entry points did not parse: " + seen, seen.containsAll(Arrays.asList(
+        "main", "stop", "buildTopIndex", "init", "free", "initRootPath")));
     for (final String name : seen) {
       if (!body(source, name).contains("engineFaulted")
           && !body(source, name).contains("refuseIfFaulted")) {
@@ -148,5 +149,16 @@ public class NativeFaultLatchTest {
     final String exit = TestSources.between(source,
         "private void exitAfterNativeFault()", "\n  }");
     assertTrue("finish() alone leaves the process alive", exit.contains("System.exit(0)"));
+  }
+
+  @Test
+  public void closingTheAppDoesNotLeaveTheLatchForTheNextLaunch() throws IOException {
+    // Android hands a relaunch whatever process it kept, so finishing has to end this one.
+    // Indented two spaces: the runner fragment overrides onDestroy() as well.
+    final String destroy = TestSources.between(
+        TestSources.javaSource("HTTrackActivity"), "\n  public void onDestroy()", "\n  }");
+    assertTrue("a finished activity leaves the faulted process behind",
+        destroy.contains("isFinishing() && HTTrackLib.hasFaulted()")
+            && destroy.contains("exitAfterNativeFault()"));
   }
 }

@@ -3049,8 +3049,8 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Close the app after a recovered native fault. Android starts a fresh process the next time
-   * the user opens HTTrack, and that is the only way back to a working engine.
+   * Close the app after a recovered native fault. The next launch then gets a new process, which
+   * is the only way back to a working engine.
    */
   private void exitAfterNativeFault() {
     Log.w(getClass().getSimpleName(), "closing: the native engine faulted");
@@ -3436,6 +3436,11 @@ public class HTTrackActivity extends FragmentActivity {
       }
     }
     super.onDestroy();
+    // The next launch may be handed this very process, latch and all; a configuration change
+    // is not finishing, and has to keep it.
+    if (isFinishing() && HTTrackLib.hasFaulted()) {
+      exitAfterNativeFault();
+    }
   }
 
   /** Navigate back to home, without killing us. **/

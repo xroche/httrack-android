@@ -43,9 +43,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define USE_COFFEECATCH
 
-/* A fault recovered by coffeecatch is a siglongjmp, which unwinds nothing: hts_init() ran,
- * hts_uninit() never will, and the cache file, the sockets and any lock the faulting frame held
- * stay as the fault left them. Latched once, refused from then on; only a new process clears it. */
+/* Recovering a fault is a siglongjmp, which unwinds nothing: the engine keeps the state, the open
+ * cache file and the held lock it faulted with, so it is refused from here on. */
 static volatile int engineFaulted = 0;
 
 #ifdef USE_COFFEECATCH
@@ -508,8 +507,8 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject o
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_init");
 
-  /* Silent: this is a constructor, and throwing here would take the activity down before the
-     crawl it belongs to ever gets to report the fault. Every call on the object is refused. */
+  /* Silent: a throw from this constructor would take the activity down before the crawl that
+     faulted ever reports it. Every call on the object is refused anyway. */
   if (engineFaulted) {
     error("not creating an engine context: the engine faulted");
     return;
@@ -532,8 +531,8 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_free(JNIEnv* env, jobject o
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_free");
 
-  /* Silent, unlike the other entry points: this runs on the finalizer thread, and hts_free_opt()
-     over a faulted opt would take the engine down a second time. Leaking it costs one process. */
+  /* Leaked on purpose: hts_free_opt() over a faulted opt would fault again, on the finalizer
+     thread this time. */
   if (engineFaulted) {
     error("not freeing the engine context: it faulted");
     return;
@@ -879,7 +878,7 @@ Java_com_httrack_android_jni_HTTrackLib_abortCode(JNIEnv* env, jobject object) {
   HTTrackLib_context *const context = getNativeOpt(env, object);
   jint aborted = 0;
 
-  /* Same held-lock hazard as stop(); the crash path has its own message anyway. */
+  /* Same held-lock hazard as stop(). */
   if (engineFaulted) {
     return 0;
   }
