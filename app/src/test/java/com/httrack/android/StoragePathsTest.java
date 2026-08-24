@@ -1,6 +1,7 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -131,42 +132,66 @@ public class StoragePathsTest {
     assertNull(StoragePaths.externalStorageDocId(new File(shared, "HTTrack"), null));
   }
 
-  private static File legacyTree(final File shared, final boolean withProject) throws IOException {
+  /** The path builds before versionCode 61 wrote to, spelled out so a change to it fails here. */
+  private static File legacyTree(final File shared) throws IOException {
     final File websites = new File(new File(new File(shared, "Download"), "HTTrack"), "Websites");
     assertTrue(websites.mkdirs());
-    if (withProject) {
-      assertTrue(new File(websites, "someproject").mkdir());
-    }
     return websites;
+  }
+
+  private static void project(final File websites, final String name) throws IOException {
+    final File dir = new File(websites, name);
+    assertTrue(dir.mkdir());
+    assertTrue(new File(dir, "index.html").createNewFile());
   }
 
   /** A question the user cannot answer is worse than no question, so silence is the default. */
   @Test
   public void anAbsentLegacyFolderIsNotOffered() throws IOException {
-    assertNull(StoragePaths.legacyMirrors(tmp.newFolder("bare")));
+    assertNull(StoragePaths.legacyMirrorRoot(tmp.newFolder("bare")));
   }
 
   /** Builds before versionCode 61 wrote here; an empty folder is not a reason to ask. */
   @Test
   public void anEmptyLegacyFolderIsNotOffered() throws IOException {
     final File shared = tmp.newFolder("empty");
-    legacyTree(shared, false);
-    assertNull(StoragePaths.legacyMirrors(shared));
+    legacyTree(shared);
+    assertNull(StoragePaths.legacyMirrorRoot(shared));
+  }
+
+  /** An empty project would import nothing, so it is not worth a question either. */
+  @Test
+  public void anEmptyProjectIsNotOffered() throws IOException {
+    final File shared = tmp.newFolder("hollow");
+    assertTrue(new File(legacyTree(shared), "someproject").mkdir());
+    assertNull(StoragePaths.legacyMirrorRoot(shared));
   }
 
   /** A stray file is not a project; only a project directory earns the question. */
   @Test
   public void aFileIsNotAProject() throws IOException {
     final File shared = tmp.newFolder("stray");
-    final File websites = legacyTree(shared, false);
-    assertTrue(new File(websites, "notes.txt").createNewFile());
-    assertNull(StoragePaths.legacyMirrors(shared));
+    assertTrue(new File(legacyTree(shared), "notes.txt").createNewFile());
+    assertNull(StoragePaths.legacyMirrorRoot(shared));
   }
 
+  /** The one test that pins the path itself: every negative case passes on a wrong path too. */
   @Test
   public void aLegacyProjectIsOffered() throws IOException {
     final File shared = tmp.newFolder("real");
-    final File websites = legacyTree(shared, true);
-    assertEquals(websites, StoragePaths.legacyMirrors(shared));
+    final File websites = legacyTree(shared);
+    project(websites, "someproject");
+    assertEquals(websites, StoragePaths.legacyMirrorRoot(shared));
+  }
+
+  /** Only the resume that brings access can reveal anything; every other must stay silent. */
+  @Test
+  public void onlyTheGrantItselfRaisesTheOffer() {
+    assertTrue(StoragePaths.accessJustAppeared(false, true));
+    assertFalse("a plain resume with access must not re-ask",
+        StoragePaths.accessJustAppeared(true, true));
+    assertFalse(StoragePaths.accessJustAppeared(false, false));
+    assertFalse("access going away is not an invitation",
+        StoragePaths.accessJustAppeared(true, false));
   }
 }

@@ -143,6 +143,9 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final String NOTIFY_ASKED_NAME = "NotificationPermissionAsked";
   // Whether the one-time "import your old mirrors" offer has been shown and dismissed for good.
   protected static final String IMPORT_OFFERED_NAME = "LegacyImportOffered";
+
+  /* Access as of the last resume, so a grant can be told from a plain return to the app. */
+  private boolean hadStorageAccess;
   // Whether all-files storage access was ever offered; a refusal keeps mirrors in private storage.
   protected static final String STORAGE_ASKED_NAME = "StorageAccessAsked";
   // The root we left on the last move: nothing is migrated, so the older projects are still there.
@@ -802,6 +805,7 @@ public class HTTrackActivity extends FragmentActivity {
     // First launch only, so a rotation does not bring the offer back; and not stacked on top
     // of the native-load failure dialog. Silent unless mirrors are already visible; onResume()
     // asks again once a storage grant makes them so.
+    hadStorageAccess = hasAllFilesAccess();
     if (savedInstanceState == null && HTTrackLib.loadedSuccessfully()) {
       offerLegacyMirrorImportOnce();
     }
@@ -2791,9 +2795,8 @@ public class HTTrackActivity extends FragmentActivity {
     if (settings.getBoolean(IMPORT_OFFERED_NAME, false)) {
       return;
     }
-    // Nothing found means nothing asked: without access we cannot look, and a question the user
-    // has no way to answer is worse than never offering the import at all.
-    if (StoragePaths.legacyMirrors(sharedStorageRoot()) == null) {
+    // Null both without access and with nothing to import; either way, stay silent.
+    if (StoragePaths.legacyMirrorRoot(sharedStorageRoot()) == null) {
       return;
     }
     new AlertDialog.Builder(this)
@@ -3358,10 +3361,13 @@ public class HTTrackActivity extends FragmentActivity {
     }
     // A grant made on the settings screen flips the button/warning off (no-op off this panel).
     refreshStorageAccessHints();
-    // A grant is the first moment we can see the legacy folder, so this is where the offer belongs.
-    if (runner == null) {
+    // Ask again once a grant may have surfaced the folder; not mid-crawl, and not on a plain
+    // resume, which onCreate has already covered.
+    final boolean access = hasAllFilesAccess();
+    if (runner == null && StoragePaths.accessJustAppeared(hadStorageAccess, access)) {
       offerLegacyMirrorImportOnce();
     }
+    hadStorageAccess = access;
   }
 
   @Override
