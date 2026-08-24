@@ -1216,7 +1216,7 @@ public class HTTrackActivity extends FragmentActivity {
       try {
         return HTTrackLib.buildTopIndex(getProjectRootFile(), rsc);
       } catch (final Throwable t) {
-        // Recovered native fault: a missing top index is not worth the process.
+        // The fault is latched; report it and let the app end the process on its way out.
         Log.e(getClass().getSimpleName(), "could not build top index", t);
         emergencyDump(getApplicationContext(), t);
         return 0;
