@@ -1504,29 +1504,41 @@ public class HTTrackActivity extends FragmentActivity {
         pendingWork = leavesPendingWork(interrupted || engine.wasStopped(), code);
 
         // Result
-        final String aborted = engine.abortReason();
-        if (code == 0) {
-          /* The engine gave up on its own: a full disk reaches here with code 0,
-             and would otherwise be announced as a success. */
-          if (aborted != null) {
-            message = "<b>Aborted</b>! (" + TextUtils.htmlEncode(aborted) + ")";
-          } else if (interrupted) {
-            message = "<b>Interrupted</b>! (" + lastStats.errorsCount
-                + " errors)";
-          } else if (lastStats.errorsCount == 0) {
-            message = "<b>Success</b>!";
-          } else if (lastStats.filesWritten != 0) {
-            message = "<b>Success</b>! (" + lastStats.errorsCount + " errors)";
-          } else {
-            message = "<b>Failed</b>! (" + lastStats.errorsCount
-                + " errors, no files written)";
+        final MirrorOutcome outcome = MirrorOutcome.of(code, interrupted,
+            engine.abortCode(), lastStats.errorsCount, lastStats.filesWritten);
+        if (outcome == MirrorOutcome.ERROR) {
+          message = "<b>Error</b> (<i>code " + code + "</i>)";
+        } else {
+          switch (outcome) {
+            case INTERRUPTED:
+              message = "<b>Interrupted</b>! (" + lastStats.errorsCount
+                  + " errors)";
+              break;
+            case ABORTED_IO:
+              message = "<b>Aborted</b>! (a write failed, most likely a full disk)";
+              break;
+            case ABORTED_ROLLBACK:
+              message = "<b>Aborted</b>! (nothing was transferred, so the previous"
+                  + " mirror was kept)";
+              break;
+            case ABORTED:
+              message = "<b>Aborted</b>! (the engine could not continue)";
+              break;
+            case SUCCESS:
+              message = "<b>Success</b>!";
+              break;
+            case SUCCESS_WITH_ERRORS:
+              message = "<b>Success</b>! (" + lastStats.errorsCount + " errors)";
+              break;
+            default:
+              message = "<b>Failed</b>! (" + lastStats.errorsCount
+                  + " errors, no files written)";
+              break;
           }
           mirrorFolder = target;
           message += "<br /><br />Mirror copied in <i><a href=\""
               + MIRROR_FOLDER_HREF + "\">"
               + TextUtils.htmlEncode(target.getAbsolutePath()) + "</a></i>";
-        } else {
-          message = "<b>Error</b> (<i>code " + code + "</i>)";
         }
 
         // Build top index

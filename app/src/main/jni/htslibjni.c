@@ -827,29 +827,24 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
   return stopped;
 }
 
-JNICALL jstring
-Java_com_httrack_android_jni_HTTrackLib_abortReason(JNIEnv* env, jobject object) {
+JNICALL jint
+Java_com_httrack_android_jni_HTTrackLib_abortCode(JNIEnv* env, jobject object) {
   HTTrackLib_context *const context = getNativeOpt(env, object);
-  jstring reason = NULL;
+  jint aborted = 0;
 
   if (context == NULL) {
     throwRuntimeException(env, "null context");
-    return NULL;
+    return 0;
   }
 
-  /* The engine reports a full disk, a full link table or a rolled-back session
-     through exit_xh, and hts_main2() still returns 0, so a caller that only reads
-     the code calls a dead mirror a success. */
   MUTEX_LOCK(context->lock);
-  if (context->opt != NULL && hts_is_exiting(context->opt) != 0) {
-    const char *const msg = hts_errmsg(context->opt);
-
-    reason = (*env)->NewStringUTF(env, msg != NULL && *msg != '\0'
-        ? msg : "mirror aborted");
+  /* exit_xh's own value, not a flag: the three causes want three messages. */
+  if (context->opt != NULL) {
+    aborted = hts_is_exiting(context->opt);
   }
   MUTEX_UNLOCK(context->lock);
 
-  return reason;
+  return aborted;
 }
 
 JNICALL jboolean
@@ -864,8 +859,8 @@ Java_com_httrack_android_jni_HTTrackLib_wasStopped(JNIEnv* env, jobject object) 
 
   MUTEX_LOCK(context->lock);
   /* hts_main2() returns 0 for nearly every abort, so ask the engine instead.
-     stop is a cap or a user stop; exit_xh is a fatal disk error, a full link
-     table, an aborting callback, or a rolled-back session. */
+     stop is a cap or a user stop; exit_xh is a fatal disk error, an aborting
+     callback, or a rolled-back session. */
   if (context->opt != NULL) {
     stopped = context->opt->state.stop != 0
         || hts_is_exiting(context->opt) != 0 ? JNI_TRUE : JNI_FALSE;

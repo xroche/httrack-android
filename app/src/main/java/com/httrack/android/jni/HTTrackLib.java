@@ -110,21 +110,21 @@ public class HTTrackLib {
   public native boolean stop(boolean force);
 
   /**
+   * How the engine aborted the last run, if it did. main() returns 0 for nearly every abort, so
+   * its return code alone cannot tell a mirror that died from one that finished.
+   *
+   * @return 0 when the mirror was not aborted, -1 on a fatal write such as a full disk, 1 when a
+   * callback refused to continue, 2 when nothing arrived and the previous session was restored
+   */
+  public native int abortCode();
+
+  /**
    * Was the last run cut short ? True for a stop() request, and for the size and time caps the
    * engine enforces itself, which no return code of main() tells apart from a completion.
    *
    * @return true if the engine stopped before draining its queue
    */
   public native boolean wasStopped();
-
-  /**
-   * Why the engine gave up, when it did. hts_main2() returns 0 for nearly every
-   * abort, so a run that stopped on a full disk is otherwise indistinguishable
-   * from one that finished.
-   *
-   * @return the engine's reason, or null when the mirror was not aborted
-   */
-  public native String abortReason();
 
   /**
    * Default constructor.

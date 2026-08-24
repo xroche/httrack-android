@@ -46,9 +46,7 @@ public class FinishedMessageTest {
 
   /** The statement building the "Mirror copied in" line. */
   private static String mirrorPathStatement(final String source) {
-    final int at = source.indexOf("Mirror copied in");
-    assertTrue("no mirror path line left in HTTrackActivity", at != -1);
-    return source.substring(at, source.indexOf(';', at));
+    return TestSources.between(source, "Mirror copied in", ";");
   }
 
   /** A base path is user-chosen, so an unescaped '&' or '<' would corrupt the render. */
