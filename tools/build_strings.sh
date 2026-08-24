@@ -22,12 +22,7 @@ if test $(head -5 $i | tail -1 | tr -d '\r') != "LANGUAGE_ISO"; then
 echo "bad file $i: LANGUAGE_ISO expected"
 exit 1
 fi
-if test $(head -9 $i | tail -1 | tr -d '\r') != "LANGUAGE_CHARSET"; then
-echo "bad file $i: LANGUAGE_CHARSET expected"
-exit 1
-fi
 iso=$(head -6 $i | tail -1 | tr -d '\r' | tr '_' '-' | sed -e 's/-/-r/')
-cp=$(head -10 $i | tail -1 | tr -d '\r')
 #if test "$iso" = "en"; then
 #echo "skipped"
 #continue;
@@ -35,12 +30,11 @@ cp=$(head -10 $i | tail -1 | tr -d '\r')
 dest=$2/values-${iso}
 mkdir -p $dest
 
-# read strings, converted to UTF-8, stripping CR,
+# read strings, stripping CR,
 # removing : at the end
 # replacing real & by &amp; and stripping the other ones
 # and replacing WinHTTrack by HTTrack
-cat "$i" | \
-	iconv -f "$cp" -t "utf-8" \
+cat "$i" \
 	| tr -d '\r' \
 	| sed -e 's/\\r//g' \
 	| sed -e 's/:$//' -e 's/\* //g' -e 's/\.\.\.$//g' -e 's/\([[:space:]]\)[[:space:]]*/\1/g' -e 's/[[:space:]]*$//' \
