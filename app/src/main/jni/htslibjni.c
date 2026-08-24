@@ -43,12 +43,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define USE_COFFEECATCH
 
+/* Recovering a fault is a siglongjmp, which unwinds nothing: the engine's process-wide mutexes
+ * and the heap stay as the faulting frame left them, so the engine is refused from here on. */
+static volatile int engineFaulted = 0;
+
 #ifdef USE_COFFEECATCH
 #include "coffeecatch.h"
 #include "coffeejni.h"
 
 /* COFFEE_TRY_JNI leaves coffeecatch's 30s SIGALRM watchdog armed; we report the
- * fault as a Java Error and keep crawling, so disarm it. Do that after the
+ * fault as a Java Error rather than dying, so disarm it. Do that after the
  * throw: allocating the exception is the hang the watchdog guards.
  * The body is copied from upstream's COFFEE_TRY_JNI: re-copy it if that changes. */
 #define COFFEE_TRY_JNI_RECOVER(ENV, CODE)  \
@@ -56,6 +60,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
     COFFEE_TRY() {                         \
       CODE;                                \
     } COFFEE_CATCH() {                     \
+      if (coffeecatch_get_signal() > 0) {  \
+        engineFaulted = 1;                 \
+      }                                    \
       coffeecatch_throw_exception(ENV);    \
       coffeecatch_cancel_pending_alarm();  \
     } COFFEE_END();                        \
@@ -268,6 +275,17 @@ static void throwNPException(JNIEnv* env, const char *message) {
   throwException(env, "java/lang/NullPointerException", message);
 }
 
+/* Refuse an engine call made after a recovered fault, and tell Java why.
+ * @return 1 when the caller must return without touching the engine. */
+static int refuseIfFaulted(JNIEnv* env) {
+  if (engineFaulted) {
+    throwException(env, "java/lang/IllegalStateException",
+                   "the native engine faulted; it can not be used again in this process");
+    return 1;
+  }
+  return 0;
+}
+
 /* Static initialization. */
 JNICALL void Java_com_httrack_android_jni_HTTrackLib_initStatic(JNIEnv* env, jclass clazz) {
 #define L_(X) #X
@@ -424,6 +442,9 @@ JNICALL void
 Java_com_httrack_android_jni_HTTrackLib_initRootPath(JNIEnv* env,
                                                      jclass clazz,
                                                      jstring opath) {
+  if (refuseIfFaulted(env)) {
+    return;
+  }
 #ifdef USE_COFFEECATCH
   COFFEE_TRY_JNI_RECOVER(env, HTTrackLib_initRootPath(env, clazz, opath));
 #else
@@ -476,11 +497,24 @@ JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getFeatures(JNIEnv* env,
   return (*env)->NewStringUTF(env, features);
 }
 
+JNICALL jboolean Java_com_httrack_android_jni_HTTrackLib_nativeHasFaulted(JNIEnv* env,
+                                                                         jclass clazz) {
+  UNUSED(env);
+  UNUSED(clazz);
+  return engineFaulted ? JNI_TRUE : JNI_FALSE;
+}
+
 JNICALL void Java_com_httrack_android_jni_HTTrackLib_init(JNIEnv* env, jobject object) {
-  HTTrackLib_context *const context = (HTTrackLib_context*)
-      calloc(sizeof(HTTrackLib_context), 1);
+  HTTrackLib_context *context;
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_init");
+
+  /* Silent: a throw from this constructor would kill the activity before it reports the fault. */
+  if (engineFaulted) {
+    error("not creating an engine context: the engine faulted");
+    return;
+  }
+  context = (HTTrackLib_context*) calloc(sizeof(HTTrackLib_context), 1);
 
   if (context == NULL) {
     throwRuntimeException(env, "memory exhausted");
@@ -497,6 +531,13 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_free(JNIEnv* env, jobject o
   HTTrackLib_context *const context = getNativeOpt(env, object);
 
   debug("calling Java_com_httrack_android_jni_HTTrackLib_free");
+
+  /* Leaked on purpose: hts_free_opt() over a faulted opt would fault again, here on the
+     finalizer thread. */
+  if (engineFaulted) {
+    error("not freeing the engine context: it faulted");
+    return;
+  }
 
   if (context != NULL) {
     setNativeOpt(env, object, NULL);
@@ -810,8 +851,14 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
   HTTrackLib_context *const context = getNativeOpt(env, object);
   jboolean stopped = JNI_FALSE;
 
+  /* The fault may have left this lock held; stop() runs on the UI thread and must not block. */
+  if (engineFaulted) {
+    return JNI_FALSE;
+  }
+
   if (context == NULL) {
     throwRuntimeException(env, "null context");
+    return JNI_FALSE;
   }
 
   MUTEX_LOCK(context->lock);
@@ -832,6 +879,11 @@ Java_com_httrack_android_jni_HTTrackLib_abortCode(JNIEnv* env, jobject object) {
   HTTrackLib_context *const context = getNativeOpt(env, object);
   jint aborted = 0;
 
+  /* Same held-lock hazard as stop(). */
+  if (engineFaulted) {
+    return 0;
+  }
+
   if (context == NULL) {
     throwRuntimeException(env, "null context");
     return 0;
@@ -851,6 +903,11 @@ JNICALL jboolean
 Java_com_httrack_android_jni_HTTrackLib_wasStopped(JNIEnv* env, jobject object) {
   HTTrackLib_context *const context = getNativeOpt(env, object);
   jboolean stopped = JNI_FALSE;
+
+  /* Same held-lock hazard as stop(). */
+  if (engineFaulted) {
+    return JNI_FALSE;
+  }
 
   if (context == NULL) {
     throwRuntimeException(env, "null context");
@@ -897,6 +954,11 @@ static jint HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz, jstring opath,
 JNICALL jint
 Java_com_httrack_android_jni_HTTrackLib_buildTopIndex(JNIEnv* env, jclass clazz,
                                                       jstring opath, jstring otemplates) {
+  /* Refused without a throw: the Java callers dump what they catch, over the fault's own dump. */
+  if (engineFaulted) {
+    error("not building the top index: the engine faulted");
+    return -1;
+  }
 #ifdef USE_COFFEECATCH
   volatile jint ret = -1;
   COFFEE_TRY_JNI_RECOVER(env, ret = HTTrackLib_buildTopIndex(env, clazz, opath, otemplates));
@@ -1014,6 +1076,9 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
 JNICALL jint
 Java_com_httrack_android_jni_HTTrackLib_main(JNIEnv* env, jobject object,
                                              jobjectArray stringArray) {
+  if (refuseIfFaulted(env)) {
+    return -1;
+  }
 #ifdef USE_COFFEECATCH
   volatile jint code = -1;
   COFFEE_TRY_JNI_RECOVER(env, code = HTTrackLib_main(env, object, stringArray));

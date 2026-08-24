@@ -1216,7 +1216,7 @@ public class HTTrackActivity extends FragmentActivity {
       try {
         return HTTrackLib.buildTopIndex(getProjectRootFile(), rsc);
       } catch (final Throwable t) {
-        // Recovered native fault: a missing top index is not worth the process.
+        // The fault is latched; report it and let the app end the process on its way out.
         Log.e(getClass().getSimpleName(), "could not build top index", t);
         emergencyDump(getApplicationContext(), t);
         return 0;
@@ -1339,6 +1339,7 @@ public class HTTrackActivity extends FragmentActivity {
     private String string_creating_project;
     private String string_starting_mirror;
     private String string_self_contained_conflict;
+    private String string_engine_faulted;
     private String string_mirror_finished;
 
     /**
@@ -1388,6 +1389,7 @@ public class HTTrackActivity extends FragmentActivity {
       string_starting_mirror = getParentString(R.string.starting_mirror);
       string_self_contained_conflict = getParentString(
           R.string.self_contained_conflict);
+      string_engine_faulted = getParentString(R.string.engine_faulted);
       string_mirror_finished = getParentString(R.string.mirror_finished);
 
       // Execute pending actions now we are attached
@@ -1443,6 +1445,10 @@ public class HTTrackActivity extends FragmentActivity {
         // Sanity checks
         if (parent == null) {
           throw new IOException("no parent!");
+        }
+        // A recovered fault left the engine mid-operation; only a new process clears it.
+        if (HTTrackLib.hasFaulted()) {
+          throw new IOException(string_engine_faulted);
         }
         final File target = parent.getTargetFile();
         if (target == null) {
@@ -1570,6 +1576,10 @@ public class HTTrackActivity extends FragmentActivity {
         HTTrackActivity.emergencyDump(appContext, t);
         message = "<b>Error</b>: "
             + TextUtils.htmlEncode(HTTrackActivity.describeCrash(t));
+        // Anything else here is an ordinary Java failure, which leaves the engine usable.
+        if (HTTrackLib.hasFaulted()) {
+          message += "<br /><br />" + TextUtils.htmlEncode(string_engine_faulted);
+        }
       } finally {
         // Release inter-thread lock
         if (profile != null) {
@@ -2628,6 +2638,12 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   private void setPane(final int position) {
+    // Only a new process can clear a fault reported from this panel.
+    if (NativeFaultPolicy.closeOnPaneChange(HTTrackLib.hasFaulted(), pane_id, position,
+        LAYOUT_FINISHED)) {
+      closeAfterNativeFault();
+      return;
+    }
     if (pane_id != position) {
       // Leaving a pane: save data
       savePaneFields();
@@ -2930,12 +2946,11 @@ public class HTTrackActivity extends FragmentActivity {
         // Exit because otherwise we can't recreate the directory (!)
         if (rootWasDeleted
             && android.os.Build.VERSION.SDK_INT >= VERSION_CODES.KITKAT) {
+          // Exit here, not from onDestroy(): its serialize() would mkdirs the tree just
+          // deleted. Restarting the activity is not enough either, a FUSE issue is suspected.
           Log.w("httrack",
               "exiting because root path was deleted (Android >= Kitkat issue)");
-          // restartActivity();
           finish();
-          // darn, this is not clean, but otherwise restarting the activity
-          // won't be enough. I suspect FUSE-related issue here
           System.exit(0);
         }
       }
@@ -3021,10 +3036,28 @@ public class HTTrackActivity extends FragmentActivity {
    * Restart activity. (exit current app)
    */
   protected void restartActivity() {
+    if (HTTrackLib.hasFaulted()) {
+      // Restarting the activity keeps the process, which is what the fault poisoned.
+      closeAfterNativeFault();
+      return;
+    }
     final Intent intent = getIntent();
     finish();
     startActivity(intent);
   }
+
+  /**
+   * Close the app after a recovered native fault, so the next launch gets a working engine.
+   * finish() is asynchronous, so onDestroy() ends the process once it has saved the profile.
+   */
+  private void closeAfterNativeFault() {
+    Log.w(getClass().getSimpleName(), "closing: the native engine faulted");
+    exitWhenDestroyed = true;
+    finish();
+  }
+
+  // Set when the process itself has to go, not just the activity.
+  private boolean exitWhenDestroyed;
 
   /**
    * "New project"
@@ -3368,6 +3401,10 @@ public class HTTrackActivity extends FragmentActivity {
       offerLegacyMirrorImportOnce();
     }
     hadStorageAccess = access;
+    if (NativeFaultPolicy.reportOnResume(HTTrackLib.hasFaulted(), pane_id, LAYOUT_FINISHED)) {
+      displayFinishedPanel("<b>Error</b>: "
+          + TextUtils.htmlEncode(getString(R.string.engine_faulted)), 0, null);
+    }
   }
 
   @Override
@@ -3404,6 +3441,12 @@ public class HTTrackActivity extends FragmentActivity {
       }
     }
     super.onDestroy();
+    // A relaunch can be handed this very process, latch and all.
+    if (NativeFaultPolicy.exitOnDestroy(isFinishing(), exitWhenDestroyed,
+        HTTrackLib.hasFaulted())) {
+      Log.w(getClass().getSimpleName(), "ending the process");
+      System.exit(0);
+    }
   }
 
   /** Navigate back to home, without killing us. **/

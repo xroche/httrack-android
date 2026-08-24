@@ -262,7 +262,7 @@ public class CleanupActivity extends ListActivity {
           try {
             HTTrackLib.buildTopIndex(projectRootFile, resourceFile);
           } catch (final Throwable t) {
-            // Recovered native fault: a stale top index must not kill the cleanup thread.
+            // The fault is latched; the cleanup still has a deletion to report.
             Log.e(getClass().getSimpleName(), "could not rebuild top index", t);
             HTTrackActivity.emergencyDump(getApplicationContext(), t);
           }

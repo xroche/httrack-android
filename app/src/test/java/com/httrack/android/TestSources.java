@@ -105,6 +105,58 @@ final class TestSources {
     return source.substring(from, to);
   }
 
+  /** SOURCE from the first '{' at or after AT up to its matching '}', both left out. Comments
+   *  and string literals must be blanked first, or their braces are counted. */
+  static String balancedBlock(final String source, final int at) {
+    final int from = source.indexOf('{', at);
+    if (from == -1) {
+      throw new IllegalStateException("no block at offset " + at);
+    }
+    int depth = 0;
+    for (int i = from; i < source.length(); i++) {
+      if (source.charAt(i) == '{') {
+        depth++;
+      } else if (source.charAt(i) == '}' && --depth == 0) {
+        return source.substring(from + 1, i);
+      }
+    }
+    throw new IllegalStateException("block at offset " + from + " never closes");
+  }
+
+  /** SOURCE with C comments and string and character literals replaced by spaces, keeping every
+   *  offset and line. A commented-out statement then reads as what it is, not as code. */
+  static String withoutCommentsAndStrings(final String source) {
+    final char[] out = source.toCharArray();
+    for (int i = 0; i < out.length; i++) {
+      final char c = out[i];
+      final int start = i;
+      if (c == '/' && i + 1 < out.length && out[i + 1] == '/') {
+        while (i < out.length && out[i] != '\n') {
+          i++;
+        }
+      } else if (c == '/' && i + 1 < out.length && out[i + 1] == '*') {
+        for (i += 2; i < out.length
+            && !(out[i] == '*' && i + 1 < out.length && out[i + 1] == '/'); i++) {
+        }
+        i = Math.min(i + 1, out.length - 1);
+      } else if (c == '"' || c == '\'') {
+        for (i++; i < out.length && out[i] != c; i++) {
+          if (out[i] == '\\') {
+            i++;
+          }
+        }
+      } else {
+        continue;
+      }
+      for (int j = start; j <= i && j < out.length; j++) {
+        if (out[j] != '\n') {
+          out[j] = ' ';
+        }
+      }
+    }
+    return new String(out);
+  }
+
   static int occurrences(final String source, final String text) {
     int count = 0;
     for (int at = source.indexOf(text); at != -1; at = source.indexOf(text,

@@ -80,6 +80,17 @@ public class HTTrackLib {
   public static native String getFeatures();
 
   /**
+   * Has a native fault been recovered in this process ?
+   *
+   * @return true once a fault has been caught, after which every engine call is refused
+   */
+  public static boolean hasFaulted() {
+    return loadDone && loadedSuccessfully() && nativeHasFaulted();
+  }
+
+  private static native boolean nativeHasFaulted();
+
+  /**
    * Build the top-level index.
    *
    * @param path          The target path;
@@ -87,6 +98,10 @@ public class HTTrackLib {
    * @return 1 upon success
    */
   public static int buildTopIndex(final File path, final File templatesPath) {
+    // Refused natively too; answering here spares the callers a fault they only log.
+    if (hasFaulted()) {
+      return 0;
+    }
     final String p = path.getAbsolutePath() + "/";
     final String t = templatesPath.getAbsolutePath() + "/";
     return buildTopIndex(p, t);

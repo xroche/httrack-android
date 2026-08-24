@@ -15,6 +15,18 @@ public class CleanupActivityTest {
   public final TemporaryFolder tmp = new TemporaryFolder();
 
   @Test
+  public void deletingTheRootExitsBeforeAnythingCanRecreateIt() throws Exception {
+    // onDestroy() serializes a dirty profile, and that mkdirs the project and cache directories,
+    // so this exit must not be deferred to it the way the native-fault one is.
+    final String source = TestSources.javaSource("HTTrackActivity");
+    final String deleted = TestSources.between(source, "rootPathWasDeleted", "break;");
+    assertTrue("the root-deleted path must end the process itself",
+        deleted.contains("System.exit(0)"));
+    assertFalse("deferring this exit lets onDestroy recreate the deleted tree",
+        deleted.contains("exitWhenDestroyed"));
+  }
+
+  @Test
   public void deletesANestedTreeWhole() throws Exception {
     final File root = tmp.newFolder("proj");
     final File deep = new File(new File(root, "a"), "b");
