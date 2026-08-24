@@ -40,7 +40,7 @@ public class CoffeeCatchAlarmTest {
     final int end = source.indexOf("COFFEE_END()");
     assertTrue("cancel must not disarm the watchdog before the throw allocates",
         thrown != -1 && cancel > thrown);
-    assertTrue("COFFEE_END() frees the state the cancel reads",
+    assertTrue("the cancel belongs inside the catch block",
         end != -1 && cancel < end);
   }
 }
