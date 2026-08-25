@@ -37,6 +37,62 @@ enum MirrorOutcome {
   static final int ABORT_FATAL = -1;
   static final int ABORT_ROLLBACK = 2;
 
+  /** What the finish pane says about a run, and whether a mirror exists for it to link to. */
+  static final class Verdict {
+    private final String text;
+    private final boolean showsFolderLink;
+
+    Verdict(final String text, final boolean showsFolderLink) {
+      this.text = text;
+      this.showsFolderLink = showsFolderLink;
+    }
+
+    String text() {
+      return text;
+    }
+
+    boolean showsFolderLink() {
+      return showsFolderLink;
+    }
+  }
+
+  /**
+   * Weigh the run and say what the pane shows. A command line the engine refused mirrored
+   * nothing, so it gets its bare code and no link; everything else ran, an abort included.
+   */
+  static Verdict decide(final int engineCode, final Stop stop, final int abortCode,
+      final HTTrackStats stats) {
+    if (!mirrorRan(engineCode)) {
+      return new Verdict("<b>Error</b> (<i>code " + engineCode + "</i>)", false);
+    }
+    return new Verdict(
+        describe(of(stop, mirrorAborted(engineCode), abortCode, stats), stats), true);
+  }
+
+  private static String describe(final MirrorOutcome outcome, final HTTrackStats stats) {
+    switch (outcome) {
+    case INTERRUPTED:
+      return "<b>Interrupted</b>! (" + stats.errorsCount + " errors)";
+    case STOPPED_AT_LIMIT:
+      return "<b>Stopped</b>! (size or time limit reached, " + stats.errorsCount + " errors)";
+    case ABORTED_FATAL:
+      return "<b>Aborted</b>! (out of disk space, too many links, or another fatal error)";
+    case ABORTED_ROLLBACK:
+      return "<b>Aborted</b>! (nothing was transferred, so the mirror was left as it was)";
+    case ABORTED_OTHER:
+      return "<b>Aborted</b>! (the engine could not continue)";
+    case SUCCESS:
+      return "<b>Success</b>!";
+    case SUCCESS_WITH_ERRORS:
+      return "<b>Success</b>! (" + stats.errorsCount + " errors)";
+    case FAILED:
+      return "<b>Failed</b>! (" + stats.errorsCount + " errors, no files written)";
+    default:
+      // No build-time check catches a new constant; a null message would ship as "null".
+      throw new IllegalStateException(outcome.name());
+    }
+  }
+
   /** Whether the engine ran a mirror at all, rather than refusing the command line. */
   static boolean mirrorRan(final int engineCode) {
     return engineCode == 0 || engineCode == HTTrackLib.EXIT_MIRROR_ABORTED;

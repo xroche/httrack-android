@@ -11,9 +11,6 @@ import org.junit.Test;
 
 /** MirrorOutcomeTest covers the choice; what it cannot reach is the wiring that feeds it. */
 public class EngineAbortReportedTest {
-  /** The only mention of the finish message allowed to precede the verdict gate. */
-  private static final String DECLARATION = "String message = null;";
-
   private static String abortCodeBody() throws Exception {
     return TestSources.between(TestSources.jniSource("htslibjni.c"), "HTTrackLib_abortCode", "\n}");
   }
@@ -33,23 +30,14 @@ public class EngineAbortReportedTest {
   @Test
   public void theFinishedPaneWeighsBothTheStopAndTheEnginesVerdict() throws Exception {
     final String call = TestSources.arguments(TestSources.javaSource("HTTrackActivity"),
-        "MirrorOutcome.of");
+        "MirrorOutcome.decide");
+    assertEquals("the exit code must reach the choice", "code", call.split(",")[0].trim());
     assertEquals("the pane must weigh the same stop the resume offer does", "stop",
-        call.split(",")[0].trim());
-    assertEquals("of() must read the aborted flag second",
-        "MirrorOutcome.mirrorAborted(code)", call.split(",")[1].trim());
+        call.split(",")[1].trim());
     assertEquals("the engine's verdict must reach the choice", "engine.abortCode()",
         call.split(",")[2].trim());
     assertEquals("the run's own tally must reach the choice", "lastStats",
         call.split(",")[3].trim());
-  }
-
-  /** A gate of code == 0 alone sends every aborted mirror to the bare-code branch. */
-  @Test
-  public void theAbortedExitCodeStillEarnsAVerdict() throws Exception {
-    assertTrue("the branch that classifies must admit the aborted exit code",
-        TestSources.javaSource("HTTrackActivity")
-            .contains("if (MirrorOutcome.mirrorRan(code)) {"));
   }
 
   /** Java hardcodes the value, and a pin bump that renumbered it would fail nothing else. */
@@ -64,17 +52,15 @@ public class EngineAbortReportedTest {
         String.valueOf(HTTrackLib.EXIT_MIRROR_ABORTED));
   }
 
-  /** A branch reached before the gate would answer for an aborted mirror behind its back. */
+  /** MirrorOutcomeTest owns the text and the link; only the folder the link points at is here. */
   @Test
-  public void nothingDecidesTheMessageBeforeTheVerdictGate() throws Exception {
+  public void theFolderIsOfferedExactlyWhenTheVerdictSaysSo() throws Exception {
     final String body = TestSources.between(TestSources.javaSource("HTTrackActivity"),
-        "protected void runInternal()", "displayFinishedPanel(");
-    final int gate = body.indexOf("if (MirrorOutcome.mirrorRan(code)) {");
-    assertTrue("the verdict gate is gone", gate != -1);
-    // Anywhere, not at a line start: an inserted branch can assign on its own brace's line.
-    final String before = body.substring(0, gate).replace(DECLARATION, "");
-    assertFalse("the message must not be decided before the mirror's verdict",
-        Pattern.compile("\\bmessage\\s*\\+?=").matcher(before).find());
+        "protected void runInternal()", "// Build top index");
+    assertEquals("the mirror folder must be offered once, and only under the verdict", 1,
+        body.split("mirrorFolder = target", -1).length - 1);
+    assertTrue("the folder must hang off the verdict's own answer",
+        body.contains("if (verdict.showsFolderLink()) {\n          mirrorFolder = target;"));
   }
 
   /** Transposing the two branches is invisible to the enum, so each is pinned to its source. */
@@ -86,17 +72,5 @@ public class EngineAbortReportedTest {
         assigned.matches("(?s).*interrupted\\s*\\?\\s*MirrorOutcome\\.Stop\\.USER.*"));
     assertTrue("the engine stopping itself must be the ENGINE stop",
         assigned.matches("(?s).*wasStopped\\(\\)\\s*\\?\\s*MirrorOutcome\\.Stop\\.ENGINE.*"));
-  }
-
-  /** Swapping two abort messages is invisible to the enum, so each is pinned to its cause. */
-  @Test
-  public void eachAbortCauseKeepsItsOwnWording() throws Exception {
-    final String source = TestSources.javaSource("HTTrackActivity");
-    assertTrue("a fatal abort must name what ran out",
-        TestSources.between(source, "case ABORTED_FATAL:", "break;").contains("disk space"));
-    assertTrue("a rolled-back session must say the mirror was left alone",
-        TestSources.between(source, "case ABORTED_ROLLBACK:", "break;").contains("left as it was"));
-    assertTrue("a capped run must name the cap, not an abort",
-        TestSources.between(source, "case STOPPED_AT_LIMIT:", "break;").contains("limit reached"));
   }
 }

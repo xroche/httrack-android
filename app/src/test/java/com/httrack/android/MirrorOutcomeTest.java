@@ -139,4 +139,50 @@ public class MirrorOutcomeTest {
     assertFalse(MirrorOutcome.mirrorAborted(2));
     assertFalse(MirrorOutcome.mirrorAborted(255));
   }
+
+  private static void verdict(final String expectedText, final boolean expectedLink,
+      final int engineCode, final MirrorOutcome.Stop stop, final int abortCode,
+      final long errorsCount, final long filesWritten) {
+    final MirrorOutcome.Verdict v = MirrorOutcome.decide(engineCode, stop, abortCode,
+        stats(errorsCount, filesWritten));
+    final String where = "code=" + engineCode + " stop=" + stop + " abortCode=" + abortCode;
+    assertEquals(where, expectedText, v.text());
+    assertEquals(where + " folder link", expectedLink, v.showsFolderLink());
+  }
+
+  /** A mirror that ran wrote a folder, so its verdict names the cause and keeps the link. */
+  @Test
+  public void everyRunThatMirroredKeepsItsFolderLink() {
+    verdict("<b>Success</b>!", true, 0, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 40);
+    verdict("<b>Success</b>! (5 errors)", true, 0, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 5, 40);
+    verdict("<b>Failed</b>! (5 errors, no files written)", true, 0, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 5, 0);
+    verdict("<b>Interrupted</b>! (2 errors)", true, 0, MirrorOutcome.Stop.USER,
+        MirrorOutcome.ABORT_NONE, 2, 40);
+    verdict("<b>Stopped</b>! (size or time limit reached, 0 errors)", true, 0,
+        MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE, 0, 400);
+    verdict("<b>Aborted</b>! (nothing was transferred, so the mirror was left as it was)", true,
+        0, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+  }
+
+  /** The engine gave up, and the half-written mirror is still on disk. */
+  @Test
+  public void anAbortedMirrorNamesItsCauseAndKeepsItsFolderLink() {
+    verdict("<b>Aborted</b>! (out of disk space, too many links, or another fatal error)", true,
+        HTTrackLib.EXIT_MIRROR_ABORTED, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_FATAL, 0, 3);
+    verdict("<b>Aborted</b>! (the engine could not continue)", true,
+        HTTrackLib.EXIT_MIRROR_ABORTED, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 0);
+  }
+
+  /** A refused command line mirrored nothing, so there is no folder to offer. */
+  @Test
+  public void aRefusedCommandLineShowsItsCodeAndNoLink() {
+    verdict("<b>Error</b> (<i>code -1</i>)", false, -1, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 0, 0);
+    verdict("<b>Error</b> (<i>code 1</i>)", false, 1, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 0, 0);
+    verdict("<b>Error</b> (<i>code 255</i>)", false, 255, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 0, 0);
+  }
 }
