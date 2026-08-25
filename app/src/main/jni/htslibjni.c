@@ -915,9 +915,7 @@ Java_com_httrack_android_jni_HTTrackLib_wasStopped(JNIEnv* env, jobject object) 
   }
 
   MUTEX_LOCK(context->lock);
-  /* hts_main2() returns 0 for nearly every abort, so ask the engine instead.
-     stop is a cap or a user stop; exit_xh is a fatal disk error, an aborting
-     callback, or a rolled-back session. */
+  /* The exit code misses every stop that still returns 0, so ask the engine instead. */
   if (context->opt != NULL) {
     stopped = context->opt->state.stop != 0
         || hts_is_exiting(context->opt) != 0 ? JNI_TRUE : JNI_FALSE;

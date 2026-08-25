@@ -1517,50 +1517,14 @@ public class HTTrackActivity extends FragmentActivity {
             : engine.wasStopped() ? MirrorOutcome.Stop.ENGINE : MirrorOutcome.Stop.NONE;
         pendingWork = leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code);
 
-        // Result
-        if (code == 0) {
-          final MirrorOutcome outcome = MirrorOutcome.of(stop, engine.abortCode(),
-              lastStats);
-          switch (outcome) {
-          case INTERRUPTED:
-            message = "<b>Interrupted</b>! (" + lastStats.errorsCount
-                + " errors)";
-            break;
-          case STOPPED_AT_LIMIT:
-            message = "<b>Stopped</b>! (size or time limit reached, "
-                + lastStats.errorsCount + " errors)";
-            break;
-          case ABORTED_FATAL:
-            message = "<b>Aborted</b>! (out of disk space, too many links, or"
-                + " another fatal error)";
-            break;
-          case ABORTED_ROLLBACK:
-            message = "<b>Aborted</b>! (nothing was transferred, so the mirror"
-                + " was left as it was)";
-            break;
-          case ABORTED_OTHER:
-            message = "<b>Aborted</b>! (the engine could not continue)";
-            break;
-          case SUCCESS:
-            message = "<b>Success</b>!";
-            break;
-          case SUCCESS_WITH_ERRORS:
-            message = "<b>Success</b>! (" + lastStats.errorsCount + " errors)";
-            break;
-          case FAILED:
-            message = "<b>Failed</b>! (" + lastStats.errorsCount
-                + " errors, no files written)";
-            break;
-          default:
-            // No build-time check catches a new constant; a null message would ship as "null".
-            throw new IllegalStateException(outcome.name());
-          }
+        final MirrorOutcome.Verdict verdict = MirrorOutcome.decide(code, stop,
+            engine.abortCode(), lastStats);
+        message = verdict.text();
+        if (verdict.showsFolderLink()) {
           mirrorFolder = target;
           message += "<br /><br />Mirror copied in <i><a href=\""
               + MIRROR_FOLDER_HREF + "\">"
               + TextUtils.htmlEncode(target.getAbsolutePath()) + "</a></i>";
-        } else {
-          message = "<b>Error</b> (<i>code " + code + "</i>)";
         }
 
         // Build top index
