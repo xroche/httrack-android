@@ -11,6 +11,9 @@ import org.junit.Test;
 
 /** MirrorOutcomeTest covers the choice; what it cannot reach is the wiring that feeds it. */
 public class EngineAbortReportedTest {
+  /** The only mention of the finish message allowed to precede the verdict gate. */
+  private static final String DECLARATION = "String message = null;";
+
   private static String abortCodeBody() throws Exception {
     return TestSources.between(TestSources.jniSource("htslibjni.c"), "HTTrackLib_abortCode", "\n}");
   }
@@ -68,10 +71,10 @@ public class EngineAbortReportedTest {
         "protected void runInternal()", "displayFinishedPanel(");
     final int gate = body.indexOf("if (MirrorOutcome.mirrorRan(code)) {");
     assertTrue("the verdict gate is gone", gate != -1);
-    final Matcher assignment = Pattern.compile("(?m)^\\s*message\\s*\\+?=").matcher(body);
-    assertTrue("no finish message assignment found", assignment.find());
-    assertTrue("the message must not be decided before the mirror's verdict",
-        assignment.start() > gate);
+    // Anywhere, not at a line start: an inserted branch can assign on its own brace's line.
+    final String before = body.substring(0, gate).replace(DECLARATION, "");
+    assertFalse("the message must not be decided before the mirror's verdict",
+        Pattern.compile("\\bmessage\\s*\\+?=").matcher(before).find());
   }
 
   /** Transposing the two branches is invisible to the enum, so each is pinned to its source. */

@@ -137,5 +137,6 @@ public class MirrorOutcomeTest {
     assertFalse(MirrorOutcome.mirrorAborted(-1));
     assertFalse(MirrorOutcome.mirrorAborted(1));
     assertFalse(MirrorOutcome.mirrorAborted(2));
+    assertFalse(MirrorOutcome.mirrorAborted(255));
   }
 }
