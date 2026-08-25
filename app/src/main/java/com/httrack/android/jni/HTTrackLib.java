@@ -107,10 +107,7 @@ public class HTTrackLib {
     return buildTopIndex(p, t);
   }
 
-  /**
-   * The engine's HTS_EXIT_MIRROR_ABORTED: a mirror started and it gave up. Must stay a
-   * compile-time constant, so that reading it does not load this class under plain JUnit.
-   */
+  /** The engine's HTS_EXIT_MIRROR_ABORTED: a mirror started, and the engine gave up on it. */
   public static final int EXIT_MIRROR_ABORTED = 3;
 
   /**

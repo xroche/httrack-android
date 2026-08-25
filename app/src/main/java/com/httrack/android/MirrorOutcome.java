@@ -4,7 +4,7 @@ import com.httrack.android.jni.HTTrackLib;
 import com.httrack.android.jni.HTTrackStats;
 
 /**
- * What a finished crawl actually was. Kept free of android.* so the choice can be tested; the
+ * What a finished crawl actually was. Kept apart from the pane so the choice can be tested; the
  * wording that goes with each case belongs to the caller.
  */
 enum MirrorOutcome {

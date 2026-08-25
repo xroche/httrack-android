@@ -33,7 +33,7 @@ public class EngineAbortReportedTest {
         "MirrorOutcome.of");
     assertEquals("the pane must weigh the same stop the resume offer does", "stop",
         call.split(",")[0].trim());
-    assertEquals("the exit code is a channel of its own, and of() reads it second",
+    assertEquals("of() must read the aborted flag second",
         "MirrorOutcome.mirrorAborted(code)", call.split(",")[1].trim());
     assertEquals("the engine's verdict must reach the choice", "engine.abortCode()",
         call.split(",")[2].trim());
@@ -52,12 +52,26 @@ public class EngineAbortReportedTest {
   /** Java hardcodes the value, and a pin bump that renumbered it would fail nothing else. */
   @Test
   public void theExitCodeMatchesThePinnedEngine() throws Exception {
-    final String header = TestSources.read(TestSources.engineFile("src/httrack-library.h"));
+    final String header = TestSources.withoutCommentsAndStrings(
+        TestSources.read(TestSources.engineFile("src/httrack-library.h")));
     final Matcher define = Pattern.compile(
         "#define\\s+HTS_EXIT_MIRROR_ABORTED\\s+(\\d+)").matcher(header);
     assertTrue("the engine no longer defines HTS_EXIT_MIRROR_ABORTED", define.find());
     assertEquals("the engine renumbered its aborted exit code", define.group(1),
         String.valueOf(HTTrackLib.EXIT_MIRROR_ABORTED));
+  }
+
+  /** A branch reached before the gate would answer for an aborted mirror behind its back. */
+  @Test
+  public void nothingDecidesTheMessageBeforeTheVerdictGate() throws Exception {
+    final String body = TestSources.between(TestSources.javaSource("HTTrackActivity"),
+        "protected void runInternal()", "displayFinishedPanel(");
+    final int gate = body.indexOf("if (MirrorOutcome.mirrorRan(code)) {");
+    assertTrue("the verdict gate is gone", gate != -1);
+    final Matcher assignment = Pattern.compile("(?m)^\\s*message\\s*\\+?=").matcher(body);
+    assertTrue("no finish message assignment found", assignment.find());
+    assertTrue("the message must not be decided before the mirror's verdict",
+        assignment.start() > gate);
   }
 
   /** Transposing the two branches is invisible to the enum, so each is pinned to its source. */

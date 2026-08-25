@@ -130,8 +130,12 @@ public class MirrorOutcomeTest {
     assertTrue(MirrorOutcome.mirrorRan(HTTrackLib.EXIT_MIRROR_ABORTED));
     assertFalse(MirrorOutcome.mirrorRan(-1));
     assertFalse(MirrorOutcome.mirrorRan(1));
+    assertFalse(MirrorOutcome.mirrorRan(2));
+    assertFalse(MirrorOutcome.mirrorRan(255));
     assertFalse(MirrorOutcome.mirrorAborted(0));
     assertTrue(MirrorOutcome.mirrorAborted(HTTrackLib.EXIT_MIRROR_ABORTED));
     assertFalse(MirrorOutcome.mirrorAborted(-1));
+    assertFalse(MirrorOutcome.mirrorAborted(1));
+    assertFalse(MirrorOutcome.mirrorAborted(2));
   }
 }
