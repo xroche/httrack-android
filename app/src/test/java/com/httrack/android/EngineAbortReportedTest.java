@@ -61,6 +61,13 @@ public class EngineAbortReportedTest {
         body.split("mirrorFolder = target", -1).length - 1);
     assertTrue("the folder must hang off the verdict's own answer",
         body.contains("if (verdict.showsFolderLink()) {\n          mirrorFolder = target;"));
+    // A second verdict, or a second assignment, would answer over the one decide() handed back.
+    assertTrue("the verdict must not be replaceable",
+        body.contains("final MirrorOutcome.Verdict verdict = MirrorOutcome.decide("));
+    assertEquals("the pane must say what the verdict says, once", 1,
+        body.split(Pattern.quote("message = verdict.text();"), -1).length - 1);
+    assertEquals("nothing else may set the message", 1,
+        Pattern.compile("(?<!String )\\bmessage\\s*=[^=]").matcher(body).results().count());
   }
 
   /** Transposing the two branches is invisible to the enum, so each is pinned to its source. */

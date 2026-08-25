@@ -175,6 +175,22 @@ public class MirrorOutcomeTest {
         HTTrackLib.EXIT_MIRROR_ABORTED, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 0);
   }
 
+  /** Whatever cause the engine names, a mirror it gave up on had already written a folder. */
+  @Test
+  public void everyAbortedRunKeepsItsFolderLink() {
+    final int[] causes = { MirrorOutcome.ABORT_NONE, MirrorOutcome.ABORT_FATAL,
+        MirrorOutcome.ABORT_ROLLBACK, ABORT_CALLBACK, ABORT_UNKNOWN };
+    for (final MirrorOutcome.Stop stop : MirrorOutcome.Stop.values()) {
+      for (final int abortCode : causes) {
+        final MirrorOutcome.Verdict v = MirrorOutcome.decide(HTTrackLib.EXIT_MIRROR_ABORTED, stop,
+            abortCode, stats(0, 3));
+        final String where = "stop=" + stop + " abortCode=" + abortCode;
+        assertTrue(where + " lost its folder link", v.showsFolderLink());
+        assertTrue(where + " lost its cause: " + v.text(), v.text().startsWith("<b>"));
+      }
+    }
+  }
+
   /** A refused command line mirrored nothing, so there is no folder to offer. */
   @Test
   public void aRefusedCommandLineShowsItsCodeAndNoLink() {
