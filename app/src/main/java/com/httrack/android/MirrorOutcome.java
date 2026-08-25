@@ -1,5 +1,6 @@
 package com.httrack.android;
 
+import com.httrack.android.jni.HTTrackLib;
 import com.httrack.android.jni.HTTrackStats;
 
 /**
@@ -36,19 +37,23 @@ enum MirrorOutcome {
   static final int ABORT_FATAL = -1;
   static final int ABORT_ROLLBACK = 2;
 
-  /**
-   * The engine's HTS_EXIT_MIRROR_ABORTED, since 3.50: a mirror started and did not finish. A
-   * channel of its own, which abortCode() contradicts where the engine named no cause.
-   */
-  static final int EXIT_MIRROR_ABORTED = 3;
+  /** Whether the engine ran a mirror at all, rather than refusing the command line. */
+  static boolean mirrorRan(final int engineCode) {
+    return engineCode == 0 || engineCode == HTTrackLib.EXIT_MIRROR_ABORTED;
+  }
+
+  /** Whether the engine gave up on a mirror it had started. */
+  static boolean mirrorAborted(final int engineCode) {
+    return engineCode == HTTrackLib.EXIT_MIRROR_ABORTED;
+  }
 
   /**
-   * Weigh STOP, ENGINECODE from HTTrackLib.main() and ABORTCODE from HTTrackLib.abortCode()
+   * Weigh STOP, ENGINEABORTED from mirrorAborted() and ABORTCODE from HTTrackLib.abortCode()
    * against what the run recorded. A user stop must come first: it sets the engine's abort flag
    * two ways of its own, so the verdict alone reads it as an abort nobody asked for. An abort
    * outranks a cap, because reaching a cap also makes the engine report itself stopped.
    */
-  static MirrorOutcome of(final Stop stop, final int engineCode, final int abortCode,
+  static MirrorOutcome of(final Stop stop, final boolean engineAborted, final int abortCode,
       final HTTrackStats stats) {
     if (stop == Stop.USER) {
       return INTERRUPTED;
@@ -63,8 +68,8 @@ enum MirrorOutcome {
       default:
         return ABORTED_OTHER;
     }
-    // Some startup failures abort without setting a cause, leaving the code the only witness.
-    if (engineCode == EXIT_MIRROR_ABORTED) {
+    // A few engine guards give up without setting a cause; only the exit code shows it.
+    if (engineAborted) {
       return ABORTED_OTHER;
     }
     if (stop == Stop.ENGINE) {

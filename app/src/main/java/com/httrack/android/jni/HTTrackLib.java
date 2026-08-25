@@ -108,10 +108,17 @@ public class HTTrackLib {
   }
 
   /**
+   * The engine's HTS_EXIT_MIRROR_ABORTED: a mirror started and it gave up. Must stay a
+   * compile-time constant, so that reading it does not load this class under plain JUnit.
+   */
+  public static final int EXIT_MIRROR_ABORTED = 3;
+
+  /**
    * Start the engine.
    *
    * @param args main() arguments.
-   * @return The exit code upon completion.
+   * @return 0 once the mirror ended, including one the caller stopped, EXIT_MIRROR_ABORTED for
+   * one the engine gave up on, and -1 or 1 for a command line it refused before mirroring
    * @throws IOException upon error
    */
   public native int main(String[] args) throws IOException;
@@ -125,8 +132,8 @@ public class HTTrackLib {
   public native boolean stop(boolean force);
 
   /**
-   * How the engine aborted the last run, if it did. main() returns 0 for nearly every abort, so
-   * its return code alone cannot tell a mirror that died from one that finished.
+   * Why the engine aborted the last run, if it did. main() reports that it aborted but not why,
+   * and a few of its guards give up without setting a cause at all.
    *
    * @return 0 when the mirror was not aborted, -1 on a fatal write such as a full disk, 1 when a
    * callback refused to continue, 2 when nothing arrived and the previous session was restored

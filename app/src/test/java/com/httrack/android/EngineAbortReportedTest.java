@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.httrack.android.jni.HTTrackLib;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Test;
 
 /** MirrorOutcomeTest covers the choice; what it cannot reach is the wiring that feeds it. */
@@ -30,9 +33,12 @@ public class EngineAbortReportedTest {
         "MirrorOutcome.of");
     assertEquals("the pane must weigh the same stop the resume offer does", "stop",
         call.split(",")[0].trim());
-    assertEquals("the exit code is a channel of its own, and of() reads it second", "code",
-        call.split(",")[1].trim());
-    assertTrue("the engine's verdict must reach the choice", call.contains("engine.abortCode()"));
+    assertEquals("the exit code is a channel of its own, and of() reads it second",
+        "MirrorOutcome.mirrorAborted(code)", call.split(",")[1].trim());
+    assertEquals("the engine's verdict must reach the choice", "engine.abortCode()",
+        call.split(",")[2].trim());
+    assertEquals("the run's own tally must reach the choice", "lastStats",
+        call.split(",")[3].trim());
   }
 
   /** A gate of code == 0 alone sends every aborted mirror to the bare-code branch. */
@@ -40,7 +46,18 @@ public class EngineAbortReportedTest {
   public void theAbortedExitCodeStillEarnsAVerdict() throws Exception {
     assertTrue("the branch that classifies must admit the aborted exit code",
         TestSources.javaSource("HTTrackActivity")
-            .contains("code == MirrorOutcome.EXIT_MIRROR_ABORTED"));
+            .contains("if (MirrorOutcome.mirrorRan(code)) {"));
+  }
+
+  /** Java hardcodes the value, and a pin bump that renumbered it would fail nothing else. */
+  @Test
+  public void theExitCodeMatchesThePinnedEngine() throws Exception {
+    final String header = TestSources.read(TestSources.engineFile("src/httrack-library.h"));
+    final Matcher define = Pattern.compile(
+        "#define\\s+HTS_EXIT_MIRROR_ABORTED\\s+(\\d+)").matcher(header);
+    assertTrue("the engine no longer defines HTS_EXIT_MIRROR_ABORTED", define.find());
+    assertEquals("the engine renumbered its aborted exit code", define.group(1),
+        String.valueOf(HTTrackLib.EXIT_MIRROR_ABORTED));
   }
 
   /** Transposing the two branches is invisible to the enum, so each is pinned to its source. */

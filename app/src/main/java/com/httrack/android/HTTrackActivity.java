@@ -1518,9 +1518,9 @@ public class HTTrackActivity extends FragmentActivity {
         pendingWork = leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code);
 
         // An aborted mirror still ran, so it earns a verdict and the folder link.
-        if (code == 0 || code == MirrorOutcome.EXIT_MIRROR_ABORTED) {
-          final MirrorOutcome outcome = MirrorOutcome.of(stop, code, engine.abortCode(),
-              lastStats);
+        if (MirrorOutcome.mirrorRan(code)) {
+          final MirrorOutcome outcome = MirrorOutcome.of(stop, MirrorOutcome.mirrorAborted(code),
+              engine.abortCode(), lastStats);
           switch (outcome) {
           case INTERRUPTED:
             message = "<b>Interrupted</b>! (" + lastStats.errorsCount
