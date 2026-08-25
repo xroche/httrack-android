@@ -37,12 +37,19 @@ enum MirrorOutcome {
   static final int ABORT_ROLLBACK = 2;
 
   /**
-   * Weigh STOP and ABORTCODE, from HTTrackLib.abortCode(), against what the run recorded. A user
-   * stop must come first: it sets the engine's abort flag two ways of its own, so the verdict
-   * alone reads it as an abort nobody asked for. An abort outranks a cap, because reaching a cap
-   * also makes the engine report itself stopped.
+   * The engine's HTS_EXIT_MIRROR_ABORTED, since 3.50: a mirror started and did not finish. A
+   * channel of its own, which abortCode() contradicts where the engine named no cause.
    */
-  static MirrorOutcome of(final Stop stop, final int abortCode, final HTTrackStats stats) {
+  static final int EXIT_MIRROR_ABORTED = 3;
+
+  /**
+   * Weigh STOP, ENGINECODE from HTTrackLib.main() and ABORTCODE from HTTrackLib.abortCode()
+   * against what the run recorded. A user stop must come first: it sets the engine's abort flag
+   * two ways of its own, so the verdict alone reads it as an abort nobody asked for. An abort
+   * outranks a cap, because reaching a cap also makes the engine report itself stopped.
+   */
+  static MirrorOutcome of(final Stop stop, final int engineCode, final int abortCode,
+      final HTTrackStats stats) {
     if (stop == Stop.USER) {
       return INTERRUPTED;
     }
@@ -55,6 +62,10 @@ enum MirrorOutcome {
         return ABORTED_ROLLBACK;
       default:
         return ABORTED_OTHER;
+    }
+    // Some startup failures abort without setting a cause, leaving the code the only witness.
+    if (engineCode == EXIT_MIRROR_ABORTED) {
+      return ABORTED_OTHER;
     }
     if (stop == Stop.ENGINE) {
       return STOPPED_AT_LIMIT;

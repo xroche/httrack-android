@@ -9,6 +9,7 @@ import org.junit.Test;
 public class MirrorOutcomeTest {
   private static final int ABORT_CALLBACK = 1;
   private static final int ABORT_UNKNOWN = 3;
+  private static final int EXIT_OK = 0;
 
   private static HTTrackStats stats(final long errorsCount, final long filesWritten) {
     final HTTrackStats stats = new HTTrackStats();
@@ -19,9 +20,15 @@ public class MirrorOutcomeTest {
 
   private static void check(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
       final int abortCode, final long errorsCount, final long filesWritten) {
-    assertEquals("stop=" + stop + " abortCode=" + abortCode + " errors=" + errorsCount
-        + " written=" + filesWritten, expected,
-        MirrorOutcome.of(stop, abortCode, stats(errorsCount, filesWritten)));
+    check(expected, stop, EXIT_OK, abortCode, errorsCount, filesWritten);
+  }
+
+  private static void check(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
+      final int engineCode, final int abortCode, final long errorsCount,
+      final long filesWritten) {
+    assertEquals("stop=" + stop + " engineCode=" + engineCode + " abortCode=" + abortCode
+        + " errors=" + errorsCount + " written=" + filesWritten, expected,
+        MirrorOutcome.of(stop, engineCode, abortCode, stats(errorsCount, filesWritten)));
   }
 
   /**
@@ -79,5 +86,40 @@ public class MirrorOutcomeTest {
     check(MirrorOutcome.SUCCESS, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 0);
     check(MirrorOutcome.SUCCESS_WITH_ERRORS, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 5, 40);
     check(MirrorOutcome.FAILED, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 5, 0);
+  }
+
+  /**
+   * Since 3.50 hts_main2() returns 3 for a mirror it gave up on, where it used to return the same 0
+   * as a finished one. The cause it names still decides the wording.
+   */
+  @Test
+  public void theAbortedExitCodeKeepsTheCauseTheEngineNamed() {
+    check(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.ENGINE, MirrorOutcome.EXIT_MIRROR_ABORTED,
+        MirrorOutcome.ABORT_FATAL, 0, 3);
+    check(MirrorOutcome.ABORTED_ROLLBACK, MirrorOutcome.Stop.ENGINE,
+        MirrorOutcome.EXIT_MIRROR_ABORTED, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, MirrorOutcome.EXIT_MIRROR_ABORTED,
+        MirrorOutcome.ABORT_FATAL, 0, 3);
+  }
+
+  /**
+   * httpmirror() gives up on some startup failures without ever setting exit_xh, so abortCode()
+   * and the stats both read like a clean run and only the exit code disagrees.
+   */
+  @Test
+  public void anAbortWithNoCauseIsAnAbortAndNotASuccess() {
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, MirrorOutcome.EXIT_MIRROR_ABORTED,
+        MirrorOutcome.ABORT_NONE, 0, 0);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, MirrorOutcome.EXIT_MIRROR_ABORTED,
+        MirrorOutcome.ABORT_NONE, 0, 40);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.ENGINE, MirrorOutcome.EXIT_MIRROR_ABORTED,
+        MirrorOutcome.ABORT_NONE, 0, 400);
+  }
+
+  /** The abort channel is the exit code's alone: 3 as an abortCode() still means an unnamed cause. */
+  @Test
+  public void theTwoChannelsAreReadSeparately() {
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, EXIT_OK, ABORT_UNKNOWN, 0, 40);
+    check(MirrorOutcome.SUCCESS, MirrorOutcome.Stop.NONE, EXIT_OK, MirrorOutcome.ABORT_NONE, 0, 40);
   }
 }

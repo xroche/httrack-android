@@ -30,7 +30,17 @@ public class EngineAbortReportedTest {
         "MirrorOutcome.of");
     assertEquals("the pane must weigh the same stop the resume offer does", "stop",
         call.split(",")[0].trim());
+    assertEquals("the exit code is a channel of its own, and of() reads it second", "code",
+        call.split(",")[1].trim());
     assertTrue("the engine's verdict must reach the choice", call.contains("engine.abortCode()"));
+  }
+
+  /** A gate of code == 0 alone sends every aborted mirror to the bare-code branch. */
+  @Test
+  public void theAbortedExitCodeStillEarnsAVerdict() throws Exception {
+    assertTrue("the branch that classifies must admit the aborted exit code",
+        TestSources.javaSource("HTTrackActivity")
+            .contains("code == MirrorOutcome.EXIT_MIRROR_ABORTED"));
   }
 
   /** Transposing the two branches is invisible to the enum, so each is pinned to its source. */
