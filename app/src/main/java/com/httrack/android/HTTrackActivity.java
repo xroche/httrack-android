@@ -138,8 +138,8 @@ public class HTTrackActivity extends FragmentActivity {
   // Preferences
   protected static final String PREFS_NAME = "HTTrackPreferences";
   protected static final String BASE_NAME = "BasePath";
-  // Whether POST_NOTIFICATIONS was answered. Has to outlive the activity: pane_id is restored
-  // on rotation, so onEnterNewPane would otherwise re-ask on every one.
+  // Whether POST_NOTIFICATIONS was answered. Has to outlive the activity: every rotation
+  // restores pane_id and re-enters onEnterNewPane, which would otherwise re-ask.
   protected static final String NOTIFY_ASKED_NAME = "NotificationPermissionAsked";
   // Whether the one-time "import your old mirrors" offer has been shown and dismissed for good.
   protected static final String IMPORT_OFFERED_NAME = "LegacyImportOffered";
