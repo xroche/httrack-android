@@ -1,6 +1,10 @@
-HTTrack 3.50 bêta 7.
+HTTrack 3.50 bêta 8.
 
-• Les en-têtes que vous définissez ne sont plus envoyés deux fois
-• Mise à jour vers le moteur HTTrack 3.49.23
+• Une copie arrêtée, plafonnée ou en échec n'annonce plus « Réussite »
+• Une copie menée à son terme ne se marque plus comme interrompue
+• Un plantage du copieur ne tue plus l'application 30 secondes plus tard
+• Vous êtes prévenu quand Android effacera les copies avec l'application
+• Une installation neuve ne demande plus rien sur des copies inexistantes
+• Mise à jour vers le moteur HTTrack 3.49.24, guide rafraîchi
 
 Bêta : signalez les problèmes sur GitHub.

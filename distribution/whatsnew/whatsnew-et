@@ -1,6 +1,10 @@
-HTTrack 3.50 beeta 7.
+HTTrack 3.50 beeta 8.
 
-• Ise määratud päiseid ei saadeta enam kaks korda
-• Uuendatud HTTrack 3.49.23 mootorile
+• Peatatud, piiratud või nurjunud koopia ei teata enam edust
+• Lõpuni jõudnud koopia ei märgi end enam katkenuks
+• Kopeerija krahh ei sulge enam rakendust poole minuti pärast
+• Teile antakse teada, kui Android kustutab koopiad koos rakendusega
+• Uus paigaldus ei küsi enam koopiate kohta, mida pole olemas
+• Uuendatud HTTracki mootorile 3.49.24, juhend värskendatud
 
 Beeta: teatage probleemidest GitHubis.

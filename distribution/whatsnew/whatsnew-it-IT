@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Le intestazioni che impostate voi non vengono più inviate due volte
-• Aggiornato al motore HTTrack 3.49.23
+• Una copia fermata, limitata o fallita non segnala più un successo
+• Una copia arrivata alla fine non si segna più come interrotta
+• Un crash del copiatore non chiude più l'app mezzo minuto dopo
+• Vi avvisiamo quando Android cancellerà le copie insieme all'app
+• Una nuova installazione non chiede più di copie che non esistono
+• Aggiornato al motore HTTrack 3.49.24, con la guida rinnovata
 
 Beta: segnalate i problemi su GitHub.

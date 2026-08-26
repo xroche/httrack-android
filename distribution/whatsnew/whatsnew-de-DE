@@ -1,6 +1,10 @@
-HTTrack 3.50 Beta 7.
+HTTrack 3.50 Beta 8.
 
-• Selbst gesetzte Header werden nicht mehr doppelt gesendet
-• Aktualisiert auf die HTTrack-3.49.23-Engine
+• Eine gestoppte, begrenzte oder fehlgeschlagene Kopie meldet keinen Erfolg mehr
+• Eine bis zum Ende gelaufene Kopie markiert sich nicht mehr als unterbrochen
+• Ein Absturz des Kopierers beendet die App nicht mehr 30 Sekunden später
+• Sie erfahren, wann Android die Kopien mit der App löscht
+• Eine Neuinstallation fragt nicht mehr nach Kopien, die es nicht gibt
+• Aktualisiert auf die HTTrack-Engine 3.49.24, mit neuer Anleitung
 
 Beta: Probleme bitte auf GitHub melden.

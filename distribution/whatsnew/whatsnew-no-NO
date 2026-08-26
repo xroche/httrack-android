@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Hoder du selv angir sendes ikke lenger to ganger
-• Oppdatert til HTTrack 3.49.23-motoren
+• En stoppet, begrenset eller mislykket kopi melder ikke lenger om suksess
+• En kopi som når slutten, merker seg ikke lenger som avbrutt
+• Et krasj i kopieringen lukker ikke lenger appen et halvt minutt senere
+• Du får beskjed når Android sletter kopiene sammen med appen
+• En ny installasjon spør ikke lenger om kopier som ikke finnes
+• Oppdatert til HTTrack-motoren 3.49.24, med fornyet veiledning
 
 Beta: meld fra om problemer på GitHub.

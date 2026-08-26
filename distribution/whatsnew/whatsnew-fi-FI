@@ -1,6 +1,10 @@
-HTTrack 3.50 beeta 7.
+HTTrack 3.50 beeta 8.
 
-• Itse asettamiasi otsakkeita ei enää lähetetä kahdesti
-• Päivitetty HTTrack 3.49.23 -moottoriin
+• Pysäytetty, rajoitettu tai epäonnistunut kopio ei enää ilmoita onnistumisesta
+• Loppuun asti ehtinyt kopio ei enää merkitse itseään keskeytyneeksi
+• Kopioijan kaatuminen ei enää sulje sovellusta puolen minuutin päästä
+• Saat tiedon, kun Android poistaa kopiot sovelluksen mukana
+• Uusi asennus ei enää kysy kopioista, joita ei ole
+• Päivitetty HTTrack 3.49.24 -moottoriin, opas uudistettu
 
 Beeta: ilmoita ongelmista GitHubissa.

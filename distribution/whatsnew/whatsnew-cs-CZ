@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Hlavičky, které nastavíte sami, se už neodesílají dvakrát
-• Aktualizováno na jádro HTTrack 3.49.23
+• Zastavená, omezená nebo neúspěšná kopie už nehlásí úspěch
+• Kopie dokončená až do konce se už neoznačí jako přerušená
+• Pád kopírovače už nezavře aplikaci o půl minuty později
+• Dozvíte se, kdy Android smaže kopie spolu s aplikací
+• Nová instalace se už neptá na kopie, které neexistují
+• Aktualizováno na jádro HTTrack 3.49.24, s obnovenou příručkou
 
 Beta: problémy hlaste na GitHubu.

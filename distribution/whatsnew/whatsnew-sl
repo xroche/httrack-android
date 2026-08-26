@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Glave, ki jih nastavite sami, se ne pošiljajo več dvakrat
-• Posodobljeno na pogon HTTrack 3.49.23
+• Ustavljena, omejena ali neuspela kopija ne javlja več uspeha
+• Kopija, ki pride do konca, se ne označi več kot prekinjena
+• Sesutje kopirnika ne zapre več aplikacije pol minute pozneje
+• Obvestimo vas, kdaj bo Android izbrisal kopije skupaj z aplikacijo
+• Nova namestitev ne sprašuje več o kopijah, ki jih ni
+• Posodobljeno na pogon HTTrack 3.49.24, z osveženim vodnikom
 
 Beta: težave sporočite na GitHubu.

@@ -1,6 +1,10 @@
-HTTrack 3.50 béta 7.
+HTTrack 3.50 béta 8.
 
-• A saját maga megadott fejlécek már nem mennek el kétszer
-• Frissítve a HTTrack 3.49.23 motorra
+• A leállított, korlátozott vagy sikertelen másolat már nem jelez sikert
+• A végigfutott másolat már nem jelöli magát megszakítottnak
+• A másoló összeomlása már nem zárja be az alkalmazást fél perccel később
+• Szólunk, ha az Android a másolatokat az alkalmazással együtt törli
+• Az új telepítés már nem kérdez nem létező másolatokról
+• Frissítve a HTTrack 3.49.24 motorra, megújult útmutatóval
 
 Béta: a hibákat a GitHubon jelezze.
