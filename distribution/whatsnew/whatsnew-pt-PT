@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Os cabeçalhos que define não são mais enviados duas vezes
-• Atualizado para o motor HTTrack 3.49.23
+• Uma cópia parada, limitada ou falhada deixa de indicar sucesso
+• Um projeto terminado deixa de propor retomar uma cópia nunca interrompida
+• Uma falha do copiador deixa de fechar a aplicação meio minuto depois
+• É avisado quando o Android apagará as cópias com a aplicação
+• Uma instalação nova deixa de perguntar por cópias que não existem
+• Atualizado para o motor HTTrack 3.49.24, com o guia renovado
 
 Beta: comunique os problemas no GitHub.

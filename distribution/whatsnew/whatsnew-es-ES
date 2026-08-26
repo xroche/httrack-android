@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Las cabeceras que usted define ya no se envían dos veces
-• Actualizado al motor HTTrack 3.49.23
+• Una copia detenida, limitada o fallida ya no informa de éxito
+• Un proyecto terminado ya no ofrece reanudar una copia que nunca se detuvo
+• Un fallo del copiador ya no cierra la aplicación medio minuto después
+• Se le avisa cuando Android borrará las copias junto con la aplicación
+• Una instalación nueva ya no pregunta por copias que no existen
+• Actualizado al motor HTTrack 3.49.24, con la guía renovada
 
 Beta: informe de los problemas en GitHub.

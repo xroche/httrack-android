@@ -1,6 +1,10 @@
-HTTrack 3.50 bèta 7.
+HTTrack 3.50 bèta 8.
 
-• Headers die u zelf instelt worden niet meer dubbel verzonden
-• Bijgewerkt naar de HTTrack 3.49.23-engine
+• Een gestopte, begrensde of mislukte kopie meldt geen succes meer
+• Een afgerond project biedt niet meer aan een nooit gestopte kopie te hervatten
+• Een crash van de kopieerder sluit de app niet meer een halve minuut later
+• U hoort het wanneer Android de kopieën met de app wist
+• Een nieuwe installatie vraagt niet meer naar kopieën die er niet zijn
+• Bijgewerkt naar de HTTrack-engine 3.49.24, met een vernieuwde gids
 
 Bèta: meld problemen op GitHub.

@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Headers you set yourself are no longer sent twice
-• Updated to the HTTrack 3.49.23 engine
+• A copy that was stopped, capped or failed no longer reports Success
+• A finished project no longer offers to resume a copy that never stopped
+• A crash inside the copier no longer kills the app half a minute later
+• You are told when mirrors go where Android erases them with the app
+• A new install no longer asks about mirrors that are not there
+• Updated to the HTTrack 3.49.24 engine, with a refreshed guide
 
 Beta: report problems on GitHub.

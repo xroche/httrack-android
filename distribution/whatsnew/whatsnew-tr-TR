@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Kendi belirlediğiniz başlıklar artık iki kez gönderilmiyor
-• HTTrack 3.49.23 motoruna güncellendi
+• Durdurulan, sınırlanan veya başarısız bir kopya artık başarı bildirmiyor
+• Biten bir proje artık hiç kesilmemiş bir kopyayı sürdürmeyi önermiyor
+• Kopyalayıcının çökmesi artık uygulamayı yarım dakika sonra kapatmıyor
+• Android kopyaları uygulamayla birlikte sileceğinde size bildirilir
+• Yeni bir kurulum artık olmayan kopyaları sormuyor
+• HTTrack 3.49.24 motoruna güncellendi, kılavuz yenilendi
 
 Beta: sorunları GitHub'da bildirin.

@@ -1,6 +1,10 @@
-HTTrack 3.50 beta 7.
+HTTrack 3.50 beta 8.
 
-• Antetele pe care le definiți nu mai sunt trimise de două ori
-• Actualizat la motorul HTTrack 3.49.23
+• O copie oprită, limitată sau eșuată nu mai raportează succes
+• Un proiect încheiat nu mai propune reluarea unei copii neîntrerupte
+• O eroare a copiatorului nu mai închide aplicația o jumătate de minut mai târziu
+• Sunteți avertizat când Android va șterge copiile odată cu aplicația
+• O instalare nouă nu mai întreabă despre copii care nu există
+• Actualizat la motorul HTTrack 3.49.24, cu ghidul reînnoit
 
 Beta: raportați problemele pe GitHub.
