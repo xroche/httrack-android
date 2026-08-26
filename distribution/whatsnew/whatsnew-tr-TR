@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • Durdurulan, sınırlanan veya başarısız bir kopya artık başarı bildirmiyor
-• Biten bir proje artık hiç kesilmemiş bir kopyayı sürdürmeyi önermiyor
+• Sonuna kadar giden bir kopya artık kendini yarım kalmış saymıyor
 • Kopyalayıcının çökmesi artık uygulamayı yarım dakika sonra kapatmıyor
 • Android kopyaları uygulamayla birlikte sileceğinde size bildirilir
 • Yeni bir kurulum artık olmayan kopyaları sormuyor

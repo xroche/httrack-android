@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • A copy that was stopped, capped or failed no longer reports Success
-• A finished project no longer offers to resume a copy that never stopped
+• A copy that runs to the end no longer marks itself interrupted
 • A crash inside the copier no longer kills the app half a minute later
 • You are told when mirrors go where Android erases them with the app
 • A new install no longer asks about mirrors that are not there

@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • En stoppad, begränsad eller misslyckad kopia rapporterar inte längre framgång
-• Ett avslutat projekt erbjuder inte längre att återuppta en kopia som aldrig bröts
+• En kopia som når slutet markerar sig inte längre som avbruten
 • En krasch i kopieraren stänger inte längre appen en halv minut senare
 • Du får veta när Android raderar kopiorna tillsammans med appen
 • En ny installation frågar inte längre om kopior som inte finns

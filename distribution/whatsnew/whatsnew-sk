@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • Zastavená, obmedzená alebo neúspešná kópia už nehlási úspech
-• Dokončený projekt už neponúka obnoviť kópiu, ktorá sa neprerušila
+• Kópia dokončená až do konca sa už neoznačí ako prerušená
 • Pád kopírovača už nezavrie aplikáciu o pol minúty neskôr
 • Dozviete sa, kedy Android zmaže kópie spolu s aplikáciou
 • Nová inštalácia sa už nepýta na kópie, ktoré neexistujú

@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • Una copia detenida, limitada o fallida ya no informa de éxito
-• Un proyecto terminado ya no ofrece reanudar una copia que nunca se detuvo
+• Una copia que llega al final ya no se marca como interrumpida
 • Un fallo del copiador ya no cierra la aplicación medio minuto después
 • Se le avisa cuando Android borrará las copias junto con la aplicación
 • Una instalación nueva ya no pregunta por copias que no existen

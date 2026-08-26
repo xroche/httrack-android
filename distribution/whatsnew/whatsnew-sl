@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • Ustavljena, omejena ali neuspela kopija ne javlja več uspeha
-• Končan projekt ne ponuja več nadaljevanja kopije, ki se ni prekinila
+• Kopija, ki pride do konca, se ne označi več kot prekinjena
 • Sesutje kopirnika ne zapre več aplikacije pol minute pozneje
 • Obvestimo vas, kdaj bo Android izbrisal kopije skupaj z aplikacijo
 • Nova namestitev ne sprašuje več o kopijah, ki jih ni

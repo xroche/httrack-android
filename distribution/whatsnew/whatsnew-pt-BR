@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • Uma cópia parada, limitada ou com falha não indica mais sucesso
-• Um projeto concluído não oferece mais retomar uma cópia nunca interrompida
+• Uma cópia que chega ao fim não se marca mais como interrompida
 • Uma falha do copiador não fecha mais o app meio minuto depois
 • Você é avisado quando o Android apagará as cópias junto com o app
 • Uma instalação nova não pergunta mais sobre cópias que não existem

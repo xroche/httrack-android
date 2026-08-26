@@ -1,7 +1,7 @@
 HTTrack 3.50 beta 8.
 
 • O copie oprită, limitată sau eșuată nu mai raportează succes
-• Un proiect încheiat nu mai propune reluarea unei copii neîntrerupte
+• O copie dusă până la capăt nu se mai marchează ca întreruptă
 • O eroare a copiatorului nu mai închide aplicația o jumătate de minut mai târziu
 • Sunteți avertizat când Android va șterge copiile odată cu aplicația
 • O instalare nouă nu mai întreabă despre copii care nu există

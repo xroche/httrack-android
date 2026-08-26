@@ -1,7 +1,7 @@
 HTTrack 3.50 Beta 8.
 
 • Eine gestoppte, begrenzte oder fehlgeschlagene Kopie meldet keinen Erfolg mehr
-• Ein fertiges Projekt will keine nie unterbrochene Kopie mehr fortsetzen
+• Eine bis zum Ende gelaufene Kopie markiert sich nicht mehr als unterbrochen
 • Ein Absturz des Kopierers beendet die App nicht mehr 30 Sekunden später
 • Sie erfahren, wann Android die Kopien mit der App löscht
 • Eine Neuinstallation fragt nicht mehr nach Kopien, die es nicht gibt
