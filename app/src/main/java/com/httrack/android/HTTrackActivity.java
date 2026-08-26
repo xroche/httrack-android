@@ -138,8 +138,8 @@ public class HTTrackActivity extends FragmentActivity {
   // Preferences
   protected static final String PREFS_NAME = "HTTrackPreferences";
   protected static final String BASE_NAME = "BasePath";
-  // Whether POST_NOTIFICATIONS was ever asked for. Has to outlive the activity: pane_id is
-  // restored on rotation, and a second refusal is the one that sticks for good.
+  // Whether POST_NOTIFICATIONS was answered. Has to outlive the activity: every rotation
+  // restores pane_id and re-enters onEnterNewPane, which would otherwise re-ask.
   protected static final String NOTIFY_ASKED_NAME = "NotificationPermissionAsked";
   // Whether the one-time "import your old mirrors" offer has been shown and dismissed for good.
   protected static final String IMPORT_OFFERED_NAME = "LegacyImportOffered";
@@ -2256,7 +2256,7 @@ public class HTTrackActivity extends FragmentActivity {
       break;
     case R.layout.activity_mirror_progress:
       setProgressLinesInternal(new String[] { getString(R.string.starting_worker_thread) });
-      // Asked at crawl start, not at launch: a refusal is permanent after two of them.
+      // Asked at crawl start, not at launch.
       ensureNotificationsAreAllowed();
       startRunner();
       if (runner != null) {
