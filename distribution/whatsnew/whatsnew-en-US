@@ -1,10 +1,10 @@
-HTTrack 3.50 beta 8.
+HTTrack 3.50, the first Android release in nine years.
 
-• A copy that was stopped, capped or failed no longer reports Success
-• A copy that runs to the end no longer marks itself interrupted
-• A crash inside the copier no longer kills the app half a minute later
-• You are told when mirrors go where Android erases them with the app
-• A new install no longer asks about mirrors that are not there
-• Updated to the HTTrack 3.49.24 engine, with a refreshed guide
+• HTTPS works again: the 2017 build's TLS is too old for most sites
+• Runs on current Android, and is 64-bit
+• Modern pages are captured, including srcset and lazy-loaded images
+• Mirrors go to shared storage, so other apps can open them
+• Updating a mirror no longer deletes files it should keep
+• Options do what they say, and the finish screen says what happened
 
-Beta: report problems on GitHub.
+Report problems on GitHub.

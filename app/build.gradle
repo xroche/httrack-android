@@ -17,7 +17,7 @@ android {
         targetSdk 36
         // Must exceed the versionCode currently live on the Play listing before uploading.
         versionCode 101
-        // Prefix is the pinned engine's HTTRACK_VERSIONID; 4th part is versionCode.
+        // Prefix is the pinned engine's HTTRACK_VERSIONID; fourth part is versionCode.
         versionName "3.50.0.101"
 
         ndk {

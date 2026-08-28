@@ -1,10 +1,10 @@
-HTTrack 3.50 beeta 8.
+HTTrack 3.50, ensimmäinen Android-julkaisu yhdeksään vuoteen.
 
-• Pysäytetty, rajoitettu tai epäonnistunut kopio ei enää ilmoita onnistumisesta
-• Loppuun asti ehtinyt kopio ei enää merkitse itseään keskeytyneeksi
-• Kopioijan kaatuminen ei enää sulje sovellusta puolen minuutin päästä
-• Saat tiedon, kun Android poistaa kopiot sovelluksen mukana
-• Uusi asennus ei enää kysy kopioista, joita ei ole
-• Päivitetty HTTrack 3.49.24 -moottoriin, opas uudistettu
+• HTTPS toimii taas: vuoden 2017 version TLS on liian vanha
+• Toimii nykyisessä Androidissa, 64-bittisenä
+• Nykyaikaiset sivut tallentuvat, myös srcset ja viivästetyt kuvat
+• Kopiot menevät jaettuun tallennustilaan, muut sovellukset avaavat ne
+• Päivitys ei enää poista tiedostoja, jotka sen pitää säilyttää
+• Asetukset tekevät mitä lupaavat, ja loppunäyttö kertoo mitä tapahtui
 
-Beeta: ilmoita ongelmista GitHubissa.
+Ilmoita ongelmista GitHubissa.
