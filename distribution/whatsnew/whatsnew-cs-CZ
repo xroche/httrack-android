@@ -1,10 +1,10 @@
-HTTrack 3.50 beta 8.
+HTTrack 3.50, první vydání pro Android po devíti letech.
 
-• Zastavená, omezená nebo neúspěšná kopie už nehlásí úspěch
-• Kopie dokončená až do konce se už neoznačí jako přerušená
-• Pád kopírovače už nezavře aplikaci o půl minuty později
-• Dozvíte se, kdy Android smaže kopie spolu s aplikací
-• Nová instalace se už neptá na kopie, které neexistují
-• Aktualizováno na jádro HTTrack 3.49.24, s obnovenou příručkou
+• HTTPS zase funguje: TLS ve verzi z roku 2017 je příliš staré
+• Běží na současném Androidu, v 64 bitech
+• Moderní stránky se stahují, včetně srcset a odložených obrázků
+• Kopie míří do sdíleného úložiště, jiné aplikace je otevřou
+• Aktualizace už nemaže soubory, které má zachovat
+• Volby dělají, co slibují, a závěrečná obrazovka řekne, co se stalo
 
-Beta: problémy hlaste na GitHubu.
+Problémy hlaste na GitHubu.

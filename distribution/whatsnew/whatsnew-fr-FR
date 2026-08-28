@@ -1,10 +1,10 @@
-HTTrack 3.50 bêta 8.
+HTTrack 3.50, première version Android depuis neuf ans.
 
-• Une copie arrêtée, plafonnée ou en échec n'annonce plus « Réussite »
-• Une copie menée à son terme ne se marque plus comme interrompue
-• Un plantage du copieur ne tue plus l'application 30 secondes plus tard
-• Vous êtes prévenu quand Android effacera les copies avec l'application
-• Une installation neuve ne demande plus rien sur des copies inexistantes
-• Mise à jour vers le moteur HTTrack 3.49.24, guide rafraîchi
+• Le HTTPS refonctionne : le TLS de la version 2017 est trop ancien
+• Fonctionne sur Android actuel, en 64 bits
+• Les pages modernes sont capturées, srcset et images différées comprises
+• Les copies vont dans le stockage partagé, ouvert aux autres applications
+• Une mise à jour ne supprime plus les fichiers qu'elle doit garder
+• Les options tiennent parole, et l'écran final dit ce qui s'est passé
 
-Bêta : signalez les problèmes sur GitHub.
+Signalez les problèmes sur GitHub.

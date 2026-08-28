@@ -2140,7 +2140,7 @@ public class HTTrackActivity extends FragmentActivity {
       final StringBuilder str = new StringBuilder();
       str.append("<i>");
       if (version != null) {
-        // The app's own name leads: a 3.50 beta can ride a 3.49 engine.
+        // The app's own name leads: versionName and the engine version can differ.
         str.append("<br />Version: ");
         str.append(versionName);
         str.append(" (build ");

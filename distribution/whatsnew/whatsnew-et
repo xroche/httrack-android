@@ -1,10 +1,10 @@
-HTTrack 3.50 beeta 8.
+HTTrack 3.50, esimene Androidi väljalase üheksa aasta jooksul.
 
-• Peatatud, piiratud või nurjunud koopia ei teata enam edust
-• Lõpuni jõudnud koopia ei märgi end enam katkenuks
-• Kopeerija krahh ei sulge enam rakendust poole minuti pärast
-• Teile antakse teada, kui Android kustutab koopiad koos rakendusega
-• Uus paigaldus ei küsi enam koopiate kohta, mida pole olemas
-• Uuendatud HTTracki mootorile 3.49.24, juhend värskendatud
+• HTTPS töötab taas: 2017. aasta versiooni TLS on liiga vana
+• Töötab tänapäevases Androidis, 64 bitil
+• Nüüdisaegsed lehed salvestatakse, ka srcset ja hiljem laaditavad pildid
+• Koopiad lähevad jagatud salvestusruumi ja teised rakendused avavad need
+• Uuendus ei kustuta enam faile, mida peab alles hoidma
+• Valikud teevad seda, mida lubavad, ja lõppekraan ütleb, mis juhtus
 
-Beeta: teatage probleemidest GitHubis.
+Teatage probleemidest GitHubis.

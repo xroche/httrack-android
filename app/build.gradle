@@ -16,10 +16,9 @@ android {
         // insets (EdgeToEdge) are now mandatory: the platform ignores the opt-out at this level.
         targetSdk 36
         // Must exceed the versionCode currently live on the Play listing before uploading.
-        versionCode 100
-        // Deliberately off the engine's 3.49.24: this is the cross-platform 3.50 beta, named to
-        // match the Windows release. Realign the prefix with HTTRACK_VERSIONID once 3.50 is final.
-        versionName "3.50-beta-8"
+        versionCode 101
+        // Prefix is the pinned engine's HTTRACK_VERSIONID; fourth part is versionCode.
+        versionName "3.50.0.101"
 
         ndk {
             abiFilters "arm64-v8a", "x86_64"
