@@ -59,7 +59,7 @@ jobs:
         run: ./gradlew --no-daemon bundleRelease
       - name: Check 16 KB .so alignment
         run: tools/ci/check-so-alignment.sh app/build/outputs/bundle/release/app-release.aab
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-aab
           path: app/build/outputs/bundle/release/app-release.aab

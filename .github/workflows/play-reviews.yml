@@ -45,7 +45,7 @@ jobs:
           fi
           echo "rows: $(($(wc -l < reviews.csv) - 1))" >> "$GITHUB_STEP_SUMMARY"
       # The reviews name users and quote them, so they stay an artifact rather than a log.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: play-reviews
           path: reviews.csv

@@ -64,7 +64,7 @@ jobs:
       - name: ndk-build
         working-directory: app/src/main    # contains jni/ — ndk-build auto-discovers Android.mk + Application.mk
         run: ${{ steps.ndk.outputs.ndk-path }}/ndk-build APP_ABI="${ABIS}" APP_PLATFORM=android-24 -j"$(nproc)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: native-libs
           path: app/src/main/libs/**/*.so
@@ -91,18 +91,18 @@ jobs:
           for apk in app/build/outputs/apk/*/*.apk; do
             tools/ci/check-so-alignment.sh "$apk"
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()                     # the report is what says which case broke
         with:
           name: test-results
           path: app/build/reports/tests/**
           if-no-files-found: warn
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: apk
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()                     # the report is most useful when lint is unhappy
         with:
           name: lint-report
