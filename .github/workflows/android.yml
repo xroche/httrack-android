@@ -23,6 +23,8 @@ env:
   NDK_VERSION: r27d
   OPENSSL_VERSION: "3.0.15"
 
+# native and assemble are the two required checks. Never give either a job-level `if:`,
+# because a skipped check run counts as success and auto-merge would land on a build that never ran.
 jobs:
   # Native-only: proves recursive submodules (incl. nested coucal), libiconv
   # vendoring, OpenSSL 3.x, and the 64-bit ndk-build. x86_64 needs the coffeecatch
