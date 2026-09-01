@@ -21,8 +21,8 @@ permissions:
 jobs:
   automerge:
     name: Arm auto-merge
-    # github.actor is the pusher, not the author, so a dependabot push onto a fork PR can
-    # satisfy it. The head-repo clause is the one that cannot be forged.
+    # github.actor names whoever triggered the event, so the author check reads user.login.
+    # The head-repo clause makes dependabot's same-repo branches a precondition, not an assumption.
     if: >-
       github.repository == 'xroche/httrack-android'
       && github.event.pull_request.user.login == 'dependabot[bot]'
