@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: ghcr.io/xroche/httrack-android-build:latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive          # coucal is nested in httrack
       - name: Vendor libiconv
@@ -73,7 +73,7 @@ jobs:
       # This job holds the Play credential, so it takes the narrowest checkout that
       # still feeds whatsNewDirectory below. Without it the action uploads the AAB,
       # then dies scanning for notes that were never in this job's workspace.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: distribution/whatsnew
           sparse-checkout-cone-mode: false
