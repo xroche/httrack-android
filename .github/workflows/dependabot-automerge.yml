@@ -1,4 +1,5 @@
-# CI already validates every pin dependabot bumps here, so auto-merge only saves the manual click.
+# Auto-merge saves the manual click, but only the two required jobs gate it. A pin those jobs
+# never run, such as the release and docker workflows' actions, merges unexercised.
 name: Dependabot auto-merge
 
 # pull_request_target, because a dependabot pull_request gets a read-only token.
