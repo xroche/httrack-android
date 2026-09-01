@@ -1,0 +1,12 @@
+version: 2
+# gradle and gitsubmodule stay out: bumping the engine pin or a runtime dep
+# needs a device run, and no CI leg does one.
+updates:
+  # Keep the workflow action pins current (they only rot manually otherwise).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    ignore:
+      # play-publish.yml never runs on a PR, so no check validates this bump.
+      - dependency-name: r0adkll/upload-google-play
