@@ -7,7 +7,9 @@ name: Dependabot auto-merge
 on: pull_request_target
 
 concurrency:
-  group: dependabot-automerge-${{ github.ref }}
+  # On pull_request_target github.ref is the base branch, so keying on it puts every PR in one
+  # group. Any later PR event, human ones included, then cancels an in-flight arming run.
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -19,7 +21,12 @@ permissions:
 jobs:
   automerge:
     name: Arm auto-merge
-    if: github.repository == 'xroche/httrack-android' && github.actor == 'dependabot[bot]'
+    # github.actor is the pusher, not the author, so a dependabot push onto a fork PR can
+    # satisfy it. The head-repo clause is the one that cannot be forged.
+    if: >-
+      github.repository == 'xroche/httrack-android'
+      && github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       # Dependabot's body is a release-notes dump, so give the squash commit a body of its own.
