@@ -20,11 +20,11 @@ on:
       kind:
         description: 'issues: crash, anr or both'
         default: both
-      samples:
+      reports:
         description: 'issues: reports read per cluster, each labelled with its build, API level and device'
         default: '1'
       traces:
-        description: 'issues: how many of those samples print a stack trace'
+        description: 'issues: how many of those reports print a stack trace'
         default: '1'
       version_code:
         description: 'issues: restrict to one versionCode (blank = all)'
@@ -51,7 +51,7 @@ jobs:
           DAYS: ${{ inputs.days }}
           BY: ${{ inputs.by }}
           KIND: ${{ inputs.kind }}
-          SAMPLES: ${{ inputs.samples }}
+          REPORTS: ${{ inputs.reports }}
           TRACES: ${{ inputs.traces }}
           VERSION_CODE: ${{ inputs.version_code }}
         run: |
@@ -62,7 +62,7 @@ jobs:
           args=()
           case "$COMMAND" in
             rates)  args+=(--days "$DAYS" --by "$BY") ;;
-            issues) args+=(--days "$DAYS" --kind "$KIND" --samples "$SAMPLES" --traces "$TRACES")
+            issues) args+=(--days "$DAYS" --kind "$KIND" --reports "$REPORTS" --traces "$TRACES")
                     if [ -n "$VERSION_CODE" ]; then args+=(--version-code "$VERSION_CODE"); fi ;;
           esac
           python3 tools/ci/play_vitals.py "$RUNNER_TEMP/play-sa.json" "$COMMAND" "${args[@]}"

@@ -9,7 +9,7 @@ Usage:
   play_vitals.py <sa_json> probe
   play_vitals.py <sa_json> rates [--days N] [--by versionCode|apiLevel|deviceModel]
   play_vitals.py <sa_json> issues [--kind crash|anr|both] [--days N] [--limit N]
-                            [--samples N] [--traces N] [--version-code VC]
+                            [--reports N] [--traces N] [--version-code VC]
 
 `probe` only reads the two metric-set descriptors, so it answers "does this
 service account have access at all" without asking for any data.
@@ -32,6 +32,7 @@ BASE = f"https://playdeveloperreporting.googleapis.com/v1beta1/apps/{PKG}"
 DEFAULT_TZ = "America/Los_Angeles"
 
 MetricSet = collections.namedtuple("MetricSet", "name weighted metrics threshold")
+ReportFields = collections.namedtuple("ReportFields", "version_code api_level build marketing_name")
 
 # The rate Play compares against its threshold is the user-perceived one, weighted over 28
 # days by distinct users. The plain rate rides along because a per-version split of the
@@ -218,7 +219,7 @@ def cmd_issues(token, args):
                 "filter": " AND ".join(terms),
                 "orderBy": "distinctUsers desc",
                 "pageSize": args.limit,
-                "sampleErrorReportLimit": args.samples,
+                "sampleErrorReportLimit": args.reports,
             }
         )
         res = call(token, f"{BASE}/errorIssues:search", params=params)
@@ -233,11 +234,11 @@ def cmd_issues(token, args):
             print(f"    {issue.get('type')} in {issue.get('location')}")
             print(f"    {issue.get('cause')}")
             print(f"    id {issue.get('name')}")
-            reports = search_reports(token, issue.get("name", ""), start, end, tz, args.samples)
-            for rank, report in enumerate(reports):
-                print(f"    [{report_identity(report)}]")
-                if rank < args.traces:
-                    print(indent(report.get("reportText", "")))
+            reports = search_reports(
+                token, issue.get("name", ""), start, end, tz, limit=args.reports
+            )
+            for line in report_lines(reports, args.traces):
+                print(line)
 
 
 def subobject(d, key):
@@ -246,21 +247,32 @@ def subobject(d, key):
     return value if isinstance(value, dict) else {}
 
 
-def report_identity(report):
-    """Returns one report's build, API level and device as a single line.
-
-    Every field here is optional, so an absent one prints as "?" rather than dropping
-    out and shifting what is left onto the wrong label.
-    """
+def report_fields(report):
+    """Returns one report's versions and device, each None when the field is absent."""
     model = subobject(report, "deviceModel")
     device = subobject(model, "deviceId")
-    build = "/".join(p for p in (device.get("buildBrand"), device.get("buildDevice")) if p)
-    name = model.get("marketingName")
-    return (
-        f"vc {subobject(report, 'appVersion').get('versionCode', '?')}, "
-        f"api {subobject(report, 'osVersion').get('apiLevel', '?')}, "
-        f"{build or '?'}" + (f" ({name})" if name else "")
+    build = "/".join(str(p) for p in (device.get("buildBrand"), device.get("buildDevice")) if p)
+    return ReportFields(
+        subobject(report, "appVersion").get("versionCode"),
+        subobject(report, "osVersion").get("apiLevel"),
+        build or None,
+        model.get("marketingName"),
     )
+
+
+def report_lines(reports, traces):
+    """Returns one label per report, plus a stack trace for the first `traces` of them."""
+    lines = []
+    for rank, report in enumerate(reports):
+        fields = report_fields(report)
+        named = f" ({fields.marketing_name})" if fields.marketing_name else ""
+        lines.append(
+            f"    [vc {fields.version_code or '?'}, "
+            f"api {fields.api_level or '?'}, {fields.build or '?'}{named}]"
+        )
+        if rank < traces:
+            lines.append(indent(report.get("reportText", "")))
+    return lines
 
 
 def search_reports(token, issue_name, start, end, tz, limit):
@@ -286,7 +298,7 @@ def indent(text):
     return "\n".join("      " + line for line in text.splitlines())
 
 
-def main():
+def build_parser():
     p = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -303,10 +315,14 @@ def main():
     i.add_argument("--kind", default="both", choices=["crash", "anr", "both"])
     i.add_argument("--days", type=int, default=28)
     i.add_argument("--limit", type=int, default=15)
-    i.add_argument("--samples", type=int, default=1, help="reports read per cluster")
+    i.add_argument("--reports", type=int, default=1, help="reports read per cluster")
     i.add_argument("--traces", type=int, default=1, help="of those, how many print a stack trace")
     i.add_argument("--version-code", type=int)
-    args = p.parse_args()
+    return p
+
+
+def main():
+    args = build_parser().parse_args()
 
     with open(args.sa_json, encoding="utf-8") as f:
         sa = json.load(f)
