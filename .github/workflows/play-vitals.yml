@@ -1,0 +1,60 @@
+# Android vitals live in the Play Developer Reporting API, not in androidpublisher, so
+# they need their own scope and their own Console grant. Read-only: nothing here writes
+# to Play.
+name: Play vitals
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'probe (access check), rates (crash/ANR rates), issues (top clusters + stack traces)'
+        type: choice
+        options: [probe, rates, issues]
+        default: probe
+      days:
+        description: 'days back from the freshest data'
+        default: '28'
+      by:
+        description: 'rates: dimension to split on (versionCode, apiLevel, deviceModel, or blank)'
+        default: versionCode
+      kind:
+        description: 'issues: crash, anr or both'
+        default: both
+      version_code:
+        description: 'issues: restrict to one versionCode (blank = all)'
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  vitals:
+    name: read Android vitals
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tools/ci/play-requirements.txt
+      - name: Read vitals
+        # Inputs go through the environment, never interpolated into the script body.
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          COMMAND: ${{ inputs.command }}
+          DAYS: ${{ inputs.days }}
+          BY: ${{ inputs.by }}
+          KIND: ${{ inputs.kind }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          set -euo pipefail
+          umask 077
+          trap 'rm -f "$RUNNER_TEMP/play-sa.json"' EXIT
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/play-sa.json"
+          args=()
+          case "$COMMAND" in
+            rates)  args+=(--days "$DAYS" --by "$BY") ;;
+            issues) args+=(--days "$DAYS" --kind "$KIND")
+                    if [ -n "$VERSION_CODE" ]; then args+=(--version-code "$VERSION_CODE"); fi ;;
+          esac
+          python3 tools/ci/play_vitals.py "$RUNNER_TEMP/play-sa.json" "$COMMAND" "${args[@]}"
