@@ -13,14 +13,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.Test;
 
-/** A lifecycle override that never chains throws SuperNotCalledException; onConfigurationChanged
- *  did not, and crashed the app on every rotation (#186).
- *  Two things this cannot see: super.onCreate(null), or a chain on another overload, sets the
- *  flag the framework checks while dropping the argument; and the scan reads .java under
- *  src/main/java, so a Kotlin source or another source set would need widening. */
+/** The framework throws SuperNotCalledException when a lifecycle override skips its base
+ *  implementation, as onConfigurationChanged did (#186).
+ *  A chain on another overload, such as super.onCreate(null), sets the flag the framework checks
+ *  and drops the argument, which no text scan can see. This one reads .java under src/main/java
+ *  only. */
 public class LifecycleSuperCallTest {
-  /** Void callbacks whose base implementation the framework requires. The boolean menu callbacks
-   *  are left out, since answering without chaining is how they are meant to be used. */
+  /** These callbacks must call their base implementation. The list covers ones the tree does not
+   *  override yet, because the point is the next one someone adds. The boolean menu callbacks are
+   *  left out, since answering without chaining is how they are used. */
   private static final List<String> CHAINED = Arrays.asList("onCreate", "onStart", "onRestart",
       "onResume", "onPostCreate", "onPostResume", "onPause", "onStop", "onDestroy",
       "onSaveInstanceState", "onRestoreInstanceState", "onActivityResult",
@@ -28,14 +29,14 @@ public class LifecycleSuperCallTest {
       "onLowMemory", "onTrimMemory", "onNewIntent", "onViewCreated", "onDestroyView",
       "onTerminate");
 
-  /** Any declaration of one of them, whatever its modifiers and same-line annotations, so that a
-   *  style the scan cannot read fails the coverage check below instead of vanishing. */
+  /** Matches any declaration of one of them, whatever its modifiers or same-line annotations. A
+   *  style this misses fails the coverage check below. */
   private static final Pattern DECLARATION = Pattern.compile("(?m)^[ \t]*"
       + "((?:@\\w+(?:\\([^)\n]*\\))?[ \t]+)*"
       + "(?:(?:public|protected|private|final|static|synchronized|strictfp)[ \t]+)*)"
       + "void[ \t]+(" + join(CHAINED) + ")[ \t]*\\(");
 
-  /** The name used other than as a call on a receiver, which a declaration is. */
+  /** The name anywhere except after a dot, declarations included and filtered out later. */
   private static final Pattern MENTION = Pattern.compile("(?<![.\\w])(" + join(CHAINED)
       + ")\\s*\\(");
 
@@ -92,7 +93,7 @@ public class LifecycleSuperCallTest {
     for (final File file : TestSources.javaSources()) {
       scan(file.getName(), TestSources.read(file), result);
     }
-    // A scan that read nothing would pass, so name overrides the tree has today.
+    // List overrides the tree already has, to catch a scan that reads nothing.
     assertTrue(result.seen.toString(), result.seen.containsAll(Arrays.asList(
         "HTTrackActivity.java.onCreate", "HTTrackActivity.java.onResume",
         "HTTrackActivity.java.onConfigurationChanged", "HTTrackActivity.java.onSaveInstanceState",
@@ -116,6 +117,20 @@ public class LifecycleSuperCallTest {
     assertEquals(Arrays.asList("x.onConfigurationChanged"),
         scanOf("  public void onConfigurationChanged(final Configuration c) {\n"
             + "    // super.onConfigurationChanged(c);\n  }\n").missing);
+  }
+
+  /** Every name in the list, so no entry can sit there matching nothing. */
+  @Test
+  public void everyNameIsExercised() {
+    for (final String name : CHAINED) {
+      final Scan chains = scanOf("  public void " + name + "() {\n    super." + name
+          + "();\n  }\n");
+      assertEquals(name, Arrays.asList(), chains.missing);
+      assertEquals(name, Arrays.asList(), chains.unread);
+      final Scan silent = scanOf("  public void " + name + "() {\n  }\n");
+      assertEquals(name, Arrays.asList("x." + name), silent.missing);
+      assertEquals(name, Arrays.asList(), silent.unread);
+    }
   }
 
   @Test
