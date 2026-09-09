@@ -2060,12 +2060,12 @@ public class OptionsMapper {
    */
   public static void unserialize(final File profile,
       final SparseArray<String> map) throws IOException {
-    final Map<String, String> raw = new LinkedHashMap<String, String>();
+    final Map<String, String> decoded = new LinkedHashMap<String, String>();
     for (final Map.Entry<String, String> line : ProfileFormat.rawFields(profile)
         .entrySet()) {
-      raw.put(line.getKey(), OptionsMapper.profileDecode(line.getValue()));
+      decoded.put(line.getKey(), OptionsMapper.profileDecode(line.getValue()));
     }
-    for (final Map.Entry<String, String> field : ProfileFormat.resolve(raw)
+    for (final Map.Entry<String, String> field : ProfileFormat.resolve(decoded)
         .entrySet()) {
       final Integer id = OptionsMapper.fieldsNameToId.get(field.getKey());
       if (id != null) {
