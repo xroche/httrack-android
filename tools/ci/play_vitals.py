@@ -237,7 +237,7 @@ def cmd_issues(token, args):
             reports = search_reports(
                 token, issue.get("name", ""), start, end, tz, limit=args.reports
             )
-            for line in report_lines(reports, args.traces):
+            for line in report_lines(reports, traces=args.traces):
                 print(line)
 
 
@@ -251,6 +251,7 @@ def report_fields(report):
     """Returns one report's versions and device, each None when the field is absent."""
     model = subobject(report, "deviceModel")
     device = subobject(model, "deviceId")
+    # Play types both build fields as strings, so str() only guards a stray number here.
     build = "/".join(str(p) for p in (device.get("buildBrand"), device.get("buildDevice")) if p)
     return ReportFields(
         subobject(report, "appVersion").get("versionCode"),
@@ -314,7 +315,7 @@ def build_parser():
     i = sub.add_parser("issues")
     i.add_argument("--kind", default="both", choices=["crash", "anr", "both"])
     i.add_argument("--days", type=int, default=28)
-    i.add_argument("--limit", type=int, default=15)
+    i.add_argument("--limit", type=int, default=15, help="clusters listed per kind")
     i.add_argument("--reports", type=int, default=1, help="reports read per cluster")
     i.add_argument("--traces", type=int, default=1, help="of those, how many print a stack trace")
     i.add_argument("--version-code", type=int)

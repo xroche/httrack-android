@@ -5,6 +5,7 @@ import argparse
 import datetime
 import io
 import os
+import re
 import sys
 import unittest
 from unittest import mock
@@ -12,6 +13,9 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import play_vitals as pv  # noqa: E402
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+WORKFLOW = os.path.join(ROOT, ".github", "workflows", "play-vitals.yml")
 
 
 class Flatten(unittest.TestCase):
@@ -322,16 +326,43 @@ class Parser(unittest.TestCase):
         args = self.parse()
         self.assertEqual((args.reports, args.traces), (1, 1))
 
-    def test_the_workflow_argv_parses(self):
-        args = self.parse("--days", "28", "--kind", "both", "--reports", "20", "--traces", "2")
-        self.assertEqual((args.reports, args.traces), (20, 2))
+    def workflow_flags(self, command):
+        """Returns the flags the dispatch really passes, read out of its case arm."""
+        with open(WORKFLOW, encoding="utf-8") as f:
+            arm = f.read().split(f"{command})", 1)[1].split(";;", 1)[0]
+        return sorted(set(re.findall(r"--[a-z-]+", arm)))
+
+    def value_for(self, flag):
+        return {"--kind": "both", "--by": ""}.get(flag, "1")
+
+    def test_every_flag_the_workflow_sends_to_issues_is_accepted(self):
+        flags = self.workflow_flags("issues")
+        self.assertIn("--reports", flags)
+        for flag in flags:
+            self.parse(flag, self.value_for(flag))
+
+    def test_every_flag_the_workflow_sends_to_rates_is_accepted(self):
+        flags = self.workflow_flags("rates")
+        self.assertIn("--by", flags)
+        for flag in flags:
+            pv.build_parser().parse_args(["sa.json", "rates", flag, self.value_for(flag)])
+
+    def test_the_workflow_restricts_issues_to_one_version(self):
+        self.assertEqual(self.parse("--version-code", "63").version_code, 63)
+
+    def test_rates_takes_the_blank_dimension_the_workflow_can_send(self):
+        args = pv.build_parser().parse_args(["sa.json", "rates", "--by", ""])
+        self.assertEqual(args.by, "")
+
+    def test_probe_takes_no_options(self):
+        self.assertEqual(pv.build_parser().parse_args(["sa.json", "probe"]).cmd, "probe")
 
 
 class Issues(unittest.TestCase):
     """cmd_issues must ask the API for as many reports as it was told to read."""
 
-    def run_issues(self, wanted, traces, available=5):
-        pool = [dict(FULL_REPORT, reportText=f"trace-{i}") for i in range(available)]
+    def run_issues(self, wanted, traces):
+        pool = [dict(FULL_REPORT, reportText=f"trace-{i}") for i in range(wanted + 2)]
         asked = {}
 
         def fake_call(_token, url, method="GET", body=None, params=None):
@@ -360,6 +391,15 @@ class Issues(unittest.TestCase):
     def test_every_report_the_api_returns_is_labelled_once(self):
         printed, _ = self.run_issues(wanted=3, traces=1)
         self.assertEqual(printed.count(FULL_LABEL), 3)
+
+    def test_the_trace_limit_reaches_the_printing(self):
+        printed, _ = self.run_issues(wanted=3, traces=1)
+        self.assertIn("trace-0", printed)
+        self.assertNotIn("trace-1", printed)
+
+    def test_raising_the_trace_limit_reaches_the_printing_too(self):
+        printed, _ = self.run_issues(wanted=3, traces=3)
+        self.assertIn("trace-2", printed)
 
 
 if __name__ == "__main__":
