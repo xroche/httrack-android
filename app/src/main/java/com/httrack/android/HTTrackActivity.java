@@ -3065,7 +3065,7 @@ public class HTTrackActivity extends FragmentActivity {
   @Override
   public void onConfigurationChanged(final Configuration newConfig) {
     Log.d(getClass().getSimpleName(), "onConfigurationChanged");
-    // TODO: handle orientation change ?
+    super.onConfigurationChanged(newConfig);
   }
 
   @Override
