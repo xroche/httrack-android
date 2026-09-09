@@ -75,7 +75,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htssniff.c httrack/src/htsselftest.c						\
 	httrack/src/htscache_selftest.c httrack/src/htsdns_selftest.c			\
 	httrack/src/htscodec.c httrack/src/htsproxy.c							\
-	httrack/src/htsurlport.c httrack/src/htswarc.c							\
+	httrack/src/htsdate.c httrack/src/htsurlport.c httrack/src/htswarc.c							\
 	httrack/src/htsescape.c										\
 	httrack/src/htsnet.c httrack/src/htsrandom.c							\
 	httrack/src/htssitemap.c httrack/src/htssinglefile.c					\
@@ -103,7 +103,7 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
 	-Wignored-qualifiers -Wstrict-aliasing -Wno-sign-compare				\
 	-Wno-type-limits -Wno-missing-field-initializers -Wno-cast-align		\
 	-Wno-nested-externs														\
-	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6			\
+	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6 -DHTS_INTERNAL_BUILD			\
 	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
 	-Wl,-O1
 LOCAL_CPPFLAGS += -pthread
@@ -124,7 +124,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/include
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
-LOCAL_CFLAGS := -O3 -g -funwind-tables \
+LOCAL_CFLAGS := -O3 -g -funwind-tables -DHAVE_CONFIG_H -DHTS_INTERNAL_BUILD \
 	-Wl,-O1 \
 	-W -Wall -Wextra -Werror -Wno-unused-parameter
 include $(BUILD_SHARED_LIBRARY)
