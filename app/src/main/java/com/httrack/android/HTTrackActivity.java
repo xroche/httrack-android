@@ -53,7 +53,6 @@ import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
@@ -2666,8 +2665,8 @@ public class HTTrackActivity extends FragmentActivity {
     try {
       showNotification(getString(R.string.import_mirrors_prompt));
       startActivityForResult(intent, ACTIVITY_IMPORT_TREE);
-    } catch (final ActivityNotFoundException e) {
-      Log.w(getClass().getSimpleName(), "no document-tree picker", e);
+    } catch (final Exception e) {
+      Log.w(getClass().getSimpleName(), "could not open the document-tree picker", e);
       showNotification(getString(R.string.import_mirrors_none));
     }
   }
@@ -3415,6 +3414,7 @@ public class HTTrackActivity extends FragmentActivity {
 
   /** Leave the foreground, without killing us. **/
   private void goToHome() {
+    // Throws only when system_server has died, which takes this process with it anyway.
     final boolean moved = moveTaskToBack(true);
     final boolean home = BackgroundPolicy.askTheLauncher(moved) && startHomeIntent();
     if (BackgroundPolicy.stillOnScreen(moved, home)) {
