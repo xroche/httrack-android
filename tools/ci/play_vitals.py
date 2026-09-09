@@ -170,6 +170,9 @@ def cmd_issues(token, args):
         sys.exit("no freshness data; run probe first")
     end = datetime.date(latest["year"], latest["month"], latest["day"])
     start = end - datetime.timedelta(days=args.days)
+    # errorIssues:search rejects a named zone ("Unsupported timezone"), unlike the metric
+    # queries, which need one. UTC is the only id it takes.
+    tz = "UTC"
     for kind in kinds:
         terms = [f"errorIssueType = {kind}"]
         if args.version_code:
@@ -178,8 +181,8 @@ def cmd_issues(token, args):
             "",
             {
                 "interval": {
-                    "startTime": datetime_at(start, args.timezone),
-                    "endTime": datetime_at(end, args.timezone),
+                    "startTime": datetime_at(start, tz),
+                    "endTime": datetime_at(end, tz),
                 },
                 "filter": " AND ".join(terms),
                 "orderBy": "distinctUsers desc",
@@ -200,14 +203,29 @@ def cmd_issues(token, args):
             print(f"    {issue.get('type')} in {issue.get('location')}")
             print(f"    {issue.get('cause')}")
             print(f"    id {issue.get('name')}")
-            for report in issue.get("sampleErrorReports", []) or []:
-                print(indent(fetch_report(token, report)))
+            for text in search_reports(token, issue.get("name", ""), start, end, tz, args.samples):
+                print(indent(text))
 
 
-def fetch_report(token, name):
-    """The stack trace behind one sample, which the issue itself does not carry."""
-    res = call(token, f"https://playdeveloperreporting.googleapis.com/v1beta1/{name}")
-    return res.get("reportText", json.dumps(res, indent=2))
+def search_reports(token, issue_name, start, end, tz, limit):
+    """The stack traces behind one cluster.
+
+    The issue carries sample report names, but only the names, and they are not a
+    resource path any GET accepts. errorReports:search filtered on the issue id is the
+    route that works.
+    """
+    issue_id = issue_name.rsplit("/", 1)[-1]
+    params = flatten(
+        "",
+        {
+            "interval": {"startTime": datetime_at(start, tz), "endTime": datetime_at(end, tz)},
+            "filter": f"errorIssueId = {issue_id}",
+            "pageSize": limit,
+        },
+        {},
+    )
+    res = call(token, f"{BASE}/errorReports:search", params=params)
+    return [r.get("reportText", "") for r in res.get("errorReports", [])]
 
 
 def indent(text):
