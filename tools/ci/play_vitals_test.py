@@ -115,7 +115,7 @@ class Body(unittest.TestCase):
 
 
 class Rates(unittest.TestCase):
-    """The threshold comparison is the whole point of the rates output."""
+    """Tests that rates marks the rows over Play's threshold."""
 
     CRASH = pv.METRIC_SETS[0]
 

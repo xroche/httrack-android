@@ -71,7 +71,7 @@ def _flatten(value, out, prefix):
 
 
 def datetime_at(day, tz):
-    """A day boundary as the API's DateTime, which needs an explicit zone."""
+    """Returns a day boundary as the API's DateTime, which needs an explicit zone."""
     return {
         "year": day.year,
         "month": day.month,
@@ -114,7 +114,7 @@ def day_str(day):
 
 
 def freshness(metric_set):
-    """The last day the set has data for; a query past it comes back empty."""
+    """Returns the last day the set has data for. A query past it comes back empty."""
     for f in metric_set.get("freshnessInfo", {}).get("freshnesses", []):
         if f.get("aggregationPeriod") == "DAILY":
             return f.get("latestEndTime", {})
@@ -129,7 +129,7 @@ def cmd_probe(token, _args):
 
 
 def dimension_value(d):
-    """A dimension arrives as one of two typed fields, and "" and 0 are both real values."""
+    """Returns a dimension's value. It has two typed fields, and "" and 0 are both real."""
     for key in ("stringValue", "int64Value"):
         if key in d:
             return d[key]
@@ -137,7 +137,7 @@ def dimension_value(d):
 
 
 def rates_row(row, metrics):
-    """One row as (dimension name -> value, the metrics in the order asked for)."""
+    """Returns one row as (dimension name -> value, the metrics in the order asked for)."""
     values = {m["metric"]: m.get("decimalValue", {}).get("value") for m in row.get("metrics", [])}
     dims = {d["dimension"]: dimension_value(d) for d in row.get("dimensions", [])}
     return dims, {m: values.get(m) for m in metrics}
@@ -235,7 +235,7 @@ def cmd_issues(token, args):
 
 
 def search_reports(token, issue_name, start, end, tz, limit):
-    """The stack traces behind one cluster.
+    """Returns the stack traces behind one cluster.
 
     The issue carries sample report names, but only the names, and they are not a
     resource path any GET accepts. errorReports:search filtered on the issue id is the
