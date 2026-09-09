@@ -1,10 +1,10 @@
-HTTrack 3.50.1: motore aggiornato e crash risolti.
+HTTrack 3.50.1: nuovo motore, crash risolti.
 
-• Crash risolti: nome progetto con barra, rotazione schermo, log grande
+• Crash risolti: barra nel nome, rotazione schermo, log grande
 • I download lunghi non bloccano più la schermata di avanzamento
-• L'aggiornamento di una copia riscarica le pagine cambiate
-• JavaScript e stili delle copie funzionano di nuovo
+• L'aggiornamento non tiene più pagine vecchie né perde file
+• JavaScript e stili delle copie non si rompono più
 • Una pagina visitata non può più far inviare un file dal telefono
 • Stop e poi Continua riprende i file scaricati a metà
 
-Un download interrotto prima di questa versione riparte da zero una volta.
+I file scaricati a metà prima di questa versione ripartono. I file salvati restano.

@@ -1,10 +1,10 @@
-HTTrack 3.50.1: frissített motor és hibajavítások.
+HTTrack 3.50.1: új motor, javított összeomlások.
 
-• Javított összeomlások: perjeles projektnév, képernyőforgatás, nagy napló
-• A hosszú letöltések már nem fagyasztják le a folyamatképernyőt
-• A másolat frissítése újra letölti a megváltozott oldalakat
-• A másolatok JavaScriptje és stílusai újra működnek
+• Javított összeomlások: perjeles projektnév, forgatás, nagy napló
+• A hosszú letöltések már nem fagyasztják a folyamatképernyőt
+• A frissítés nem hagy régi oldalt és nem veszít el fájlt
+• A másolatok JavaScriptje és stílusai nem romlanak el
 • Egy meglátogatott oldal már nem küldhet fájlt a telefonjáról
-• Leállítás, majd Folytatás folytatja a félig letöltött fájlokat
+• Leállítás, majd Folytatás folytatja a félkész fájlokat
 
-A frissítés előtt megszakadt letöltés egyszer elölről kezdődik.
+A frissítés előtt félig letöltött fájlok újraindulnak. A kész fájlok megmaradnak.

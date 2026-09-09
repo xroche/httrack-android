@@ -1,10 +1,10 @@
 HTTrack 3.50.1: neue Engine, Abstürze behoben.
 
-• Abstürze behoben: Projektname mit Schrägstrich, Drehung, großes Protokoll
+• Abstürze behoben: Schrägstrich im Namen, Drehung, großes Protokoll
 • Lange Downloads blockieren die Fortschrittsanzeige nicht mehr
-• Aktualisieren lädt geänderte Seiten einer Kopie neu
-• JavaScript und Stylesheets in Kopien funktionieren wieder
+• Aktualisieren behält keine alte Seite und verliert keine Datei
+• JavaScript und Stile in Kopien bleiben heil
 • Eine besuchte Seite kann keine Datei mehr von Ihrem Telefon holen
 • Stopp und Weiter setzt halb geladene Dateien fort
 
-Ein vor dieser Version unterbrochener Download beginnt einmal von vorn.
+Vor diesem Update halb geladene Dateien beginnen neu. Gespeicherte Dateien bleiben.

@@ -1,10 +1,10 @@
-HTTrack 3.50.1: nové jádro a opravené pády.
+HTTrack 3.50.1: nové jádro, opravené pády.
 
 • Opravené pády: název projektu s lomítkem, otočení obrazovky, velký protokol
 • Dlouhá stahování už nezaseknou obrazovku průběhu
-• Aktualizace kopie znovu načte změněné stránky
-• JavaScript a styly v kopiích zase fungují
+• Aktualizace už nenechá starou stránku ani neztratí soubor
+• JavaScript a styly v kopiích se už nepoškodí
 • Navštívená stránka už neodešle soubor z vašeho telefonu
 • Stop a pak Pokračovat naváže na nedostažené soubory
 
-Stahování přerušené před touto verzí začne jednou od začátku.
+Soubory nedostažené před touto verzí se stáhnou znovu. Uložené soubory zůstanou.

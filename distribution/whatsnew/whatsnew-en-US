@@ -1,10 +1,10 @@
-HTTrack 3.50.1: engine update and crash fixes.
+HTTrack 3.50.1: new engine, crashes fixed.
 
-• Fixed crashes: a project name with a slash, screen rotation, and opening a large log
+• Fixed crashes: project name with a slash, rotation, large log
 • Long crawls no longer freeze the progress screen
-• Updating a mirror now refreshes pages that changed
-• Mirrored JavaScript and stylesheets work again
+• Updating no longer keeps a stale page or drops a saved file
+• JavaScript and stylesheets in mirrors no longer break
 • A visited page can no longer make HTTrack send a file from your phone
 • Stop then Continue resumes part-downloaded files
 
-A crawl interrupted before this update starts over once.
+Files part-downloaded before this update start again. Saved files stay.

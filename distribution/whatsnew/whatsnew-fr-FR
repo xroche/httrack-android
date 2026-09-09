@@ -1,10 +1,10 @@
-HTTrack 3.50.1 : moteur mis à jour et corrections.
+HTTrack 3.50.1 : nouveau moteur, correctifs.
 
-• Plantages corrigés : nom de projet avec barre oblique, rotation, gros journal
-• Les longs téléchargements ne figent plus l'écran d'avancement
-• Mettre à jour une copie reprend les pages modifiées
-• JavaScript et styles des copies refonctionnent
-• Une page visitée ne peut plus faire sortir un fichier du téléphone
+• Plantages corrigés : nom avec barre oblique, rotation, gros journal
+• Les longs téléchargements ne figent plus l'écran
+• La mise à jour ne garde plus de page périmée et ne perd rien
+• JavaScript et styles des copies ne cassent plus
+• Une page visitée ne peut plus sortir un fichier du téléphone
 • Stop puis Continuer reprend les fichiers incomplets
 
-Un téléchargement interrompu avant cette version repart de zéro, une fois.
+Les fichiers incomplets avant cette version repartent du début. Les fichiers enregistrés restent.

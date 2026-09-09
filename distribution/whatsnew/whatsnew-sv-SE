@@ -1,10 +1,10 @@
-HTTrack 3.50.1: ny motor och färre krascher.
+HTTrack 3.50.1: ny motor, rättade krascher.
 
-• Rättade krascher: projektnamn med snedstreck, skärmvridning, stor logg
+• Rättade krascher: snedstreck i namnet, skärmvridning, stor logg
 • Långa nedladdningar låser inte längre förloppsskärmen
-• En uppdatering av en kopia hämtar om sidor som ändrats
-• JavaScript och stilmallar i kopiorna fungerar igen
+• En uppdatering behåller inte gamla sidor och tappar inga filer
+• JavaScript och stilmallar i kopiorna går inte sönder
 • En besökt sida kan inte längre skicka en fil från din telefon
 • Stoppa och sedan Fortsätt återupptar halva filer
 
-En nedladdning som avbröts före den här versionen börjar om en gång.
+Filer som var halvt nedladdade före den här versionen börjar om. Sparade filer blir kvar.

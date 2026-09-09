@@ -1,10 +1,10 @@
-HTTrack 3.50.1: motor atualizado e falhas corrigidas.
+HTTrack 3.50.1: novo motor, falhas corrigidas.
 
-• Falhas corrigidas: nome de projeto com barra, girar a tela, log grande
+• Falhas corrigidas: nome com barra, girar a tela, log grande
 • Os downloads longos não travam mais a tela de progresso
-• Atualizar uma cópia baixa de novo as páginas alteradas
-• O JavaScript e os estilos das cópias voltam a funcionar
+• Atualizar não mantém mais páginas antigas nem perde arquivos
+• JavaScript e estilos das cópias não quebram mais
 • Uma página visitada não pode mais enviar um arquivo do seu celular
 • Parar e depois Continuar retoma os arquivos pela metade
 
-Um download interrompido antes desta versão recomeça do zero uma vez.
+Os arquivos pela metade antes desta versão recomeçam. Os arquivos salvos ficam.

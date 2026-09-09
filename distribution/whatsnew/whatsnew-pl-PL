@@ -1,10 +1,10 @@
-HTTrack 3.50.1: nowy silnik i poprawki awarii.
+HTTrack 3.50.1: nowy silnik, naprawione awarie.
 
 • Naprawione awarie: nazwa projektu z ukośnikiem, obrót ekranu, duży dziennik
 • Długie pobierania nie zawieszają już ekranu postępu
-• Aktualizacja kopii pobiera ponownie zmienione strony
-• JavaScript i style w kopiach znów działają
+• Aktualizacja nie zostawia starych stron ani nie gubi plików
+• JavaScript i style w kopiach już się nie psują
 • Odwiedzana strona nie wyśle już pliku z Twojego telefonu
 • Stop, a potem Kontynuuj wznawia częściowo pobrane pliki
 
-Pobieranie przerwane przed tą wersją zacznie się raz od nowa.
+Pliki pobrane częściowo przed tą wersją pobiorą się od nowa. Zapisane pliki zostają.

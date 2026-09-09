@@ -1,10 +1,10 @@
-HTTrack 3.50.1: posodobljeno jedro in odpravljena sesutja.
+HTTrack 3.50.1: novo jedro, odpravljena sesutja.
 
-• Odpravljena sesutja: ime projekta s poševnico, vrtenje zaslona, velik dnevnik
+• Odpravljena sesutja: poševnica v imenu, vrtenje zaslona, velik dnevnik
 • Dolgi prenosi ne zamrznejo več zaslona z napredkom
-• Posodobitev kopije znova prenese spremenjene strani
-• JavaScript in slogi v kopijah spet delujejo
+• Posodobitev ne pusti starih strani in ne izgubi datotek
+• JavaScript in slogi v kopijah se ne pokvarijo več
 • Obiskana stran ne more več poslati datoteke iz vašega telefona
-• Ustavi in nato Nadaljuj nadaljuje na pol prenesene datoteke
+• Ustavi in Nadaljuj nadaljujeta na pol prenesene datoteke
 
-Prenos, prekinjen pred to različico, se enkrat začne znova.
+Datoteke, prenesene le deloma pred to različico, se začnejo znova. Shranjene ostanejo.

@@ -1,10 +1,10 @@
-HTTrack 3.50.1: uusi moottori ja korjatut kaatumiset.
+HTTrack 3.50.1: uusi moottori, korjatut kaatumiset.
 
-• Korjatut kaatumiset: kauttaviiva projektin nimessä, näytön kääntö, iso loki
+• Korjatut kaatumiset: kauttaviiva nimessä, kääntö, iso loki
 • Pitkät lataukset eivät enää jumita edistymisnäyttöä
-• Kopion päivitys hakee muuttuneet sivut uudelleen
-• Kopioiden JavaScript ja tyylit toimivat taas
+• Päivitys ei jätä vanhaa sivua eikä hukkaa tiedostoa
+• Kopioiden JavaScript ja tyylit eivät enää hajoa
 • Vieraillut sivu ei voi enää lähettää tiedostoa puhelimestasi
 • Pysäytä ja sitten Jatka jatkaa kesken jääneitä tiedostoja
 
-Ennen tätä versiota keskeytynyt lataus alkaa kerran alusta.
+Ennen tätä versiota kesken jääneet tiedostot alkavat alusta. Tallennetut tiedostot säilyvät.

@@ -1,10 +1,10 @@
 HTTrack 3.50.1: nieuwe engine en correcties.
 
-• Crashes verholpen: projectnaam met schuine streep, schermdraai, groot logboek
-• Lange downloads laten het voortgangsscherm niet meer vastlopen
-• Bijwerken van een kopie haalt gewijzigde pagina's opnieuw op
-• JavaScript en stijlbladen in kopieën werken weer
-• Een bezochte pagina kan geen bestand van je telefoon meer sturen
+• Crashes verholpen: schuine streep in de naam, draaien, groot logboek
+• Lange downloads laten het voortgangsscherm niet vastlopen
+• Bijwerken houdt geen oude pagina en verliest niets
+• JavaScript en stijlen in kopieën gaan niet meer stuk
+• Een bezochte pagina kan geen bestand meer van je telefoon sturen
 • Stop en dan Doorgaan hervat halve bestanden
 
-Een download die voor deze versie is afgebroken, begint één keer opnieuw.
+Bestanden die voor deze versie half binnen waren, beginnen opnieuw. Opgeslagen bestanden blijven.
