@@ -1,10 +1,10 @@
-HTTrack 3.50, the first Android release in nine years.
+HTTrack 3.50.1: new engine, crashes fixed.
 
-• HTTPS works again: the 2017 build's TLS is too old for most sites
-• Runs on current Android, and is 64-bit
-• Modern pages are captured, including srcset and lazy-loaded images
-• Mirrors go to shared storage, so other apps can open them
-• Updating a mirror no longer deletes files it should keep
-• Options do what they say, and the finish screen says what happened
+• Fixed crashes: project name with a slash, rotation, large log
+• Long crawls no longer freeze the progress screen
+• Updating no longer keeps a stale page or drops a saved file
+• JavaScript and stylesheets in mirrors no longer break
+• A visited page can no longer make HTTrack send a file from your phone
+• Stop then Continue resumes part-downloaded files
 
-Report problems on GitHub.
+Files part-downloaded before this update start again. Saved files stay.

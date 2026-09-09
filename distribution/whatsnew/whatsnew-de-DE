@@ -1,10 +1,10 @@
-HTTrack 3.50, die erste Android-Version seit neun Jahren.
+HTTrack 3.50.1: neue Engine, Abstürze behoben.
 
-• HTTPS funktioniert wieder: das TLS der Version von 2017 ist zu alt
-• Läuft auf aktuellem Android, mit 64 Bit
-• Moderne Seiten werden erfasst, auch srcset und nachgeladene Bilder
-• Kopien liegen im gemeinsamen Speicher, andere Apps können sie öffnen
-• Eine Aktualisierung löscht keine Dateien mehr, die bleiben sollen
-• Optionen tun, was sie sagen, und der Schlussbildschirm sagt, was geschah
+• Abstürze behoben: Schrägstrich im Namen, Drehung, großes Protokoll
+• Lange Downloads blockieren die Fortschrittsanzeige nicht mehr
+• Aktualisieren behält keine alte Seite und verliert keine Datei
+• JavaScript und Stile in Kopien bleiben heil
+• Eine besuchte Seite kann keine Datei mehr von Ihrem Telefon holen
+• Stopp und Weiter setzt halb geladene Dateien fort
 
-Probleme bitte auf GitHub melden.
+Vor diesem Update halb geladene Dateien beginnen neu. Gespeicherte Dateien bleiben.

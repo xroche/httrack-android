@@ -867,6 +867,8 @@ Java_com_httrack_android_jni_HTTrackLib_stop(JNIEnv* env, jobject object,
     if (force) {
       context->stop = 1;
     }
+    /* Second argument means keep_resume now, not the force it used to ignore: the hard tap
+       is the one that wants hts-cache/ref kept for a later Continue. */
     hts_request_stop(context->opt, force);
   }
   MUTEX_UNLOCK(context->lock);

@@ -1,10 +1,10 @@
-HTTrack 3.50, az első Android-kiadás kilenc év után.
+HTTrack 3.50.1: új motor, javított összeomlások.
 
-• A HTTPS ismét működik: a 2017-es változat TLS-e túl régi
-• Fut a mai Androidon, 64 biten
-• A modern oldalak is lementődnek, srcset és késleltetett képek is
-• A másolatok a közös tárhelyre kerülnek, más alkalmazások megnyitják őket
-• A frissítés már nem törli azokat a fájlokat, amelyeket meg kell tartania
-• A beállítások azt teszik, amit ígérnek, a záróképernyő pedig megmondja, mi történt
+• Javított összeomlások: perjeles projektnév, forgatás, nagy napló
+• A hosszú letöltések már nem fagyasztják a folyamatképernyőt
+• A frissítés nem hagy régi oldalt és nem veszít el fájlt
+• A másolatok JavaScriptje és stílusai nem romlanak el
+• Egy meglátogatott oldal már nem küldhet fájlt a telefonjáról
+• Leállítás, majd Folytatás folytatja a félkész fájlokat
 
-A hibákat a GitHubon jelezze.
+A frissítés előtt félig letöltött fájlok újraindulnak. A kész fájlok megmaradnak.
