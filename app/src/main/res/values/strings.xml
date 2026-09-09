@@ -22,6 +22,7 @@
     <string name="stop">Exit</string>
     <string name="exit">Exit</string>
     <string name="show_logs">View log</string>
+    <string name="show_logs_earlier">Earlier</string>
     <string name="browse_website">Browse Mirrored Website</string>
     <string name="app_description">Website Copier/Offline Browser. Copy remote websites to your computer. Free.</string>
     <string name="browse_all">Browse sites</string>

@@ -24,7 +24,6 @@ package com.httrack.android;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -97,6 +96,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -2927,17 +2927,31 @@ public class HTTrackActivity extends FragmentActivity {
    */
   public void onShowLogs(final View view) {
     final File log = getTargetLogFile();
-    if (log.exists()) {
-      FileInputStream rd;
-      try {
-        rd = new FileInputStream(log);
-        final byte[] data = new byte[(int) log.length()];
-        rd.read(data);
-        rd.close();
-        final String logs = new String(data, "UTF-8");
-        new AlertDialog.Builder(this).setTitle("Logs").setMessage(logs).show();
-      } catch (final IOException e) {
+    if (log != null && log.exists()) {
+      showLogTail(log, Long.MAX_VALUE);
+    }
+  }
+
+  /** Show the log window ending at byte offset {@code end}; Long.MAX_VALUE asks for the newest. */
+  private void showLogTail(final File log, final long end) {
+    try {
+      final LogTail.Window window = LogTail.read(log, end);
+      final TextView text = new TextView(this);
+      text.setText(window.text());
+      final ScrollView scroll = new ScrollView(this);
+      scroll.addView(text);
+      final AlertDialog.Builder builder = new AlertDialog.Builder(this)
+          .setTitle(R.string.show_logs).setView(scroll)
+          .setPositiveButton(android.R.string.ok, null);
+      if (window.hasEarlier()) {
+        builder.setNeutralButton(R.string.show_logs_earlier,
+            (dialog, which) -> showLogTail(log, window.start()));
       }
+      builder.show();
+      // A tail is worth reading from its end.
+      scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+    } catch (final IOException e) {
+      showNotification(e.getLocalizedMessage());
     }
   }
 
