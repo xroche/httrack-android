@@ -2395,7 +2395,7 @@ public class HTTrackActivity extends FragmentActivity {
   protected void setProgressLines(final String[] lines) {
     if (progressLines.offer(lines) && !handlerUI.post(progressLinesTask)) {
       // The looper is gone, so nothing would ever disarm the coalescer.
-      progressLines.take();
+      progressLines.disarm();
     }
   }
 

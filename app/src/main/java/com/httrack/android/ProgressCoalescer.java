@@ -35,8 +35,13 @@ final class ProgressCoalescer<T> {
    */
   synchronized T take() {
     final T payload = pending;
+    disarm();
+    return payload;
+  }
+
+  /** Drop whatever is pending and let the next offer schedule again. */
+  synchronized void disarm() {
     pending = null;
     armed = false;
-    return payload;
   }
 }

@@ -113,6 +113,17 @@ public class ProgressCoalescerTest {
     assertNull(coalescer.take());
   }
 
+  /** What the failed-post branch of setProgressLines rests on. */
+  @Test
+  public void disarmingDropsThePendingFrameAndLetsTheNextOnePost() {
+    final ProgressCoalescer<String> coalescer = new ProgressCoalescer<String>();
+    assertTrue(coalescer.offer("stranded"));
+    coalescer.disarm();
+    assertNull(coalescer.take());
+    assertTrue(coalescer.offer("next"));
+    assertEquals("next", coalescer.take());
+  }
+
   @Test
   public void theCrawlThreadAndTheUiThreadAgreeOnTheLastFrame() throws InterruptedException {
     final int frames = 5000;
