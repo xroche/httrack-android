@@ -614,7 +614,7 @@ public class OptionsMapper {
     }
 
     /**
-     * The key/value pairs a profile file states, values still encoded.
+     * Reads a profile's stated pairs, values still encoded.
      *
      * @param profile
      *          The profile file (winprofile.ini), null when the project name

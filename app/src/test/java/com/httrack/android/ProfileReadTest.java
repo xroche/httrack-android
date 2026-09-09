@@ -15,7 +15,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-/** Reading a winprofile.ini, the null one a refused project name yields included. */
+/** Reads winprofile.ini, including the null file a refused project name yields. */
 public class ProfileReadTest {
   @Rule
   public final TemporaryFolder tmp = new TemporaryFolder();
@@ -85,7 +85,7 @@ public class ProfileReadTest {
 
     assertTrue("unserialize must hand the profile to rawFields",
         body.contains("ProfileFormat.rawFields(profile)"));
-    // A second mention is unserialize opening or stat'ing the file itself, which is the crash.
+    // A second mention is unserialize opening or testing the file itself, which is the crash.
     assertEquals("rawFields must be the only use of the profile file", 1,
         occurrences(body, "profile"));
     // Without it the %% escapes reach the UI verbatim.
