@@ -1,12 +1,12 @@
 package com.httrack.android;
 
 /**
- * At most one pending UI update, always carrying the newest payload. One posted task per engine
- * refresh grows the main thread's queue until the app stops answering input, and the frames dropped
- * in between cost nothing, because each one replaces the whole progress pane anyway.
+ * Holds at most one pending update, always the newest. One posted task per engine refresh grows
+ * the main thread's queue until the app stops answering input. The frames dropped in between cost
+ * nothing, because each one replaces the whole progress pane.
  */
 final class ProgressCoalescer<T> {
-  /** The frame to draw next, and null exactly when no task has been posted to draw one. */
+  /** Holds the frame to draw next, and is null exactly when no task has been posted. */
   private T pending;
 
   /**
@@ -26,8 +26,8 @@ final class ProgressCoalescer<T> {
   }
 
   /**
-   * Take the payload to draw, and let the next offer schedule again. Clearing here rather than
-   * after the drawing gives a refresh that lands mid-draw a task of its own.
+   * Take the payload to draw, and let the next offer schedule again. Clear before the drawing, not
+   * after, so a refresh landing mid-draw gets a task of its own.
    *
    * @return the newest payload, or null when nothing is pending
    */

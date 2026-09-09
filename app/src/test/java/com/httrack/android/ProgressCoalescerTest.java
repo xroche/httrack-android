@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 /**
- * The queue discipline HTTrackActivity.setProgressLines follows, with a counter standing in for
- * the looper no unit test can run.
+ * Verifies the queue discipline setProgressLines follows, with a counter standing in for the
+ * untestable looper.
  */
 public class ProgressCoalescerTest {
   /** Every drain pattern over the first six frames of a run. */
