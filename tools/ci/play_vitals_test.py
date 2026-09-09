@@ -17,17 +17,17 @@ class Flatten(unittest.TestCase):
     """The search methods take the nested body as dotted query parameters."""
 
     def test_nested_interval_becomes_dotted_keys(self):
-        got = pv.flatten("", {"interval": {"startTime": {"year": 2026, "hours": 0}}}, {})
+        got = pv.flatten({"interval": {"startTime": {"year": 2026, "hours": 0}}})
         self.assertEqual(got["interval.startTime.year"], ["2026"])
         self.assertEqual(got["interval.startTime.hours"], ["0"])
 
     def test_a_zone_survives_the_flattening(self):
-        got = pv.flatten("", {"i": pv.datetime_at(datetime.date(2026, 9, 1), "UTC")}, {})
+        got = pv.flatten({"i": pv.datetime_at(datetime.date(2026, 9, 1), "UTC")})
         self.assertEqual(got["i.timeZone.id"], ["UTC"])
         self.assertEqual(got["i.day"], ["1"])
 
     def test_a_repeated_key_keeps_every_value(self):
-        got = pv.flatten("", {"metrics": ["a", "b"]}, {})
+        got = pv.flatten({"metrics": ["a", "b"]})
         self.assertEqual(got["metrics"], ["a", "b"])
 
 
@@ -64,7 +64,13 @@ class Rows(unittest.TestCase):
             ["userPerceivedCrashRate28dUserWeighted", "distinctUsers"],
         )
         self.assertEqual(dims, {"versionCode": "63"})
-        self.assertEqual(values, [None, "12"])
+        self.assertIsNone(values["userPerceivedCrashRate28dUserWeighted"])
+        self.assertEqual(values["distinctUsers"], "12")
+
+    def test_an_empty_dimension_value_is_kept_rather_than_read_as_absent(self):
+        self.assertEqual(pv.dimension_value({"stringValue": ""}), "")
+        self.assertEqual(pv.dimension_value({"int64Value": "0"}), "0")
+        self.assertIsNone(pv.dimension_value({}))
 
 
 class Errors(unittest.TestCase):
@@ -78,6 +84,96 @@ class Errors(unittest.TestCase):
                     pv.call("t", "https://example/x")
         self.assertIn("has not been used in project", str(cm.exception))
         self.assertIn("View app quality information", str(cm.exception))
+
+
+class Body(unittest.TestCase):
+    """Play answers some calls 200 with no body at all, which json() cannot parse."""
+
+    def response(self, status=200, content=b"", payload=None):
+        r = mock.Mock(status_code=status, ok=status < 400, content=content, text=content.decode())
+        r.json.side_effect = (lambda: payload) if payload is not None else ValueError("no json")
+        return r
+
+    def test_an_empty_200_reads_as_an_empty_result_rather_than_raising(self):
+        with mock.patch("play_vitals.requests.request", return_value=self.response()):
+            self.assertEqual(pv.call("t", "https://example/x"), {})
+
+    def test_a_200_carrying_junk_exits_naming_the_url(self):
+        junk = self.response(content=b"<html>nope</html>")
+        with mock.patch("play_vitals.requests.request", return_value=junk):
+            with self.assertRaises(SystemExit) as cm:
+                pv.call("t", "https://example/x")
+        self.assertIn("non-JSON", str(cm.exception))
+        self.assertIn("https://example/x", str(cm.exception))
+
+    def test_a_500_exits_naming_the_method_and_the_url(self):
+        with mock.patch("play_vitals.requests.request", return_value=self.response(503)):
+            with self.assertRaises(SystemExit) as cm:
+                pv.call("t", "https://example/x", method="POST")
+        self.assertIn("503", str(cm.exception))
+        self.assertIn("POST", str(cm.exception))
+
+
+class Rates(unittest.TestCase):
+    """The threshold comparison is the whole point of the rates output."""
+
+    CRASH = pv.METRIC_SETS[0]
+
+    def row(self, weighted, day=7):
+        return {
+            "startTime": {"year": 2026, "month": 9, "day": day},
+            "metrics": [{"metric": self.CRASH.weighted, "decimalValue": {"value": weighted}}],
+        }
+
+    def count_over(self, *weighted):
+        rows = {"rows": [self.row(w, day=i + 1) for i, w in enumerate(weighted)]}
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            return pv.print_rates(rows, self.CRASH, "", "2026-09-01..2026-09-07")
+
+    def test_a_rate_over_the_threshold_counts(self):
+        self.assertEqual(self.count_over("0.1455"), 1)
+
+    def test_a_rate_under_the_threshold_does_not(self):
+        self.assertEqual(self.count_over("0.0001"), 0)
+
+    def test_a_rate_exactly_on_the_threshold_is_not_over(self):
+        self.assertEqual(self.count_over(str(self.CRASH.threshold)), 0)
+
+    def test_each_row_is_judged_rather_than_only_the_first(self):
+        self.assertEqual(self.count_over("0.0001", "0.5", "0.9"), 2)
+
+    def test_the_crash_and_anr_thresholds_are_not_interchangeable(self):
+        crash, anr = pv.METRIC_SETS
+        self.assertGreater(crash.threshold, anr.threshold)
+        self.assertIn("Crash", crash.weighted)
+        self.assertIn("Anr", anr.weighted)
+
+    def test_a_row_missing_the_weighted_metric_is_not_counted(self):
+        rows = {"rows": [{"startTime": {"year": 2026, "month": 9, "day": 7}, "metrics": []}]}
+        with mock.patch("sys.stdout", new=io.StringIO()):
+            self.assertEqual(pv.print_rates(rows, self.CRASH, "", "span"), 0)
+
+
+class Probe(unittest.TestCase):
+    def test_probe_reads_every_metric_set_and_reports_its_freshest_day(self):
+        payload = {
+            "freshnessInfo": {
+                "freshnesses": [
+                    {
+                        "aggregationPeriod": "DAILY",
+                        "latestEndTime": {"year": 2026, "month": 9, "day": 7},
+                    }
+                ]
+            }
+        }
+        out = io.StringIO()
+        with mock.patch("play_vitals.call", return_value=payload):
+            with mock.patch("sys.stdout", new=out):
+                pv.cmd_probe("t", None)
+        printed = out.getvalue()
+        for metric_set in pv.METRIC_SETS:
+            self.assertIn(metric_set.name, printed)
+        self.assertEqual(printed.count("2026-09-07"), len(pv.METRIC_SETS))
 
 
 if __name__ == "__main__":

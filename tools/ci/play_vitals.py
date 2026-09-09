@@ -16,6 +16,7 @@ service account have access at all" without asking for any data.
 """
 
 import argparse
+import collections
 import json
 import sys
 
@@ -30,25 +31,36 @@ BASE = f"https://playdeveloperreporting.googleapis.com/v1beta1/apps/{PKG}"
 # that timezone or the buckets do not line up with what the Console shows.
 DEFAULT_TZ = "America/Los_Angeles"
 
-# The rates Play compares against its thresholds: user-perceived, weighted over 28 days
-# by distinct users. The plain rate is kept because a per-version split of the weighted
-# one is meaningless on its own.
-CRASH_METRICS = ["userPerceivedCrashRate28dUserWeighted", "userPerceivedCrashRate", "distinctUsers"]
-ANR_METRICS = ["userPerceivedAnrRate28dUserWeighted", "userPerceivedAnrRate", "distinctUsers"]
+MetricSet = collections.namedtuple("MetricSet", "name weighted metrics threshold")
 
-# The bad-behaviour thresholds Play warns on, so the output can say which rows are over.
-CRASH_THRESHOLD = 0.0109
-ANR_THRESHOLD = 0.0047
+# The rate Play compares against its threshold is the user-perceived one, weighted over 28
+# days by distinct users. The plain rate rides along because a per-version split of the
+# weighted one is meaningless on its own.
+METRIC_SETS = (
+    MetricSet(
+        "crashRateMetricSet",
+        "userPerceivedCrashRate28dUserWeighted",
+        ["userPerceivedCrashRate28dUserWeighted", "userPerceivedCrashRate", "distinctUsers"],
+        0.0109,
+    ),
+    MetricSet(
+        "anrRateMetricSet",
+        "userPerceivedAnrRate28dUserWeighted",
+        ["userPerceivedAnrRate28dUserWeighted", "userPerceivedAnrRate", "distinctUsers"],
+        0.0047,
+    ),
+)
 
 
-def flatten(prefix, value, out):
+def flatten(value, out=None, prefix=""):
     """Encode a nested body as the dotted query parameters the search methods take."""
+    out = {} if out is None else out
     if isinstance(value, dict):
         for k, v in value.items():
-            flatten(f"{prefix}.{k}" if prefix else k, v, out)
+            flatten(v, out, f"{prefix}.{k}" if prefix else k)
     elif isinstance(value, list):
         for v in value:
-            flatten(prefix, v, out)
+            flatten(v, out, prefix)
     else:
         out.setdefault(prefix, []).append(str(value))
     return out
@@ -84,8 +96,13 @@ def call(token, url, method="GET", body=None, params=None):
             f"{r.text}"
         )
     if not r.ok:
-        sys.exit(f"{r.status_code} {r.request.method} {r.url}\n{r.text}")
-    return r.json()
+        sys.exit(f"{r.status_code} {method} {url}\n{r.text}")
+    if not r.content:
+        return {}
+    try:
+        return r.json()
+    except ValueError:
+        sys.exit(f"{r.status_code} {method} {url} answered non-JSON:\n{r.text[:500]}")
 
 
 def day_str(day):
@@ -101,31 +118,57 @@ def freshness(metric_set):
 
 
 def cmd_probe(token, _args):
-    for name in ("crashRateMetricSet", "anrRateMetricSet"):
-        latest = freshness(call(token, f"{BASE}/{name}"))
+    for metric_set in METRIC_SETS:
+        latest = freshness(call(token, f"{BASE}/{metric_set.name}"))
         when = day_str(latest) if latest else "no DAILY freshness reported"
-        print(f"{name}: readable, data through {when}")
+        print(f"{metric_set.name}: readable, data through {when}")
+
+
+def dimension_value(d):
+    """A dimension arrives as one of two typed fields, and "" and 0 are both real values."""
+    for key in ("stringValue", "int64Value"):
+        if key in d:
+            return d[key]
+    return None
 
 
 def rates_row(row, metrics):
+    """One row as (dimension name -> value, the metrics in the order asked for)."""
     values = {m["metric"]: m.get("decimalValue", {}).get("value") for m in row.get("metrics", [])}
-    dims = {
-        d["dimension"]: d.get("stringValue") or d.get("int64Value")
-        for d in row.get("dimensions", [])
-    }
-    return dims, [values.get(m) for m in metrics]
+    dims = {d["dimension"]: dimension_value(d) for d in row.get("dimensions", [])}
+    return dims, {m: values.get(m) for m in metrics}
+
+
+def print_rates(res, metric_set, by, span):
+    """Print one metric set's timeline, marking the rows Play would call bad behaviour."""
+    print(f"=== {metric_set.name} {span} by {by or 'nothing'} ===")
+    print("  " + "\t".join(["day"] + ([by] if by else []) + metric_set.metrics))
+    over = 0
+    for row in res.get("rows", []):
+        dims, values = rates_row(row, metric_set.metrics)
+        weighted = values[metric_set.weighted]
+        flag = ""
+        if weighted is not None and float(weighted) > metric_set.threshold:
+            flag, over = "  OVER", over + 1
+        cells = [day_str(row.get("startTime", {}))]
+        cells += [str(v) for v in dims.values()] + [str(v) for v in values.values()]
+        print("  " + "\t".join(cells) + flag)
+    print(f"  ({over} row(s) above the {metric_set.threshold:.2%} threshold)")
+    if not res.get("rows"):
+        print(
+            "  no rows: Play withholds dimensioned data below its privacy "
+            "aggregation threshold, so try again without --by"
+        )
+    return over
 
 
 def cmd_rates(token, args):
     import datetime
 
-    for name, metrics, threshold in (
-        ("crashRateMetricSet", CRASH_METRICS, CRASH_THRESHOLD),
-        ("anrRateMetricSet", ANR_METRICS, ANR_THRESHOLD),
-    ):
-        latest = freshness(call(token, f"{BASE}/{name}"))
+    for metric_set in METRIC_SETS:
+        latest = freshness(call(token, f"{BASE}/{metric_set.name}"))
         if not latest:
-            print(f"=== {name}: no data ===")
+            print(f"=== {metric_set.name}: no data ===")
             continue
         end = datetime.date(latest["year"], latest["month"], latest["day"])
         start = end - datetime.timedelta(days=args.days)
@@ -136,29 +179,11 @@ def cmd_rates(token, args):
                 "endTime": datetime_at(end, args.timezone),
             },
             "dimensions": [args.by] if args.by else [],
-            "metrics": metrics,
+            "metrics": metric_set.metrics,
             "pageSize": 1000,
         }
-        res = call(token, f"{BASE}/{name}:query", method="POST", body=body)
-        print(f"=== {name} {start}..{end} by {args.by or 'nothing'} ===")
-        print("  " + "\t".join(["day"] + ([args.by] if args.by else []) + metrics))
-        over = 0
-        for row in res.get("rows", []):
-            dims, values = rates_row(row, metrics)
-            day = row.get("startTime", {})
-            stamp = day_str(day)
-            weighted = values[0]
-            flag = ""
-            if weighted is not None and float(weighted) > threshold:
-                flag, over = "  OVER", over + 1
-            cells = [stamp] + [str(v) for v in dims.values()] + [str(v) for v in values]
-            print("  " + "\t".join(cells) + flag)
-        print(f"  ({over} row(s) above the {threshold:.2%} threshold)")
-        if not res.get("rows"):
-            print(
-                "  no rows: Play withholds dimensioned data below its privacy "
-                "aggregation threshold, so try again without --by"
-            )
+        res = call(token, f"{BASE}/{metric_set.name}:query", method="POST", body=body)
+        print_rates(res, metric_set, args.by, f"{start}..{end}")
 
 
 def cmd_issues(token, args):
