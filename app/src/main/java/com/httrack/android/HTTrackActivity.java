@@ -2927,7 +2927,7 @@ public class HTTrackActivity extends FragmentActivity {
    */
   public void onShowLogs(final View view) {
     final File log = getTargetLogFile();
-    if (log.exists()) {
+    if (log != null && log.exists()) {
       FileInputStream rd;
       try {
         rd = new FileInputStream(log);
