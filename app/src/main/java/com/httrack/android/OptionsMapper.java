@@ -614,6 +614,41 @@ public class OptionsMapper {
     }
 
     /**
+     * Reads a profile's stated pairs, values still encoded.
+     *
+     * @param profile
+     *          The profile file (winprofile.ini), null when the project name
+     *          was refused as a path
+     * @return the pairs, in file order
+     * @throws IOException
+     *           When there is no profile to read, or upon I/O error.
+     */
+    static Map<String, String> rawFields(final File profile)
+        throws IOException {
+      if (profile == null || !profile.exists()) {
+        throw new IOException("no such profile");
+      }
+      final Map<String, String> raw = new LinkedHashMap<String, String>();
+      final BufferedReader reader = new BufferedReader(new FileReader(profile));
+      try {
+        String rawline;
+        while ((rawline = reader.readLine()) != null) {
+          final String line = rawline.trim();
+          if (line.length() == 0 || line.charAt(0) == ';') {
+            continue;
+          }
+          final int sep = line.indexOf('=');
+          if (sep != -1) {
+            raw.put(line.substring(0, sep), line.substring(sep + 1));
+          }
+        }
+      } finally {
+        reader.close();
+      }
+      return raw;
+    }
+
+    /**
      * The keys a profile file already states, under their current spelling.
      *
      * @param profile
@@ -2016,45 +2051,26 @@ public class OptionsMapper {
    * Unserialize a specific profile from disk.
    * 
    * @param profile
-   *          The profile file (winprofile.ini)
+   *          The profile file (winprofile.ini), may be null
    * @param map
    *          The map to be filled
    * 
    * @throws IOException
-   *           Upon I/O error.
+   *           When there is no profile to read, or upon I/O error.
    */
   public static void unserialize(final File profile,
       final SparseArray<String> map) throws IOException {
-    // Write settings
-    if (!profile.exists()) {
-      throw new IOException("no such profile");
+    final Map<String, String> decoded = new LinkedHashMap<String, String>();
+    for (final Map.Entry<String, String> line : ProfileFormat.rawFields(profile)
+        .entrySet()) {
+      decoded.put(line.getKey(), OptionsMapper.profileDecode(line.getValue()));
     }
-    final FileReader reader = new FileReader(profile);
-    final BufferedReader lreader = new BufferedReader(reader);
-    try {
-      final Map<String, String> raw = new LinkedHashMap<String, String>();
-      String rawline;
-      while ((rawline = lreader.readLine()) != null) {
-        final String line = rawline.trim();
-        if (line.length() == 0 || line.charAt(0) == ';') {
-          continue;
-        }
-        final int sep = line.indexOf('=');
-        if (sep != -1) {
-          raw.put(line.substring(0, sep),
-              OptionsMapper.profileDecode(line.substring(sep + 1)));
-        }
+    for (final Map.Entry<String, String> field : ProfileFormat.resolve(decoded)
+        .entrySet()) {
+      final Integer id = OptionsMapper.fieldsNameToId.get(field.getKey());
+      if (id != null) {
+        map.put(id, field.getValue());
       }
-      for (final Map.Entry<String, String> field : ProfileFormat.resolve(raw)
-          .entrySet()) {
-        final Integer id = OptionsMapper.fieldsNameToId.get(field.getKey());
-        if (id != null) {
-          map.put(id, field.getValue());
-        }
-      }
-      lreader.close();
-    } finally {
-      reader.close();
     }
   }
 
