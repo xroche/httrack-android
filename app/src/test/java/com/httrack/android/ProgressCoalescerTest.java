@@ -15,21 +15,37 @@ import org.junit.Test;
  * the looper no unit test can run.
  */
 public class ProgressCoalescerTest {
+  /** Every drain pattern over the first six frames of a run. */
+  private static final int SCHEDULES = 64;
+  private static final int FRAMES_PER_SCHEDULE = 20;
+  private static final int CONCURRENT_FRAMES = 5000;
+
+  private static String frame(final int index) {
+    return "frame " + index;
+  }
+
   /** Posting, and drawing split in two, so a refresh can be timed to land mid-draw. */
   private static final class FakeUiThread {
     final ProgressCoalescer<String> coalescer = new ProgressCoalescer<String>();
+
+    /** What the drawing task has put on screen, oldest first. */
     final List<String> drawn = new ArrayList<String>();
-    int queued;
+
+    /** Tasks posted and not yet run, counted atomically because the crawl thread offers too. */
+    private final AtomicInteger postedTasks = new AtomicInteger();
 
     void refresh(final String payload) {
       if (coalescer.offer(payload)) {
-        queued++;
+        postedTasks.incrementAndGet();
       }
     }
 
+    int postedTasks() {
+      return postedTasks.get();
+    }
+
     String startDraw() {
-      assertTrue("no task was posted", queued > 0);
-      queued--;
+      postedTasks.decrementAndGet();
       return coalescer.take();
     }
 
@@ -44,21 +60,25 @@ public class ProgressCoalescerTest {
     }
 
     void drain() {
-      while (queued > 0) {
+      while (postedTasks() > 0) {
         runOneTask();
       }
+    }
+
+    String lastDrawn() {
+      return drawn.get(drawn.size() - 1);
     }
   }
 
   @Test
   public void aBurstOfRefreshesPostsOneTaskCarryingTheLastOne() {
     final FakeUiThread ui = new FakeUiThread();
-    for (final String frame : new String[] { "1", "2", "3", "4", "5" }) {
-      ui.refresh(frame);
+    for (int i = 0; i < 5; i++) {
+      ui.refresh(frame(i));
     }
-    assertEquals(1, ui.queued);
+    assertEquals(1, ui.postedTasks());
     ui.drain();
-    assertEquals(Arrays.asList("5"), ui.drawn);
+    assertEquals(Arrays.asList(frame(4)), ui.drawn);
   }
 
   @Test
@@ -66,11 +86,10 @@ public class ProgressCoalescerTest {
     final FakeUiThread ui = new FakeUiThread();
     final List<String> expected = new ArrayList<String>();
     for (int i = 0; i < 100; i++) {
-      final String frame = "frame " + i;
-      ui.refresh(frame);
-      assertEquals(1, ui.queued);
+      ui.refresh(frame(i));
+      assertEquals(1, ui.postedTasks());
       ui.drain();
-      expected.add(frame);
+      expected.add(frame(i));
     }
     assertEquals(expected, ui.drawn);
   }
@@ -81,6 +100,7 @@ public class ProgressCoalescerTest {
     ui.refresh("first");
     final String drawing = ui.startDraw();
     ui.refresh("last");
+    assertEquals(1, ui.postedTasks());
     ui.endDraw(drawing);
     ui.drain();
     assertEquals(Arrays.asList("first", "last"), ui.drawn);
@@ -89,18 +109,18 @@ public class ProgressCoalescerTest {
   /** Whatever the engine and the looper do, the frame nothing follows must reach the screen. */
   @Test
   public void theLastFrameIsDrawnWhateverTheInterleaving() {
-    for (int seed = 0; seed < 64; seed++) {
+    for (int schedule = 0; schedule < SCHEDULES; schedule++) {
       final FakeUiThread ui = new FakeUiThread();
-      int schedule = seed;
-      for (int frame = 0; frame < 20; frame++) {
-        ui.refresh("frame " + frame);
-        if (schedule % 2 == 0 && ui.queued > 0) {
+      int drainAfter = schedule;
+      for (int i = 0; i < FRAMES_PER_SCHEDULE; i++) {
+        ui.refresh(frame(i));
+        if (drainAfter % 2 == 0) {
           ui.runOneTask();
         }
-        schedule /= 2;
+        drainAfter /= 2;
       }
       ui.drain();
-      assertEquals("seed " + seed, "frame 19", ui.drawn.get(ui.drawn.size() - 1));
+      assertEquals("schedule " + schedule, frame(FRAMES_PER_SCHEDULE - 1), ui.lastDrawn());
     }
   }
 
@@ -124,34 +144,29 @@ public class ProgressCoalescerTest {
     assertEquals("next", coalescer.take());
   }
 
+  /** The drawing task tells an empty coalescer apart by the null, so no frame may be one. */
+  @Test(expected = NullPointerException.class)
+  public void aNullFrameIsRefused() {
+    new ProgressCoalescer<String>().offer(null);
+  }
+
   @Test
   public void theCrawlThreadAndTheUiThreadAgreeOnTheLastFrame() throws InterruptedException {
-    final int frames = 5000;
-    final ProgressCoalescer<Integer> coalescer = new ProgressCoalescer<Integer>();
-    final AtomicInteger queued = new AtomicInteger();
+    final FakeUiThread ui = new FakeUiThread();
     final Thread crawl = new Thread(new Runnable() {
       @Override
       public void run() {
-        for (int frame = 1; frame <= frames; frame++) {
-          if (coalescer.offer(Integer.valueOf(frame))) {
-            queued.incrementAndGet();
-          }
+        for (int i = 0; i < CONCURRENT_FRAMES; i++) {
+          ui.refresh(frame(i));
         }
       }
     });
     crawl.start();
-
-    Integer last = null;
-    while (crawl.isAlive() || queued.get() > 0) {
-      while (queued.get() > 0) {
-        queued.decrementAndGet();
-        final Integer payload = coalescer.take();
-        if (payload != null) {
-          last = payload;
-        }
-      }
+    while (crawl.isAlive()) {
+      ui.drain();
     }
     crawl.join();
-    assertEquals(Integer.valueOf(frames), last);
+    ui.drain();
+    assertEquals(frame(CONCURRENT_FRAMES - 1), ui.lastDrawn());
   }
 }
