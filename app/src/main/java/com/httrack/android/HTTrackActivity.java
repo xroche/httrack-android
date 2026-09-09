@@ -24,7 +24,6 @@ package com.httrack.android;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -96,6 +95,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -2926,17 +2926,40 @@ public class HTTrackActivity extends FragmentActivity {
    */
   public void onShowLogs(final View view) {
     final File log = getTargetLogFile();
-    if (log.exists()) {
-      FileInputStream rd;
-      try {
-        rd = new FileInputStream(log);
-        final byte[] data = new byte[(int) log.length()];
-        rd.read(data);
-        rd.close();
-        final String logs = new String(data, "UTF-8");
-        new AlertDialog.Builder(this).setTitle("Logs").setMessage(logs).show();
-      } catch (final IOException e) {
-      }
+    if (log == null || !log.exists()) {
+      return;
+    }
+    try {
+      showLogTail(log, LogTail.readNewest(log));
+    } catch (final IOException e) {
+      showNotification(e.getLocalizedMessage());
+    }
+  }
+
+  /** Show one window of the log, with a button for the window before it. */
+  private void showLogTail(final File log, final LogTail.Window window) {
+    final TextView text = new TextView(this);
+    text.setText(window.text());
+    final ScrollView scroll = new ScrollView(this);
+    scroll.addView(text);
+    final AlertDialog.Builder builder = new AlertDialog.Builder(this)
+        .setTitle(R.string.show_logs).setView(scroll)
+        .setPositiveButton(android.R.string.ok, null);
+    if (window.hasEarlier()) {
+      builder.setNeutralButton(R.string.show_logs_earlier,
+          (dialog, which) -> showEarlierLogTail(log, window.start()));
+    }
+    builder.show();
+    // A tail is worth reading from its end.
+    scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+  }
+
+  /** Show the window that ends where the one on screen begins. */
+  private void showEarlierLogTail(final File log, final long end) {
+    try {
+      showLogTail(log, LogTail.read(log, end));
+    } catch (final IOException e) {
+      showNotification(e.getLocalizedMessage());
     }
   }
 
