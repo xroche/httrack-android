@@ -226,6 +226,19 @@ public class HTTrackActivity extends FragmentActivity {
   // Handler to execute code in UI thread
   private final Handler handlerUI = new Handler();
 
+  // The engine refreshes faster than the main thread can draw, so only the newest frame is queued
+  private final ProgressCoalescer<String[]> progressLines = new ProgressCoalescer<String[]>();
+
+  private final Runnable progressLinesTask = new Runnable() {
+    @Override
+    public void run() {
+      final String[] lines = progressLines.take();
+      if (lines != null) {
+        setProgressLinesInternal(lines);
+      }
+    }
+  };
+
   // Interrupt was requested
   protected boolean interruptRequested;
 
@@ -2380,12 +2393,10 @@ public class HTTrackActivity extends FragmentActivity {
    * Set the "progress" layout lines. To be run in any thread.
    */
   protected void setProgressLines(final String[] lines) {
-    handlerUI.post(new Runnable() {
-      @Override
-      public void run() {
-        setProgressLinesInternal(lines);
-      }
-    });
+    if (progressLines.offer(lines) && !handlerUI.post(progressLinesTask)) {
+      // The looper is gone, so nothing would ever disarm the coalescer.
+      progressLines.take();
+    }
   }
 
   /*
