@@ -24,7 +24,6 @@ package com.httrack.android;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -53,7 +52,6 @@ import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.ContentResolver;
@@ -97,6 +95,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -2666,8 +2665,8 @@ public class HTTrackActivity extends FragmentActivity {
     try {
       showNotification(getString(R.string.import_mirrors_prompt));
       startActivityForResult(intent, ACTIVITY_IMPORT_TREE);
-    } catch (final ActivityNotFoundException e) {
-      Log.w(getClass().getSimpleName(), "no document-tree picker", e);
+    } catch (final Exception e) {
+      Log.w(getClass().getSimpleName(), "could not open the document-tree picker", e);
       showNotification(getString(R.string.import_mirrors_none));
     }
   }
@@ -2927,17 +2926,40 @@ public class HTTrackActivity extends FragmentActivity {
    */
   public void onShowLogs(final View view) {
     final File log = getTargetLogFile();
-    if (log != null && log.exists()) {
-      FileInputStream rd;
-      try {
-        rd = new FileInputStream(log);
-        final byte[] data = new byte[(int) log.length()];
-        rd.read(data);
-        rd.close();
-        final String logs = new String(data, "UTF-8");
-        new AlertDialog.Builder(this).setTitle("Logs").setMessage(logs).show();
-      } catch (final IOException e) {
-      }
+    if (log == null || !log.exists()) {
+      return;
+    }
+    try {
+      showLogTail(log, LogTail.readNewest(log));
+    } catch (final IOException e) {
+      showNotification(e.getLocalizedMessage());
+    }
+  }
+
+  /** Show one window of the log, with a button for the window before it. */
+  private void showLogTail(final File log, final LogTail.Window window) {
+    final TextView text = new TextView(this);
+    text.setText(window.text());
+    final ScrollView scroll = new ScrollView(this);
+    scroll.addView(text);
+    final AlertDialog.Builder builder = new AlertDialog.Builder(this)
+        .setTitle(R.string.show_logs).setView(scroll)
+        .setPositiveButton(android.R.string.ok, null);
+    if (window.hasEarlier()) {
+      builder.setNeutralButton(R.string.show_logs_earlier,
+          (dialog, which) -> showEarlierLogTail(log, window.start()));
+    }
+    builder.show();
+    // A tail is worth reading from its end.
+    scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+  }
+
+  /** Show the window that ends where the one on screen begins. */
+  private void showEarlierLogTail(final File log, final long end) {
+    try {
+      showLogTail(log, LogTail.read(log, end));
+    } catch (final IOException e) {
+      showNotification(e.getLocalizedMessage());
     }
   }
 
@@ -3066,7 +3088,7 @@ public class HTTrackActivity extends FragmentActivity {
   @Override
   public void onConfigurationChanged(final Configuration newConfig) {
     Log.d(getClass().getSimpleName(), "onConfigurationChanged");
-    // TODO: handle orientation change ?
+    super.onConfigurationChanged(newConfig);
   }
 
   @Override
@@ -3413,11 +3435,27 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /** Navigate back to home, without killing us. **/
+  /** Leave the foreground, without killing us. **/
   private void goToHome() {
-    final Intent intent = new Intent(Intent.ACTION_MAIN);
-    intent.addCategory(Intent.CATEGORY_HOME);
-    startActivity(intent);
+    // Throws only when system_server has died, which takes this process with it anyway.
+    final boolean moved = moveTaskToBack(true);
+    final boolean home = BackgroundPolicy.askTheLauncher(moved) && startHomeIntent();
+    if (BackgroundPolicy.stillOnScreen(moved, home)) {
+      Log.w(getClass().getSimpleName(), "back pressed, but the task would not move");
+    }
+  }
+
+  /** Ask the launcher for the home screen, and return false when it refuses with an exception. */
+  private boolean startHomeIntent() {
+    try {
+      final Intent intent = new Intent(Intent.ACTION_MAIN);
+      intent.addCategory(Intent.CATEGORY_HOME);
+      startActivity(intent);
+      return true;
+    } catch (final Exception e) {
+      Log.w(getClass().getSimpleName(), "no home screen to go to", e);
+      return false;
+    }
   }
 
   /*

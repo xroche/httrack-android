@@ -63,6 +63,23 @@ final class TestSources {
         + ".java"));
   }
 
+  /** Every checked-in Java source of the app, inner packages included. */
+  static List<File> javaSources() {
+    final List<File> files = new ArrayList<File>();
+    collectJava(dir("src/main/java"), files);
+    return files;
+  }
+
+  private static void collectJava(final File dir, final List<File> files) {
+    for (final File file : dir.listFiles()) {
+      if (file.isDirectory()) {
+        collectJava(file, files);
+      } else if (file.getName().endsWith(".java")) {
+        files.add(file);
+      }
+    }
+  }
+
   /** Source of the JNI glue file NAME, such as "htslibjni.c". */
   static String jniSource(final String name) throws IOException {
     return read(new File(dir("src/main/jni"), name));

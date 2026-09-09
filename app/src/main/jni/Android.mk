@@ -105,7 +105,6 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
 	-Wno-nested-externs														\
 	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6			\
 	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
-	-DHTS_CRASH_TEST														\
 	-Wl,-O1
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
