@@ -7,10 +7,11 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
-
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -137,9 +138,23 @@ public class LogTailTest {
     final byte[] bytes = new byte[LogTail.WINDOW + 1];
     Arrays.fill(bytes, (byte) 0x80);
     final File file = writeBytes(bytes);
+    final LogTail.Window window = LogTail.readNewest(file);
 
-    assertFalse(LogTail.readNewest(file).text().isEmpty());
+    // Uncapped, the skip would run to the last byte and leave a window one character long.
+    assertEquals(1 + LogTail.MAX_SPLIT_TAIL, window.start());
+    assertEquals(LogTail.WINDOW - LogTail.MAX_SPLIT_TAIL, window.text().length());
     assertFalse(walkBack(file).isEmpty());
+  }
+
+  /** A log rotated away under the read delivers less than it promised, which must not empty it. */
+  @Test
+  public void aChannelThatDeliversLessThanItPromisedIsNotSkippedWhole() throws IOException {
+    final byte[] delivered = {(byte) 0x80, (byte) 0x80};
+    final LogTail.Window window =
+        LogTail.read(new DribblingChannel(delivered, LogTail.WINDOW + 1), LogTail.WINDOW + 1);
+
+    assertFalse(window.text().isEmpty());
+    assertTrue(window.start() < LogTail.WINDOW + 1);
   }
 
   /**
@@ -184,38 +199,70 @@ public class LogTailTest {
   }
 
   /** One byte per read, which is the case the fill loop exists for. */
-  private static final class DribblingSource implements LogTail.Source {
+  private static final class DribblingChannel implements SeekableByteChannel {
     private final byte[] bytes;
+    private final long size;
     private int position;
 
-    DribblingSource(final byte[] bytes) {
+    DribblingChannel(final byte[] bytes) {
+      this(bytes, bytes.length);
+    }
+
+    /** A size larger than {@code bytes} models a file that shrank after it was measured. */
+    DribblingChannel(final byte[] bytes, final long size) {
       this.bytes = bytes;
+      this.size = size;
     }
 
     @Override
-    public long length() {
-      return bytes.length;
+    public long size() {
+      return size;
     }
 
     @Override
-    public void seek(final long start) {
+    public long position() {
+      return position;
+    }
+
+    @Override
+    public SeekableByteChannel position(final long start) {
       position = (int) start;
+      return this;
     }
 
     @Override
-    public int read(final byte[] buf, final int offset, final int count) {
-      if (count == 0 || position >= bytes.length) {
+    public int read(final ByteBuffer buf) {
+      if (!buf.hasRemaining() || position >= bytes.length) {
         return -1;
       }
-      buf[offset] = bytes[position++];
+      buf.put(bytes[position++]);
       return 1;
+    }
+
+    @Override
+    public int write(final ByteBuffer buf) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public SeekableByteChannel truncate(final long size) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isOpen() {
+      return true;
+    }
+
+    @Override
+    public void close() {
     }
   }
 
   @Test
   public void aShortReadStillFillsTheWindow() throws IOException {
     final byte[] bytes = "first line\nsecond line\n".getBytes(StandardCharsets.UTF_8);
-    final LogTail.Window window = LogTail.read(new DribblingSource(bytes), bytes.length);
+    final LogTail.Window window = LogTail.read(new DribblingChannel(bytes), bytes.length);
     assertEquals(new String(bytes, StandardCharsets.UTF_8), window.text());
   }
 

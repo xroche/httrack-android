@@ -3,53 +3,26 @@ package com.httrack.android;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 
 /**
  * One window of the end of a log file. A crawl log reaches tens of MB, so reading it whole exhausts
- * memory and a view given it all blocks laying it out; WINDOW bounds both. No Android type appears
+ * memory and a view given it all blocks laying it out. WINDOW bounds both. No Android type appears
  * here, so the windowing can be tested.
  */
 final class LogTail {
   /** Bytes read per window, and so the most text a view is ever given. */
   static final int WINDOW = 128 * 1024;
 
-  /** Continuation bytes a UTF-8 sequence split by the window start can leave behind. */
-  private static final int MAX_SPLIT_TAIL = 3;
+  /**
+   * Continuation bytes a UTF-8 sequence split by the window start can leave behind. Bytes that are
+   * not UTF-8 at all must not cost the window more than that.
+   */
+  static final int MAX_SPLIT_TAIL = 3;
 
   private LogTail() {
-  }
-
-  /** The file operations a window needs, so a test can make a read come back short. */
-  interface Source {
-    long length() throws IOException;
-
-    void seek(long position) throws IOException;
-
-    int read(byte[] buf, int offset, int count) throws IOException;
-  }
-
-  private static final class FileSource implements Source {
-    private final RandomAccessFile file;
-
-    FileSource(final RandomAccessFile file) {
-      this.file = file;
-    }
-
-    @Override
-    public long length() throws IOException {
-      return file.length();
-    }
-
-    @Override
-    public void seek(final long position) throws IOException {
-      file.seek(position);
-    }
-
-    @Override
-    public int read(final byte[] buf, final int offset, final int count) throws IOException {
-      return file.read(buf, offset, count);
-    }
   }
 
   /** A window of log text, and where it begins so the caller can ask for the one before it. */
@@ -86,33 +59,31 @@ final class LogTail {
    * @return the window, beginning on a whole line where one starts inside it
    */
   static Window read(final File file, final long end) throws IOException {
+    // FileChannel.open needs File.toPath, which is API 26; getChannel is the one minSdk 24 has.
     final RandomAccessFile rd = new RandomAccessFile(file, "r");
     try {
-      return read(new FileSource(rd), end);
+      return read(rd.getChannel(), end);
     } finally {
       rd.close();
     }
   }
 
   /** Read one window from {@code source}, which the caller opens and closes. */
-  static Window read(final Source source, final long end) throws IOException {
-    final long stop = Math.min(end, source.length());
+  static Window read(final SeekableByteChannel source, final long end) throws IOException {
+    final long stop = Math.min(end, source.size());
     if (stop <= 0) {
       return new Window("", 0);
     }
     final long begin = Math.max(0, stop - WINDOW);
-    final byte[] buf = new byte[(int) (stop - begin)];
-    source.seek(begin);
-    int len = 0;
-    while (len < buf.length) {
-      final int count = source.read(buf, len, buf.length - len);
-      if (count <= 0) {
-        break;
-      }
-      len += count;
+    final ByteBuffer buf = ByteBuffer.allocate((int) (stop - begin));
+    source.position(begin);
+    while (buf.hasRemaining() && source.read(buf) > 0) {
+      // A read can come back short, so ask again until the window is full or the file ends.
     }
-    final int skip = begin != 0 ? boundary(buf, len) : 0;
-    return new Window(new String(buf, skip, len - skip, StandardCharsets.UTF_8), begin + skip);
+    final int len = buf.position();
+    final int skip = begin != 0 ? boundary(buf.array(), len) : 0;
+    return new Window(
+        new String(buf.array(), skip, len - skip, StandardCharsets.UTF_8), begin + skip);
   }
 
   /** Read the end of the log, which is the window a reader opening it wants. */
@@ -121,10 +92,10 @@ final class LogTail {
   }
 
   /**
-   * Where a window that starts mid-file becomes readable. Past its first newline, which drops the
-   * half line and lands on a character boundary too, because a newline byte never occurs inside a
-   * UTF-8 sequence; with no newline to reach, past the continuation bytes instead. Never past the
-   * whole buffer, or a line longer than the window would give an empty window forever.
+   * Where a mid-file window may start, chosen so it never comes back empty. Skip to the first
+   * newline, but not one on the buffer's last byte. A UTF-8 sequence never contains a newline, so
+   * stopping there also lands on a character boundary. Failing that, skip up to MAX_SPLIT_TAIL
+   * continuation bytes, never the whole buffer.
    */
   private static int boundary(final byte[] buf, final int len) {
     for (int i = 0; i + 1 < len; i++) {
