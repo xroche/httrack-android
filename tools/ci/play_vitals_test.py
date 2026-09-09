@@ -383,10 +383,14 @@ class Issues(unittest.TestCase):
                 pv.cmd_issues("t", args)
         return out.getvalue(), asked
 
-    def test_both_searches_ask_for_the_number_of_reports_requested(self):
+    def test_the_report_search_asks_for_the_number_of_reports_requested(self):
         _, asked = self.run_issues(wanted=3, traces=1)
         self.assertEqual(asked["reports"]["pageSize"], ["3"])
-        self.assertEqual(asked["issues"]["sampleErrorReportLimit"], ["3"])
+
+    def test_the_cluster_search_never_asks_for_more_than_one_sample(self):
+        for wanted in (1, 3, 25):
+            _, asked = self.run_issues(wanted=wanted, traces=1)
+            self.assertEqual(asked["issues"]["sampleErrorReportLimit"], ["1"])
 
     def test_every_report_the_api_returns_is_labelled_once(self):
         printed, _ = self.run_issues(wanted=3, traces=1)
