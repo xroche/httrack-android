@@ -52,18 +52,22 @@ METRIC_SETS = (
 )
 
 
-def flatten(value, out=None, prefix=""):
+def flatten(body):
     """Encode a nested body as the dotted query parameters the search methods take."""
-    out = {} if out is None else out
+    out = {}
+    _flatten(body, out, "")
+    return out
+
+
+def _flatten(value, out, prefix):
     if isinstance(value, dict):
         for k, v in value.items():
-            flatten(v, out, f"{prefix}.{k}" if prefix else k)
+            _flatten(v, out, f"{prefix}.{k}" if prefix else k)
     elif isinstance(value, list):
         for v in value:
-            flatten(v, out, prefix)
+            _flatten(v, out, prefix)
     else:
         out.setdefault(prefix, []).append(str(value))
-    return out
 
 
 def datetime_at(day, tz):
@@ -203,7 +207,6 @@ def cmd_issues(token, args):
         if args.version_code:
             terms.append(f"versionCode = {args.version_code}")
         params = flatten(
-            "",
             {
                 "interval": {
                     "startTime": datetime_at(start, tz),
@@ -213,8 +216,7 @@ def cmd_issues(token, args):
                 "orderBy": "distinctUsers desc",
                 "pageSize": args.limit,
                 "sampleErrorReportLimit": args.samples,
-            },
-            {},
+            }
         )
         res = call(token, f"{BASE}/errorIssues:search", params=params)
         issues = res.get("errorIssues", [])
@@ -241,13 +243,11 @@ def search_reports(token, issue_name, start, end, tz, limit):
     """
     issue_id = issue_name.rsplit("/", 1)[-1]
     params = flatten(
-        "",
         {
             "interval": {"startTime": datetime_at(start, tz), "endTime": datetime_at(end, tz)},
             "filter": f"errorIssueId = {issue_id}",
             "pageSize": limit,
-        },
-        {},
+        }
     )
     res = call(token, f"{BASE}/errorReports:search", params=params)
     return [r.get("reportText", "") for r in res.get("errorReports", [])]

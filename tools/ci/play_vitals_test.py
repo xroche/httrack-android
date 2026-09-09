@@ -176,5 +176,54 @@ class Probe(unittest.TestCase):
         self.assertEqual(printed.count("2026-09-07"), len(pv.METRIC_SETS))
 
 
+class SearchParams(unittest.TestCase):
+    """The command paths build their own query, and nothing used to exercise them.
+
+    A refactor of flatten() left both call sites passing the old argument order. Every
+    unit test still passed, because they all called flatten() directly.
+    """
+
+    def captured_params(self, fn):
+        seen = {}
+
+        def fake_call(_token, url, method="GET", body=None, params=None):
+            seen["url"], seen["params"] = url, params
+            return {}
+
+        with mock.patch("play_vitals.call", side_effect=fake_call):
+            fn()
+        return seen
+
+    def test_search_reports_sends_a_dotted_interval_and_filter(self):
+        seen = self.captured_params(
+            lambda: pv.search_reports(
+                "t",
+                "apps/com.httrack.android/abc123",
+                datetime.date(2026, 8, 10),
+                datetime.date(2026, 9, 7),
+                "UTC",
+                1,
+            )
+        )
+        self.assertTrue(seen["url"].endswith("/errorReports:search"))
+        self.assertEqual(seen["params"]["interval.startTime.year"], ["2026"])
+        self.assertEqual(seen["params"]["interval.endTime.day"], ["7"])
+        self.assertEqual(seen["params"]["filter"], ["errorIssueId = abc123"])
+        self.assertEqual(seen["params"]["pageSize"], ["1"])
+
+    def test_the_issue_id_is_taken_from_the_last_path_segment(self):
+        seen = self.captured_params(
+            lambda: pv.search_reports(
+                "t",
+                "apps/com.httrack.android/deadbeef",
+                datetime.date(2026, 9, 1),
+                datetime.date(2026, 9, 7),
+                "UTC",
+                2,
+            )
+        )
+        self.assertEqual(seen["params"]["filter"], ["errorIssueId = deadbeef"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
