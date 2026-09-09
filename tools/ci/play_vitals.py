@@ -169,6 +169,7 @@ def print_rates(res, metric_set, by, span):
 def cmd_rates(token, args):
     import datetime
 
+    over = {}
     for metric_set in METRIC_SETS:
         latest = freshness(call(token, f"{BASE}/{metric_set.name}"))
         if not latest:
@@ -187,7 +188,9 @@ def cmd_rates(token, args):
             "pageSize": 1000,
         }
         res = call(token, f"{BASE}/{metric_set.name}:query", method="POST", body=body)
-        print_rates(res, metric_set, args.by, f"{start}..{end}")
+        over[metric_set.name] = print_rates(res, metric_set, args.by, f"{start}..{end}")
+    bad = [name for name, count in over.items() if count]
+    print(f"\nover threshold: {', '.join(bad) if bad else 'nothing'}")
 
 
 def cmd_issues(token, args):
