@@ -6,29 +6,27 @@ package com.httrack.android;
  * in between cost nothing, because each one replaces the whole progress pane anyway.
  */
 final class ProgressCoalescer<T> {
+  /** The frame to draw next, and null exactly when no task has been posted to draw one. */
   private T pending;
-  private boolean armed;
 
   /**
-   * Keep this payload as the one to draw next.
+   * Keep this payload as the one to draw next, and say whether a task must now be posted.
    *
-   * @param payload the newest progress, never null
-   * @return true when the caller must schedule the drawing task
+   * @param payload the newest progress, never null, since a null would read as nothing pending
+   * @return true when the caller must schedule the drawing task, false when a pending one will
+   *         carry this payload instead
    */
-  synchronized boolean offer(final T payload) {
+  synchronized boolean offerNeedsPost(final T payload) {
     if (payload == null) {
       throw new NullPointerException("payload");
     }
+    final boolean needsPost = pending == null;
     pending = payload;
-    if (armed) {
-      return false;
-    }
-    armed = true;
-    return true;
+    return needsPost;
   }
 
   /**
-   * Take the payload to draw, and let the next offer schedule again. Disarming here rather than
+   * Take the payload to draw, and let the next offer schedule again. Clearing here rather than
    * after the drawing gives a refresh that lands mid-draw a task of its own.
    *
    * @return the newest payload, or null when nothing is pending
@@ -42,6 +40,5 @@ final class ProgressCoalescer<T> {
   /** Drop whatever is pending and let the next offer schedule again. */
   synchronized void disarm() {
     pending = null;
-    armed = false;
   }
 }

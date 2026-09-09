@@ -233,6 +233,7 @@ public class HTTrackActivity extends FragmentActivity {
     @Override
     public void run() {
       final String[] lines = progressLines.take();
+      // Defensive: only a disarm after the post could empty the coalescer, and nothing live does.
       if (lines != null) {
         setProgressLinesInternal(lines);
       }
@@ -2393,8 +2394,8 @@ public class HTTrackActivity extends FragmentActivity {
    * Set the "progress" layout lines. To be run in any thread.
    */
   protected void setProgressLines(final String[] lines) {
-    if (progressLines.offer(lines) && !handlerUI.post(progressLinesTask)) {
-      // The looper is gone, so nothing would ever disarm the coalescer.
+    if (progressLines.offerNeedsPost(lines) && !handlerUI.post(progressLinesTask)) {
+      // Unreachable short of process death, since post() only refuses once the Looper quits.
       progressLines.disarm();
     }
   }

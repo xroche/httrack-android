@@ -35,7 +35,7 @@ public class ProgressCoalescerTest {
     private final AtomicInteger postedTasks = new AtomicInteger();
 
     void refresh(final String payload) {
-      if (coalescer.offer(payload)) {
+      if (coalescer.offerNeedsPost(payload)) {
         postedTasks.incrementAndGet();
       }
     }
@@ -128,7 +128,7 @@ public class ProgressCoalescerTest {
   public void aTaskWhoseFrameWasAlreadyDrawnDrawsNothing() {
     final ProgressCoalescer<String> coalescer = new ProgressCoalescer<String>();
     assertNull(coalescer.take());
-    coalescer.offer("frame");
+    coalescer.offerNeedsPost("frame");
     assertEquals("frame", coalescer.take());
     assertNull(coalescer.take());
   }
@@ -137,17 +137,17 @@ public class ProgressCoalescerTest {
   @Test
   public void disarmingDropsThePendingFrameAndLetsTheNextOnePost() {
     final ProgressCoalescer<String> coalescer = new ProgressCoalescer<String>();
-    assertTrue(coalescer.offer("stranded"));
+    assertTrue(coalescer.offerNeedsPost("stranded"));
     coalescer.disarm();
     assertNull(coalescer.take());
-    assertTrue(coalescer.offer("next"));
+    assertTrue(coalescer.offerNeedsPost("next"));
     assertEquals("next", coalescer.take());
   }
 
-  /** The drawing task tells an empty coalescer apart by the null, so no frame may be one. */
+  /** A null frame would read as no task pending, and post a second one over the first. */
   @Test(expected = NullPointerException.class)
   public void aNullFrameIsRefused() {
-    new ProgressCoalescer<String>().offer(null);
+    new ProgressCoalescer<String>().offerNeedsPost(null);
   }
 
   @Test
