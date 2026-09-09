@@ -1,10 +1,10 @@
-HTTrack 3.50, dokuz yıl sonra ilk Android sürümü.
+HTTrack 3.50.1: motor güncellendi, çökmeler giderildi.
 
-• HTTPS yeniden çalışıyor: 2017 sürümünün TLS'i fazla eski
-• Güncel Android'de çalışır, 64 bit
-• Modern sayfalar da kopyalanır, srcset ve geç yüklenen görseller dahil
-• Kopyalar paylaşılan depolamaya gider, başka uygulamalar açabilir
-• Güncelleme artık saklaması gereken dosyaları silmiyor
-• Seçenekler dediğini yapar, bitiş ekranı da ne olduğunu söyler
+• Giderilen çökmeler: eğik çizgili proje adı, ekran döndürme, büyük günlük
+• Uzun indirmeler artık ilerleme ekranını dondurmuyor
+• Bir kopyayı güncelleme, değişen sayfaları yeniden alır
+• Kopyalardaki JavaScript ve stiller yeniden çalışıyor
+• Ziyaret edilen bir sayfa artık telefonunuzdan dosya gönderemez
+• Durdur, sonra Devam yarım inen dosyaları sürdürür
 
-Sorunları GitHub'da bildirin.
+Bu sürümden önce yarıda kalan indirme bir kez baştan başlar.

@@ -1,10 +1,10 @@
-HTTrack 3.50, esimene Androidi väljalase üheksa aasta jooksul.
+HTTrack 3.50.1: uuendatud mootor ja parandatud krahhid.
 
-• HTTPS töötab taas: 2017. aasta versiooni TLS on liiga vana
-• Töötab tänapäevases Androidis, 64 bitil
-• Nüüdisaegsed lehed salvestatakse, ka srcset ja hiljem laaditavad pildid
-• Koopiad lähevad jagatud salvestusruumi ja teised rakendused avavad need
-• Uuendus ei kustuta enam faile, mida peab alles hoidma
-• Valikud teevad seda, mida lubavad, ja lõppekraan ütleb, mis juhtus
+• Parandatud krahhid: kaldkriipsuga projekti nimi, ekraani pööramine, suur logi
+• Pikad allalaadimised ei külmuta enam edenemise ekraani
+• Koopia uuendamine laadib muutunud lehed uuesti
+• Koopiate JavaScript ja laaditabelid töötavad taas
+• Külastatud leht ei saa enam saata faili teie telefonist
+• Peata ja siis Jätka jätkab poolikuid faile
 
-Teatage probleemidest GitHubis.
+Enne seda versiooni katkenud allalaadimine algab korra otsast peale.

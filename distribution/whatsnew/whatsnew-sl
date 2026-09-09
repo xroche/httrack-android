@@ -1,10 +1,10 @@
-HTTrack 3.50, prva izdaja za Android po devetih letih.
+HTTrack 3.50.1: posodobljeno jedro in odpravljena sesutja.
 
-• HTTPS spet deluje: TLS v izdaji iz leta 2017 je prestar
-• Teče na sodobnem Androidu, v 64 bitih
-• Sodobne strani se prenesejo, tudi srcset in zakasnjene slike
-• Kopije gredo v skupno shrambo, druge aplikacije jih odprejo
-• Posodobitev ne briše več datotek, ki jih mora ohraniti
-• Možnosti delajo, kar obljubljajo, končni zaslon pa pove, kaj se je zgodilo
+• Odpravljena sesutja: ime projekta s poševnico, vrtenje zaslona, velik dnevnik
+• Dolgi prenosi ne zamrznejo več zaslona z napredkom
+• Posodobitev kopije znova prenese spremenjene strani
+• JavaScript in slogi v kopijah spet delujejo
+• Obiskana stran ne more več poslati datoteke iz vašega telefona
+• Ustavi in nato Nadaljuj nadaljuje na pol prenesene datoteke
 
-Težave sporočite na GitHubu.
+Prenos, prekinjen pred to različico, se enkrat začne znova.
