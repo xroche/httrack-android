@@ -9,7 +9,7 @@ Usage:
   play_vitals.py <sa_json> probe
   play_vitals.py <sa_json> rates [--days N] [--by versionCode|apiLevel|deviceModel]
   play_vitals.py <sa_json> issues [--kind crash|anr|both] [--days N] [--limit N]
-                            [--samples N] [--version-code VC]
+                            [--samples N] [--traces N] [--version-code VC]
 
 `probe` only reads the two metric-set descriptors, so it answers "does this
 service account have access at all" without asking for any data.
@@ -233,12 +233,38 @@ def cmd_issues(token, args):
             print(f"    {issue.get('type')} in {issue.get('location')}")
             print(f"    {issue.get('cause')}")
             print(f"    id {issue.get('name')}")
-            for text in search_reports(token, issue.get("name", ""), start, end, tz, args.samples):
-                print(indent(text))
+            reports = search_reports(token, issue.get("name", ""), start, end, tz, args.samples)
+            for rank, report in enumerate(reports):
+                print(f"    [{report_identity(report)}]")
+                if rank < args.traces:
+                    print(indent(report.get("reportText", "")))
+
+
+def subobject(d, key):
+    """Returns a nested object, or an empty one when the field is absent or null."""
+    value = d.get(key)
+    return value if isinstance(value, dict) else {}
+
+
+def report_identity(report):
+    """Returns one report's build, API level and device as a single line.
+
+    Every field here is optional, so an absent one prints as "?" rather than dropping
+    out and shifting what is left onto the wrong label.
+    """
+    model = subobject(report, "deviceModel")
+    device = subobject(model, "deviceId")
+    build = "/".join(p for p in (device.get("buildBrand"), device.get("buildDevice")) if p)
+    name = model.get("marketingName")
+    return (
+        f"vc {subobject(report, 'appVersion').get('versionCode', '?')}, "
+        f"api {subobject(report, 'osVersion').get('apiLevel', '?')}, "
+        f"{build or '?'}" + (f" ({name})" if name else "")
+    )
 
 
 def search_reports(token, issue_name, start, end, tz, limit):
-    """Returns the stack traces behind one cluster.
+    """Returns the reports behind one cluster, each with its device and versions.
 
     The issue carries sample report names, but only the names, and they are not a
     resource path any GET accepts. errorReports:search filtered on the issue id is the
@@ -253,7 +279,7 @@ def search_reports(token, issue_name, start, end, tz, limit):
         }
     )
     res = call(token, f"{BASE}/errorReports:search", params=params)
-    return [r.get("reportText", "") for r in res.get("errorReports", [])]
+    return res.get("errorReports", [])
 
 
 def indent(text):
@@ -277,7 +303,8 @@ def main():
     i.add_argument("--kind", default="both", choices=["crash", "anr", "both"])
     i.add_argument("--days", type=int, default=28)
     i.add_argument("--limit", type=int, default=15)
-    i.add_argument("--samples", type=int, default=1)
+    i.add_argument("--samples", type=int, default=1, help="reports read per cluster")
+    i.add_argument("--traces", type=int, default=1, help="of those, how many print a stack trace")
     i.add_argument("--version-code", type=int)
     args = p.parse_args()
 

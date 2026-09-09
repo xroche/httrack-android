@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for play_vitals.py, stubbing what the Reporting API really returns."""
 
+import argparse
 import datetime
 import io
 import os
@@ -223,6 +224,87 @@ class SearchParams(unittest.TestCase):
             )
         )
         self.assertEqual(seen["params"]["filter"], ["errorIssueId = deadbeef"])
+
+
+class ReportIdentity(unittest.TestCase):
+    """Every field of an ErrorReport is optional, so absence is the normal case."""
+
+    FULL = {
+        "appVersion": {"versionCode": "63"},
+        "osVersion": {"apiLevel": "24"},
+        "deviceModel": {
+            "marketingName": "Galaxy A51",
+            "deviceId": {"buildBrand": "samsung", "buildDevice": "a51"},
+        },
+    }
+
+    def test_a_complete_report_names_the_build_the_api_level_and_the_device(self):
+        self.assertEqual(pv.report_identity(self.FULL), "vc 63, api 24, samsung/a51 (Galaxy A51)")
+
+    def test_an_empty_report_still_labels_all_three_fields(self):
+        self.assertEqual(pv.report_identity({}), "vc ?, api ?, ?")
+
+    def test_a_null_subobject_reads_as_absent_rather_than_raising(self):
+        report = {"appVersion": None, "osVersion": None, "deviceModel": None}
+        self.assertEqual(pv.report_identity(report), "vc ?, api ?, ?")
+
+    def test_a_device_with_no_marketing_name_keeps_its_build_identity(self):
+        report = dict(self.FULL, deviceModel={"deviceId": {"buildBrand": "samsung"}})
+        self.assertEqual(pv.report_identity(report), "vc 63, api 24, samsung")
+
+    def test_a_missing_api_level_does_not_shift_the_version_code_onto_it(self):
+        report = {"appVersion": {"versionCode": "63"}, "osVersion": {}}
+        self.assertIn("vc 63, api ?", pv.report_identity(report))
+
+
+class Issues(unittest.TestCase):
+    """The device spread needs every sample labelled, not only the ones printed in full."""
+
+    def run_issues(self, samples, traces):
+        issue = {"name": "apps/com.httrack.android/abc", "type": "CRASH", "location": "here"}
+        reports = [
+            dict(ReportIdentity.FULL, reportText=f"trace-{i}", osVersion={"apiLevel": str(20 + i)})
+            for i in range(samples)
+        ]
+
+        def fake_call(_token, url, **_kw):
+            if url.endswith("/crashRateMetricSet"):
+                return {
+                    "freshnessInfo": {
+                        "freshnesses": [
+                            {
+                                "aggregationPeriod": "DAILY",
+                                "latestEndTime": {"year": 2026, "month": 9, "day": 7},
+                            }
+                        ]
+                    }
+                }
+            if url.endswith("/errorIssues:search"):
+                return {"errorIssues": [issue]}
+            return {"errorReports": reports}
+
+        args = argparse.Namespace(
+            kind="crash", days=28, limit=15, samples=samples, traces=traces, version_code=None
+        )
+        out = io.StringIO()
+        with mock.patch("play_vitals.call", side_effect=fake_call):
+            with mock.patch("sys.stdout", new=out):
+                pv.cmd_issues("t", args)
+        return out.getvalue()
+
+    def test_every_sample_is_labelled_even_when_only_one_trace_prints(self):
+        printed = self.run_issues(samples=3, traces=1)
+        for level in ("api 20", "api 21", "api 22"):
+            self.assertIn(level, printed)
+
+    def test_traces_beyond_the_limit_are_not_printed(self):
+        printed = self.run_issues(samples=3, traces=1)
+        self.assertIn("trace-0", printed)
+        self.assertNotIn("trace-1", printed)
+
+    def test_raising_the_trace_limit_prints_more_of_them(self):
+        printed = self.run_issues(samples=3, traces=3)
+        self.assertIn("trace-2", printed)
 
 
 if __name__ == "__main__":
