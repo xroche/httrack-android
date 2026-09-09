@@ -2927,29 +2927,38 @@ public class HTTrackActivity extends FragmentActivity {
    */
   public void onShowLogs(final View view) {
     final File log = getTargetLogFile();
-    if (log != null && log.exists()) {
-      showLogTail(log, Long.MAX_VALUE);
+    if (log == null || !log.exists()) {
+      return;
+    }
+    try {
+      showLogTail(log, LogTail.readNewest(log));
+    } catch (final IOException e) {
+      showNotification(e.getLocalizedMessage());
     }
   }
 
-  /** Show the log window ending at byte offset {@code end}; Long.MAX_VALUE asks for the newest. */
-  private void showLogTail(final File log, final long end) {
+  /** Show one window of the log, with a button for the window before it. */
+  private void showLogTail(final File log, final LogTail.Window window) {
+    final TextView text = new TextView(this);
+    text.setText(window.text());
+    final ScrollView scroll = new ScrollView(this);
+    scroll.addView(text);
+    final AlertDialog.Builder builder = new AlertDialog.Builder(this)
+        .setTitle(R.string.show_logs).setView(scroll)
+        .setPositiveButton(android.R.string.ok, null);
+    if (window.hasEarlier()) {
+      builder.setNeutralButton(R.string.show_logs_earlier,
+          (dialog, which) -> showEarlierLogTail(log, window.start()));
+    }
+    builder.show();
+    // A tail is worth reading from its end.
+    scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+  }
+
+  /** Show the window that ends where the one on screen begins. */
+  private void showEarlierLogTail(final File log, final long end) {
     try {
-      final LogTail.Window window = LogTail.read(log, end);
-      final TextView text = new TextView(this);
-      text.setText(window.text());
-      final ScrollView scroll = new ScrollView(this);
-      scroll.addView(text);
-      final AlertDialog.Builder builder = new AlertDialog.Builder(this)
-          .setTitle(R.string.show_logs).setView(scroll)
-          .setPositiveButton(android.R.string.ok, null);
-      if (window.hasEarlier()) {
-        builder.setNeutralButton(R.string.show_logs_earlier,
-            (dialog, which) -> showLogTail(log, window.start()));
-      }
-      builder.show();
-      // A tail is worth reading from its end.
-      scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+      showLogTail(log, LogTail.read(log, end));
     } catch (final IOException e) {
       showNotification(e.getLocalizedMessage());
     }
