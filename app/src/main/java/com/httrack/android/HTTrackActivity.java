@@ -3413,11 +3413,26 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /** Navigate back to home, without killing us. **/
+  /** Leave the foreground, without killing us. **/
   private void goToHome() {
-    final Intent intent = new Intent(Intent.ACTION_MAIN);
-    intent.addCategory(Intent.CATEGORY_HOME);
-    startActivity(intent);
+    final boolean moved = moveTaskToBack(true);
+    final boolean home = BackgroundPolicy.askTheLauncher(moved) && startHomeIntent();
+    if (BackgroundPolicy.stillOnScreen(moved, home)) {
+      Log.w(getClass().getSimpleName(), "back pressed, but the task would not move");
+    }
+  }
+
+  /** Ask the launcher for the home screen, and return false when it refuses with an exception. */
+  private boolean startHomeIntent() {
+    try {
+      final Intent intent = new Intent(Intent.ACTION_MAIN);
+      intent.addCategory(Intent.CATEGORY_HOME);
+      startActivity(intent);
+      return true;
+    } catch (final Exception e) {
+      Log.w(getClass().getSimpleName(), "no home screen to go to", e);
+      return false;
+    }
   }
 
   /*
