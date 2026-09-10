@@ -219,7 +219,9 @@ def cmd_issues(token, args):
                 "filter": " AND ".join(terms),
                 "orderBy": "distinctUsers desc",
                 "pageSize": args.limit,
-                "sampleErrorReportLimit": args.reports,
+                # errorIssues:search answers 400 above 1 ("'sample_error_reports' field only
+                # supports the values 0 and 1"). The samples we print come from the search below.
+                "sampleErrorReportLimit": 1,
             }
         )
         res = call(token, f"{BASE}/errorIssues:search", params=params)
