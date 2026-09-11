@@ -1,4 +1,4 @@
-HTTrack 3.50.2: nieuwe engine, cookiefout hersteld.
+HTTrack 3.50.2: nieuwe engine, cookie- en stopcorrecties.
 
 • Een cookie van een site gaat niet meer naar een site met een lijkende naam
 • Bij stoppen vraagt HTTrack niet meer om bestanden met de hand te wissen

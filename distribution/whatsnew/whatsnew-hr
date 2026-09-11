@@ -1,4 +1,4 @@
-HTTrack 3.50.2: novi pogon, ispravak kolačića.
+HTTrack 3.50.2: novi pogon, ispravljeni kolačići i zaustavljanje.
 
 • Kolačić jedne stranice više ne ide na stranicu sličnog naziva
 • Pri zaustavljanju HTTrack više ne traži ručno brisanje datoteka

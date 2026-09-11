@@ -1,4 +1,4 @@
-HTTrack 3.50.2: novo motor, correção de cookies.
+HTTrack 3.50.2: novo motor, correções de cookies e parada.
 
 • Um cookie de um site não é mais enviado a um site de nome parecido
 • Ao parar, o HTTrack não pede mais para apagar arquivos à mão

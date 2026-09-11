@@ -1,4 +1,4 @@
-HTTrack 3.50.2: new engine, cookie fix.
+HTTrack 3.50.2: new engine, cookie and stop fixes.
 
 • A cookie for one site is no longer sent to a site with a similar name
 • When you stop, HTTrack no longer asks you to delete files by hand
