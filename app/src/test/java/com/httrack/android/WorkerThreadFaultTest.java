@@ -13,32 +13,33 @@ import org.junit.Test;
  *  and no JNI entry point covers them: a fault there used to take the process down. The thread
  *  runner catches it on the worker, and the crawl thread is what reports it to Java. */
 public class WorkerThreadFaultTest {
-  /** htslibjni.c with comments and string literals blanked, so a commented-out call cannot pass
-   *  for one. */
+  /** Reads htslibjni.c with comments and string literals blanked, so a commented-out call
+   *  cannot pass for one. */
   private String jni() throws IOException {
     return TestSources.withoutCommentsAndStrings(TestSources.jniSource("htslibjni.c"));
   }
 
-  /** Body of the static function NAME, braces balanced and the outer pair left out. */
+  /** Returns function NAME's body, braces balanced, outer pair left out. */
   private static String function(final String source, final String name) {
-    final Matcher m = Pattern.compile("(?m)^[\\w *]+\\b" + name + "\\s*\\(")
-        .matcher(source);
+    final Matcher m = Pattern.compile("(?m)^[\\w *]+\\b" + name + "\\s*\\(").matcher(source);
     assertTrue("no function " + name, m.find());
     return TestSources.balancedBlock(source, m.end());
   }
 
-  /** Body of the JNI entry point NAME. */
-  private static String entryPoint(final String source, final String name) {
-    final int at = source.indexOf("Java_com_httrack_android_jni_HTTrackLib_" + name + "(");
-    assertTrue("no entry point " + name, at != -1);
-    return TestSources.balancedBlock(source, at);
+  /** Returns CONDITION's own block in BODY. */
+  private static String blockBody(final String body, final String condition) {
+    final int at = body.indexOf(condition);
+    assertTrue("no " + condition, at != -1);
+    return TestSources.balancedBlock(body, at);
   }
 
-  /** Body of the CONDITION block inside SOURCE. */
-  private static String guard(final String source, final String condition) {
-    final int at = source.indexOf(condition);
+  /** Returns the block CONDITION falls through to in BODY. */
+  private static String elseBlock(final String body, final String condition) {
+    final int at = body.indexOf(condition);
     assertTrue("no " + condition, at != -1);
-    return TestSources.balancedBlock(source, at);
+    final int fallthrough = body.indexOf("} else {", at);
+    assertTrue(condition + " has no else", fallthrough != -1);
+    return TestSources.balancedBlock(body, fallthrough + 1);
   }
 
   @Test
@@ -48,14 +49,20 @@ public class WorkerThreadFaultTest {
     assertEquals("workerThreadRunner",
         TestSources.arguments(source, "hts_set_thread_runner").trim());
     assertTrue("the engine reads the runner unlocked, so it must be set at class load",
-        entryPoint(source, "initStatic").contains("hts_set_thread_runner("));
+        function(source, "Java_com_httrack_android_jni_HTTrackLib_initStatic")
+            .contains("hts_set_thread_runner("));
   }
 
   @Test
   public void onlyASignalCountsAsAFault() throws IOException {
     final String runner = function(jni(), "workerThreadRunner");
+    final String faulted = blockBody(runner, "if (coffeecatch_get_signal() > 0)");
     assertTrue("COFFEE_CATCH is entered on a setup failure too, with the engine intact",
-        guard(runner, "if (coffeecatch_get_signal() > 0)").contains("reportWorkerFault()"));
+        faulted.contains("reportWorkerFault()"));
+    assertFalse("a body that faulted has run, so running it again would fault again",
+        faulted.contains("bodyNeverRan = 1"));
+    assertTrue(elseBlock(runner, "if (coffeecatch_get_signal() > 0)")
+        .contains("bodyNeverRan = 1"));
   }
 
   @Test
@@ -64,52 +71,76 @@ public class WorkerThreadFaultTest {
     final int end = runner.indexOf("COFFEE_END()");
     assertTrue(end != -1);
     assertTrue("dropping the body would hand the caller a worker that did nothing",
-        guard(runner.substring(end), "if (unprotected)").contains("fun(arg)"));
+        blockBody(runner.substring(end), "if (bodyNeverRan)").contains("fun(arg)"));
   }
 
   @Test
-  public void theMessageIsWrittenBeforeTheFlagThatPublishesIt() throws IOException {
+  public void theLatchIsSetBeforeAnythingThatCanWedge() throws IOException {
     final String report = function(jni(), "reportWorkerFault");
+    final int latched = report.indexOf("engineFaulted = 1");
+    final int logged = report.indexOf("error(");
     final int written = report.indexOf("snprintf(workerFaultMessage");
     final int published = report.indexOf("__ATOMIC_RELEASE");
+    assertTrue("logging can wedge on a lock this thread faulted holding, and every guard on"
+        + " the engine reads this flag",
+        latched != -1 && logged > latched);
     assertTrue("the crawl thread reads the message once it sees the flag",
         written != -1 && published > written);
-    assertTrue("every entry point back into the engine reads this one",
-        report.contains("engineFaulted = 1"));
   }
 
   @Test
   public void theFaultEndsTheMirrorAndKeepsWhatAContinueNeeds() throws IOException {
-    final String source = jni();
+    final String report = function(jni(), "reportWorkerFault");
+    final String stopping = "if (!alreadyFaulted && runningOpt != NULL)";
+    assertTrue("the worker reads runningOpt under its own lock, which is all that keeps the"
+        + " crawl thread from retracting it mid-call",
+        report.contains("MUTEX_LOCK(runningOptLock)")
+            && report.contains("MUTEX_UNLOCK(runningOptLock)"));
+    final String stopped = blockBody(report, stopping);
     assertTrue("0 would report the mirror as complete and drop the resume metadata",
-        function(source, "reportWorkerFault").contains("hts_request_stop(runningOpt, 1)"));
-    assertTrue("the progress callback aborts the mirror by returning 0",
-        guard(function(source, "htsshow_loop"), "if (hasWorkerFaulted())").contains("return 0"));
+        stopped.contains("hts_request_stop(runningOpt, 1"));
+    assertFalse("the crawl is what will disarm the watchdog, once it shows it still runs",
+        stopped.contains("clearWorkerFaultWatchdog"));
+    final String nothingToStop = elseBlock(report, stopping);
+    assertTrue("with no crawl to stop, nothing else would ever disarm it",
+        nothingToStop.contains("clearWorkerFaultWatchdog()"));
+    assertFalse(nothingToStop.contains("hts_request_stop"));
   }
 
   @Test
-  public void theWorkerLeavesTheWatchdogToTheCrawlThread() throws IOException {
-    final String source = jni();
-    final String runner = function(source, "workerThreadRunner");
-    assertFalse("a worker that unwound nothing may hold a lock the crawl needs, and the"
-        + " watchdog is the only thing that would then end the process",
-        runner.contains("coffeecatch_cancel_pending_alarm")
-            || runner.contains("clearWorkerFaultWatchdog"));
-    assertTrue("with no crawl to end, nothing waits on this worker and nothing would disarm it",
-        guard(function(source, "reportWorkerFault"), "if (runningOpt != NULL)").length() > 0
-            && function(source, "reportWorkerFault").contains("clearWorkerFaultWatchdog()"));
+  public void aPoisonedOptIsNeverStopped() throws IOException {
+    final String report = function(jni(), "reportWorkerFault");
+    final int read = report.indexOf("alreadyFaulted = engineFaulted");
+    final int latched = report.indexOf("engineFaulted = 1");
+    assertTrue("read after the latch, this would always be true",
+        read != -1 && latched > read);
+  }
+
+  @Test
+  public void theMirrorEndsAtTheNextTickAndThatTickDisarmsTheWatchdog() throws IOException {
+    final String guard = blockBody(function(jni(), "htsshow_loop"), "if (hasWorkerFaulted())");
+    assertTrue("the progress callback aborts the mirror by returning 0",
+        guard.contains("return 0"));
+    assertTrue("this tick is the first proof no lock the worker held blocks the crawl thread,"
+        + " and the wind-down after it has no bound the watchdog could outlast",
+        guard.contains("clearWorkerFaultWatchdog()"));
   }
 
   @Test
   public void theCrawlThreadReportsTheFaultAndDisarmsTheWatchdog() throws IOException {
     final String source = jni();
+    assertTrue("a plain load would let the crawl thread read the message half-written",
+        function(source, "hasWorkerFaulted").contains("__ATOMIC_ACQUIRE"));
     final String main = function(source, "HTTrackLib_main");
-    final String reported = guard(main, "if (hasWorkerFaulted())");
-    assertTrue(reported.contains("workerFaultMessage")
-        && reported.contains("clearWorkerFaultWatchdog()"));
+    final String reported = blockBody(main, "if (hasWorkerFaulted())");
+    assertTrue("getSafeCopy() sizes its buffer from one read and copies on a second, so a"
+        + " second faulting worker could grow the string in between",
+        reported.contains("snprintf(reported,") && reported.contains("throwException(env,"));
+    assertTrue(reported.contains("clearWorkerFaultWatchdog()")
+        && reported.contains("code = -1"));
     assertTrue("java.lang.Error is what coffeecatch throws for a fault on this thread",
         TestSources.jniSource("htslibjni.c")
-            .contains("throwException(env, \"java/lang/Error\", workerFaultMessage)"));
+            .contains("throwException(env, \"java/lang/Error\", reported)"));
     final int ran = main.indexOf("hts_main2(");
     final int retracted = main.indexOf("runningOpt = NULL");
     final int stats = main.indexOf("hts_get_stats(");
