@@ -1,10 +1,5 @@
-HTTrack 3.50.1: nuovo motore, crash risolti.
+HTTrack 3.50.2: nuovo motore, correzione cookie.
 
-• Crash risolti: barra nel nome, rotazione schermo, log grande
-• I download lunghi non bloccano più la schermata di avanzamento
-• L'aggiornamento non tiene più pagine vecchie né perde file
-• JavaScript e stili delle copie non si rompono più
-• Una pagina visitata non può più far inviare un file dal telefono
-• Stop e poi Continua riprende i file scaricati a metà
-
-I file scaricati a metà prima di questa versione ripartono. I file salvati restano.
+• Un cookie di un sito non va più a un sito dal nome simile
+• Allo stop, HTTrack non chiede più di cancellare file a mano
+• Dopo uno stop, l'aggiornamento tiene le pagine già scaricate

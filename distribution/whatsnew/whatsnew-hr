@@ -1,10 +1,5 @@
-HTTrack 3.50.1: novi pogon, ispravljena rušenja.
+HTTrack 3.50.2: novi pogon, ispravak kolačića.
 
-• Ispravljena rušenja: kosa crta u nazivu, okretanje zaslona, velik dnevnik
-• Duga preuzimanja više ne zamrzavaju zaslon napretka
-• Ažuriranje ne ostavlja stare stranice ni ne gubi datoteke
-• JavaScript i stilovi u kopijama više se ne kvare
-• Posjećena stranica više ne može poslati datoteku s vašeg telefona
-• Zaustavi pa Nastavi nastavlja napola preuzete datoteke
-
-Datoteke napola preuzete prije ove verzije kreću ispočetka. Spremljene ostaju.
+• Kolačić jedne stranice više ne ide na stranicu sličnog naziva
+• Pri zaustavljanju HTTrack više ne traži ručno brisanje datoteka
+• Nakon zaustavljanja ažuriranje čuva već preuzete stranice

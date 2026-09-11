@@ -1,10 +1,5 @@
-HTTrack 3.50.1: novo motor, falhas corrigidas.
+HTTrack 3.50.2: novo motor, correção de cookies.
 
-• Falhas corrigidas: nome com barra, girar a tela, log grande
-• Os downloads longos não travam mais a tela de progresso
-• Atualizar não mantém mais páginas antigas nem perde arquivos
-• JavaScript e estilos das cópias não quebram mais
-• Uma página visitada não pode mais enviar um arquivo do seu celular
-• Parar e depois Continuar retoma os arquivos pela metade
-
-Os arquivos pela metade antes desta versão recomeçam. Os arquivos salvos ficam.
+• Um cookie de um site não é mais enviado a um site de nome parecido
+• Ao parar, o HTTrack não pede mais para apagar arquivos à mão
+• Depois de parar, a atualização mantém as páginas já baixadas

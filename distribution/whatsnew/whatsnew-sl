@@ -1,10 +1,5 @@
-HTTrack 3.50.1: novo jedro, odpravljena sesutja.
+HTTrack 3.50.2: novo jedro, popravek piškotkov.
 
-• Odpravljena sesutja: poševnica v imenu, vrtenje zaslona, velik dnevnik
-• Dolgi prenosi ne zamrznejo več zaslona z napredkom
-• Posodobitev ne pusti starih strani in ne izgubi datotek
-• JavaScript in slogi v kopijah se ne pokvarijo več
-• Obiskana stran ne more več poslati datoteke iz vašega telefona
-• Ustavi in Nadaljuj nadaljujeta na pol prenesene datoteke
-
-Datoteke, prenesene le deloma pred to različico, se začnejo znova. Shranjene ostanejo.
+• Piškotek ene strani ne gre več na stran s podobnim imenom
+• Ob ustavitvi HTTrack ne zahteva več ročnega brisanja datotek
+• Po ustavitvi posodobitev ohrani že prenesene strani

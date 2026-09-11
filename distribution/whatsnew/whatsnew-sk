@@ -1,10 +1,5 @@
-HTTrack 3.50.1: nové jadro, opravené pády.
+HTTrack 3.50.2: nové jadro, oprava cookies.
 
-• Opravené pády: názov projektu s lomkou, otočenie obrazovky, veľký protokol
-• Dlhé sťahovania už nezaseknú obrazovku priebehu
-• Aktualizácia už nenechá starú stránku ani nestratí súbor
-• JavaScript a štýly v kópiách sa už nepoškodia
-• Navštívená stránka už neodošle súbor z vášho telefónu
-• Stop a potom Pokračovať nadviaže na nedotiahnuté súbory
-
-Súbory nedotiahnuté pred touto verziou sa stiahnu znovu. Uložené súbory zostanú.
+• Cookie jedného webu už nejde na web s podobným názvom
+• Pri zastavení už HTTrack nežiada ručné mazanie súborov
+• Po zastavení si aktualizácia nechá už stiahnuté stránky

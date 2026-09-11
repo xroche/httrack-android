@@ -1,10 +1,5 @@
-HTTrack 3.50.1: uusi moottori, korjatut kaatumiset.
+HTTrack 3.50.2: uusi moottori, evästekorjaus.
 
-• Korjatut kaatumiset: kauttaviiva nimessä, kääntö, iso loki
-• Pitkät lataukset eivät enää jumita edistymisnäyttöä
-• Päivitys ei jätä vanhaa sivua eikä hukkaa tiedostoa
-• Kopioiden JavaScript ja tyylit eivät enää hajoa
-• Vieraillut sivu ei voi enää lähettää tiedostoa puhelimestasi
-• Pysäytä ja sitten Jatka jatkaa kesken jääneitä tiedostoja
-
-Ennen tätä versiota kesken jääneet tiedostot alkavat alusta. Tallennetut tiedostot säilyvät.
+• Yhden sivuston eväste ei enää mene lähes samannimiselle sivustolle
+• Pysäytettäessä HTTrack ei enää pyydä poistamaan tiedostoja käsin
+• Pysäytyksen jälkeen päivitys säilyttää jo ladatut sivut
