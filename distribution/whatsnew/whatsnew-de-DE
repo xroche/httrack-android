@@ -1,10 +1,5 @@
-HTTrack 3.50.1: neue Engine, Abstürze behoben.
+HTTrack 3.50.2: neue Engine, Cookie- und Stopp-Korrekturen.
 
-• Abstürze behoben: Schrägstrich im Namen, Drehung, großes Protokoll
-• Lange Downloads blockieren die Fortschrittsanzeige nicht mehr
-• Aktualisieren behält keine alte Seite und verliert keine Datei
-• JavaScript und Stile in Kopien bleiben heil
-• Eine besuchte Seite kann keine Datei mehr von Ihrem Telefon holen
-• Stopp und Weiter setzt halb geladene Dateien fort
-
-Vor diesem Update halb geladene Dateien beginnen neu. Gespeicherte Dateien bleiben.
+• Ein Cookie einer Seite geht nicht mehr an eine Seite mit ähnlichem Namen
+• Beim Stopp verlangt HTTrack nicht mehr, Dateien von Hand zu löschen
+• Nach einem Stopp behält die Aktualisierung die geladenen Seiten

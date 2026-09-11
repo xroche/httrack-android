@@ -1,10 +1,5 @@
-HTTrack 3.50.1: uus mootor, parandatud krahhid.
+HTTrack 3.50.2: uus mootor, parandatud küpsised ja peatamine.
 
-• Parandatud krahhid: kaldkriipsuga projekti nimi, ekraani pööramine, suur logi
-• Pikad allalaadimised ei külmuta enam edenemise ekraani
-• Uuendus ei jäta vana lehte ega kaota faili
-• Koopiate JavaScript ja laaditabelid ei lähe enam katki
-• Külastatud leht ei saa enam saata faili teie telefonist
-• Peata ja siis Jätka jätkab poolikuid faile
-
-Enne seda versiooni poolikuks jäänud failid laaditakse uuesti. Salvestatud failid jäävad alles.
+• Ühe saidi küpsis ei lähe enam sarnase nimega saidile
+• Peatamisel ei palu HTTrack enam faile käsitsi kustutada
+• Pärast peatamist säilitab uuendus juba alla laaditud lehed

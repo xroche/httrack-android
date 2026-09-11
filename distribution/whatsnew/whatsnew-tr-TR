@@ -1,10 +1,5 @@
-HTTrack 3.50.1: yeni motor, çökmeler giderildi.
+HTTrack 3.50.2: yeni motor, çerez ve durdurma düzeltmeleri.
 
-• Giderilen çökmeler: eğik çizgili proje adı, ekran döndürme, büyük günlük
-• Uzun indirmeler artık ilerleme ekranını dondurmuyor
-• Güncelleme artık eski sayfa bırakmaz, dosya da kaybetmez
-• Kopyalardaki JavaScript ve stiller artık bozulmuyor
-• Ziyaret edilen bir sayfa artık telefonunuzdan dosya gönderemez
-• Durdur, sonra Devam yarım inen dosyaları sürdürür
-
-Bu sürümden önce yarım inen dosyalar baştan başlar. Kaydedilmiş dosyalar kalır.
+• Bir sitenin çerezi artık benzer adlı bir siteye gönderilmiyor
+• Durdurunca HTTrack artık dosyaları elle silmenizi istemiyor
+• Durdurduktan sonra güncelleme inen sayfaları koruyor

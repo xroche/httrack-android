@@ -1,10 +1,5 @@
-HTTrack 3.50.1: ny motor, rettede krasj.
+HTTrack 3.50.2: ny motor, rettede cookies og stopp.
 
-• Rettede krasj: prosjektnavn med skråstrek, skjermrotasjon, stor logg
-• Lange nedlastinger fryser ikke lenger fremdriftsskjermen
-• En oppdatering beholder ikke gamle sider og mister ingen filer
-• JavaScript og stilark i kopiene blir ikke ødelagt
-• En besøkt side kan ikke lenger sende en fil fra telefonen din
-• Stopp og deretter Fortsett gjenopptar halve filer
-
-Filer som var halvt nedlastet før denne versjonen, starter på nytt. Lagrede filer beholdes.
+• En cookie fra ett nettsted sendes ikke lenger til et med lignende navn
+• Ved stopp ber HTTrack ikke lenger om å slette filer for hånd
+• Etter et stopp beholder oppdateringen de nedlastede sidene

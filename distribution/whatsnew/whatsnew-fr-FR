@@ -1,10 +1,5 @@
-HTTrack 3.50.1 : nouveau moteur, correctifs.
+HTTrack 3.50.2 : nouveau moteur, correctifs cookies et arrêt.
 
-• Plantages corrigés : nom avec barre oblique, rotation, gros journal
-• Les longs téléchargements ne figent plus l'écran
-• La mise à jour ne garde plus de page périmée et ne perd rien
-• JavaScript et styles des copies ne cassent plus
-• Une page visitée ne peut plus sortir un fichier du téléphone
-• Stop puis Continuer reprend les fichiers incomplets
-
-Les fichiers incomplets avant cette version repartent du début. Les fichiers enregistrés restent.
+• Un cookie d'un site n'est plus envoyé à un site au nom voisin
+• À l'arrêt, HTTrack ne demande plus d'effacer des fichiers à la main
+• Après un arrêt, la mise à jour garde les pages déjà téléchargées

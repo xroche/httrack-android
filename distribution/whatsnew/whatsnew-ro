@@ -1,10 +1,5 @@
-HTTrack 3.50.1: motor nou, blocaje reparate.
+HTTrack 3.50.2: motor nou, reparații cookie-uri și oprire.
 
-• Blocaje reparate: bară oblică în nume, rotirea ecranului, jurnal mare
-• Descărcările lungi nu mai blochează ecranul de progres
-• Actualizarea nu mai lasă pagini vechi și nu mai pierde fișiere
-• JavaScript și stilurile din copii nu se mai strică
-• O pagină vizitată nu mai poate trimite un fișier din telefon
-• Oprire, apoi Continuare reia fișierele neterminate
-
-Fișierele neterminate înainte de această versiune reîncep. Fișierele salvate rămân.
+• Un cookie al unui sit nu mai merge la un sit cu nume asemănător
+• La oprire, HTTrack nu mai cere ștergerea fișierelor cu mâna
+• După oprire, actualizarea păstrează paginile deja descărcate
