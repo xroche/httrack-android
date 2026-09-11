@@ -74,6 +74,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsencoding.c httrack/src/md5.c								\
 	httrack/src/htssniff.c httrack/src/htsselftest.c						\
 	httrack/src/htscache_selftest.c httrack/src/htsdns_selftest.c			\
+	httrack/src/htsparse_selftest.c											\
 	httrack/src/htscodec.c httrack/src/htsproxy.c							\
 	httrack/src/htsdate.c httrack/src/htsurlport.c httrack/src/htswarc.c							\
 	httrack/src/htsescape.c										\
