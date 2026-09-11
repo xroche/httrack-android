@@ -40,6 +40,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "httrack-library.h"
 #include "htsdefines.h"
 #include "htscore.h"
+#include "htsthread.h"
 
 #define USE_COFFEECATCH
 
@@ -68,6 +69,28 @@ static volatile int engineFaulted = 0;
     } COFFEE_END();                        \
   } while(0)
 #endif
+
+/* What a worker thread recovered from, for the crawl thread to report: a worker has no JNIEnv
+ * to throw with. The flag publishes the message, so read them in that order. */
+static char workerFaultMessage[512];
+static int workerFaulted = 0;
+
+/* The crawl being run, so a faulting worker can end it. Its own lock, because the context one
+ * is destroyed before the opt is freed. */
+static httrackp *runningOpt = NULL;
+static pthread_mutex_t runningOptLock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Did a thread the engine spawned for itself recover from a fault? */
+static int hasWorkerFaulted(void) {
+  return __atomic_load_n(&workerFaulted, __ATOMIC_ACQUIRE) != 0;
+}
+
+/* Disarm the watchdog a faulting worker left armed. */
+static void clearWorkerFaultWatchdog(void) {
+#ifdef USE_COFFEECATCH
+  coffeecatch_cancel_pending_alarm();
+#endif
+}
 
 #include "htslibjni.h"
 #include "htslibjni-private.h"
@@ -136,6 +159,69 @@ static void error(const char *format, ...) {
   __android_log_vprint(ANDROID_LOG_ERROR, "httrack", format, args);
   va_end(args);
 }
+
+#ifdef USE_COFFEECATCH
+/* Names one frame of the faulting worker's stack in the log. */
+static void logWorkerFrame(void *arg, const char *module, uintptr_t addr,
+                           const char *function, uintptr_t offset) {
+  int *const index = (int*) arg;
+
+  error("worker frame #%02d %p %s (%s+0x%x)", (*index)++, (void*) addr,
+        module != NULL ? module : "?", function != NULL ? function : "?",
+        (unsigned) offset);
+}
+
+static void reportWorkerFault(void) {
+  const char *const message = coffeecatch_get_message();
+  int index = 0;
+
+  snprintf(workerFaultMessage, sizeof(workerFaultMessage),
+           "the engine faulted on a worker thread: %s",
+           message != NULL ? message : "unknown fault");
+  error("%s", workerFaultMessage);
+  /* Only the log gets the frames: a tombstone would have named the fault, and this recovery
+     replaces it. */
+  coffeecatch_get_backtrace_info(logWorkerFrame, &index);
+  engineFaulted = 1;
+  __atomic_store_n(&workerFaulted, 1, __ATOMIC_RELEASE);
+  /* Cut the crawl's wait for this worker short, which the DNS resolver answers at once and an
+     FTP fetch at the next progress tick. Ending the crawl is what makes the watchdog
+     temporary, so with no crawl to end, nothing is waiting on this worker and the watchdog has
+     nothing to guard. */
+  MUTEX_LOCK(runningOptLock);
+  if (runningOpt != NULL) {
+    hts_request_stop(runningOpt, 1);
+  } else {
+    clearWorkerFaultWatchdog();
+  }
+  MUTEX_UNLOCK(runningOptLock);
+}
+
+/* Wraps every thread the engine spawns for itself -- a DNS resolver per hostname, an FTP fetch
+ * -- which no JNI entry point covers, so a fault there took the process down with it. The
+ * 30s watchdog the catch arms is deliberately left running: this thread unwound nothing, so it
+ * may hold a lock the crawl needs, and HTTrackLib_main() clears the watchdog only once the
+ * crawl has come back. */
+static void workerThreadRunner(void (*fun)(void *arg), void *arg) {
+  volatile int unprotected = 0;
+
+  COFFEE_TRY() {
+    fun(arg);
+  } COFFEE_CATCH() {
+    if (coffeecatch_get_signal() > 0) {
+      reportWorkerFault();
+    } else {
+      unprotected = 1;
+    }
+  } COFFEE_END();
+
+  /* No handler could be installed, and the body never ran: run it as the engine did before
+     this hook rather than hand the caller a worker that did nothing. */
+  if (unprotected) {
+    fun(arg);
+  }
+}
+#endif
 
 /* Thread variable holding context. */
 static pthread_key_t thread_variables;
@@ -378,6 +464,11 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_initStatic(JNIEnv* env, jcl
 
   /* Register log callback */
   hts_set_log_vprint_callback(httrackLogCallback);
+
+#ifdef USE_COFFEECATCH
+  /* Cover the engine's own threads, which the entry points above do not. */
+  hts_set_thread_runner(workerThreadRunner);
+#endif
 }
 
 static void HTTrackLib_initRootPath(JNIEnv* env, jclass clazz, jstring opath) {
@@ -840,6 +931,11 @@ static int htsshow_loop(t_hts_callbackarg * carg, httrackp * opt,
     return 0;
   }
 
+  /* A worker faulted: end the mirror now, rather than let its stop request drain the queue. */
+  if (hasWorkerFaulted()) {
+    return 0;
+  }
+
   /* pass to internal version */
   return htsshow_loop_internal(t, opt, back, back_max, back_index,
       lien_n, lien_tot, stat_time, stats);
@@ -1005,6 +1101,9 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
       /* Create opt tab */
       context->opt = hts_create_opt();
       context->stop = 0;
+      MUTEX_LOCK(runningOptLock);
+      runningOpt = context->opt;
+      MUTEX_UNLOCK(runningOptLock);
       CHAIN_FUNCTION(context->opt, loop, htsshow_loop, &t);
     } else {
       already_running = 1;
@@ -1016,6 +1115,11 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
 
       /* Rock'in! */
       code = hts_main2(argc, argv, context->opt);
+
+      /* The destructor frees this opt, so no worker may reach it from here on. */
+      MUTEX_LOCK(runningOptLock);
+      runningOpt = NULL;
+      MUTEX_UNLOCK(runningOptLock);
 
       /* Fetch last stats before cleaning up */
       stats = hts_get_stats(context->opt);
@@ -1059,6 +1163,17 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
     if (t.pendingException != NULL) {
       (*env)->Throw(env, t.pendingException);
       (*env)->DeleteGlobalRef(env, t.pendingException);
+      code = -1;
+    }
+
+    /* Reported here because the worker had no JNIEnv, and as the java.lang.Error coffeecatch
+       throws for a fault on this thread. */
+    if (hasWorkerFaulted()) {
+      if (!(*env)->ExceptionCheck(env)) {
+        throwException(env, "java/lang/Error", workerFaultMessage);
+      }
+      /* Getting here is what rules out the deadlock the watchdog guards against. */
+      clearWorkerFaultWatchdog();
       code = -1;
     }
 
