@@ -40,6 +40,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "httrack-library.h"
 #include "htsdefines.h"
 #include "htscore.h"
+#include "htsthread.h"
 
 #define USE_COFFEECATCH
 
@@ -68,6 +69,30 @@ static volatile int engineFaulted = 0;
     } COFFEE_END();                        \
   } while(0)
 #endif
+
+/* What a worker thread recovered from, for the crawl thread to report, because a worker has no
+ * JNIEnv to throw with. Reading the flag before the message is what makes the message safe. */
+static char workerFaultMessage[512];
+static int workerFaulted = 0;
+
+/* The crawl being run, so a faulting worker can end it. Its own lock, because the context one
+ * is destroyed before the opt is freed. */
+static httrackp *runningOpt = NULL;
+static pthread_mutex_t runningOptLock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Did a thread the engine spawned for itself recover from a fault? */
+static int hasWorkerFaulted(void) {
+  return __atomic_load_n(&workerFaulted, __ATOMIC_ACQUIRE) != 0;
+}
+
+/* Disarm the watchdog coffeecatch arms when it catches a fault. Only reportWorkerFault() calls
+ * this, and only once it has done everything that can block, because a handler that blocks is
+ * the wedge the watchdog exists to kill. Nothing bounds what the crawl does afterwards. */
+static void clearWorkerFaultWatchdog(void) {
+#ifdef USE_COFFEECATCH
+  coffeecatch_cancel_pending_alarm();
+#endif
+}
 
 #include "htslibjni.h"
 #include "htslibjni-private.h"
@@ -136,6 +161,71 @@ static void error(const char *format, ...) {
   __android_log_vprint(ANDROID_LOG_ERROR, "httrack", format, args);
   va_end(args);
 }
+
+#ifdef USE_COFFEECATCH
+/* Names one frame of the faulting worker's stack in the log. */
+static void logWorkerFrame(void *arg, const char *module, uintptr_t addr,
+                           const char *function, uintptr_t offset) {
+  int *const index = (int*) arg;
+
+  error("worker frame #%02d %p %s (%s+0x%x)", (*index)++, (void*) addr,
+        module != NULL ? module : "?", function != NULL ? function : "?",
+        (unsigned) offset);
+}
+
+/* Names the fault in the log, hands its message to the crawl thread, and ends the mirror. */
+static void reportWorkerFault(void) {
+  /* Read before the latch below, because a flag already set means the engine faulted before
+     this worker did, and that opt must not be touched again. A fault landing on the crawl
+     thread while this handler runs is not seen, and costs one stop request on a leaked opt. */
+  const int alreadyFaulted = engineFaulted;
+  const char *const message = coffeecatch_get_message();
+  int index = 0;
+
+  /* Latched first, because the logging below can itself wedge on a lock this thread faulted
+     holding, and every guard on the engine reads this flag. */
+  engineFaulted = 1;
+  snprintf(workerFaultMessage, sizeof(workerFaultMessage),
+           "the engine faulted on a worker thread: %s",
+           message != NULL ? message : "unknown fault");
+  error("%s", workerFaultMessage);
+  /* Only the log gets the frames, because this recovery replaces the tombstone that would
+     have named them. */
+  coffeecatch_get_backtrace_info(logWorkerFrame, &index);
+  __atomic_store_n(&workerFaulted, 1, __ATOMIC_RELEASE);
+  /* Cut the crawl's wait for this worker short, which the DNS resolver answers at once. */
+  MUTEX_LOCK(runningOptLock);
+  if (!alreadyFaulted && runningOpt != NULL) {
+    hts_request_stop(runningOpt, 1 /* keep_resume */);
+  }
+  MUTEX_UNLOCK(runningOptLock);
+  /* Last, because everything above can block on a lock this thread faulted holding, and the
+     watchdog is what ends the process when one does. */
+  clearWorkerFaultWatchdog();
+}
+
+/* Wraps every thread the engine spawns for itself, a DNS resolver per hostname and an FTP
+ * fetch, which no JNI entry point covers, so a fault there took the process down with it. */
+static void workerThreadRunner(void (*fun)(void *arg), void *arg) {
+  volatile int bodyNeverRan = 0;
+
+  COFFEE_TRY() {
+    fun(arg);
+  } COFFEE_CATCH() {
+    if (coffeecatch_get_signal() > 0) {
+      reportWorkerFault();
+    } else {
+      bodyNeverRan = 1;
+    }
+  } COFFEE_END();
+
+  /* No handler could be installed, so run the body as the engine did before this hook rather
+     than hand the caller a worker that did nothing. */
+  if (bodyNeverRan) {
+    fun(arg);
+  }
+}
+#endif
 
 /* Thread variable holding context. */
 static pthread_key_t thread_variables;
@@ -378,6 +468,11 @@ JNICALL void Java_com_httrack_android_jni_HTTrackLib_initStatic(JNIEnv* env, jcl
 
   /* Register log callback */
   hts_set_log_vprint_callback(httrackLogCallback);
+
+#ifdef USE_COFFEECATCH
+  /* Cover the engine's own threads, which the entry points above do not. */
+  hts_set_thread_runner(workerThreadRunner);
+#endif
 }
 
 static void HTTrackLib_initRootPath(JNIEnv* env, jclass clazz, jstring opath) {
@@ -840,6 +935,11 @@ static int htsshow_loop(t_hts_callbackarg * carg, httrackp * opt,
     return 0;
   }
 
+  /* A worker faulted, so end the mirror now rather than let its stop request drain the queue. */
+  if (hasWorkerFaulted()) {
+    return 0;
+  }
+
   /* pass to internal version */
   return htsshow_loop_internal(t, opt, back, back_max, back_index,
       lien_n, lien_tot, stat_time, stats);
@@ -1005,6 +1105,9 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
       /* Create opt tab */
       context->opt = hts_create_opt();
       context->stop = 0;
+      MUTEX_LOCK(runningOptLock);
+      runningOpt = context->opt;
+      MUTEX_UNLOCK(runningOptLock);
       CHAIN_FUNCTION(context->opt, loop, htsshow_loop, &t);
     } else {
       already_running = 1;
@@ -1016,6 +1119,11 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
 
       /* Rock'in! */
       code = hts_main2(argc, argv, context->opt);
+
+      /* The destructor frees this opt, so no worker may reach it from here on. */
+      MUTEX_LOCK(runningOptLock);
+      runningOpt = NULL;
+      MUTEX_UNLOCK(runningOptLock);
 
       /* Fetch last stats before cleaning up */
       stats = hts_get_stats(context->opt);
@@ -1059,6 +1167,19 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
     if (t.pendingException != NULL) {
       (*env)->Throw(env, t.pendingException);
       (*env)->DeleteGlobalRef(env, t.pendingException);
+      code = -1;
+    }
+
+    /* Reported here because the worker had no JNIEnv, and as the java.lang.Error coffeecatch
+       throws for a fault on this thread. */
+    if (hasWorkerFaulted()) {
+      if (!(*env)->ExceptionCheck(env)) {
+        char reported[sizeof(workerFaultMessage)];
+
+        /* Copied first, because a second worker can rewrite the buffer while it is read. */
+        snprintf(reported, sizeof(reported), "%s", workerFaultMessage);
+        throwException(env, "java/lang/Error", reported);
+      }
       code = -1;
     }
 

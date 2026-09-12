@@ -30,9 +30,9 @@ public class CoffeeCatchAlarmTest {
   @Test
   public void everyProtectedBlockGoesThroughTheWrapper() throws IOException {
     final String source = jni();
-    // The lone COFFEE_TRY() is the wrapper's own; a hand-rolled one would skip
-    // the cancel.
-    assertEquals(1, TestSources.occurrences(source, "COFFEE_TRY()"));
+    // Two COFFEE_TRY(): the wrapper's own, and the engine worker runner's, which disarms the
+    // watchdog itself. See WorkerThreadFaultTest.
+    assertEquals(2, TestSources.occurrences(source, "COFFEE_TRY()"));
     assertTrue(TestSources.occurrences(source, "COFFEE_TRY_JNI_RECOVER(") > 1);
   }
 
