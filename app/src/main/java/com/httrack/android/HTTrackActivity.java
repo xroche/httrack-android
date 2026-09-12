@@ -30,17 +30,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
-import java.io.RandomAccessFile;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
@@ -114,7 +110,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 
-import com.httrack.android.jni.HTTrackCallbacks;
 import com.httrack.android.jni.HTTrackLib;
 import com.httrack.android.jni.HTTrackStats;
 import com.httrack.android.jni.HTTrackStats.Element;
@@ -165,14 +160,11 @@ public class HTTrackActivity extends FragmentActivity {
 
   // Marks the mirror path in the finish message; the panel swaps it for a span, so it never
   // resolves as a URL.
-  private static final String MIRROR_FOLDER_HREF = "httrack:mirror-folder";
+  static final String MIRROR_FOLDER_HREF = "httrack:mirror-folder";
 
   // Channel carrying every notification we post. Never rename: the user's sound/importance
   // choices are keyed on it, and a new id silently resets them.
   protected static final String NOTIFICATION_CHANNEL_ID = "mirror";
-
-  // Running instances of HTTrack (based on winprofile.ini path)
-  protected static final HashSet<String> runningInstances = new HashSet<String>();
 
   /*
    * Build identifiers. See
@@ -253,27 +245,23 @@ public class HTTrackActivity extends FragmentActivity {
   private final WidgetDataExchange widgetDataExchange = new WidgetDataExchange(
       this);
 
+  // Progress-pane strings, cached per attach: the engine refreshes faster than getString().
+  private String string_bytes_saved;
+  private String string_links_scanned;
+  private String string_time;
+  private String string_files_written;
+  private String string_transfer_rate;
+  private String string_files_updated;
+  private String string_active_connections;
+  private String string_errors;
+  private String string_connect;
+  private String string_ready;
+
   // Project settings
   protected String version;
   protected String versionFeatures;
   protected int versionCode;
   protected String versionName;
-
-  /*
-   * Mark this profile as in use; false when another run holds it already.
-   */
-  protected static synchronized boolean markRunningInstance(final File profile) {
-    return runningInstances.add(profile.getAbsolutePath());
-  }
-
-  /*
-   * Mark this profile as not in use.
-   */
-  protected static synchronized void clearRunningInstance(final File profile) {
-    synchronized (runningInstances) {
-      runningInstances.remove(profile.getAbsolutePath());
-    }
-  }
 
   /* The public storage root when it is ours to write, else null: StoragePaths' shared root. */
   private File sharedStorageRoot() {
@@ -1141,7 +1129,7 @@ public class HTTrackActivity extends FragmentActivity {
    *          The string array
    * @return The pretty-printed value
    */
-  private static String printArray(final String[] array) {
+  static String printArray(final String[] array) {
     final StringBuilder builder = new StringBuilder();
     for (final String s : array) {
       if (builder.length() != 0) {
@@ -1345,97 +1333,39 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Engine thread runner.
+   * Drives one CrawlRun from the retained fragment, and is the crawl's way back to a window.
+   * Every decision belongs to CrawlRun, so what is left here is the attach.
    */
   protected static class Runner extends AsyncTask<Void, Integer, Void>
-      implements HTTrackCallbacks {
-    private final HTTrackLib engine = new HTTrackLib(this);
-    final private StringBuilder str = new StringBuilder();
-    private HTTrackActivity parent;
+      implements CrawlRun.Owner {
     // Application context, captured once and never detached, so a crash after detach() still dumps.
     private final Context appContext;
+    private final CrawlRun crawl;
     private final List<Runnable> pendingParentActions = new ArrayList<Runnable>();
-    // Captured when the run starts, so its finish path needs no activity.
-    private volatile File runTarget;
-    private volatile File runProjectRoot;
-    private volatile File runResources;
-    private boolean mirrorRefresh;
-    protected HTTrackStats lastStats;
-    // Set as soon as the run knows what it left behind, so a late stop cannot overwrite it.
-    private volatile boolean verdictRecorded;
-    private volatile boolean ended;
-    private volatile boolean interrupted;
-    private volatile boolean interruptedHard;
-
-    // Copy of parent strings.
-    private String string_bytes_saved;
-    private String string_links_scanned;
-    private String string_time;
-    private String string_files_written;
-    private String string_transfer_rate;
-    private String string_files_updated;
-    private String string_active_connections;
-    private String string_errors;
-    private String string_connect;
-    private String string_ready;
-    private String string_creating_project;
-    private String string_starting_mirror;
-    private String string_self_contained_conflict;
-    private String string_already_in_progress;
-    private String string_engine_faulted;
-    private String string_mirror_finished;
+    private HTTrackActivity parent;
 
     /**
      * Constructor.
-     * 
+     *
      * @param parent
      *          the parent activity.
      */
     public Runner(final HTTrackActivity parent) {
       appContext = parent.getApplicationContext();
+      crawl = new CrawlRun(appContext, this, parent.crawlMessages());
       setParent(parent);
-    }
-
-    /* Get a string from parent. */
-    private String getParentString(final int id) {
-      if (parent == null) {
-        throw new NullPointerException("parent is null");
-      }
-      final String s = parent.getString(id);
-      if (s == null) {
-        throw new NullPointerException("null string #" + id);
-      }
-      return s;
     }
 
     /**
      * Set the parent activity.
-     * 
+     *
      * @param parent
      *          the parent activity
      */
     public synchronized void setParent(final HTTrackActivity parent) {
       this.parent = parent;
-
-      // Cache localized strings
-      string_bytes_saved = getParentString(R.string.bytes_saved);
-      string_links_scanned = getParentString(R.string.links_scanned);
-      string_time = getParentString(R.string.time);
-      string_files_written = getParentString(R.string.files_written);
-      string_transfer_rate = getParentString(R.string.transfer_rate);
-      string_files_updated = getParentString(R.string.files_updated);
-      string_active_connections = getParentString(R.string.active_connections);
-      string_errors = getParentString(R.string.errors);
-      string_connect = getParentString(R.string.connect);
-      string_ready = getParentString(R.string.ready);
-      string_creating_project = getParentString(R.string.creating_project);
-      string_starting_mirror = getParentString(R.string.starting_mirror);
-      string_self_contained_conflict = getParentString(
-          R.string.self_contained_conflict);
-      string_already_in_progress = getParentString(
-          R.string.mirror_already_in_progress);
-      string_engine_faulted = getParentString(R.string.engine_faulted);
-      string_mirror_finished = getParentString(R.string.mirror_finished);
+      parent.cacheProgressStrings();
+      crawl.setMessages(parent.crawlMessages());
 
       // Execute pending actions now we are attached
       if (pendingParentActions.size() != 0) {
@@ -1464,190 +1394,87 @@ public class HTTrackActivity extends FragmentActivity {
     @Override
     protected Void doInBackground(final Void... arg0) {
       try {
-        runInternal();
+        crawl.runMirror();
       } catch (final Throwable e) {
-        // Last resort: runInternal absorbs its own failures, this only covers what comes after.
+        // Last resort: CrawlRun absorbs its own failures, this only covers what comes after.
         HTTrackActivity.emergencyDump(appContext, e);
         throw e;
       } finally {
-        ended = true;
+        crawl.end();
       }
       return null;
     }
 
-    protected void runInternal() {
-      // Rock'in!
-      String message = null;
-      // Null unless the mirror completed, leaving the finish message unlinked.
-      File mirrorFolder = null;
-      RandomAccessFile outLock = null;
-      FileLock lock = null;
-      File profile = null;
-      // Only the run that registered the profile may deregister it, or a refused second run
-      // would release the live one's claim.
-      boolean profileMarked = false;
-      // Did the engine get as far as running, and if so did it leave anything to resume?
-      boolean engineRan = false;
-      boolean pendingWork = true;
-      try {
-        // Sanity checks
-        if (parent == null) {
-          throw new IOException("no parent!");
-        }
-        // A recovered fault left the engine mid-operation; only a new process clears it.
-        if (HTTrackLib.hasFaulted()) {
-          throw new IOException(string_engine_faulted);
-        }
-        final File target = parent.getTargetFile();
-        if (target == null) {
-          throw new IOException("no project name defined!");
-        }
-        runTarget = target;
-        runProjectRoot = parent.getProjectRootFile();
-        runResources = parent.getResourceFile();
-
-        // Progress info for slow phones
-        setProgressLines(new String[] { string_creating_project });
-
-        // Validate path
-        if (!HTTrackActivity.mkdirs(target)) {
-          throw new IOException("Unable to create " + target.getAbsolutePath());
-        }
-        HTTrackActivity.setFileReadWrite(target);
-
-        // Inter-thread locking
-        profile = parent.createProfileDirectory();
-        profileMarked = markRunningInstance(profile);
-
-        // "rw" creates winprofile.ini without emptying it, so a refused lock
-        // still leaves the settings behind.
-        outLock = new RandomAccessFile(profile, "rw");
-        boolean lockOverlapped = false;
-        try {
-          lock = outLock.getChannel().tryLock();
-        } catch (final OverlappingFileLockException overlap) {
-          // A lock this JVM already holds is thrown, not returned as null.
-          lockOverlapped = true;
-        }
-        if (ProfileLockPolicy.alreadyInProgress(!profileMarked, lock == null,
-            lockOverlapped)) {
-          throw new IOException(string_already_in_progress);
-        }
-
-        // Args list
-        final List<String> args = new ArrayList<String>();
-
-        // Program name
-        args.add("httrack");
-
-        // If IPv6 is not available, do not use it.
-        if (!isIPv6Enabled()) {
-          args.add("-@i4");
-        }
-
-        // Target
-        args.add("-O");
-        args.add(target.getAbsolutePath());
-
-        // Get args from mapper
-        final List<String> options = parent.buildCommandline();
-        if (CommandlineTokens.hasSelfContainedConflict(options)) {
-          throw new IOException(string_self_contained_conflict);
-        }
-        args.addAll(options);
-
-        // Final args array
-        final String[] cargs = args.toArray(new String[] {});
-        Log.v(getClass().getSimpleName(),
-            "starting engine: " + HTTrackActivity.printArray(cargs));
-
-        // Serialize settings
-        parent.serialize(outLock.getChannel(), profile);
-
-        // Progress info for slow phones
-        setProgressLines(new String[] { string_starting_mirror });
-
-        // Run engine
-        engineRan = true;
-        final int code = engine.main(cargs);
-        // One reading of the engine's verdict, so the pane and the resume offer cannot disagree.
-        final MirrorOutcome.Stop stop = interrupted ? MirrorOutcome.Stop.USER
-            : engine.wasStopped() ? MirrorOutcome.Stop.ENGINE : MirrorOutcome.Stop.NONE;
-        pendingWork = leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code);
-        verdictRecorded = true;
-
-        final MirrorOutcome.Verdict verdict = MirrorOutcome.decide(code, stop,
-            engine.abortCode(), lastStats);
-        message = verdict.text();
-        if (verdict.showsFolderLink()) {
-          mirrorFolder = target;
-          message += "<br /><br />Mirror copied in <i><a href=\""
-              + MIRROR_FOLDER_HREF + "\">"
-              + TextUtils.htmlEncode(target.getAbsolutePath()) + "</a></i>";
-        }
-
-        // Build top index
-        buildTopIndex();
-      } catch (final IOException io) {
-        // Carries user-supplied paths, and the panel renders it as HTML.
-        final String detail = io.getMessage();
-        message = TextUtils.htmlEncode(
-            detail != null ? detail : HTTrackActivity.describeCrash(io));
-      } catch (final Throwable t) {
-        // A native fault recovered by coffeecatch lands here as java.lang.Error.
-        Log.e(getClass().getSimpleName(), "crawl aborted", t);
-        HTTrackActivity.emergencyDump(appContext, t);
-        message = "<b>Error</b>: "
-            + TextUtils.htmlEncode(HTTrackActivity.describeCrash(t));
-        // Anything else here is an ordinary Java failure, which leaves the engine usable.
-        if (HTTrackLib.hasFaulted()) {
-          message += "<br /><br />" + TextUtils.htmlEncode(string_engine_faulted);
-        }
-      } finally {
-        // Release inter-thread lock
-        if (profileMarked) {
-          clearRunningInstance(profile);
-        }
-        // Release lock
-        if (lock != null) {
-          try {
-            lock.release();
-          } catch (IOException io) {
-          }
-        }
-        // Closed whatever the lock did, or a refused run leaks the handle it opened.
-        if (outLock != null) {
-          try {
-            outLock.close();
-          } catch (IOException io) {
-          }
-        }
-        // Stamp what the run actually was; a project the engine never touched keeps its marker.
-        if (engineRan) {
-          try {
-            setInterruptedProfile(pendingWork);
-          } catch (final IOException io) {
-            Log.w(getClass().getSimpleName(), "could not update the resume marker", io);
-          }
-        }
-        // Before the finished pane, whose own stopMirror() must not read as an interruption.
-        ended = true;
+    @Override
+    public synchronized void checkAttached() throws IOException {
+      if (parent == null) {
+        throw new IOException("no parent!");
       }
-
-      // Ensure we switch to the final pane
-      final String displayMessage = string_mirror_finished + ": " + message;
-      final long errorsCount = lastStats != null ? lastStats.errorsCount : 0;
-      displayFinishedPanel(displayMessage, errorsCount, mirrorFolder);
     }
 
-    /* Built rather than queued, since a queue leaves the mirror indexless until one attaches. */
-    private void buildTopIndex() {
-      HTTrackActivity.buildTopIndex(appContext, runProjectRoot, runResources);
+    @Override
+    public synchronized File target() {
+      return parent != null ? parent.getTargetFile() : null;
     }
 
-    /* Trunk to parent.displayFinishedPanel(), still queued because only a pane can show it. */
-    private synchronized void displayFinishedPanel(final String displayMessage,
-        final long errorsCount, final File mirrorFolder) {
+    @Override
+    public synchronized File projectRoot() {
+      return parent != null ? parent.getProjectRootFile() : null;
+    }
+
+    @Override
+    public synchronized File resources() {
+      return parent != null ? parent.getResourceFile() : null;
+    }
+
+    @Override
+    public synchronized File createProfileDirectory() throws IOException {
+      checkAttached();
+      return parent.createProfileDirectory();
+    }
+
+    @Override
+    public synchronized List<String> options() throws IOException {
+      checkAttached();
+      return parent.buildCommandline();
+    }
+
+    @Override
+    public synchronized void serializeProfile(final FileChannel channel, final File profile)
+        throws IOException {
+      checkAttached();
+      parent.serialize(channel, profile);
+    }
+
+    @Override
+    public void onProgress(final String[] lines) {
+      postProgressLines(lines);
+    }
+
+    @Override
+    public void onStats(final HTTrackStats stats) {
+      final HTTrackActivity attached;
+      synchronized (this) {
+        attached = parent;
+      }
+      if (attached == null) {
+        return;
+      }
+      // Formatted on the crawl thread, as it always was; only the posting hops to the main one.
+      postProgressLines(attached.formatProgress(stats));
+    }
+
+    /* The one way to the pane, so a detach while a refresh was being laid out drops it. */
+    private synchronized void postProgressLines(final String[] lines) {
+      if (parent != null) {
+        parent.setProgressLines(lines);
+      }
+    }
+
+    /* Queued when detached, since only a pane can show the finished message. */
+    @Override
+    public synchronized void onFinished(final String displayMessage, final long errorsCount,
+        final File mirrorFolder) {
       if (parent != null) {
         parent.displayFinishedPanel(displayMessage, errorsCount, mirrorFolder);
       } else {
@@ -1660,217 +1487,187 @@ public class HTTrackActivity extends FragmentActivity {
       }
     }
 
-    /* Stamped against the run's own directory, so a detached end still records its verdict. */
-    private synchronized void setInterruptedProfile(final boolean interrupted)
-        throws IOException {
-      final File target = runTarget != null ? runTarget
-          : parent != null ? parent.getTargetFile() : null;
-      if (target == null) {
-        throw new IOException("no project directory for the resume marker");
-      }
-      HTTrackActivity.setInterruptedProfile(target, interrupted);
-    }
-
-    /*
-     * Trunk to parent.setProgressLines().
-     */
-    private synchronized void setProgressLines(final String[] lines) {
-      if (parent != null) {
-        parent.setProgressLines(lines);
-      }
-    }
-
     /**
      * Stop the mirror.
      */
     public boolean stopMirror(final boolean force) {
-      // Set interrupted flags
-      interrupted = true;
-      if (force) {
-        interruptedHard = true;
-      }
-      // Stop engine
-      final boolean stopSent = engine.stop(force);
-      // The finished pane asks for a stop too, long after the run decided the real outcome.
-      if (ResumePolicy.stopWritesMarker(ended, verdictRecorded)) {
-        try {
-          setInterruptedProfile(true);
-        } catch (final IOException io) {
-          Log.w(getClass().getSimpleName(), "could not write the resume marker", io);
-        }
-      }
-      return stopSent;
-    }
-
-    /**
-     * Has the mirror been interrupted ?
-     */
-    public boolean isInterrupted() {
-      return interrupted;
+      return crawl.stopMirror(force);
     }
 
     /**
      * Has the mirror stopped ?
      */
     public boolean isEnded() {
-      return ended;
-    }
-
-    @Override
-    public void onRefresh(HTTrackStats stats) {
-      // fake first refresh for cosmetic reasons.
-      if (stats == null) {
-        if (mirrorRefresh) {
-          return;
-        }
-        mirrorRefresh = true;
-        stats = new HTTrackStats();
-      } else {
-        synchronized (this) {
-          lastStats = stats;
-        }
-      }
-
-      // Do not refresh GUI if stopped
-      if (interruptedHard) {
-        return;
-      }
-
-      synchronized (this) {
-        if (parent == null) {
-          return;
-        }
-      }
-
-      // build stats infos
-      final String sep = " • ";
-      str.setLength(0);
-      str.append("<b>");
-      str.append(string_bytes_saved);
-      str.append("</b>: ");
-      str.append(stats.bytesWritten);
-      str.append(sep);
-      str.append("<b>");
-      str.append(string_links_scanned);
-      str.append("</b>: ");
-      str.append(stats.linksScanned);
-      str.append("/");
-      str.append(stats.linksTotal);
-      str.append(" (+");
-      str.append(stats.linksBackground);
-      str.append(")<br />");
-      /* */
-      str.append("<b>");
-      str.append(string_time);
-      str.append("</b>: ");
-      str.append(stats.elapsedTime);
-      str.append(sep);
-      str.append("<b>");
-      str.append(string_files_written);
-      str.append("</b>: ");
-      str.append(stats.filesWritten);
-      str.append(" (+");
-      str.append(stats.filesWrittenBackground);
-      str.append(")<br />");
-      /* */
-      str.append("<b>");
-      str.append(string_transfer_rate);
-      str.append("</b>: ");
-      str.append(stats.transferRate);
-      str.append(" (");
-      str.append(stats.totalTransferRate);
-      str.append(")");
-      str.append(sep);
-      str.append("<b>");
-      str.append(string_files_updated);
-      str.append("</b>: ");
-      str.append(stats.filesUpdated);
-      str.append("<br />");
-      /* */
-      str.append("<b>");
-      str.append(string_active_connections);
-      str.append("</b>: ");
-      str.append(stats.socketsCount);
-      str.append(sep);
-      str.append("<b>");
-      str.append(string_errors);
-      str.append("</b>:");
-      str.append(stats.errorsCount);
-      /* */
-      if (stats.elements != null && stats.elements.length != 0) {
-        str.append("<br />");
-        str.append("<br />");
-
-        int maxElts = 32; // limit the number of displayed items
-        for (final Element element : stats.elements) {
-          if (element == null || element.address == null
-              || element.filename == null) {
-            continue;
-          }
-          if (--maxElts == 0) {
-            break;
-          }
-
-          // URL (server-controlled: escape so markup/entities stay literal)
-          str.append("<i>");
-          str.append(TextUtils.htmlEncode(element.address));
-          str.append(TextUtils.htmlEncode(element.path));
-          str.append("</i>");
-          str.append(" → ");
-
-          // state
-          switch (element.state) {
-          case Element.STATE_CONNECTING:
-            str.append(string_connect);
-            break;
-          case Element.STATE_DNS:
-            str.append("dns");
-            break;
-          case Element.STATE_FTP:
-            str.append("ftp");
-            break;
-          case Element.STATE_READY:
-            str.append("<b>");
-            str.append(string_ready);
-            str.append("</b>");
-            break;
-          case Element.STATE_RECEIVE:
-            if (element.totalSize > 0) {
-              final long completion = (100 * element.size + element.totalSize / 2)
-                  / element.totalSize;
-              str.append(completion);
-              str.append("%");
-            } else {
-              str.append(element.size);
-              str.append("B");
-            }
-            break;
-          default:
-            str.append("???");
-            break;
-          }
-
-          // Next line
-          str.append("<br />");
-        }
-      }
-
-      // Final string
-      final String message = str.toString();
-      final String[] lines = brHtmlPattern.split(message);
-
-      // Post refresh.
-      setProgressLines(lines);
+      return crawl.isEnded();
     }
 
     /**
      * Get last statistics
-     * 
+     *
      * @return last statistics (or @c null if none)
      */
-    public synchronized HTTrackStats getLastStats() {
-      return lastStats;
+    public HTTrackStats getLastStats() {
+      return crawl.getLastStats();
     }
+  }
+
+  /* A string resource that must exist, since a null one would reach the user as "null". */
+  private String requireString(final int id) {
+    final String s = getString(id);
+    if (s == null) {
+      throw new NullPointerException("null string #" + id);
+    }
+    return s;
+  }
+
+  /** The messages the crawl produces itself, re-read on every attach. */
+  CrawlRun.Messages crawlMessages() {
+    return new CrawlRun.Messages(requireString(R.string.creating_project),
+        requireString(R.string.starting_mirror),
+        requireString(R.string.self_contained_conflict),
+        requireString(R.string.mirror_already_in_progress),
+        requireString(R.string.engine_faulted),
+        requireString(R.string.mirror_finished));
+  }
+
+  /* Read once per attach rather than per refresh, which the engine drives faster than the UI. */
+  void cacheProgressStrings() {
+    string_bytes_saved = requireString(R.string.bytes_saved);
+    string_links_scanned = requireString(R.string.links_scanned);
+    string_time = requireString(R.string.time);
+    string_files_written = requireString(R.string.files_written);
+    string_transfer_rate = requireString(R.string.transfer_rate);
+    string_files_updated = requireString(R.string.files_updated);
+    string_active_connections = requireString(R.string.active_connections);
+    string_errors = requireString(R.string.errors);
+    string_connect = requireString(R.string.connect);
+    string_ready = requireString(R.string.ready);
+  }
+
+  /**
+   * Lay one engine refresh out as the progress pane's lines.
+   *
+   * @param stats
+   *          the statistics to render, never null
+   * @return the lines to post
+   */
+  String[] formatProgress(final HTTrackStats stats) {
+    // build stats infos
+    final String sep = " • ";
+    final StringBuilder str = new StringBuilder();
+    str.append("<b>");
+    str.append(string_bytes_saved);
+    str.append("</b>: ");
+    str.append(stats.bytesWritten);
+    str.append(sep);
+    str.append("<b>");
+    str.append(string_links_scanned);
+    str.append("</b>: ");
+    str.append(stats.linksScanned);
+    str.append("/");
+    str.append(stats.linksTotal);
+    str.append(" (+");
+    str.append(stats.linksBackground);
+    str.append(")<br />");
+    /* */
+    str.append("<b>");
+    str.append(string_time);
+    str.append("</b>: ");
+    str.append(stats.elapsedTime);
+    str.append(sep);
+    str.append("<b>");
+    str.append(string_files_written);
+    str.append("</b>: ");
+    str.append(stats.filesWritten);
+    str.append(" (+");
+    str.append(stats.filesWrittenBackground);
+    str.append(")<br />");
+    /* */
+    str.append("<b>");
+    str.append(string_transfer_rate);
+    str.append("</b>: ");
+    str.append(stats.transferRate);
+    str.append(" (");
+    str.append(stats.totalTransferRate);
+    str.append(")");
+    str.append(sep);
+    str.append("<b>");
+    str.append(string_files_updated);
+    str.append("</b>: ");
+    str.append(stats.filesUpdated);
+    str.append("<br />");
+    /* */
+    str.append("<b>");
+    str.append(string_active_connections);
+    str.append("</b>: ");
+    str.append(stats.socketsCount);
+    str.append(sep);
+    str.append("<b>");
+    str.append(string_errors);
+    str.append("</b>:");
+    str.append(stats.errorsCount);
+    /* */
+    if (stats.elements != null && stats.elements.length != 0) {
+      str.append("<br />");
+      str.append("<br />");
+
+      int maxElts = 32; // limit the number of displayed items
+      for (final Element element : stats.elements) {
+        if (element == null || element.address == null
+            || element.filename == null) {
+          continue;
+        }
+        if (--maxElts == 0) {
+          break;
+        }
+
+        // URL (server-controlled: escape so markup/entities stay literal)
+        str.append("<i>");
+        str.append(TextUtils.htmlEncode(element.address));
+        str.append(TextUtils.htmlEncode(element.path));
+        str.append("</i>");
+        str.append(" → ");
+
+        // state
+        switch (element.state) {
+        case Element.STATE_CONNECTING:
+          str.append(string_connect);
+          break;
+        case Element.STATE_DNS:
+          str.append("dns");
+          break;
+        case Element.STATE_FTP:
+          str.append("ftp");
+          break;
+        case Element.STATE_READY:
+          str.append("<b>");
+          str.append(string_ready);
+          str.append("</b>");
+          break;
+        case Element.STATE_RECEIVE:
+          if (element.totalSize > 0) {
+            final long completion = (100 * element.size + element.totalSize / 2)
+                / element.totalSize;
+            str.append(completion);
+            str.append("%");
+          } else {
+            str.append(element.size);
+            str.append("B");
+          }
+          break;
+        default:
+          str.append("???");
+          break;
+        }
+
+        // Next line
+        str.append("<br />");
+      }
+    }
+
+    // Final string
+    final String message = str.toString();
+    return brHtmlPattern.split(message);
   }
 
   /**
@@ -2025,7 +1822,7 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /** Make directorie(s) if necessary. **/
-  private static boolean mkdirs(final File target) {
+  static boolean mkdirs(final File target) {
     return target.mkdirs() || target.isDirectory();
   }
 
@@ -2053,7 +1850,7 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /** make the given file readable/writabe. **/
-  private static boolean setFileReadWrite(final File target) {
+  static boolean setFileReadWrite(final File target) {
     // return target.setReadable(true) && target.setWritable(true);
     return true;
   }

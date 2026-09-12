@@ -89,15 +89,12 @@ public class InterruptedLockTest {
     assertFalse("a stale marker survived a clean run", reopensOnContinue(false, 0));
   }
 
-  /** Runner.stopMirror needs a live AsyncTask, so the guard is pinned in the source instead. */
+  /** CrawlRun.stopMirror needs a live engine, so the guard is pinned in the source instead. */
   private static String stopMirrorBody() throws IOException {
-    final String source = TestSources.javaSource("HTTrackActivity");
-    // The last declaration is the runner's; the first is RunnerFragment's trunk to it.
-    final int from = source.lastIndexOf("public boolean stopMirror(final boolean force) {");
-    assertTrue("Runner.stopMirror is gone", from != -1);
-    final int to = source.indexOf("\n    }\n", from);
-    assertTrue("Runner.stopMirror is not closed where expected", to > from);
-    return source.substring(from, to);
+    final String source = TestSources.javaSource("CrawlRun");
+    final int from = source.indexOf("boolean stopMirror(final boolean force) {");
+    assertTrue("CrawlRun.stopMirror is gone", from != -1);
+    return TestSources.balancedBlock(source, from);
   }
 
   @Test
@@ -116,17 +113,16 @@ public class InterruptedLockTest {
   @Test
   public void aStopAfterTheCrawlEndedIsIgnored() throws Exception {
     assertTrue("the finished pane's own stopMirror() would mark every project resumable",
-        stopMirrorBody().contains("ResumePolicy.stopWritesMarker(ended,"));
+        stopMirrorBody().contains("ResumePolicy.stopWritesMarker(isEnded(),"));
   }
 
   /** The verdict belongs to the run, so it is written where the run ends. */
   @Test
   public void theCrawlStampsItsOwnOutcome() throws Exception {
-    final String source = TestSources.javaSource("HTTrackActivity");
-    final int from = source.indexOf("protected void runInternal()");
-    final int to = source.indexOf("displayFinishedPanel(displayMessage, errorsCount,");
-    assertTrue("runInternal no longer bounded by its displayFinishedPanel call",
-        from != -1 && to > from);
+    final String source = TestSources.javaSource("CrawlRun");
+    final int from = source.indexOf("void runMirror()");
+    final int to = source.indexOf("owner.onFinished(displayMessage, errorsCount,");
+    assertTrue("runMirror no longer bounded by its onFinished call", from != -1 && to > from);
     final String body = source.substring(from, to);
     final String resumeOffer = TestSources.arguments(body, "leavesPendingWork");
     assertTrue("the resume offer must read the run's own stop verdict",
@@ -135,10 +131,13 @@ public class InterruptedLockTest {
         resumeOffer.contains("interrupted"));
     assertFalse("the resume offer must not narrow to one kind of stop",
         resumeOffer.contains("=="));
-    assertTrue("runInternal must write the verdict before the finished pane opens",
+    assertTrue("runMirror must write the verdict before the finished pane opens",
         body.contains("setInterruptedProfile(pendingWork)"));
-    assertTrue("ended must be set before the finished pane asks for a stop",
-        body.contains("ended = true"));
+    assertTrue("the crawl must read as ended before the finished pane asks for a stop",
+        body.contains("\n      end();"));
+    assertTrue("end() is what makes isEnded() true", TestSources
+        .balancedBlock(source, source.indexOf("void end() {"))
+        .contains("advance(MirrorSession.Event.END)"));
   }
 
   /* The predicate below only ever sees what wasStopped() reports, so the engine's

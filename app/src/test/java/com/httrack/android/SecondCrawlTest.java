@@ -17,7 +17,7 @@ import org.junit.Test;
  *  feeds it, pinning whole argument lists so a dropped or swapped refusal reds. */
 public class SecondCrawlTest {
   private static final String POLICY = "ProfileLockPolicy.alreadyInProgress";
-  private static final String RUN = "protected void runInternal()";
+  private static final String RUN = "void runMirror()";
 
   /** HTTrackActivity with comments and string literals blanked, so a commented-out call cannot
    *  pass for one and a brace in a literal is not counted. */
@@ -32,13 +32,19 @@ public class SecondCrawlTest {
     return TestSources.balancedBlock(source, at + signature.length());
   }
 
-  /** Body of the runner's own METHOD; RunnerFragment declares some of the same names, and it is
-   *  the trunk rather than the thing that acts. */
-  private static String runnerBody(final String signature) throws IOException {
-    final String source = activity();
-    final int runner = source.indexOf("protected static class Runner extends AsyncTask");
-    assertTrue("no Runner class", runner != -1);
-    return body(TestSources.balancedBlock(source, runner), signature);
+  /** The crawl core, blanked the same way. */
+  private static String crawl() throws IOException {
+    return TestSources.withoutCommentsAndStrings(TestSources.javaSource("CrawlRun"));
+  }
+
+  /** The session holding the profile claims, blanked the same way. */
+  private static String session() throws IOException {
+    return TestSources.withoutCommentsAndStrings(TestSources.javaSource("MirrorSession"));
+  }
+
+  /** Body of the crawl core's METHOD. */
+  private static String crawlBody(final String signature) throws IOException {
+    return body(crawl(), signature);
   }
 
   /** Block following the first TEXT inside BODY. An absent TEXT would otherwise read as offset
@@ -107,7 +113,7 @@ public class SecondCrawlTest {
 
   @Test
   public void theSameJvmOverlapIsCaughtByItsOwnType() throws IOException {
-    final String run = runnerBody(RUN);
+    final String run = crawlBody(RUN);
     // OverlappingFileLockException is an IllegalStateException, so only its own name keeps it
     // out of the catch(Throwable) that reports a crash.
     assertTrue("tryLock must run inside a try of its own",
@@ -123,7 +129,7 @@ public class SecondCrawlTest {
   public void allThreeRefusalsReachThePolicy() throws IOException {
     // Naming the call is not enough: any of the three folded to a constant would pass that.
     assertEquals(Arrays.asList("!profileMarked", "lock == null", "lockOverlapped"),
-        split(TestSources.arguments(runnerBody(RUN), POLICY)));
+        split(TestSources.arguments(crawlBody(RUN), POLICY)));
     int mentions = 0;
     for (final File file : TestSources.javaSources()) {
       mentions += TestSources.occurrences(
@@ -135,7 +141,7 @@ public class SecondCrawlTest {
 
   @Test
   public void theRefusalStopsTheRunBeforeTheEngine() throws IOException {
-    final String run = runnerBody(RUN);
+    final String run = crawlBody(RUN);
     assertEquals("the check must be a statement of the run, not a branch of something else", 1,
         depthOf(run, POLICY));
     assertInOrder("the overlap has to be known before the verdict", run,
@@ -148,12 +154,12 @@ public class SecondCrawlTest {
 
   @Test
   public void theUserIsToldInTheirOwnLanguage() throws IOException {
-    assertTrue("the message must be the cached resource", runnerBody(RUN)
-        .contains("throw new IOException(string_already_in_progress)"));
-    assertEquals("the string is read once, from the parent, like every other message",
-        Arrays.asList("R.string.mirror_already_in_progress"),
-        split(TestSources.arguments(runnerBody("public synchronized void setParent("),
-            "string_already_in_progress = getParentString")));
+    assertTrue("the message must be the one the owner handed the crawl", crawlBody(RUN)
+        .contains("throw new IOException(messages.alreadyInProgress)"));
+    // CrawlMessagesTest pins which resource fills that field; only its presence is read here.
+    assertTrue("no crawl message is built from mirror_already_in_progress",
+        body(activity(), "CrawlRun.Messages crawlMessages()")
+            .contains("requireString(R.string.mirror_already_in_progress)"));
     // The raw source, since withoutCommentsAndStrings blanks the literal this looks for.
     assertFalse("an English literal cannot be translated",
         TestSources.javaSource("HTTrackActivity").contains("already in progress\""));
@@ -166,23 +172,25 @@ public class SecondCrawlTest {
   public void onlyTheRunThatClaimedTheProfileReleasesIt() throws IOException {
     // A refused second run releasing the claim is what lets a third attempt reach tryLock.
     assertEquals("the claim is a yes or no, so nothing else may end the run here",
-        "return runningInstances.add(profile.getAbsolutePath());",
-        flat(body(activity(),
-            "protected static synchronized boolean markRunningInstance(final File profile)")));
-    final String run = runnerBody(RUN);
+        "return claims.add(profile.getAbsolutePath());",
+        flat(body(session(), "synchronized boolean claim(final File profile)")));
+    assertEquals("a release that took the path apart could give back another project's claim",
+        "claims.remove(profile.getAbsolutePath());",
+        flat(body(session(), "synchronized void release(final File profile)")));
+    final String run = crawlBody(RUN);
     assertTrue("the claim has to be recorded",
-        run.contains("profileMarked = markRunningInstance(profile)"));
-    assertEquals("an ungated second clear releases the live run's claim just the same", 1,
-        TestSources.occurrences(run, "clearRunningInstance("));
-    assertEquals("clearing on a refused run releases the live run's claim",
-        "clearRunningInstance(profile);",
+        run.contains("profileMarked = session.claim(profile)"));
+    assertEquals("an ungated second release gives back the live run's claim just the same", 1,
+        TestSources.occurrences(run, "session.release("));
+    assertEquals("releasing on a refused run gives back the live run's claim",
+        "session.release(profile);",
         flat(blockAfter(releases(run), "if (profileMarked)")));
   }
 
   @Test
   public void aRefusedRunLeavesNoOpenHandle() throws IOException {
     // A refusal now reaches tryLock, so the close can no longer hang off holding the lock.
-    final String run = runnerBody(RUN);
+    final String run = crawlBody(RUN);
     assertEquals("the handle must be closed whatever the lock did",
         "try { outLock.close(); } catch (IOException io) { }",
         flat(blockAfter(releases(run), "if (outLock != null)")));

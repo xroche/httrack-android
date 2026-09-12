@@ -22,6 +22,11 @@ public class FinishedMessageTest {
     return TestSources.javaSource("HTTrackActivity");
   }
 
+  /** The crawl core, which is where the finish message is concatenated. */
+  private static String crawlSource() throws IOException {
+    return TestSources.javaSource("CrawlRun");
+  }
+
   /** Source with every whitespace run flattened, so a match ignores wrapping. */
   private static String flattened(final String source) {
     return source.replaceAll("\\s+", " ");
@@ -30,10 +35,9 @@ public class FinishedMessageTest {
   /** Each statement writing the finish message, up to its semicolon. Scoped to the crawl runner:
    *  another local named message elsewhere goes to a Toast, which renders no HTML. */
   private static List<String> messageStatements(final String source) {
-    final int from = source.indexOf("protected void runInternal()");
-    final int to = source.indexOf("displayFinishedPanel(displayMessage, errorsCount, mirrorFolder)");
-    assertTrue("runInternal no longer bounded by its displayFinishedPanel call",
-        from != -1 && to > from);
+    final int from = source.indexOf("void runMirror()");
+    final int to = source.indexOf("owner.onFinished(displayMessage, errorsCount, mirrorFolder)");
+    assertTrue("runMirror no longer bounded by its onFinished call", from != -1 && to > from);
     final List<String> statements = new ArrayList<String>();
     final Matcher m = Pattern.compile("(?m)^\\s*message\\s*\\+?=")
         .matcher(source.substring(from, to));
@@ -53,7 +57,7 @@ public class FinishedMessageTest {
   @Test
   public void everyPathReachingTheMessageIsEscaped() throws Exception {
     boolean anyPath = false;
-    for (final String statement : messageStatements(source())) {
+    for (final String statement : messageStatements(crawlSource())) {
       final Matcher m = PATH_ACCESSOR.matcher(statement);
       while (m.find()) {
         anyPath = true;
@@ -67,7 +71,7 @@ public class FinishedMessageTest {
   /** An unclosed anchor makes Html.fromHtml run the link to the end of the message. */
   @Test
   public void theMirrorPathIsWrappedInAClosedHref() throws Exception {
-    final String statement = mirrorPathStatement(source());
+    final String statement = mirrorPathStatement(crawlSource());
     assertTrue(statement, statement.contains("<a href="));
     assertTrue(statement, statement.contains("MIRROR_FOLDER_HREF"));
     assertTrue(statement, statement.contains("</a>"));

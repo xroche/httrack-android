@@ -179,6 +179,29 @@ final class TestSources {
     return new String(out);
   }
 
+  /** Offset of TEXT in SOURCE; a missing pin throws rather than reading as -1. */
+  static int indexOf(final String source, final String text) {
+    final int at = source.indexOf(text);
+    if (at == -1) {
+      throw new IllegalStateException("no " + text);
+    }
+    return at;
+  }
+
+  /** Brace depth of TEXT within BODY; zero means a statement of the block itself. */
+  static int depthOf(final String body, final String text) {
+    final int at = indexOf(body, text);
+    int depth = 0;
+    for (int i = 0; i < at; i++) {
+      if (body.charAt(i) == '{') {
+        depth++;
+      } else if (body.charAt(i) == '}') {
+        depth--;
+      }
+    }
+    return depth;
+  }
+
   static int occurrences(final String source, final String text) {
     int count = 0;
     for (int at = source.indexOf(text); at != -1; at = source.indexOf(text,

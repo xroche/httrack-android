@@ -17,17 +17,23 @@ public class DetachedRunTest {
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
   }
 
-  /** Body of the runner's own METHOD declaration; RunnerFragment declares some of the same
-   *  names, and it is the trunk rather than the thing that acts. */
-  private static String runnerBody(final String declaration) throws IOException {
-    final String source = source();
-    final int runner = source
-        .indexOf("protected static class Runner extends AsyncTask");
-    assertTrue("no Runner class", runner != -1);
-    final String body = TestSources.balancedBlock(source, runner);
-    final int at = body.indexOf(declaration);
+  private static String crawlSource() throws IOException {
+    return TestSources.withoutCommentsAndStrings(TestSources.javaSource("CrawlRun"));
+  }
+
+  /** Body of the crawl core's METHOD declaration. */
+  private static String crawlBody(final String declaration) throws IOException {
+    final String source = crawlSource();
+    final int at = source.indexOf(declaration);
     assertTrue(declaration + " is gone", at != -1);
-    return TestSources.balancedBlock(body, at);
+    return TestSources.balancedBlock(source, at);
+  }
+
+  /** Body of the Runner adapter, which is where the crawl reaches a window. */
+  private static String runnerBody() throws IOException {
+    final String source = source();
+    return TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "protected static class Runner extends AsyncTask"));
   }
 
   /** Arguments of the call to NAME, whitespace collapsed. */
@@ -35,48 +41,33 @@ public class DetachedRunTest {
     return TestSources.arguments(source, name).trim().replaceAll("\\s+", " ");
   }
 
-  /** Brace depth of TEXT within BODY; zero means a statement of the method itself. */
-  private static int depthOf(final String body, final String text) {
-    final int at = body.indexOf(text);
-    assertTrue(text + " is gone", at != -1);
-    int depth = 0;
-    for (int i = 0; i < at; i++) {
-      if (body.charAt(i) == '{') {
-        depth++;
-      } else if (body.charAt(i) == '}') {
-        depth--;
-      }
-    }
-    return depth;
-  }
-
   @Test
   public void aDetachedRunStillStampsItsVerdict() throws Exception {
-    final String body = runnerBody(
+    final String body = crawlBody(
         "private synchronized void setInterruptedProfile(final boolean interrupted)");
-    assertTrue("a stop before the capture stamps the activity's directory rather than nothing",
-        body.replaceAll("\\s+", " ").contains("final File target = runTarget != null "
-            + "? runTarget : parent != null ? parent.getTargetFile() : null;"));
-    assertFalse("a marker write through the activity cannot happen once detached",
-        body.contains("parent.setInterruptedProfile"));
+    assertTrue("a stop before the capture stamps the owner's directory rather than nothing",
+        body.replaceAll("\\s+", " ")
+            .contains("final File target = runTarget != null ? runTarget : owner.target();"));
+    assertEquals("the stamp may reach the owner for the fallback target and nothing else", 1,
+        TestSources.occurrences(body, "owner."));
     assertEquals("gated on a parent, a detached run stamps nothing", 0,
-        depthOf(body, "HTTrackActivity.setInterruptedProfile(target, interrupted)"));
+        TestSources.depthOf(body, "HTTrackActivity.setInterruptedProfile(target, interrupted)"));
   }
 
   @Test
   public void aLateStopDoesNotOverwriteTheVerdict() throws Exception {
-    final String body = runnerBody("public boolean stopMirror(final boolean force)");
+    final String body = crawlBody("boolean stopMirror(final boolean force)");
     assertEquals("ended alone is set after the top index, leaving a window",
-        "ended, verdictRecorded",
+        "isEnded(), verdictRecorded",
         callArguments(body, "ResumePolicy.stopWritesMarker"));
     assertTrue("the verdict has to be latched where it is computed",
-        TestSources.between(source(), "pendingWork = leavesPendingWork",
+        TestSources.between(crawlSource(), "pendingWork = HTTrackActivity.leavesPendingWork",
             "MirrorOutcome.Verdict verdict").contains("verdictRecorded = true"));
   }
 
   @Test
   public void theTopIndexIsBuiltRatherThanQueued() throws Exception {
-    final String body = runnerBody("private void buildTopIndex()");
+    final String body = crawlBody("private void buildTopIndex()");
     assertFalse("a queued build waits for an activity that adds nothing to it",
         body.contains("pendingParentActions"));
     assertEquals("the two paths are same-typed, so a swap compiles",
@@ -89,12 +80,38 @@ public class DetachedRunTest {
   /** Everything above reads what the run captured, so the capture has to precede the engine. */
   @Test
   public void theRunCapturesWhatItsFinishPathNeeds() throws Exception {
-    final String body = TestSources.between(source(), "protected void runInternal()",
+    final String body = TestSources.between(crawlSource(), "void runMirror()",
         "engine.main(cargs)");
     for (final String field : new String[] { "runTarget =", "runProjectRoot =",
         "runResources =" }) {
       assertTrue(field + " is not captured before the engine runs", body.contains(field));
     }
+  }
+
+  /** Formatting a refresh takes long enough for the window to go; the post has to look again. */
+  @Test
+  public void aDetachWhileARefreshIsLaidOutDropsIt() throws Exception {
+    final String runner = runnerBody();
+    final String post = TestSources.balancedBlock(runner,
+        TestSources.indexOf(runner,
+            "private synchronized void postProgressLines(final String[] lines)"));
+    assertEquals("the parent read once at the top is the one that may have gone",
+        "if (parent != null) { parent.setProgressLines(lines); }",
+        post.replaceAll("\\s+", " ").trim());
+
+    final String stats = TestSources.balancedBlock(runner,
+        TestSources.indexOf(runner, "public void onStats(final HTTrackStats stats)"));
+    assertEquals("a refresh may only reach the pane through the re-checking post", 0,
+        TestSources.occurrences(stats, "setProgressLines("));
+    assertEquals("a second post would be one the check does not cover", 1,
+        TestSources.occurrences(stats, "postProgressLines("));
+    assertEquals("what was laid out is what gets posted", "attached.formatProgress(stats)",
+        callArguments(stats, "postProgressLines"));
+
+    assertEquals("laying out and posting must stay apart, or there is nothing to drop", 0,
+        TestSources.occurrences(TestSources.balancedBlock(source(),
+            TestSources.indexOf(source(), "String[] formatProgress(final HTTrackStats stats)")),
+            "setProgressLines("));
   }
 
   @Test
@@ -107,7 +124,7 @@ public class DetachedRunTest {
         "extras != null, hasLiveRunner()",
         callArguments(body, "ResumePolicy.restoresIntentState"));
     assertTrue("a refused bundle must not become the intent restartActivity() reopens",
-        depthOf(body, "setIntent(intent)") > 0);
+        TestSources.depthOf(body, "setIntent(intent)") > 0);
     assertTrue("without singleTop the tap builds a second activity",
         TestSources.read(TestSources.mainFile("AndroidManifest.xml"))
             .contains("android:launchMode=\"singleTop\""));
