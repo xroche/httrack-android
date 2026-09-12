@@ -212,9 +212,6 @@ public class HTTrackActivity extends FragmentActivity {
   // Is the application "started" ? (ie. visible to user)
   protected volatile boolean started;
 
-  // Is the application paused (pending visible state) ?
-  protected volatile boolean paused;
-
   // "Project name" pane is dirty
   protected boolean dirtyNamePane;
 
@@ -3377,14 +3374,12 @@ public class HTTrackActivity extends FragmentActivity {
   protected void onPause() {
     Log.d(getClass().getSimpleName(), "onPause");
     super.onPause();
-    paused = true;
   }
 
   @Override
   protected void onResume() {
     Log.d(getClass().getSimpleName(), "onResume");
     super.onResume();
-    paused = false;
     // Returning from the all-files-access settings screen can change what we can write.
     // Never while a crawl runs, since the engine already holds the destination.
     if (runner == null) {
