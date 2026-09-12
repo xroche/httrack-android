@@ -6,7 +6,7 @@ import java.util.TreeMap;
 
 /** Stands in for the mockable android.jar, whose SparseArray throws "not mocked". */
 public class SparseArray<E> implements Cloneable {
-  private final TreeMap<Integer, E> entries = new TreeMap<Integer, E>();
+  private TreeMap<Integer, E> entries = new TreeMap<Integer, E>();
 
   public SparseArray() {
   }
@@ -23,8 +23,8 @@ public class SparseArray<E> implements Cloneable {
   }
 
   public E get(final int key, final E valueIfKeyNotFound) {
-    final E value = entries.get(key);
-    return value != null ? value : valueIfKeyNotFound;
+    // A key held with a null value returns that null, as the real class does.
+    return entries.containsKey(key) ? entries.get(key) : valueIfKeyNotFound;
   }
 
   public void delete(final int key) {
@@ -53,6 +53,20 @@ public class SparseArray<E> implements Cloneable {
 
   public int indexOfKey(final int key) {
     return keys().indexOf(key);
+  }
+
+  /** Copies the container and shares the values, as the real clone() does. */
+  @Override
+  @SuppressWarnings("unchecked")
+  public SparseArray<E> clone() {
+    try {
+      // super.clone() so a subclass keeps its own runtime type.
+      final SparseArray<E> copy = (SparseArray<E>) super.clone();
+      copy.entries = new TreeMap<Integer, E>(entries);
+      return copy;
+    } catch (final CloneNotSupportedException cnse) {
+      throw new AssertionError(cnse);
+    }
   }
 
   private List<Integer> keys() {
