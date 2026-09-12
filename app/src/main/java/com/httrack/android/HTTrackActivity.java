@@ -1334,7 +1334,7 @@ public class HTTrackActivity extends FragmentActivity {
 
   /**
    * Drives one CrawlRun from the retained fragment, and is the crawl's way back to a window.
-   * Every decision the crawl makes now lives in CrawlRun; what is left here is the attach.
+   * Every decision belongs to CrawlRun, so what is left here is the attach.
    */
   protected static class Runner extends AsyncTask<Void, Integer, Void>
       implements CrawlRun.Owner {
@@ -1514,7 +1514,7 @@ public class HTTrackActivity extends FragmentActivity {
     return s;
   }
 
-  /** The messages a crawl of its own produces, re-read on every attach. */
+  /** The messages the crawl produces itself, re-read on every attach. */
   CrawlRun.Messages crawlMessages() {
     return new CrawlRun.Messages(requireString(R.string.creating_project),
         requireString(R.string.starting_mirror),

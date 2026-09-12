@@ -107,7 +107,7 @@ final class CrawlRun implements HTTrackCallbacks {
     this.messages = messages;
   }
 
-  /** Advance the state, and keep the session slot in step. */
+  /* The one place the state moves, so next() is what decides it. */
   private void advance(final MirrorSession.Event event) {
     state = MirrorSession.next(state, event);
   }
@@ -119,11 +119,6 @@ final class CrawlRun implements HTTrackCallbacks {
   /** Has the mirror stopped? */
   boolean isEnded() {
     return state == MirrorSession.State.ENDED;
-  }
-
-  /** Has the mirror been interrupted? */
-  boolean isInterrupted() {
-    return interrupted;
   }
 
   /**
@@ -145,8 +140,8 @@ final class CrawlRun implements HTTrackCallbacks {
     boolean engineRan = false;
     boolean pendingWork = true;
     final MirrorSession session = MirrorSession.get();
-    session.begin(this);
     advance(MirrorSession.Event.START);
+    session.begin(this);
     try {
       // Sanity checks
       owner.checkAttached();
