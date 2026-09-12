@@ -109,7 +109,8 @@ final class MirrorSession {
   }
 
   /**
-   * The crawl an owner may attach to.
+   * The crawl an owner may attach to. Its production caller arrives with stage 3's job owner,
+   * so meanwhile the Crawl seam above is what puts a test double in the slot.
    *
    * @return the crawl in the slot while it has not ended, else null
    */
