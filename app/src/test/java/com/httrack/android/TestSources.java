@@ -239,8 +239,8 @@ final class TestSources {
     return keys;
   }
 
-  /** The winprofile.ini keys fieldsSerializer declares, in order. The table
-   *  pulls in R.id, which the stub android.jar cannot load. */
+  /** The winprofile.ini keys fieldsSerializer declares, in order. R.id loads fine and the
+   *  Pair stub keeps both fields, so neither one forces the scrape below any more. */
   static List<String> serializerKeys() throws IOException {
     return tableKeys("fieldsSerializer",
         "new Pair<Integer, String>\\(\\s*R\\.id\\.\\w+\\s*,\\s*\"([^\"]+)\"\\s*\\)");

@@ -60,7 +60,8 @@ public class WinProfileOmissionTest {
     return rows;
   }
 
-  /* fieldsDefaults pulls in Pair, whose stub constructor drops both fields. */
+  /* Scraped from the source text. The Pair stub keeps both fields now, so reading
+     fieldsDefaults directly would work, and switching to it is a separate change. */
   private static Map<String, String> ourDefaults() throws IOException {
     final String source = TestSources.javaSource("OptionsMapper");
     final int from = source.indexOf("fieldsDefaults[] = new Pair[] {");

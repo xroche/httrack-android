@@ -54,6 +54,9 @@ public class OptionsMapper {
   protected static final String PREFS_NAME = "HTTrackDefaultSettings";
   protected static final String BASE_NAME = "BasePath";
 
+  /** Serialization key of the cache checkbox, which CachePolicy gates on the action. */
+  static final String CACHE_KEY = "Cache";
+
   // Fields used in serialization
   // note: names tend to match the Windows winprofile.ini version
   @SuppressWarnings("unchecked")
@@ -374,8 +377,8 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("Index", new SimpleOptionFlag("I0", true)),
       new Pair<String, OptionMapper>("WordIndex", new SimpleOptionFlag("%I")),
       new Pair<String, OptionMapper>("MailIndex", new SimpleOptionFlag("%M")),
-      /* Ticked emits nothing: the action token carries the cache mode in its
-         own digit (-iC1), and a -C here would overwrite it. */
+      /* Ticked emits nothing, and buildCommandline() drops the unticked -C0
+         when the action is Continue. See CachePolicy. */
       new Pair<String, OptionMapper>("Cache",
           new SimpleOptionFlag("C0", true)),
       new Pair<String, OptionMapper>("PrimaryScan",
@@ -2312,12 +2315,18 @@ public class OptionsMapper {
    */
   public List<String> buildCommandline() {
     final List<String> args = new ArrayList<String>();
+    final String action = getMap(R.id.radioAction);
 
     // Map all options
     for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
       final String value = getMap(field.first);
       final String key = field.second;
       if (value != null) {
+        // Only here can one option see another: the table entries are blind to each other.
+        if (CACHE_KEY.equals(key)
+            && !CachePolicy.emitsCacheOption(action, value)) {
+          continue;
+        }
         final OptionMapper map = fieldsNameToMapper.get(key);
         if (map == null) {
           Log.v(getClass().getSimpleName(), "option not mapped: " + key + "="
