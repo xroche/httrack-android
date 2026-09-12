@@ -75,7 +75,9 @@ public class ResumePolicyTest {
   public void nothingResumableSaysNothing() throws Exception {
     project("done", null);
     assertNull(notice("done"));
-    assertNull(ResumePolicy.resumeNotice(null, AND_MORE, root, new String[] {}));
+    project("stopped", "ours");
+    assertNull("a resumable project with no template to fill says nothing rather than throwing",
+        ResumePolicy.resumeNotice(null, AND_MORE, root, new String[] { "stopped" }));
   }
 
   /** Four unfinished projects is a plausible backlog, and their names are user-supplied. */

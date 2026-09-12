@@ -10,7 +10,7 @@ import org.junit.Test;
 
 /** A crawl outlives the activity that started it, so its finish path must reach disk with no
  *  parent attached. ResumePolicyTest holds the truth tables; these read the wiring that feeds
- *  them, pinning whole argument lists because every path here is same-typed. */
+ *  them, pinning whole argument lists so a dropped, duplicated or swapped argument reds. */
 public class DetachedRunTest {
   private static String source() throws IOException {
     return TestSources
@@ -54,8 +54,9 @@ public class DetachedRunTest {
   public void aDetachedRunStillStampsItsVerdict() throws Exception {
     final String body = runnerBody(
         "private synchronized void setInterruptedProfile(final boolean interrupted)");
-    assertTrue("the marker must go to the directory the run captured",
-        body.contains("runTarget != null ? runTarget"));
+    assertTrue("a stop before the capture stamps the activity's directory rather than nothing",
+        body.replaceAll("\\s+", " ").contains("final File target = runTarget != null "
+            + "? runTarget : parent != null ? parent.getTargetFile() : null;"));
     assertFalse("a marker write through the activity cannot happen once detached",
         body.contains("parent.setInterruptedProfile"));
     assertEquals("gated on a parent, a detached run stamps nothing", 0,
