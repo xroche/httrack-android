@@ -826,11 +826,11 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onNewIntent");
     super.onNewIntent(intent);
 
-    // singleTop delivers a notification tap here instead of through onCreate.
-    setIntent(intent);
+    // A state we refuse must not become the intent restartActivity() would reopen.
     final Bundle extras = intent.getExtras();
-    if (ResumePolicy.restoresIntentState(extras != null, runner != null)) {
-      restoreInstanceState(extras);
+    if (ResumePolicy.restoresIntentState(extras != null, hasLiveRunner())
+        && restoreInstanceState(extras)) {
+      setIntent(intent);
     }
   }
 
@@ -1238,7 +1238,7 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Build the top index.
+   * Build the top index, synchronized because a browse-all tap and a finishing run race here.
    *
    * @param context
    *          Any context, used to dump a native fault
@@ -1248,13 +1248,8 @@ public class HTTrackActivity extends FragmentActivity {
    *          The extracted HTML resource directory
    * @return 1 upon success
    */
-  protected static int buildTopIndex(final Context context,
+  protected static synchronized int buildTopIndex(final Context context,
       final File projectRoot, final File resources) {
-    if (!ResumePolicy.topIndexRunsHeadless(projectRoot, resources)) {
-      Log.w(HTTrackActivity.class.getSimpleName(),
-          "no resources to build the top index with");
-      return 0;
-    }
     try {
       return HTTrackLib.buildTopIndex(projectRoot, resources);
     } catch (final Throwable t) {
@@ -1364,6 +1359,8 @@ public class HTTrackActivity extends FragmentActivity {
     private volatile File runResources;
     private boolean mirrorRefresh;
     protected HTTrackStats lastStats;
+    // Set as soon as the run knows what it left behind, so a late stop cannot overwrite it.
+    private volatile boolean verdictRecorded;
     private volatile boolean ended;
     private volatile boolean interrupted;
     private volatile boolean interruptedHard;
@@ -1562,6 +1559,7 @@ public class HTTrackActivity extends FragmentActivity {
         final MirrorOutcome.Stop stop = interrupted ? MirrorOutcome.Stop.USER
             : engine.wasStopped() ? MirrorOutcome.Stop.ENGINE : MirrorOutcome.Stop.NONE;
         pendingWork = leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code);
+        verdictRecorded = true;
 
         final MirrorOutcome.Verdict verdict = MirrorOutcome.decide(code, stop,
             engine.abortCode(), lastStats);
@@ -1621,18 +1619,12 @@ public class HTTrackActivity extends FragmentActivity {
       displayFinishedPanel(displayMessage, errorsCount, mirrorFolder);
     }
 
-    /*
-     * An activity adds nothing to a top index, so it is built from the paths the run captured
-     * rather than queued, which would leave the mirror with no index until one attached.
-     */
+    /* Built rather than queued, since a queue leaves the mirror indexless until one attaches. */
     private void buildTopIndex() {
       HTTrackActivity.buildTopIndex(appContext, runProjectRoot, runResources);
     }
 
-    /*
-     * Trunk to parent.displayFinishedPanel(). Still queued when detached, because only a pane
-     * can show it and a re-attach does fire it.
-     */
+    /* Trunk to parent.displayFinishedPanel(), still queued because only a pane can show it. */
     private synchronized void displayFinishedPanel(final String displayMessage,
         final long errorsCount, final File mirrorFolder) {
       if (parent != null) {
@@ -1647,14 +1639,11 @@ public class HTTrackActivity extends FragmentActivity {
       }
     }
 
-    /*
-     * Stamp the directory the run wrote to, so a run whose activity is gone still records
-     * whether it left work behind.
-     */
+    /* Stamped against the run's own directory, so a detached end still records its verdict. */
     private synchronized void setInterruptedProfile(final boolean interrupted)
         throws IOException {
-      final File target = ResumePolicy.markerDirectory(runTarget,
-          parent != null ? parent.getTargetFile() : null);
+      final File target = runTarget != null ? runTarget
+          : parent != null ? parent.getTargetFile() : null;
       if (target == null) {
         throw new IOException("no project directory for the resume marker");
       }
@@ -1681,9 +1670,8 @@ public class HTTrackActivity extends FragmentActivity {
       }
       // Stop engine
       final boolean stopSent = engine.stop(force);
-      // Only a stop that lands on a live crawl leaves work behind: the finished pane asks for one
-      // too, and the engine answers it long after runInternal recorded the real outcome.
-      if (!ended) {
+      // The finished pane asks for a stop too, long after the run decided the real outcome.
+      if (ResumePolicy.stopWritesMarker(ended, verdictRecorded)) {
         try {
           setInterruptedProfile(true);
         } catch (final IOException io) {
@@ -2164,7 +2152,8 @@ public class HTTrackActivity extends FragmentActivity {
       // Nothing else on a cold launch points at a project a crawl left unfinished.
       final String unfinished = ResumePolicy.resumeNotice(
           getString(R.string.unfinished_downloads_xx),
-          ResumePolicy.resumableProjects(getProjectRootFile(), getProjectNames()));
+          getString(R.string.unfinished_downloads_more_xx),
+          getProjectRootFile(), getProjectNames());
       if (unfinished != null) {
         html.append("<br /><br /><b>").append(TextUtils.htmlEncode(unfinished))
             .append("</b>");
@@ -3328,13 +3317,13 @@ public class HTTrackActivity extends FragmentActivity {
     sendSystemNotification(new Intent(), title, text);
   }
 
-  /** Restore a saved instance state. **/
-  protected void restoreInstanceState(final Bundle savedInstanceState) {
+  /** Restore a saved instance state; false when the bundle was refused. **/
+  protected boolean restoreInstanceState(final Bundle savedInstanceState) {
     // Check version ID
     final int version = savedInstanceState.getInt(VERSION_CODE_NAME);
     if (version != versionCode) {
       Log.d(getClass().getSimpleName(), "refused bundle version " + version);
-      return;
+      return false;
     }
 
     // Serialized session ID
@@ -3377,6 +3366,7 @@ public class HTTrackActivity extends FragmentActivity {
         dirtyNamePane = true;
       }
     }
+    return true;
   }
 
   @Override
