@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.util.Pair;
+import com.httrack.android.OptionsMapper.GatedFeatureHandler;
 import com.httrack.android.OptionsMapper.MultipleChoicesOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.ProfileFormat;
@@ -24,7 +25,13 @@ import org.junit.Test;
 
 /** Checks winprofile.ini storage and option emission against WinHTTrack's conventions. */
 public class WinProfileParityTest {
+  /* Building it rejects a duplicate key in either table, throwing from
+     OptionsMapper, so no separate duplicate-key test can ever fire. */
   private static final OptionsMapper MAPPER = new OptionsMapper();
+
+  /* The value mapper is a private inner class, so a probe handler names it. */
+  private static final Class<?> GATED_VALUE =
+      new GatedFeatureHandler("", "").getValueMapper().getClass();
 
   private static List<String> emit(final OptionMapper mapper, final String value) {
     final List<String> cmd = new ArrayList<String>();
@@ -231,7 +238,9 @@ public class WinProfileParityTest {
   }
 
   /* No flag may re-assert an engine default to mean "off", whichever primitive
-     spells it: the -%q bug wore SimpleOption0 rather than a reverted flag. */
+     spells it: the -%q bug wore SimpleOption0 rather than a reverted flag. The
+     scrape stays because the primitive class is what is pinned, and it misses
+     the -%r, -%m and -%Z toggles GatedFeatureHandler builds from a variable. */
   @Test
   public void noOffSwitchEmitsABareEnablingForm() throws IOException {
     final Matcher m = Pattern.compile(
@@ -290,5 +299,17 @@ public class WinProfileParityTest {
       assertEquals(pair[1] + " escapes its box", Arrays.asList(),
           emit(value, "1"));
     }
+    final TreeSet<String> wired = new TreeSet<String>();
+    for (final Pair<String, OptionMapper> field : MAPPER.fieldsMapper) {
+      if (GATED_VALUE.equals(field.second.getClass())) {
+        wired.add(field.first);
+      }
+    }
+    final TreeSet<String> covered = new TreeSet<String>();
+    for (final String[] pair : pairs) {
+      covered.add(pair[1]);
+    }
+    /* A gated value with no row above would go unchecked in silence. */
+    assertEquals("gated values covered", wired, covered);
   }
 }
