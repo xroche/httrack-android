@@ -48,6 +48,11 @@ final class TestSources {
     return files;
   }
 
+  /** A file below src/main, such as "AndroidManifest.xml". */
+  static File mainFile(final String name) {
+    return new File(dir("src/main"), name);
+  }
+
   /** A file below res/, such as "values/strings.xml". */
   static File resFile(final String name) {
     return new File(dir("src/main/res"), name);

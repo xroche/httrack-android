@@ -116,7 +116,7 @@ public class InterruptedLockTest {
   @Test
   public void aStopAfterTheCrawlEndedIsIgnored() throws Exception {
     assertTrue("the finished pane's own stopMirror() would mark every project resumable",
-        stopMirrorBody().contains("if (!ended)"));
+        stopMirrorBody().contains("ResumePolicy.stopWritesMarker(ended,"));
   }
 
   /** The verdict belongs to the run, so it is written where the run ends. */

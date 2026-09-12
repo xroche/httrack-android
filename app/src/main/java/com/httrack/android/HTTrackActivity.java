@@ -217,9 +217,6 @@ public class HTTrackActivity extends FragmentActivity {
   // Is the application "started" ? (ie. visible to user)
   protected volatile boolean started;
 
-  // Is the application paused (pending visible state) ?
-  protected volatile boolean paused;
-
   // "Project name" pane is dirty
   protected boolean dirtyNamePane;
 
@@ -829,6 +826,19 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
+  @Override
+  protected void onNewIntent(final Intent intent) {
+    Log.d(getClass().getSimpleName(), "onNewIntent");
+    super.onNewIntent(intent);
+
+    // A state we refuse must not become the intent restartActivity() would reopen.
+    final Bundle extras = intent.getExtras();
+    if (ResumePolicy.restoresIntentState(extras != null, hasLiveRunner())
+        && restoreInstanceState(extras)) {
+      setIntent(intent);
+    }
+  }
+
   /* Install/Update time. */
   private long installOrUpdateTime() {
     final ApplicationInfo appInfo = getApplicationInfo();
@@ -1228,18 +1238,29 @@ public class HTTrackActivity extends FragmentActivity {
    * @return 1 upon success
    */
   protected synchronized int buildTopIndex() {
-    // Build top index
-    final File rsc = getResourceFile();
-    if (rsc != null) {
-      try {
-        return HTTrackLib.buildTopIndex(getProjectRootFile(), rsc);
-      } catch (final Throwable t) {
-        // The fault is latched; report it and let the app end the process on its way out.
-        Log.e(getClass().getSimpleName(), "could not build top index", t);
-        emergencyDump(getApplicationContext(), t);
-        return 0;
-      }
-    } else {
+    return buildTopIndex(getApplicationContext(), getProjectRootFile(),
+        getResourceFile());
+  }
+
+  /**
+   * Build the top index, synchronized because a browse-all tap and a finishing run race here.
+   *
+   * @param context
+   *          Any context, used to dump a native fault
+   * @param projectRoot
+   *          The directory holding every project
+   * @param resources
+   *          The extracted HTML resource directory
+   * @return 1 upon success
+   */
+  protected static synchronized int buildTopIndex(final Context context,
+      final File projectRoot, final File resources) {
+    try {
+      return HTTrackLib.buildTopIndex(projectRoot, resources);
+    } catch (final Throwable t) {
+      // The fault is latched; report it and let the app end the process on its way out.
+      Log.e(HTTrackActivity.class.getSimpleName(), "could not build top index", t);
+      emergencyDump(context, t);
       return 0;
     }
   }
@@ -1337,8 +1358,14 @@ public class HTTrackActivity extends FragmentActivity {
     // Application context, captured once and never detached, so a crash after detach() still dumps.
     private final Context appContext;
     private final List<Runnable> pendingParentActions = new ArrayList<Runnable>();
+    // Captured when the run starts, so its finish path needs no activity.
+    private volatile File runTarget;
+    private volatile File runProjectRoot;
+    private volatile File runResources;
     private boolean mirrorRefresh;
     protected HTTrackStats lastStats;
+    // Set as soon as the run knows what it left behind, so a late stop cannot overwrite it.
+    private volatile boolean verdictRecorded;
     private volatile boolean ended;
     private volatile boolean interrupted;
     private volatile boolean interruptedHard;
@@ -1472,6 +1499,9 @@ public class HTTrackActivity extends FragmentActivity {
         if (target == null) {
           throw new IOException("no project name defined!");
         }
+        runTarget = target;
+        runProjectRoot = parent.getProjectRootFile();
+        runResources = parent.getResourceFile();
 
         // Progress info for slow phones
         setProgressLines(new String[] { string_creating_project });
@@ -1534,6 +1564,7 @@ public class HTTrackActivity extends FragmentActivity {
         final MirrorOutcome.Stop stop = interrupted ? MirrorOutcome.Stop.USER
             : engine.wasStopped() ? MirrorOutcome.Stop.ENGINE : MirrorOutcome.Stop.NONE;
         pendingWork = leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code);
+        verdictRecorded = true;
 
         final MirrorOutcome.Verdict verdict = MirrorOutcome.decide(code, stop,
             engine.abortCode(), lastStats);
@@ -1593,25 +1624,12 @@ public class HTTrackActivity extends FragmentActivity {
       displayFinishedPanel(displayMessage, errorsCount, mirrorFolder);
     }
 
-    /*
-     * Trunk to parent.buildTopIndex().
-     */
-    private synchronized void buildTopIndex() {
-      if (parent != null) {
-        parent.buildTopIndex();
-      } else {
-        pendingParentActions.add(new Runnable() {
-          @Override
-          public void run() {
-            parent.buildTopIndex();
-          }
-        });
-      }
+    /* Built rather than queued, since a queue leaves the mirror indexless until one attaches. */
+    private void buildTopIndex() {
+      HTTrackActivity.buildTopIndex(appContext, runProjectRoot, runResources);
     }
 
-    /*
-     * Trunk to parent.displayFinishedPanel().
-     */
+    /* Trunk to parent.displayFinishedPanel(), still queued because only a pane can show it. */
     private synchronized void displayFinishedPanel(final String displayMessage,
         final long errorsCount, final File mirrorFolder) {
       if (parent != null) {
@@ -1626,15 +1644,15 @@ public class HTTrackActivity extends FragmentActivity {
       }
     }
 
-    /*
-     * Trunk to parent.setInterruptedProfile().
-     */
+    /* Stamped against the run's own directory, so a detached end still records its verdict. */
     private synchronized void setInterruptedProfile(final boolean interrupted)
         throws IOException {
-      if (parent == null) {
-        throw new IOException("parent has been detached");
+      final File target = runTarget != null ? runTarget
+          : parent != null ? parent.getTargetFile() : null;
+      if (target == null) {
+        throw new IOException("no project directory for the resume marker");
       }
-      parent.setInterruptedProfile(interrupted);
+      HTTrackActivity.setInterruptedProfile(target, interrupted);
     }
 
     /*
@@ -1657,9 +1675,8 @@ public class HTTrackActivity extends FragmentActivity {
       }
       // Stop engine
       final boolean stopSent = engine.stop(force);
-      // Only a stop that lands on a live crawl leaves work behind: the finished pane asks for one
-      // too, and the engine answers it long after runInternal recorded the real outcome.
-      if (!ended) {
+      // The finished pane asks for a stop too, long after the run decided the real outcome.
+      if (ResumePolicy.stopWritesMarker(ended, verdictRecorded)) {
         try {
           setInterruptedProfile(true);
         } catch (final IOException io) {
@@ -1960,23 +1977,6 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Set the "interrupted" flag.
-   * 
-   * @param interrupted
-   *          Interrupted mirror ?
-   * @throws IOException
-   *           Upon I/O error.
-   */
-  protected synchronized void setInterruptedProfile(final boolean interrupted)
-      throws IOException {
-    final File target = getTargetFile();
-    if (target == null) {
-      throw new IOException("no project name defined!");
-    }
-    setInterruptedProfile(target, interrupted);
-  }
-
-  /**
    * Get the profile target file for a given project.
    * 
    * @return The profile target file.
@@ -2180,10 +2180,21 @@ public class HTTrackActivity extends FragmentActivity {
           .findViewById(R.id.fieldDebug));
 
       // Welcome message.
-      final String html = getString(R.string.welcome_message)
-          .replace("\n-", "\n•").replace("\n", "<br />")
-          .replace("HTTrack Website Copier", "<b>HTTrack Website Copier</b>");
-      text.setText(Html.fromHtml(html));
+      final StringBuilder html = new StringBuilder(
+          getString(R.string.welcome_message).replace("\n-", "\n•")
+              .replace("\n", "<br />")
+              .replace("HTTrack Website Copier", "<b>HTTrack Website Copier</b>"));
+
+      // Nothing else on a cold launch points at a project a crawl left unfinished.
+      final String unfinished = ResumePolicy.resumeNotice(
+          getString(R.string.unfinished_downloads_xx),
+          getString(R.string.unfinished_downloads_more_xx),
+          getProjectRootFile(), getProjectNames());
+      if (unfinished != null) {
+        html.append("<br /><br /><b>").append(TextUtils.htmlEncode(unfinished))
+            .append("</b>");
+      }
+      text.setText(Html.fromHtml(html.toString()));
 
       // Debugging and information.
       final StringBuilder str = new StringBuilder();
@@ -3345,13 +3356,13 @@ public class HTTrackActivity extends FragmentActivity {
     sendSystemNotification(new Intent(), title, text);
   }
 
-  /** Restore a saved instance state. **/
-  protected void restoreInstanceState(final Bundle savedInstanceState) {
+  /** Restore a saved instance state; false when the bundle was refused. **/
+  protected boolean restoreInstanceState(final Bundle savedInstanceState) {
     // Check version ID
     final int version = savedInstanceState.getInt(VERSION_CODE_NAME);
     if (version != versionCode) {
       Log.d(getClass().getSimpleName(), "refused bundle version " + version);
-      return;
+      return false;
     }
 
     // Serialized session ID
@@ -3394,6 +3405,7 @@ public class HTTrackActivity extends FragmentActivity {
         dirtyNamePane = true;
       }
     }
+    return true;
   }
 
   @Override
@@ -3416,14 +3428,12 @@ public class HTTrackActivity extends FragmentActivity {
   protected void onPause() {
     Log.d(getClass().getSimpleName(), "onPause");
     super.onPause();
-    paused = true;
   }
 
   @Override
   protected void onResume() {
     Log.d(getClass().getSimpleName(), "onResume");
     super.onResume();
-    paused = false;
     // Returning from the all-files-access settings screen can change what we can write.
     // Never while a crawl runs, since the engine already holds the destination.
     if (runner == null) {
