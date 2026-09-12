@@ -37,6 +37,7 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -197,9 +198,9 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final int ACTIVITY_CLEANUP = 3;
   protected static final int ACTIVITY_IMPORT_TREE = 4;
 
-  // Process unique session ID for the fragment identifier
-  protected String sessionID = "runner_task" + "_"
-      + Long.toString(System.nanoTime());
+  // Constant on purpose: a per-process tag travels through saved state and through notification
+  // extras, so a cold launch would adopt a dead process's tag.
+  protected static final String RUNNER_FRAGMENT_TAG = "runner_task";
 
   // Project path
   protected File projectPath;
@@ -259,14 +260,10 @@ public class HTTrackActivity extends FragmentActivity {
   protected String versionName;
 
   /*
-   * Mark this profile as in use.
+   * Mark this profile as in use; false when another run holds it already.
    */
-  protected static synchronized void markRunningInstance(final File profile)
-      throws IOException {
-    if (runningInstances.contains(profile.getAbsolutePath())) {
-      throw new IOException("This project is already in progress");
-    }
-    runningInstances.add(profile.getAbsolutePath());
+  protected static synchronized boolean markRunningInstance(final File profile) {
+    return runningInstances.add(profile.getAbsolutePath());
   }
 
   /*
@@ -1384,6 +1381,7 @@ public class HTTrackActivity extends FragmentActivity {
     private String string_creating_project;
     private String string_starting_mirror;
     private String string_self_contained_conflict;
+    private String string_already_in_progress;
     private String string_engine_faulted;
     private String string_mirror_finished;
 
@@ -1434,6 +1432,8 @@ public class HTTrackActivity extends FragmentActivity {
       string_starting_mirror = getParentString(R.string.starting_mirror);
       string_self_contained_conflict = getParentString(
           R.string.self_contained_conflict);
+      string_already_in_progress = getParentString(
+          R.string.mirror_already_in_progress);
       string_engine_faulted = getParentString(R.string.engine_faulted);
       string_mirror_finished = getParentString(R.string.mirror_finished);
 
@@ -1483,6 +1483,9 @@ public class HTTrackActivity extends FragmentActivity {
       RandomAccessFile outLock = null;
       FileLock lock = null;
       File profile = null;
+      // Only the run that registered the profile may deregister it, or a refused second run
+      // would release the live one's claim.
+      boolean profileMarked = false;
       // Did the engine get as far as running, and if so did it leave anything to resume?
       boolean engineRan = false;
       boolean pendingWork = true;
@@ -1514,14 +1517,21 @@ public class HTTrackActivity extends FragmentActivity {
 
         // Inter-thread locking
         profile = parent.createProfileDirectory();
-        markRunningInstance(profile);
+        profileMarked = markRunningInstance(profile);
 
         // "rw" creates winprofile.ini without emptying it, so a refused lock
         // still leaves the settings behind.
         outLock = new RandomAccessFile(profile, "rw");
-        lock = outLock.getChannel().tryLock();
-        if (lock == null) {
-          throw new IOException("This project is already in progress");
+        boolean lockOverlapped = false;
+        try {
+          lock = outLock.getChannel().tryLock();
+        } catch (final OverlappingFileLockException overlap) {
+          // A lock this JVM already holds is thrown, not returned as null.
+          lockOverlapped = true;
+        }
+        if (ProfileLockPolicy.alreadyInProgress(!profileMarked, lock == null,
+            lockOverlapped)) {
+          throw new IOException(string_already_in_progress);
         }
 
         // Args list
@@ -1595,13 +1605,19 @@ public class HTTrackActivity extends FragmentActivity {
         }
       } finally {
         // Release inter-thread lock
-        if (profile != null) {
+        if (profileMarked) {
           clearRunningInstance(profile);
         }
         // Release lock
         if (lock != null) {
           try {
             lock.release();
+          } catch (IOException io) {
+          }
+        }
+        // Closed whatever the lock did, or a refused run leaks the handle it opened.
+        if (outLock != null) {
+          try {
             outLock.close();
           } catch (IOException io) {
           }
@@ -2114,7 +2130,7 @@ public class HTTrackActivity extends FragmentActivity {
    * change with a live, non-ended runner; false after process death (fragment restored empty).
    */
   protected boolean hasLiveRunner() {
-    final Fragment f = getSupportFragmentManager().findFragmentByTag(sessionID);
+    final Fragment f = getSupportFragmentManager().findFragmentByTag(RUNNER_FRAGMENT_TAG);
     return f instanceof RunnerFragment && ((RunnerFragment) f).hasLiveRunner();
   }
 
@@ -2125,7 +2141,7 @@ public class HTTrackActivity extends FragmentActivity {
     // First attempt to reclaim a running one (orientation change)
     if (runner == null) {
       final FragmentManager fm = getSupportFragmentManager();
-      runner = (RunnerFragment) fm.findFragmentByTag(sessionID);
+      runner = (RunnerFragment) fm.findFragmentByTag(RUNNER_FRAGMENT_TAG);
       // onAttach() should be called.
     }
     // Then, create one if necessary
@@ -2133,7 +2149,7 @@ public class HTTrackActivity extends FragmentActivity {
       final FragmentManager fm = getSupportFragmentManager();
       runner = new RunnerFragment();
       runner.setParent(this);
-      fm.beginTransaction().add(runner, sessionID).commit();
+      fm.beginTransaction().add(runner, RUNNER_FRAGMENT_TAG).commit();
     }
   }
 
@@ -3232,9 +3248,6 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Save settings to bundle
 
-    // Serialized session ID, used to reclain the fragment runner if any
-    outState.putString("com.httrack.android.sessionID", sessionID);
-
     // Version ID
     outState.putInt(VERSION_CODE_NAME, versionCode);
 
@@ -3364,9 +3377,6 @@ public class HTTrackActivity extends FragmentActivity {
       Log.d(getClass().getSimpleName(), "refused bundle version " + version);
       return false;
     }
-
-    // Serialized session ID
-    sessionID = savedInstanceState.getString("com.httrack.android.sessionID");
 
     // Switch pane id
     final int id = savedInstanceState.getInt(PANE_NAME);
