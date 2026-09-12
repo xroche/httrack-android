@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -123,6 +124,13 @@ public class SecondCrawlTest {
     // Naming the call is not enough: any of the three folded to a constant would pass that.
     assertEquals(Arrays.asList("!profileMarked", "lock == null", "lockOverlapped"),
         split(TestSources.arguments(runnerBody(RUN), POLICY)));
+    int mentions = 0;
+    for (final File file : TestSources.javaSources()) {
+      mentions += TestSources.occurrences(
+          TestSources.withoutCommentsAndStrings(TestSources.read(file)), "alreadyInProgress(");
+    }
+    // A second call site reading claimHeldByAnother backwards has only the name to warn it.
+    assertEquals("the policy has a caller no argument list pins", 2, mentions);
   }
 
   @Test
