@@ -8,7 +8,7 @@ package com.httrack.android;
  */
 final class CachePolicy {
   /** Action radio index of "Continue interrupted download". */
-  static final String ACTION_CONTINUE = "0";
+  static final int ACTION_CONTINUE = 0;
 
   /** Cache checkbox value asking for no cache, which is the only one that emits anything. */
   static final String CACHE_UNTICKED = "0";
@@ -27,7 +27,14 @@ final class CachePolicy {
    */
   static boolean emitsCacheOption(final String action,
       final String cachePreference) {
-    return !ACTION_CONTINUE.equals(action)
-        && CACHE_UNTICKED.equals(cachePreference);
+    // The checkbox is compared as text because SimpleOptionFlag reads it that way.
+    return !isContinue(action) && CACHE_UNTICKED.equals(cachePreference);
+  }
+
+  /** Does the action select "Continue interrupted download"? */
+  private static boolean isContinue(final String action) {
+    // MultipleChoicesOption picks -iC1 off the parsed index, so "00" is Continue as much as "0".
+    return OptionValues.isDigits(action)
+        && OptionValues.parseInt(action, -1) == ACTION_CONTINUE;
   }
 }

@@ -58,6 +58,45 @@ public class CachePolicyTest {
         argv(UPDATE, TICKED).contains("-C0"));
   }
 
+  /** MultipleChoicesOption selects -iC1 off the parsed index, not off the spelling, and
+   *  CurrentAction also arrives from winprofile.ini and from saved preferences, so a value the
+   *  RadioGroup would never write is reachable. */
+  @Test
+  public void theActionIsReadAsAnIndexAndNotAsText() {
+    // Parse to index 0, so the engine gets -iC1 and a -C0 would undo the resume.
+    assertEquals("\"00\" is index 0", false,
+        CachePolicy.emitsCacheOption("00", UNTICKED));
+    assertEquals("\"000\" is index 0", false,
+        CachePolicy.emitsCacheOption("000", UNTICKED));
+    // Parse to index 1, which is Update, so the untick still asks for -C0.
+    assertEquals("\"01\" is index 1", true,
+        CachePolicy.emitsCacheOption("01", UNTICKED));
+    assertEquals("\"1\" is index 1", true,
+        CachePolicy.emitsCacheOption("1", UNTICKED));
+    // isDigits rejects these, so no -iC reaches the engine and there is no resume to protect.
+    assertEquals("trailing space is not digits", true,
+        CachePolicy.emitsCacheOption("0 ", UNTICKED));
+    assertEquals("empty is not digits", true,
+        CachePolicy.emitsCacheOption("", UNTICKED));
+    assertEquals("no action selected", true,
+        CachePolicy.emitsCacheOption(null, UNTICKED));
+    assertEquals("non-numeric is not digits", true,
+        CachePolicy.emitsCacheOption("zero", UNTICKED));
+    // All digits yet past int range, so parseInt yields no index and nothing is resumed.
+    assertEquals("overflowing digit run", true,
+        CachePolicy.emitsCacheOption("99999999999999999999", UNTICKED));
+    assertEquals("\"00\"/ticked", false,
+        CachePolicy.emitsCacheOption("00", TICKED));
+  }
+
+  /** The pair -iC1 with -C0 is the shipped bug, so assert against the assembled argv. */
+  @Test
+  public void aNonCanonicalContinueKeepsItsCacheMode() {
+    final List<String> cmd = argv("00", UNTICKED);
+    assertTrue("-iC1 must carry the resume", cmd.contains("-iC1"));
+    assertFalse("-C0 would overwrite it", cmd.contains("-C0"));
+  }
+
   @Test
   public void aNewProjectHonoursTheBox() {
     final List<String> cmd = argv(NEW, UNTICKED);
