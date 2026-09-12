@@ -87,10 +87,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -149,6 +152,8 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final String STORAGE_ASKED_NAME = "StorageAccessAsked";
   // The root we left on the last move: nothing is migrated, so the older projects are still there.
   protected static final String PREVIOUS_BASE_NAME = "PreviousBasePath";
+  // App-local on purpose: an engine option lands in winprofile.ini, which WinHTTrack reads.
+  protected static final String KEEP_SCREEN_ON_NAME = "KeepScreenOnWhileMirroring";
 
   // <br /> Pattern
   protected static final Pattern brHtmlPattern = Pattern.compile(Pattern
@@ -2133,6 +2138,37 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
+   * Apply the screen-on option. The flag lapses by itself once this window stops being visible.
+   */
+  private void refreshKeepScreenOn() {
+    final boolean keep = ScreenOnPolicy.keepScreenOn(
+        getSharedPreferences(PREFS_NAME, 0).getBoolean(KEEP_SCREEN_ON_NAME, false),
+        pane_id == LAYOUT_MIRROR_PROGRESS, runner != null && runner.hasLiveRunner());
+    if (keep) {
+      getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    } else {
+      getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+  }
+
+  /**
+   * Offer the screen-on option on the progress pane, and remember the tick.
+   */
+  private void wireKeepScreenOn() {
+    final CheckBox box = CheckBox.class.cast(findViewById(R.id.checkKeepScreenOn));
+    // Set before the listener, so inflating the pane does not write the preference back.
+    box.setChecked(getSharedPreferences(PREFS_NAME, 0).getBoolean(KEEP_SCREEN_ON_NAME, false));
+    box.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+      @Override
+      public void onCheckedChanged(final CompoundButton button, final boolean checked) {
+        getSharedPreferences(PREFS_NAME, 0).edit()
+            .putBoolean(KEEP_SCREEN_ON_NAME, checked).apply();
+        refreshKeepScreenOn();
+      }
+    });
+  }
+
+  /**
    * We just entered in a new pane.
    */
   protected void onEnterNewPane() {
@@ -2269,6 +2305,7 @@ public class HTTrackActivity extends FragmentActivity {
       break;
     case R.layout.activity_mirror_progress:
       setProgressLinesInternal(new String[] { getString(R.string.starting_worker_thread) });
+      wireKeepScreenOn();
       // Asked at crawl start, not at launch.
       ensureNotificationsAreAllowed();
       startRunner();
@@ -2634,6 +2671,8 @@ public class HTTrackActivity extends FragmentActivity {
       // Post-actions
       onEnterNewPane();
     }
+    // Off the progress pane, and past the end of a crawl, the display may sleep again.
+    refreshKeepScreenOn();
   }
 
   @Override
@@ -3438,6 +3477,8 @@ public class HTTrackActivity extends FragmentActivity {
         sendSystemNotification(title, e.getMessage());
       }
     }
+    // Unconditional: the runner fragment is still live here, so a refresh would re-hold it.
+    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     super.onDestroy();
     // A relaunch can be handed this very process, latch and all.
     if (NativeFaultPolicy.exitOnDestroy(isFinishing(), exitWhenDestroyed,
