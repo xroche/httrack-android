@@ -821,6 +821,19 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
+  @Override
+  protected void onNewIntent(final Intent intent) {
+    Log.d(getClass().getSimpleName(), "onNewIntent");
+    super.onNewIntent(intent);
+
+    // singleTop delivers a notification tap here instead of through onCreate.
+    setIntent(intent);
+    final Bundle extras = intent.getExtras();
+    if (ResumePolicy.restoresIntentState(extras != null, runner != null)) {
+      restoreInstanceState(extras);
+    }
+  }
+
   /* Install/Update time. */
   private long installOrUpdateTime() {
     final ApplicationInfo appInfo = getApplicationInfo();
@@ -1220,18 +1233,34 @@ public class HTTrackActivity extends FragmentActivity {
    * @return 1 upon success
    */
   protected synchronized int buildTopIndex() {
-    // Build top index
-    final File rsc = getResourceFile();
-    if (rsc != null) {
-      try {
-        return HTTrackLib.buildTopIndex(getProjectRootFile(), rsc);
-      } catch (final Throwable t) {
-        // The fault is latched; report it and let the app end the process on its way out.
-        Log.e(getClass().getSimpleName(), "could not build top index", t);
-        emergencyDump(getApplicationContext(), t);
-        return 0;
-      }
-    } else {
+    return buildTopIndex(getApplicationContext(), getProjectRootFile(),
+        getResourceFile());
+  }
+
+  /**
+   * Build the top index.
+   *
+   * @param context
+   *          Any context, used to dump a native fault
+   * @param projectRoot
+   *          The directory holding every project
+   * @param resources
+   *          The extracted HTML resource directory
+   * @return 1 upon success
+   */
+  protected static int buildTopIndex(final Context context,
+      final File projectRoot, final File resources) {
+    if (!ResumePolicy.topIndexRunsHeadless(projectRoot, resources)) {
+      Log.w(HTTrackActivity.class.getSimpleName(),
+          "no resources to build the top index with");
+      return 0;
+    }
+    try {
+      return HTTrackLib.buildTopIndex(projectRoot, resources);
+    } catch (final Throwable t) {
+      // The fault is latched; report it and let the app end the process on its way out.
+      Log.e(HTTrackActivity.class.getSimpleName(), "could not build top index", t);
+      emergencyDump(context, t);
       return 0;
     }
   }
@@ -1329,6 +1358,10 @@ public class HTTrackActivity extends FragmentActivity {
     // Application context, captured once and never detached, so a crash after detach() still dumps.
     private final Context appContext;
     private final List<Runnable> pendingParentActions = new ArrayList<Runnable>();
+    // Captured when the run starts, so its finish path needs no activity.
+    private volatile File runTarget;
+    private volatile File runProjectRoot;
+    private volatile File runResources;
     private boolean mirrorRefresh;
     protected HTTrackStats lastStats;
     private volatile boolean ended;
@@ -1464,6 +1497,9 @@ public class HTTrackActivity extends FragmentActivity {
         if (target == null) {
           throw new IOException("no project name defined!");
         }
+        runTarget = target;
+        runProjectRoot = parent.getProjectRootFile();
+        runResources = parent.getResourceFile();
 
         // Progress info for slow phones
         setProgressLines(new String[] { string_creating_project });
@@ -1586,23 +1622,16 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     /*
-     * Trunk to parent.buildTopIndex().
+     * An activity adds nothing to a top index, so it is built from the paths the run captured
+     * rather than queued, which would leave the mirror with no index until one attached.
      */
-    private synchronized void buildTopIndex() {
-      if (parent != null) {
-        parent.buildTopIndex();
-      } else {
-        pendingParentActions.add(new Runnable() {
-          @Override
-          public void run() {
-            parent.buildTopIndex();
-          }
-        });
-      }
+    private void buildTopIndex() {
+      HTTrackActivity.buildTopIndex(appContext, runProjectRoot, runResources);
     }
 
     /*
-     * Trunk to parent.displayFinishedPanel().
+     * Trunk to parent.displayFinishedPanel(). Still queued when detached, because only a pane
+     * can show it and a re-attach does fire it.
      */
     private synchronized void displayFinishedPanel(final String displayMessage,
         final long errorsCount, final File mirrorFolder) {
@@ -1619,14 +1648,17 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     /*
-     * Trunk to parent.setInterruptedProfile().
+     * Stamp the directory the run wrote to, so a run whose activity is gone still records
+     * whether it left work behind.
      */
     private synchronized void setInterruptedProfile(final boolean interrupted)
         throws IOException {
-      if (parent == null) {
-        throw new IOException("parent has been detached");
+      final File target = ResumePolicy.markerDirectory(runTarget,
+          parent != null ? parent.getTargetFile() : null);
+      if (target == null) {
+        throw new IOException("no project directory for the resume marker");
       }
-      parent.setInterruptedProfile(interrupted);
+      HTTrackActivity.setInterruptedProfile(target, interrupted);
     }
 
     /*
@@ -1952,23 +1984,6 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Set the "interrupted" flag.
-   * 
-   * @param interrupted
-   *          Interrupted mirror ?
-   * @throws IOException
-   *           Upon I/O error.
-   */
-  protected synchronized void setInterruptedProfile(final boolean interrupted)
-      throws IOException {
-    final File target = getTargetFile();
-    if (target == null) {
-      throw new IOException("no project name defined!");
-    }
-    setInterruptedProfile(target, interrupted);
-  }
-
-  /**
    * Get the profile target file for a given project.
    * 
    * @return The profile target file.
@@ -2141,10 +2156,20 @@ public class HTTrackActivity extends FragmentActivity {
           .findViewById(R.id.fieldDebug));
 
       // Welcome message.
-      final String html = getString(R.string.welcome_message)
-          .replace("\n-", "\n•").replace("\n", "<br />")
-          .replace("HTTrack Website Copier", "<b>HTTrack Website Copier</b>");
-      text.setText(Html.fromHtml(html));
+      final StringBuilder html = new StringBuilder(
+          getString(R.string.welcome_message).replace("\n-", "\n•")
+              .replace("\n", "<br />")
+              .replace("HTTrack Website Copier", "<b>HTTrack Website Copier</b>"));
+
+      // Nothing else on a cold launch points at a project a crawl left unfinished.
+      final String unfinished = ResumePolicy.resumeNotice(
+          getString(R.string.unfinished_downloads_xx),
+          ResumePolicy.resumableProjects(getProjectRootFile(), getProjectNames()));
+      if (unfinished != null) {
+        html.append("<br /><br /><b>").append(TextUtils.htmlEncode(unfinished))
+            .append("</b>");
+      }
+      text.setText(Html.fromHtml(html.toString()));
 
       // Debugging and information.
       final StringBuilder str = new StringBuilder();
