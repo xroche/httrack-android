@@ -34,6 +34,7 @@
         <activity
             android:name="com.httrack.android.HTTrackActivity"
             android:label="@string/title_activity_startup"
+            android:launchMode="singleTop"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
