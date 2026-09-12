@@ -32,6 +32,19 @@ public class KeepScreenOnTest {
     return TestSources.balancedBlock(source, at + signature.length());
   }
 
+  /** Body of refreshKeepScreenOn, so a decoy call elsewhere in the file cannot stand in. */
+  private static String refresh() throws IOException {
+    return body(activity(), "private void refreshKeepScreenOn()");
+  }
+
+  /** BODY holds FIRST then SECOND. An absent one reads as -1, which compares as ordered. */
+  private static void assertInOrder(final String message, final String body, final String first,
+      final String second) {
+    assertTrue("no " + first, body.contains(first));
+    assertTrue("no " + second, body.contains(second));
+    assertTrue(message, body.indexOf(first) < body.indexOf(second));
+  }
+
   /** Brace depth of the first CALL inside BODY; zero means nothing conditions it. */
   private static int depthOf(final String body, final String call) {
     final int at = body.indexOf(call);
@@ -72,26 +85,29 @@ public class KeepScreenOnTest {
     // Naming the call is not enough: a constant folded into any of the three would pass that.
     assertEquals(Arrays.asList(PREF + ".getBoolean(KEEP_SCREEN_ON_NAME, false)",
         "pane_id == LAYOUT_MIRROR_PROGRESS", "runner != null && runner.hasLiveRunner()"),
-        split(TestSources.arguments(activity(), "ScreenOnPolicy.keepScreenOn")));
+        split(TestSources.arguments(refresh(), "ScreenOnPolicy.keepScreenOn")));
   }
 
   @Test
   public void theVerdictReachesTheWindowBothWays() throws IOException {
-    final String refresh = body(activity(), "private void refreshKeepScreenOn()");
+    final String refresh = refresh();
     assertTrue("the verdict must drive the window flag",
         refresh.contains("getWindow().addFlags(" + FLAG + ")"));
     assertTrue("a no must clear the flag, not merely skip setting it",
         refresh.contains("getWindow().clearFlags(" + FLAG + ")"));
-    assertTrue("the policy answer is what selects the branch",
-        refresh.indexOf("ScreenOnPolicy.keepScreenOn") < refresh.indexOf("if (keep)"));
+    assertInOrder("the policy answer is what selects the branch", refresh,
+        "ScreenOnPolicy.keepScreenOn", "if (keep)");
   }
 
   @Test
   public void everyPaneChangeReconsidersTheFlag() throws IOException {
+    final String pane = body(activity(), "private void setPane(final int position)");
     // Inside the pane_id != position block it would never fire on the way out of the crawl.
     assertEquals("the refresh must not be conditional", 0,
-        depthOf(body(activity(), "private void setPane(final int position)"),
-            "refreshKeepScreenOn()"));
+        depthOf(pane, "refreshKeepScreenOn()"));
+    // The refresh reads pane_id, so ahead of that assignment it would judge the pane being left.
+    assertInOrder("the refresh must see the pane being entered", pane, "pane_id = position;",
+        "refreshKeepScreenOn()");
   }
 
   @Test
@@ -111,11 +127,10 @@ public class KeepScreenOnTest {
     final String wire = body(activity(), "private void wireKeepScreenOn()");
     assertTrue("the tick has to outlive the pane",
         wire.contains(PREF + ".edit()") && wire.contains("putBoolean(KEEP_SCREEN_ON_NAME,"));
-    assertTrue("the box must be set before the listener, or inflating writes the preference",
-        wire.indexOf("setChecked(") < wire.indexOf("setOnCheckedChangeListener("));
-    assertTrue("a tick that changes nothing until the next pane change is not the option",
-        wire.indexOf("putBoolean(KEEP_SCREEN_ON_NAME,")
-            < wire.indexOf("refreshKeepScreenOn()"));
+    assertInOrder("the box must be set before the listener, or inflating writes the preference",
+        wire, "setChecked(", "setOnCheckedChangeListener(");
+    assertInOrder("a tick that changes nothing until the next pane change is not the option",
+        wire, "putBoolean(KEEP_SCREEN_ON_NAME,", "refreshKeepScreenOn()");
   }
 
   @Test
@@ -126,8 +141,8 @@ public class KeepScreenOnTest {
         depthOf(destroy, "getWindow().clearFlags(" + FLAG + ")"));
     assertFalse("a refresh would re-hold the flag on the way out",
         destroy.contains("refreshKeepScreenOn()"));
-    assertTrue("the window is what carries the flag, so clear it before it goes",
-        destroy.indexOf("clearFlags(" + FLAG + ")") < destroy.indexOf("super.onDestroy()"));
+    assertInOrder("the window is what carries the flag, so clear it before it goes", destroy,
+        "clearFlags(" + FLAG + ")", "super.onDestroy()");
   }
 
   @Test
