@@ -70,8 +70,8 @@ static volatile int engineFaulted = 0;
   } while(0)
 #endif
 
-/* What a worker thread recovered from, for the crawl thread to report: a worker has no JNIEnv
- * to throw with. Reading the flag first is what makes the message visible. */
+/* What a worker thread recovered from, for the crawl thread to report, because a worker has no
+ * JNIEnv to throw with. Reading the flag before the message is what makes the message safe. */
 static char workerFaultMessage[512];
 static int workerFaulted = 0;
 
@@ -85,8 +85,9 @@ static int hasWorkerFaulted(void) {
   return __atomic_load_n(&workerFaulted, __ATOMIC_ACQUIRE) != 0;
 }
 
-/* Disarm the watchdog a faulting worker left armed. Whoever first shows the crawl thread still
- * runs calls this, because that is the deadlock the watchdog is there for. */
+/* Disarm the watchdog coffeecatch arms when it catches a fault. Only reportWorkerFault() calls
+ * this, and only once it has done everything that can block, because a handler that blocks is
+ * the wedge the watchdog exists to kill. Nothing bounds what the crawl does afterwards. */
 static void clearWorkerFaultWatchdog(void) {
 #ifdef USE_COFFEECATCH
   coffeecatch_cancel_pending_alarm();
@@ -172,9 +173,11 @@ static void logWorkerFrame(void *arg, const char *module, uintptr_t addr,
         (unsigned) offset);
 }
 
+/* Names the fault in the log, hands its message to the crawl thread, and ends the mirror. */
 static void reportWorkerFault(void) {
-  /* Read before this fault latches it: already set means the crawl thread faulted first, so
-     its opt is one nothing may touch again. */
+  /* Read before the latch below, because a flag already set means the engine faulted before
+     this worker did, and that opt must not be touched again. A fault landing on the crawl
+     thread while this handler runs is not seen, and costs one stop request on a leaked opt. */
   const int alreadyFaulted = engineFaulted;
   const char *const message = coffeecatch_get_message();
   int index = 0;
@@ -186,19 +189,19 @@ static void reportWorkerFault(void) {
            "the engine faulted on a worker thread: %s",
            message != NULL ? message : "unknown fault");
   error("%s", workerFaultMessage);
-  /* Only the log gets the frames, because the tombstone that would have named them is what
-     this recovery replaces. */
+  /* Only the log gets the frames, because this recovery replaces the tombstone that would
+     have named them. */
   coffeecatch_get_backtrace_info(logWorkerFrame, &index);
   __atomic_store_n(&workerFaulted, 1, __ATOMIC_RELEASE);
-  /* Cut the crawl's wait for this worker short, which the DNS resolver answers at once. With
-     no crawl to cut short, nothing will show the crawl thread alive, so disarm here. */
+  /* Cut the crawl's wait for this worker short, which the DNS resolver answers at once. */
   MUTEX_LOCK(runningOptLock);
   if (!alreadyFaulted && runningOpt != NULL) {
     hts_request_stop(runningOpt, 1 /* keep_resume */);
-  } else {
-    clearWorkerFaultWatchdog();
   }
   MUTEX_UNLOCK(runningOptLock);
+  /* Last, because everything above can block on a lock this thread faulted holding, and the
+     watchdog is what ends the process when one does. */
+  clearWorkerFaultWatchdog();
 }
 
 /* Wraps every thread the engine spawns for itself, a DNS resolver per hostname and an FTP
@@ -932,11 +935,8 @@ static int htsshow_loop(t_hts_callbackarg * carg, httrackp * opt,
     return 0;
   }
 
-  /* A worker faulted: end the mirror now, rather than let its stop request drain the queue.
-     This tick is also the first proof that no lock the worker left held blocks this thread, and
-     the wind-down after it has no bound the watchdog could outlast. */
+  /* A worker faulted, so end the mirror now rather than let its stop request drain the queue. */
   if (hasWorkerFaulted()) {
-    clearWorkerFaultWatchdog();
     return 0;
   }
 
@@ -1180,8 +1180,6 @@ jint HTTrackLib_main(JNIEnv* env, jobject object, jobjectArray stringArray) {
         snprintf(reported, sizeof(reported), "%s", workerFaultMessage);
         throwException(env, "java/lang/Error", reported);
       }
-      /* Getting here shows this thread was never wedged, whether or not a tick did already. */
-      clearWorkerFaultWatchdog();
       code = -1;
     }
 
