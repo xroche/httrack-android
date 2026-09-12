@@ -26,6 +26,14 @@
         android:layout_alignLeft="@+id/layout"
         android:layout_alignParentBottom="true" />
 
+    <CheckBox
+        android:id="@+id/checkKeepScreenOn"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/divideLine"
+        android:layout_alignParentStart="true"
+        android:text="@string/keep_screen_on" />
+
     <View
         android:id="@+id/divideLine"
         style="@style/DividerLineHorizontal"
