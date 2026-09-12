@@ -21,7 +21,7 @@ import com.httrack.android.jni.HTTrackStats;
  * whichever owner started it may go away while it runs; everything it shows the user goes through
  * its {@link Owner}.
  */
-final class CrawlRun implements HTTrackCallbacks {
+final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
   /**
    * What the crawl needs from whoever started it. Every method may be called from the crawl
    * thread, and none of them may assume a window is on screen.
@@ -112,7 +112,8 @@ final class CrawlRun implements HTTrackCallbacks {
     state = MirrorSession.next(state, event);
   }
 
-  MirrorSession.State state() {
+  @Override
+  public MirrorSession.State state() {
     return state;
   }
 
@@ -289,7 +290,8 @@ final class CrawlRun implements HTTrackCallbacks {
   }
 
   /* Stamped against the run's own directory, so a detached end still records its verdict. */
-  private void setInterruptedProfile(final boolean interrupted) throws IOException {
+  private synchronized void setInterruptedProfile(final boolean interrupted)
+      throws IOException {
     final File target = runTarget != null ? runTarget : owner.target();
     if (target == null) {
       throw new IOException("no project directory for the resume marker");

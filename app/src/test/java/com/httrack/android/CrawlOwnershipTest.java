@@ -61,7 +61,7 @@ public class CrawlOwnershipTest {
         "advance(MirrorSession.Event.END); MirrorSession.get().end(this);",
         body(crawl, "void end()").replaceAll("\\s+", " ").trim());
     assertTrue("a slot freed by name would free another owner's crawl",
-        body(source("MirrorSession"), "synchronized void end(final CrawlRun crawl)")
+        body(source("MirrorSession"), "synchronized void end(final Crawl crawl)")
             .contains("if (run == crawl)"));
   }
 

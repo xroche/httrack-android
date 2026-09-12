@@ -18,6 +18,12 @@ final class MirrorSession {
     START, ENGINE_STARTED, STOP, END
   }
 
+  /** What the session needs of the crawl in its slot. */
+  interface Crawl {
+    /** How far this crawl has got. */
+    State state();
+  }
+
   /**
    * Where a crawl in STATE stands once EVENT has happened.
    *
@@ -53,7 +59,7 @@ final class MirrorSession {
   private final HashSet<String> claims = new HashSet<String>();
 
   /** The last crawl started, live or not; only the crawl itself clears it. */
-  private CrawlRun run;
+  private Crawl run;
 
   private MirrorSession() {
   }
@@ -86,7 +92,7 @@ final class MirrorSession {
    * @param crawl
    *          the crawl that is starting
    */
-  synchronized void begin(final CrawlRun crawl) {
+  synchronized void begin(final Crawl crawl) {
     run = crawl;
   }
 
@@ -96,7 +102,7 @@ final class MirrorSession {
    * @param crawl
    *          the crawl that has ended
    */
-  synchronized void end(final CrawlRun crawl) {
+  synchronized void end(final Crawl crawl) {
     if (run == crawl) {
       run = null;
     }
@@ -107,16 +113,7 @@ final class MirrorSession {
    *
    * @return the crawl in the slot while it has not ended, else null
    */
-  synchronized CrawlRun live() {
+  synchronized Crawl live() {
     return run != null && run.state() != State.ENDED ? run : null;
-  }
-
-  /**
-   * How far the crawl in the slot has got.
-   *
-   * @return its state, or NONE when the slot is empty
-   */
-  synchronized State state() {
-    return run != null ? run.state() : State.NONE;
   }
 }

@@ -29,37 +29,29 @@ public class DetachedRunTest {
     return TestSources.balancedBlock(source, at);
   }
 
+  /** Body of the Runner adapter, which is where the crawl reaches a window. */
+  private static String runnerBody() throws IOException {
+    final String source = source();
+    return TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "protected static class Runner extends AsyncTask"));
+  }
+
   /** Arguments of the call to NAME, whitespace collapsed. */
   private static String callArguments(final String source, final String name) {
     return TestSources.arguments(source, name).trim().replaceAll("\\s+", " ");
   }
 
-  /** Brace depth of TEXT within BODY; zero means a statement of the method itself. */
-  private static int depthOf(final String body, final String text) {
-    final int at = body.indexOf(text);
-    assertTrue(text + " is gone", at != -1);
-    int depth = 0;
-    for (int i = 0; i < at; i++) {
-      if (body.charAt(i) == '{') {
-        depth++;
-      } else if (body.charAt(i) == '}') {
-        depth--;
-      }
-    }
-    return depth;
-  }
-
   @Test
   public void aDetachedRunStillStampsItsVerdict() throws Exception {
     final String body = crawlBody(
-        "private void setInterruptedProfile(final boolean interrupted)");
+        "private synchronized void setInterruptedProfile(final boolean interrupted)");
     assertTrue("a stop before the capture stamps the owner's directory rather than nothing",
         body.replaceAll("\\s+", " ")
             .contains("final File target = runTarget != null ? runTarget : owner.target();"));
     assertEquals("the stamp may reach the owner for the fallback target and nothing else", 1,
         TestSources.occurrences(body, "owner."));
     assertEquals("gated on a parent, a detached run stamps nothing", 0,
-        depthOf(body, "HTTrackActivity.setInterruptedProfile(target, interrupted)"));
+        TestSources.depthOf(body, "HTTrackActivity.setInterruptedProfile(target, interrupted)"));
   }
 
   @Test
@@ -96,6 +88,32 @@ public class DetachedRunTest {
     }
   }
 
+  /** Formatting a refresh takes long enough for the window to go; the post has to look again. */
+  @Test
+  public void aDetachWhileARefreshIsLaidOutDropsIt() throws Exception {
+    final String runner = runnerBody();
+    final String post = TestSources.balancedBlock(runner,
+        TestSources.indexOf(runner,
+            "private synchronized void postProgressLines(final String[] lines)"));
+    assertEquals("the parent read once at the top is the one that may have gone",
+        "if (parent != null) { parent.setProgressLines(lines); }",
+        post.replaceAll("\\s+", " ").trim());
+
+    final String stats = TestSources.balancedBlock(runner,
+        TestSources.indexOf(runner, "public void onStats(final HTTrackStats stats)"));
+    assertEquals("a refresh may only reach the pane through the re-checking post", 0,
+        TestSources.occurrences(stats, "setProgressLines("));
+    assertEquals("a second post would be one the check does not cover", 1,
+        TestSources.occurrences(stats, "postProgressLines("));
+    assertEquals("what was laid out is what gets posted", "attached.formatProgress(stats)",
+        callArguments(stats, "postProgressLines"));
+
+    assertEquals("laying out and posting must stay apart, or there is nothing to drop", 0,
+        TestSources.occurrences(TestSources.balancedBlock(source(),
+            TestSources.indexOf(source(), "String[] formatProgress(final HTTrackStats stats)")),
+            "setProgressLines("));
+  }
+
   @Test
   public void aNotificationTapReachesTheLiveActivity() throws Exception {
     final String source = source();
@@ -106,7 +124,7 @@ public class DetachedRunTest {
         "extras != null, hasLiveRunner()",
         callArguments(body, "ResumePolicy.restoresIntentState"));
     assertTrue("a refused bundle must not become the intent restartActivity() reopens",
-        depthOf(body, "setIntent(intent)") > 0);
+        TestSources.depthOf(body, "setIntent(intent)") > 0);
     assertTrue("without singleTop the tap builds a second activity",
         TestSources.read(TestSources.mainFile("AndroidManifest.xml"))
             .contains("android:launchMode=\"singleTop\""));

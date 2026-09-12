@@ -1447,10 +1447,8 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     @Override
-    public synchronized void onProgress(final String[] lines) {
-      if (parent != null) {
-        parent.setProgressLines(lines);
-      }
+    public void onProgress(final String[] lines) {
+      postProgressLines(lines);
     }
 
     @Override
@@ -1459,9 +1457,17 @@ public class HTTrackActivity extends FragmentActivity {
       synchronized (this) {
         attached = parent;
       }
-      // Rendered on the crawl thread, as it always was; only the posting hops to the main one.
-      if (attached != null) {
-        attached.renderProgress(stats);
+      if (attached == null) {
+        return;
+      }
+      // Formatted on the crawl thread, as it always was; only the posting hops to the main one.
+      postProgressLines(attached.formatProgress(stats));
+    }
+
+    /* The one way to the pane, so a detach while a refresh was being laid out drops it. */
+    private synchronized void postProgressLines(final String[] lines) {
+      if (parent != null) {
+        parent.setProgressLines(lines);
       }
     }
 
@@ -1539,12 +1545,13 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Draw one engine refresh on the progress pane.
+   * Lay one engine refresh out as the progress pane's lines.
    *
    * @param stats
    *          the statistics to render, never null
+   * @return the lines to post
    */
-  void renderProgress(final HTTrackStats stats) {
+  String[] formatProgress(final HTTrackStats stats) {
     // build stats infos
     final String sep = " • ";
     final StringBuilder str = new StringBuilder();
@@ -1660,10 +1667,7 @@ public class HTTrackActivity extends FragmentActivity {
 
     // Final string
     final String message = str.toString();
-    final String[] lines = brHtmlPattern.split(message);
-
-    // Post refresh.
-    setProgressLines(lines);
+    return brHtmlPattern.split(message);
   }
 
   /**
