@@ -7,8 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -16,9 +14,12 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /** Truth tables for what a crawl whose activity is gone does with its verdict, and for what a
- *  cold launch says about the project it left behind. The source-text checks below prove the
+ *  cold launch says about the project it left behind. DetachedRunTest next door proves the
  *  activity and the runner delegate here. */
 public class ResumePolicyTest {
+  private static final String TEMPLATE = "left: %s.";
+  private static final String AND_MORE = "and %s more";
+
   @Rule
   public final TemporaryFolder tmp = new TemporaryFolder();
 
@@ -41,75 +42,63 @@ public class ResumePolicyTest {
     return target;
   }
 
-  @Test
-  public void theRunsOwnDirectoryTakesTheMarker() {
-    final File run = new File("/projects/run");
-    final File attached = new File("/projects/other");
-    assertEquals("the run wrote there, whatever the activity names now", run,
-        ResumePolicy.markerDirectory(run, attached));
-    assertEquals(run, ResumePolicy.markerDirectory(run, null));
-  }
-
-  @Test
-  public void aStopBeforeTheRunClaimedADirectoryAsksTheActivity() {
-    final File attached = new File("/projects/other");
-    assertEquals(attached, ResumePolicy.markerDirectory(null, attached));
-  }
-
-  @Test
-  public void withNoDirectoryAtAllNothingIsStamped() {
-    assertNull(ResumePolicy.markerDirectory(null, null));
-  }
-
-  @Test
-  public void theTopIndexNeedsBothPaths() {
-    final File path = new File("/projects");
-    assertTrue(ResumePolicy.topIndexRunsHeadless(path, path));
-    assertFalse(ResumePolicy.topIndexRunsHeadless(null, path));
-    assertFalse(ResumePolicy.topIndexRunsHeadless(path, null));
-    assertFalse(ResumePolicy.topIndexRunsHeadless(null, null));
+  private String notice(final String... names) {
+    return ResumePolicy.resumeNotice(TEMPLATE, AND_MORE, root, names);
   }
 
   @Test
   public void bothMarkersMakeAProjectResumable() throws Exception {
     project("ours", "ours");
     project("engine", "engine");
-    assertEquals(Arrays.asList("ours", "engine"),
-        ResumePolicy.resumableProjects(root, new String[] { "ours", "engine" }));
+    assertEquals("left: ours, engine.", notice("ours", "engine"));
   }
 
   @Test
   public void aProjectThatFinishedIsNotOffered() throws Exception {
     project("done", null);
     project("stopped", "ours");
-    assertEquals(Collections.singletonList("stopped"),
-        ResumePolicy.resumableProjects(root, new String[] { "done", "stopped" }));
+    assertEquals("left: stopped.", notice("done", "stopped"));
   }
 
   /** getProjectNames() returns null when the root is missing, and a name can go away between
    *  the listing and the check. */
   @Test
-  public void nothingToListMeansNothingToOffer() throws Exception {
-    assertTrue(ResumePolicy.resumableProjects(root, null).isEmpty());
-    assertTrue(ResumePolicy.resumableProjects(null, new String[] { "gone" }).isEmpty());
-    assertTrue(ResumePolicy.resumableProjects(root, new String[] {}).isEmpty());
-    assertTrue(ResumePolicy.resumableProjects(root, new String[] { "gone", null })
-        .isEmpty());
+  public void nothingToListMeansNothingToSay() throws Exception {
+    assertNull(notice((String[]) null));
+    assertNull(notice());
+    assertNull(notice("gone", null));
+    assertNull(ResumePolicy.resumeNotice(TEMPLATE, AND_MORE, null,
+        new String[] { "gone" }));
   }
 
   @Test
-  public void theNoticeNamesEveryUnfinishedProject() {
-    assertEquals("left: one", ResumePolicy.resumeNotice("left: %s",
-        Collections.singletonList("one")));
-    assertEquals("left: one, two",
-        ResumePolicy.resumeNotice("left: %s", Arrays.asList("one", "two")));
+  public void nothingResumableSaysNothing() throws Exception {
+    project("done", null);
+    assertNull(notice("done"));
+    assertNull(ResumePolicy.resumeNotice(null, AND_MORE, root, new String[] {}));
   }
 
+  /** Four unfinished projects is a plausible backlog, and their names are user-supplied. */
   @Test
-  public void nothingUnfinishedSaysNothing() {
-    assertNull(ResumePolicy.resumeNotice("left: %s", Collections.<String> emptyList()));
-    assertNull(ResumePolicy.resumeNotice("left: %s", null));
-    assertNull(ResumePolicy.resumeNotice(null, Collections.singletonList("one")));
+  public void theNoticeNamesThreeAndCountsTheRest() throws Exception {
+    final String[] names = new String[] { "a", "b", "c", "d", "e" };
+    for (final String name : names) {
+      project(name, "ours");
+    }
+    assertEquals("left: a, b, c.", notice("a", "b", "c"));
+    assertEquals("left: a, b, c, and 1 more.", notice("a", "b", "c", "d"));
+    assertEquals("left: a, b, c, and 2 more.", notice(names));
+  }
+
+  /** A missing suffix string drops the count rather than the whole notice. */
+  @Test
+  public void theCountIsOptional() throws Exception {
+    for (final String name : new String[] { "a", "b", "c", "d" }) {
+      project(name, "ours");
+    }
+    assertEquals("left: a, b, c.",
+        ResumePolicy.resumeNotice(TEMPLATE, null, root, new String[] { "a", "b",
+            "c", "d" }));
   }
 
   @Test
@@ -122,77 +111,14 @@ public class ResumePolicyTest {
     assertFalse(ResumePolicy.restoresIntentState(false, true));
   }
 
-  private static String source() throws IOException {
-    return TestSources.withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
-  }
-
-  /** Body of the runner's own METHOD declaration. */
-  private static String runnerBody(final String declaration) throws IOException {
-    final String source = source();
-    final int at = source.indexOf(declaration);
-    assertTrue(declaration + " is gone", at != -1);
-    return TestSources.balancedBlock(source, at);
-  }
-
   @Test
-  public void aDetachedRunStillStampsItsVerdict() throws Exception {
-    final String body = runnerBody(
-        "private synchronized void setInterruptedProfile(final boolean interrupted)");
-    assertTrue("the marker must go to the directory the run captured",
-        body.contains("ResumePolicy.markerDirectory(runTarget"));
-    assertFalse("a marker write through the activity cannot happen once detached",
-        body.contains("parent.setInterruptedProfile"));
-  }
-
-  @Test
-  public void theTopIndexIsBuiltRatherThanQueued() throws Exception {
-    final String body = runnerBody("private void buildTopIndex()");
-    assertFalse("a queued build waits for an activity that adds nothing to it",
-        body.contains("pendingParentActions"));
-    assertTrue(body.contains("HTTrackActivity.buildTopIndex(appContext"));
-  }
-
-  /** Everything above reads what the run captured, so the capture has to precede the engine. */
-  @Test
-  public void theRunCapturesWhatItsFinishPathNeeds() throws Exception {
-    final String body = TestSources.between(source(), "protected void runInternal()",
-        "engine.main(cargs)");
-    for (final String field : new String[] { "runTarget =", "runProjectRoot =",
-        "runResources =" }) {
-      assertTrue(field + " is not captured before the engine runs", body.contains(field));
-    }
-  }
-
-  @Test
-  public void aNotificationTapReachesTheLiveActivity() throws Exception {
-    final String source = source();
-    final int at = source.indexOf("protected void onNewIntent(final Intent intent)");
-    assertTrue("with no onNewIntent a tap re-enters through onCreate", at != -1);
-    final String body = TestSources.balancedBlock(source, at);
-    assertTrue("the tapped intent must replace the one onCreate read",
-        body.contains("setIntent(intent)"));
-    assertTrue(body.contains("ResumePolicy.restoresIntentState("));
-    assertTrue("without singleTop the tap builds a second activity",
-        TestSources.read(TestSources.mainFile("AndroidManifest.xml"))
-            .contains("android:launchMode=\"singleTop\""));
-  }
-
-  @Test
-  public void theWelcomePaneNamesAnUnfinishedProject() throws Exception {
-    final String startup = TestSources.between(source(), "case R.layout.activity_startup:",
-        "case R.layout.activity_proj_name:");
-    assertTrue(startup.contains("ResumePolicy.resumeNotice("));
-    assertTrue("a project name is user-supplied and the pane renders HTML",
-        startup.contains("TextUtils.htmlEncode("));
-  }
-
-  /** resumeNotice fills a single %s, so a template with none says nothing and one with two
-   *  repeats the names. */
-  @Test
-  public void theNoticeStringCarriesOnePlaceholder() throws Exception {
-    final String notice = TestSources.between(
-        TestSources.read(TestSources.resFile("values/strings.xml")),
-        "name=\"unfinished_downloads_xx\"", "</string>");
-    assertEquals(notice, 1, TestSources.occurrences(notice, "%s"));
+  public void onlyAStopAheadOfTheVerdictWritesTheMarker() {
+    assertTrue("nothing else has decided yet",
+        ResumePolicy.stopWritesMarker(false, false));
+    assertFalse("the run already recorded what it left behind",
+        ResumePolicy.stopWritesMarker(false, true));
+    assertFalse("the finished pane's own stop is not an interruption",
+        ResumePolicy.stopWritesMarker(true, true));
+    assertFalse(ResumePolicy.stopWritesMarker(true, false));
   }
 }
