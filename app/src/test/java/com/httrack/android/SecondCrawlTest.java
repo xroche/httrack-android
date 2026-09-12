@@ -48,6 +48,14 @@ public class SecondCrawlTest {
     return TestSources.balancedBlock(body, at + text.length());
   }
 
+  /** The run's finally block, the only place a release runs whether the run was refused or not.
+   *  Sliced rather than searched, since a release the try holds still reads as present. */
+  private static String releases(final String run) {
+    assertEquals("one finally, or the slice below takes the wrong block", 1,
+        TestSources.occurrences(run, "finally"));
+    return blockAfter(run, "finally");
+  }
+
   /** SOURCE with every run of whitespace collapsed to one space. */
   private static String flat(final String source) {
     return source.replaceAll("\\s+", " ").trim();
@@ -156,9 +164,11 @@ public class SecondCrawlTest {
     final String run = runnerBody(RUN);
     assertTrue("the claim has to be recorded",
         run.contains("profileMarked = markRunningInstance(profile)"));
+    assertEquals("an ungated second clear releases the live run's claim just the same", 1,
+        TestSources.occurrences(run, "clearRunningInstance("));
     assertEquals("clearing on a refused run releases the live run's claim",
         "clearRunningInstance(profile);",
-        flat(blockAfter(run, "if (profileMarked)")));
+        flat(blockAfter(releases(run), "if (profileMarked)")));
   }
 
   @Test
@@ -167,7 +177,7 @@ public class SecondCrawlTest {
     final String run = runnerBody(RUN);
     assertEquals("the handle must be closed whatever the lock did",
         "try { outLock.close(); } catch (IOException io) { }",
-        flat(blockAfter(run, "if (outLock != null)")));
+        flat(blockAfter(releases(run), "if (outLock != null)")));
     assertFalse("a close inside the lock branch skips every refused run",
         flat(blockAfter(run, "if (lock != null)")).contains("outLock.close()"));
   }

@@ -106,11 +106,12 @@ public class RunnerFragmentTagTest {
     assertTrue("no version guard", guard != -1);
     assertTrue("the guard must refuse the bundle",
         TestSources.balancedBlock(restore, guard).contains("return false"));
-    final int first = restore.indexOf("savedInstanceState.get");
-    assertTrue("nothing reads the bundle", first != -1 && first < guard);
+    // The bare name, since an alias assigned from the bundle reads it just as well as a get.
+    final int first = restore.indexOf("savedInstanceState");
+    assertTrue("nothing touches the bundle", first != -1 && first < guard);
     assertEquals("the version must be the first thing read", first,
         restore.indexOf("savedInstanceState.getInt(VERSION_CODE_NAME)"));
-    final int next = restore.indexOf("savedInstanceState.get", first + 1);
+    final int next = restore.indexOf("savedInstanceState", first + 1);
     assertTrue("nothing else reads the bundle", next != -1);
     assertTrue("a read ahead of the guard would act on a bundle it refuses", next > guard);
   }
