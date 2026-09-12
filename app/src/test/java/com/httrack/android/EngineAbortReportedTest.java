@@ -29,7 +29,7 @@ public class EngineAbortReportedTest {
   /** Both inputs must reach the choice; the return code alone cannot see either. */
   @Test
   public void theFinishedPaneWeighsBothTheStopAndTheEnginesVerdict() throws Exception {
-    final String call = TestSources.arguments(TestSources.javaSource("HTTrackActivity"),
+    final String call = TestSources.arguments(TestSources.javaSource("CrawlRun"),
         "MirrorOutcome.decide");
     assertEquals("the exit code must reach the choice", "code", call.split(",")[0].trim());
     assertEquals("the pane must weigh the same stop the resume offer does", "stop",
@@ -55,12 +55,12 @@ public class EngineAbortReportedTest {
   /** MirrorOutcomeTest owns the text and the link; only the folder the link points at is here. */
   @Test
   public void theFolderIsOfferedExactlyWhenTheVerdictSaysSo() throws Exception {
-    final String body = TestSources.between(TestSources.javaSource("HTTrackActivity"),
-        "protected void runInternal()", "// Build top index");
+    final String body = TestSources.between(TestSources.javaSource("CrawlRun"),
+        "void runMirror()", "// Build top index");
     assertEquals("the mirror folder must be offered once, and only under the verdict", 1,
         body.split("mirrorFolder = target", -1).length - 1);
     assertTrue("the folder must hang off the verdict's own answer",
-        body.contains("if (verdict.showsFolderLink()) {\n          mirrorFolder = target;"));
+        body.contains("if (verdict.showsFolderLink()) {\n        mirrorFolder = target;"));
     // A second verdict, or a second assignment, would answer over the one decide() handed back.
     assertTrue("the verdict must not be replaceable",
         body.contains("final MirrorOutcome.Verdict verdict = MirrorOutcome.decide("));
@@ -73,7 +73,7 @@ public class EngineAbortReportedTest {
   /** Transposing the two branches is invisible to the enum, so each is pinned to its source. */
   @Test
   public void theStopSourceNamesWhoAskedForIt() throws Exception {
-    final String assigned = TestSources.between(TestSources.javaSource("HTTrackActivity"),
+    final String assigned = TestSources.between(TestSources.javaSource("CrawlRun"),
         "final MirrorOutcome.Stop stop", ";");
     assertTrue("the user's own tap must be the USER stop",
         assigned.matches("(?s).*interrupted\\s*\\?\\s*MirrorOutcome\\.Stop\\.USER.*"));

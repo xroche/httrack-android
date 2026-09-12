@@ -17,17 +17,16 @@ public class DetachedRunTest {
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
   }
 
-  /** Body of the runner's own METHOD declaration; RunnerFragment declares some of the same
-   *  names, and it is the trunk rather than the thing that acts. */
-  private static String runnerBody(final String declaration) throws IOException {
-    final String source = source();
-    final int runner = source
-        .indexOf("protected static class Runner extends AsyncTask");
-    assertTrue("no Runner class", runner != -1);
-    final String body = TestSources.balancedBlock(source, runner);
-    final int at = body.indexOf(declaration);
+  private static String crawlSource() throws IOException {
+    return TestSources.withoutCommentsAndStrings(TestSources.javaSource("CrawlRun"));
+  }
+
+  /** Body of the crawl core's METHOD declaration. */
+  private static String crawlBody(final String declaration) throws IOException {
+    final String source = crawlSource();
+    final int at = source.indexOf(declaration);
     assertTrue(declaration + " is gone", at != -1);
-    return TestSources.balancedBlock(body, at);
+    return TestSources.balancedBlock(source, at);
   }
 
   /** Arguments of the call to NAME, whitespace collapsed. */
@@ -52,31 +51,31 @@ public class DetachedRunTest {
 
   @Test
   public void aDetachedRunStillStampsItsVerdict() throws Exception {
-    final String body = runnerBody(
-        "private synchronized void setInterruptedProfile(final boolean interrupted)");
-    assertTrue("a stop before the capture stamps the activity's directory rather than nothing",
-        body.replaceAll("\\s+", " ").contains("final File target = runTarget != null "
-            + "? runTarget : parent != null ? parent.getTargetFile() : null;"));
-    assertFalse("a marker write through the activity cannot happen once detached",
-        body.contains("parent.setInterruptedProfile"));
+    final String body = crawlBody(
+        "private void setInterruptedProfile(final boolean interrupted)");
+    assertTrue("a stop before the capture stamps the owner's directory rather than nothing",
+        body.replaceAll("\\s+", " ")
+            .contains("final File target = runTarget != null ? runTarget : owner.target();"));
+    assertEquals("the stamp may reach the owner for the fallback target and nothing else", 1,
+        TestSources.occurrences(body, "owner."));
     assertEquals("gated on a parent, a detached run stamps nothing", 0,
         depthOf(body, "HTTrackActivity.setInterruptedProfile(target, interrupted)"));
   }
 
   @Test
   public void aLateStopDoesNotOverwriteTheVerdict() throws Exception {
-    final String body = runnerBody("public boolean stopMirror(final boolean force)");
+    final String body = crawlBody("boolean stopMirror(final boolean force)");
     assertEquals("ended alone is set after the top index, leaving a window",
-        "ended, verdictRecorded",
+        "isEnded(), verdictRecorded",
         callArguments(body, "ResumePolicy.stopWritesMarker"));
     assertTrue("the verdict has to be latched where it is computed",
-        TestSources.between(source(), "pendingWork = leavesPendingWork",
+        TestSources.between(crawlSource(), "pendingWork = HTTrackActivity.leavesPendingWork",
             "MirrorOutcome.Verdict verdict").contains("verdictRecorded = true"));
   }
 
   @Test
   public void theTopIndexIsBuiltRatherThanQueued() throws Exception {
-    final String body = runnerBody("private void buildTopIndex()");
+    final String body = crawlBody("private void buildTopIndex()");
     assertFalse("a queued build waits for an activity that adds nothing to it",
         body.contains("pendingParentActions"));
     assertEquals("the two paths are same-typed, so a swap compiles",
@@ -89,7 +88,7 @@ public class DetachedRunTest {
   /** Everything above reads what the run captured, so the capture has to precede the engine. */
   @Test
   public void theRunCapturesWhatItsFinishPathNeeds() throws Exception {
-    final String body = TestSources.between(source(), "protected void runInternal()",
+    final String body = TestSources.between(crawlSource(), "void runMirror()",
         "engine.main(cargs)");
     for (final String field : new String[] { "runTarget =", "runProjectRoot =",
         "runResources =" }) {

@@ -153,10 +153,9 @@ public class NativeFaultLatchTest {
 
   @Test
   public void aFaultedEngineIsNeverAskedForAnotherMirror() throws IOException {
-    final String source = TestSources.javaSource("HTTrackActivity");
-    final String run = TestSources.between(source, "protected void runInternal()",
-        "final int code = engine.main(cargs)");
-    assertTrue("runInternal must refuse before it starts the engine",
+    final String run = TestSources.between(TestSources.javaSource("CrawlRun"),
+        "void runMirror()", "final int code = engine.main(cargs)");
+    assertTrue("runMirror must refuse before it starts the engine",
         run.contains("HTTrackLib.hasFaulted()"));
   }
 
