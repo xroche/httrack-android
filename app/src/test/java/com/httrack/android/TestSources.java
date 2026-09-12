@@ -1,12 +1,11 @@
 package com.httrack.android;
 
+import android.util.Pair;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** Checked-in sources the tests read; they run with the app project as
  *  working directory. */
@@ -211,61 +210,12 @@ final class TestSources {
     return count;
   }
 
-  /** Body of the OptionsMapper table NAME, comments dropped. */
-  static String tableBody(final String name) throws IOException {
-    final String source = javaSource("OptionsMapper");
-    final int head = source.indexOf(name + "[] = new Pair[] {");
-    if (head == -1) {
-      throw new IllegalStateException("no " + name + " table");
-    }
-    final int from = source.indexOf('{', head) + 1;
-    int depth = 1;
-    int at = from;
-    for (; at < source.length() && depth > 0; at++) {
-      final char c = source.charAt(at);
-      if (c == '"') {
-        // A footer default holds {url}, which must not close the table.
-        while (++at < source.length() && source.charAt(at) != '"') {
-          if (source.charAt(at) == '\\') {
-            at++;
-          }
-        }
-      } else if (c == '{') {
-        depth++;
-      } else if (c == '}') {
-        depth--;
-      }
-    }
-    if (depth != 0) {
-      throw new IllegalStateException(name + " table does not end");
-    }
-    return source.substring(from, at - 1).replaceAll("(?s)/\\*.*?\\*/", "")
-        .replaceAll("(?m)^\\s*//.*$", "");
-  }
-
-  /** Keys the table NAME declares, in order; PATTERN captures one entry's key.
-   *  Entries are counted by a "new Pair" no line break can split, so a
-   *  declaration PATTERN cannot read fails the scrape instead of vanishing. */
-  static List<String> tableKeys(final String name, final String pattern)
-      throws IOException {
-    final String body = tableBody(name);
-    final Matcher m = Pattern.compile(pattern).matcher(body);
+  /** The winprofile.ini keys fieldsSerializer declares, in order. */
+  static List<String> serializerKeys() {
     final List<String> keys = new ArrayList<String>();
-    while (m.find()) {
-      keys.add(m.group(1));
-    }
-    final int declared = occurrences(body, "new Pair");
-    if (keys.size() != declared) {
-      throw new IllegalStateException("parsed " + keys.size() + " of "
-          + declared + " " + name + " entries");
+    for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
+      keys.add(field.second);
     }
     return keys;
-  }
-
-  /** The winprofile.ini keys fieldsSerializer declares, in order. R.id loads fine and the
-   *  Pair stub keeps both fields, so neither one forces the scrape below any more. */
-  static List<String> serializerKeys() throws IOException {
-    return tableKeys("fieldsSerializer",
-        "new Pair<Integer, String>\\(\\s*R\\.id\\.\\w+\\s*,\\s*\"([^\"]+)\"\\s*\\)");
   }
 }

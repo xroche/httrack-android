@@ -379,7 +379,7 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("MailIndex", new SimpleOptionFlag("%M")),
       /* Ticked emits nothing, and buildCommandline() drops the unticked -C0
          when the action is Continue. See CachePolicy. */
-      new Pair<String, OptionMapper>("Cache",
+      new Pair<String, OptionMapper>(CACHE_KEY,
           new SimpleOptionFlag("C0", true)),
       new Pair<String, OptionMapper>("PrimaryScan",
           primaryScanHandler.getTypeMapper()),
