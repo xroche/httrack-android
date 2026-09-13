@@ -2256,7 +2256,8 @@ public class HTTrackActivity extends FragmentActivity {
       if (CrawlOwnerPolicy.startsInActivity(jobOwns, jobOwns && scheduleMirrorJob())) {
         startRunner();
       }
-      setProgressLinesInternal(new String[] { getString(waitsForNetwork()
+      // Posted, not drawn inline: nothing is laid out yet, so an inline draw cuts every line.
+      setProgressLines(new String[] { getString(waitsForNetwork()
           ? R.string.waiting_for_network : R.string.starting_worker_thread) });
       if (runner != null || hasLiveRunner()) {
         ProgressBar.class.cast(findViewById(R.id.progressMirror))

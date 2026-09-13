@@ -194,6 +194,27 @@ public class CrawlHandoverTest {
             .contains("<string name=\"waiting_for_network\">"));
   }
 
+  /** onEnterNewPane runs before the first layout pass, where getLocationInWindow reads (0,0) and
+   *  the line-fitting arithmetic then cuts every line, so the pane comes up blank. */
+  @Test
+  public void theFirstProgressLineIsPostedSoItLandsAfterLayout() throws IOException {
+    final String source = activity();
+    final String pane = body(source, "protected void onEnterNewPane()");
+    assertEquals("drawn inline the line is measured before layout, and the pane stays blank", 0,
+        TestSources.occurrences(pane, "setProgressLinesInternal("));
+    assertEquals("one first line, and the posting path is the only way to it", 1,
+        TestSources.occurrences(pane, "setProgressLines("));
+    assertEquals("new String[] { getString(waitsForNetwork() ? R.string.waiting_for_network "
+        + ": R.string.starting_worker_thread) }",
+        norm(TestSources.arguments(pane, "setProgressLines")));
+    assertEquals("the internal draw belongs to the posted task alone", 1,
+        TestSources.occurrences(body(source,
+            "private final Runnable progressLinesTask = new Runnable()"),
+            "setProgressLinesInternal("));
+    assertEquals("the declaration and the posted task's call are all there may be", 2,
+        TestSources.occurrences(source, "setProgressLinesInternal("));
+  }
+
   /** Liveness must cover a crawl no fragment owns, and still cover the window between a
    *  fragment being added and its crawl reaching the slot. */
   @Test
