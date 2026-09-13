@@ -166,6 +166,12 @@ public class HTTrackActivity extends FragmentActivity {
   // choices are keyed on it, and a new id silently resets them.
   protected static final String NOTIFICATION_CHANNEL_ID = "mirror";
 
+  // The channel a running mirror's progress goes to. Never rename, and never raise: an app can
+  // only ever lower a channel's importance, and IMPORTANCE_DEFAULT would buzz on every update.
+  protected static final String PROGRESS_CHANNEL_ID = "mirror-progress";
+  // Its own id, because the job-end policy removes exactly this one.
+  protected static final int PROGRESS_NOTIFICATION_ID = 1;
+
   /*
    * Build identifiers. See
    * <http://developer.android.com/reference/android/os/Build
@@ -1352,7 +1358,7 @@ public class HTTrackActivity extends FragmentActivity {
      */
     public Runner(final HTTrackActivity parent) {
       appContext = parent.getApplicationContext();
-      crawl = new CrawlRun(appContext, this, parent.crawlMessages());
+      crawl = new CrawlRun(appContext, this, HTTrackActivity.crawlMessages(appContext));
       setParent(parent);
     }
 
@@ -1365,7 +1371,7 @@ public class HTTrackActivity extends FragmentActivity {
     public synchronized void setParent(final HTTrackActivity parent) {
       this.parent = parent;
       parent.cacheProgressStrings();
-      crawl.setMessages(parent.crawlMessages());
+      crawl.setMessages(HTTrackActivity.crawlMessages(parent));
 
       // Execute pending actions now we are attached
       if (pendingParentActions.size() != 0) {
@@ -1512,22 +1518,32 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /* A string resource that must exist, since a null one would reach the user as "null". */
-  private String requireString(final int id) {
-    final String s = getString(id);
+  private static String requireString(final Context context, final int id) {
+    final String s = context.getString(id);
     if (s == null) {
       throw new NullPointerException("null string #" + id);
     }
     return s;
   }
 
-  /** The messages the crawl produces itself, re-read on every attach. */
-  CrawlRun.Messages crawlMessages() {
-    return new CrawlRun.Messages(requireString(R.string.creating_project),
-        requireString(R.string.starting_mirror),
-        requireString(R.string.self_contained_conflict),
-        requireString(R.string.mirror_already_in_progress),
-        requireString(R.string.engine_faulted),
-        requireString(R.string.mirror_finished));
+  private String requireString(final int id) {
+    return requireString(this, id);
+  }
+
+  /**
+   * The messages the crawl produces itself, re-read on every attach.
+   *
+   * @param context
+   *          any context of this app, since the job owner has no activity
+   * @return the messages, in the language in force now
+   */
+  static CrawlRun.Messages crawlMessages(final Context context) {
+    return new CrawlRun.Messages(requireString(context, R.string.creating_project),
+        requireString(context, R.string.starting_mirror),
+        requireString(context, R.string.self_contained_conflict),
+        requireString(context, R.string.mirror_already_in_progress),
+        requireString(context, R.string.engine_faulted),
+        requireString(context, R.string.mirror_finished));
   }
 
   /* Read once per attach rather than per refresh, which the engine drives faster than the UI. */
@@ -1932,6 +1948,28 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
+   * Hand the crawl to the job that outlives this window.
+   *
+   * @return true when the job owns the crawl, so this activity must not start one
+   */
+  protected synchronized boolean scheduleMirrorJob() {
+    if (!CrawlOwnerPolicy.startsNewCrawl(MirrorSession.get().live() != null,
+        MirrorJobService.isPending(this))) {
+      // Scheduling over a live job id would cancel the execution it is already running.
+      return true;
+    }
+    try {
+      // Written here, while the widgets are live, so the headless job only takes the lock.
+      serialize();
+    } catch (final IOException io) {
+      Log.w(getClass().getSimpleName(), "could not write the profile before scheduling", io);
+      return false;
+    }
+    return MirrorJobService.schedule(this, mapper.getProjectName(), getTargetFile(),
+        getProjectRootFile(), getResourceFile(), buildCommandline());
+  }
+
+  /**
    * Start the runner
    */
   protected synchronized void startRunner() {
@@ -2132,7 +2170,10 @@ public class HTTrackActivity extends FragmentActivity {
       wireKeepScreenOn();
       // Asked at crawl start, not at launch.
       ensureNotificationsAreAllowed();
-      startRunner();
+      final boolean jobOwns = CrawlOwnerPolicy.ownsInJob(android.os.Build.VERSION.SDK_INT);
+      if (CrawlOwnerPolicy.startsInActivity(jobOwns, jobOwns && scheduleMirrorJob())) {
+        startRunner();
+      }
       if (runner != null) {
         ProgressBar.class.cast(findViewById(R.id.progressMirror))
             .setVisibility(View.VISIBLE);
@@ -3113,6 +3154,21 @@ public class HTTrackActivity extends FragmentActivity {
         NOTIFICATION_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
         .setName(getString(R.string.app_name)).build();
     NotificationManagerCompat.from(this).createNotificationChannel(channel);
+  }
+
+  /**
+   * Register the channel a running mirror's progress is posted to. Idempotent, like the one
+   * above, and separate from it because a progress update must never make a sound.
+   *
+   * @param context
+   *          any context of this app
+   */
+  static void createProgressChannel(final Context context) {
+    final NotificationChannelCompat channel = new NotificationChannelCompat.Builder(
+        PROGRESS_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
+        .setName(context.getString(R.string.mirror_progress_channel))
+        .setDescription(context.getString(R.string.mirror_progress_channel_description)).build();
+    NotificationManagerCompat.from(context).createNotificationChannel(channel);
   }
 
   /** Send a notification. **/

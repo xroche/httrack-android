@@ -8,6 +8,10 @@
     <!-- We tell the user when a mirror ends while the app sits in the background. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- The copy runs on as a user-initiated data transfer job, which is what keeps it alive
+         once the user leaves the app. A normal permission, and harmless below API 34. -->
+    <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS" />
+
     <!-- Mirrors live in public storage so other apps (browsers, file managers) can use them.
          Below API 30 the legacy write permission suffices; from API 30 on it needs all-files
          access, granted from a settings screen. -->
@@ -54,6 +58,11 @@
             android:name="com.httrack.android.FileChooserActivity"
             android:label="@string/title_activity_file_chooser" >
         </activity>
+
+        <service
+            android:name=".MirrorJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 
 </manifest>
