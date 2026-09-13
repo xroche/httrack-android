@@ -88,7 +88,20 @@ public final class MirrorJobService extends JobService {
         .setExtras(extras).build();
 
     final JobScheduler scheduler = context.getSystemService(JobScheduler.class);
-    if (scheduler == null || scheduler.schedule(job) != JobScheduler.RESULT_SUCCESS) {
+    if (scheduler == null) {
+      Log.w("MirrorJobService", "no job scheduler; the activity keeps the crawl");
+      return false;
+    }
+    final int verdict;
+    try {
+      verdict = scheduler.schedule(job);
+    } catch (final SecurityException | IllegalArgumentException refused) {
+      // A missing permission or a constraint the device rejects has to leave the crawl to the
+      // activity, never reach the user as a crash on the main thread.
+      Log.w("MirrorJobService", "the scheduler rejected the mirror job", refused);
+      return false;
+    }
+    if (verdict != JobScheduler.RESULT_SUCCESS) {
       Log.w("MirrorJobService", "the system refused the mirror job; the activity keeps the crawl");
       return false;
     }

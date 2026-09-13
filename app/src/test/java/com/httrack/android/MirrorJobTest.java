@@ -90,6 +90,12 @@ public class MirrorJobTest {
     return TestSources.read(TestSources.mainFile("AndroidManifest.xml"));
   }
 
+  /** The manifest with its XML comments blanked, so a commented-out declaration reads as the
+   *  absence it really is. */
+  private static String liveManifest() throws IOException {
+    return manifest().replaceAll("(?s)<!--.*?-->", " ");
+  }
+
   /** The progress branch of onEnterNewPane, where either owner is chosen. */
   private static String progressBranch(final String activity) {
     return TestSources.between(body(activity, "protected void onEnterNewPane()"),
@@ -128,6 +134,15 @@ public class MirrorJobTest {
     assertAllPresent("the service entry", service, "android:name=\".MirrorJobService\"",
         "android:exported=\"false\"",
         "android:permission=\"android.permission.BIND_JOB_SERVICE\"");
+  }
+
+  /** Without this permission JobScheduler.schedule throws on the connectivity constraint the job
+   *  needs, so every Start from API 34 on died on the main thread. */
+  @Test
+  public void theManifestDeclaresAccessNetworkState() throws IOException {
+    assertEquals("the permission the connectivity constraint requires", 1,
+        TestSources.occurrences(liveManifest(),
+            "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" />"));
   }
 
   /** Play's foreground-service declaration is keyed to a service type on API 34 or later, and a
@@ -248,6 +263,27 @@ public class MirrorJobTest {
     assertTrue("the pending check must look for that same id",
         body(source("MirrorJobService"), "static boolean isPending(final Context context)")
             .contains("getPendingJob(JOB_ID)"));
+  }
+
+  /** JobScheduler.schedule throws when the system refuses the job, uncaught and on the main
+   *  thread. CrawlOwnerPolicy.startsInActivity can only hand the crawl back if schedule returns. */
+  @Test
+  public void aRefusedScheduleReturnsRatherThanThrows() throws IOException {
+    final String body = body(source("MirrorJobService"),
+        "static boolean schedule(final Context context,");
+    assertEquals("one call to the scheduler, or a second one escapes the guard", 1,
+        matches(body, "scheduler\\s*\\.\\s*schedule\\s*\\("));
+    final int tryAt = body.lastIndexOf("try {", TestSources.indexOf(body, "scheduler.schedule("));
+    assertTrue("the scheduler call must sit inside a try", tryAt != -1);
+    final String guarded = TestSources.balancedBlock(body, tryAt);
+    assertEquals("the guarded block must hold the call and nothing else",
+        "verdict = scheduler.schedule(job);", norm(guarded));
+    final int closing = body.indexOf(guarded, tryAt) + guarded.length();
+    assertTrue("both refusals must be caught, or a device that says no kills the app: "
+        + norm(body.substring(closing)), norm(body.substring(closing))
+            .startsWith("} catch (final SecurityException | IllegalArgumentException refused)"));
+    assertEquals("a caught refusal must report the failure, or the activity never takes over", 1,
+        TestSources.occurrences(TestSources.balancedBlock(body, closing), "return false;"));
   }
 
   /** A tap must reach a bare launcher intent: an extras-carrying one would restore its bundle
