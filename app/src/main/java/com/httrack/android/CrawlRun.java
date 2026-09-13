@@ -95,6 +95,10 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
   private volatile MirrorSession.State state = MirrorSession.State.NONE;
   private volatile boolean interrupted;
   private volatile boolean interruptedHard;
+  // Guards the marker bookkeeping alone, so nothing ever writes a file while holding it.
+  private final Object markerLock = new Object();
+  private boolean stopMarkerPending;
+  private boolean markerClosed;
 
   CrawlRun(final Context appContext, final Owner owner, final Messages messages) {
     this.appContext = appContext;
@@ -261,7 +265,7 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
         }
       }
       // Stamp what the run actually was; a project the engine never touched keeps its marker.
-      if (engineRan) {
+      if (closeMarker(engineRan)) {
         try {
           setInterruptedProfile(pendingWork);
         } catch (final IOException io) {
@@ -287,6 +291,23 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
   void end() {
     advance(MirrorSession.Event.END);
     MirrorSession.get().end(this);
+  }
+
+  /* Take the marker write for this thread; a stop landing after it has none left to ask for. */
+  private boolean closeMarker(final boolean engineRan) {
+    synchronized (markerLock) {
+      markerClosed = true;
+      return engineRan || stopMarkerPending;
+    }
+  }
+
+  /* Owed by the crawl thread, because writing it here would be disk work on a stopper's budget. */
+  private void requestMarker() {
+    synchronized (markerLock) {
+      if (!markerClosed) {
+        stopMarkerPending = true;
+      }
+    }
   }
 
   /* Stamped against the run's own directory, so a detached end still records its verdict. */
@@ -318,11 +339,7 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
     final boolean stopSent = engine.stop(force);
     // The finished pane asks for a stop too, long after the run decided the real outcome.
     if (ResumePolicy.stopWritesMarker(isEnded(), verdictRecorded)) {
-      try {
-        setInterruptedProfile(true);
-      } catch (final IOException io) {
-        Log.w(getClass().getSimpleName(), "could not write the resume marker", io);
-      }
+      requestMarker();
     }
     return stopSent;
   }

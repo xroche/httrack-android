@@ -5,7 +5,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Test;
 
 /** The job that owns the crawl from API 34 on. Its lifecycle is device-only, so what is left
@@ -24,6 +28,52 @@ public class MirrorJobTest {
 
   private static String norm(final String text) {
     return text.replaceAll("\\s+", " ").trim();
+  }
+
+  /** Body of the CrawlRun method NAME, or null when CrawlRun declares no such method. Only a
+   *  declaration of the class itself matches, never a call inside another body. */
+  private static String crawlRunBody(final String crawl, final String name) {
+    final Matcher at = Pattern.compile("(?m)^  [A-Za-z@<][\\w<>\\[\\], ]*\\b" + name
+        + "\\s*\\(").matcher(crawl);
+    return at.find() ? TestSources.balancedBlock(crawl, at.end()) : null;
+  }
+
+  /** Every name BODY calls, keywords that also take parentheses left out. */
+  private static List<String> callees(final String body) {
+    final List<String> names = new ArrayList<String>();
+    final Matcher call = Pattern.compile("([A-Za-z_][A-Za-z0-9_]*)\\s*\\(").matcher(body);
+    final List<String> keywords = java.util.Arrays.asList("if", "for", "while", "switch", "catch",
+        "synchronized", "return", "new");
+    while (call.find()) {
+      if (!keywords.contains(call.group(1))) {
+        names.add(call.group(1));
+      }
+    }
+    return names;
+  }
+
+  /** onStopJob's body plus every CrawlRun body it reaches, so a disk write one call deep is
+   *  inside what this certifies rather than outside it. */
+  private static String stopPath() throws IOException {
+    final String crawl = source("CrawlRun");
+    final StringBuilder reached = new StringBuilder(body(source("MirrorJobService"),
+        "public boolean onStopJob(final JobParameters params)"));
+    final List<String> pending = new ArrayList<String>();
+    pending.add("stopMirror");
+    final Set<String> seen = new HashSet<String>();
+    while (!pending.isEmpty()) {
+      final String name = pending.remove(0);
+      if (!seen.add(name)) {
+        continue;
+      }
+      final String declared = crawlRunBody(crawl, name);
+      if (declared != null) {
+        reached.append(declared);
+        pending.addAll(callees(declared));
+      }
+    }
+    assertTrue("the closure never reached CrawlRun.stopMirror", seen.size() > 1);
+    return reached.toString();
   }
 
   private static String manifest() throws IOException {
@@ -122,18 +172,22 @@ public class MirrorJobTest {
         "Thread.sleep", "runMirror", "RandomAccessFile", "tryLock", "mkdirs");
   }
 
-  /** Read getStopReason(), stop the engine, return the verdict. Nothing else: a flush or a join
-   *  here is an ANR. */
+  /** Stop the engine, return the verdict. Nothing else: onStopJob has an 8 second budget and an
+   *  unconditional ANR, and the disk write that used to break it sat one call deep. */
   @Test
   public void onStopJobOnlyStopsTheEngine() throws IOException {
     final String body = body(source("MirrorJobService"),
         "public boolean onStopJob(final JobParameters params)");
-    assertNonePresent("onStopJob must not do any of this", body, ".join(", ".wait(",
-        "Thread.sleep", "jobFinished", "runMirror", "setNotification", "notify(");
     assertEquals("the only engine call is the stop", 1,
         TestSources.occurrences(body, "stopMirror("));
     assertEquals("the hard stop is the one that keeps hts-cache for a later Continue", "true",
         norm(TestSources.arguments(body, "run.stopMirror")));
+    assertNonePresent("nothing the stop reaches may block the caller or write a file", stopPath(),
+        ".join(", ".wait(", "Thread.sleep", "jobFinished", "runMirror", "setNotification",
+        "notify(", "setInterruptedProfile", "RandomAccessFile", "FileOutputStream", "mkdirs(",
+        "createNewFile", "buildTopIndex");
+    assertEquals("a synchronized stop waits on the monitor every engine refresh takes", 0,
+        TestSources.occurrences(source("CrawlRun"), "synchronized boolean stopMirror"));
   }
 
   /** Stage 4 is what makes a retry resume. Until the argv forces the resume mode, a rescheduled
