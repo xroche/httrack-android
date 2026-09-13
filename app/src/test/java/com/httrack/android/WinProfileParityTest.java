@@ -12,15 +12,12 @@ import com.httrack.android.OptionsMapper.GatedFeatureHandler;
 import com.httrack.android.OptionsMapper.MultipleChoicesOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import com.httrack.android.OptionsMapper.ProfileFormat;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.Test;
 
 /** Checks winprofile.ini storage and option emission against WinHTTrack's conventions. */
@@ -29,9 +26,11 @@ public class WinProfileParityTest {
      OptionsMapper, so no separate duplicate-key test can ever fire. */
   private static final OptionsMapper MAPPER = new OptionsMapper();
 
-  /* The value mapper is a private inner class, so a probe handler names it. */
+  /* Both mapper halves are private inner classes, so a probe handler names them. */
   private static final Class<?> GATED_VALUE =
       new GatedFeatureHandler("", "").getValueMapper().getClass();
+  private static final Class<?> GATED_TOGGLE =
+      new GatedFeatureHandler("", "").getToggleMapper().getClass();
 
   private static List<String> emit(final OptionMapper mapper, final String value) {
     final List<String> cmd = new ArrayList<String>();
@@ -238,33 +237,46 @@ public class WinProfileParityTest {
   }
 
   /* No flag may re-assert an engine default to mean "off", whichever primitive
-     spells it: the -%q bug wore SimpleOption0 rather than a reverted flag. The
-     scrape stays because the primitive class is what is pinned, and it misses
-     the -%r, -%m and -%Z toggles GatedFeatureHandler builds from a variable. */
+     spells it: the -%q bug wore SimpleOption0 rather than a reverted flag.
+     Reads the real fieldsMapper table, so it also covers the -%r, -%m and -%Z
+     toggles GatedFeatureHandler builds behind its private Toggle class. Only
+     wired entries are covered, since a mapper no key names emits nothing. */
   @Test
-  public void noOffSwitchEmitsABareEnablingForm() throws IOException {
-    final Matcher m = Pattern.compile(
-        "new (SimpleOptionFlag|SimpleOption0)\\(\\s*\"([^\"]+)\""
-            + "(?:\\s*,\\s*(?:/\\*[^*]*\\*/\\s*)?(true|false))?\\s*\\)")
-        .matcher(TestSources.javaSource("OptionsMapper"));
+  public void noOffSwitchEmitsABareEnablingForm() {
     final List<String> reverted = new ArrayList<String>();
     final List<String> tristate = new ArrayList<String>();
-    while (m.find()) {
-      final boolean isFlag = "SimpleOptionFlag".equals(m.group(1));
-      if (isFlag && "true".equals(m.group(3))) {
-        reverted.add(m.group(2));
-        assertTrue("-" + m.group(2) + " must carry its 0 form", m.group(2)
-            .endsWith("0"));
-      } else if (!isFlag) {
-        tristate.add(m.group(2));
-        assertFalse("-" + m.group(2) + " emits both forms, so it may not be "
-            + "spelled as its own off switch", m.group(2).endsWith("0"));
+    final List<String> toggles = new ArrayList<String>();
+    for (final Pair<String, OptionMapper> field : MAPPER.fieldsMapper) {
+      final OptionMapper mapper = field.second;
+      if (mapper instanceof OptionsMapper.SimpleOptionFlag) {
+        final OptionsMapper.SimpleOptionFlag flag =
+            (OptionsMapper.SimpleOptionFlag) mapper;
+        if (flag.reverted) {
+          reverted.add(flag.option);
+          assertTrue("-" + flag.option + " must carry its 0 form",
+              flag.option.endsWith("0"));
+        }
+      } else if (mapper instanceof OptionsMapper.SimpleOption0) {
+        final String option = ((OptionsMapper.SimpleOption0) mapper).option;
+        tristate.add(option);
+        assertFalse("-" + option + " emits both forms, so it may not be "
+            + "spelled as its own off switch", option.endsWith("0"));
+      } else if (GATED_TOGGLE.equals(mapper.getClass())) {
+        toggles.add(field.first);
+        /* Toggle has no fields of its own, so behavior stands in for reverted. */
+        final List<String> off = emit(mapper, "0");
+        assertTrue(field.first + " must carry its 0 form or emit nothing "
+            + "when off", off.isEmpty() || off.get(0).endsWith("0"));
       }
     }
     assertEquals("reverted flags", new TreeSet<String>(Arrays.asList("b0",
         "j0", "I0", "C0")), new TreeSet<String>(reverted));
     assertEquals("tri-state options", new TreeSet<String>(Arrays.asList("%P",
         "%k", "%u", "%f")), new TreeSet<String>(tristate));
+    /* The branch above matches on class identity, so a wrapped or subclassed
+       Toggle would drop all three toggles out of the test in silence. */
+    assertEquals("gated toggles", new TreeSet<String>(Arrays.asList("Warc",
+        "Sitemap", "SingleFile")), new TreeSet<String>(toggles));
   }
 
   /* The engine reads -iC1 as -i followed by -C1, so a Cache token later in
