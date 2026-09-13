@@ -18,7 +18,7 @@ final class HandoverPolicy {
 
   /** What a window draws the moment it attaches. */
   enum Attachment {
-    NOTHING, PROGRESS, FINISHED
+    NOTHING, WAITING, PROGRESS, FINISHED
   }
 
   private HandoverPolicy() {
@@ -41,6 +41,20 @@ final class HandoverPolicy {
   }
 
   /**
+   * Is the crawl scheduled and nothing more? The job carries a connectivity constraint, so with
+   * no network the scheduler holds it, and no engine and no worker thread exist yet.
+   *
+   * @param crawlLive
+   *          whether the session slot holds a crawl that has not ended
+   * @param jobScheduled
+   *          whether the scheduler holds our job
+   * @return true when the user is waiting for a network rather than for the engine
+   */
+  static boolean waitsForNetwork(final boolean crawlLive, final boolean jobScheduled) {
+    return jobScheduled && !crawlLive;
+  }
+
+  /**
    * What must a window draw the moment it attaches? A held verdict wins over everything else,
    * since only a crawl that has ended can have left one.
    *
@@ -50,12 +64,17 @@ final class HandoverPolicy {
    *          whether the session holds a verdict no window has shown yet
    * @param statsKnown
    *          whether the session holds a refresh the crawl published
+   * @param jobScheduled
+   *          whether the scheduler holds our job
    * @return what to draw
    */
   static Attachment attaches(final boolean crawlLive, final boolean verdictHeld,
-      final boolean statsKnown) {
+      final boolean statsKnown, final boolean jobScheduled) {
     if (verdictHeld) {
       return Attachment.FINISHED;
+    }
+    if (waitsForNetwork(crawlLive, jobScheduled)) {
+      return Attachment.WAITING;
     }
     // A symmetric AND, so no truth table can catch a caller that passes these two the wrong way.
     return crawlLive && statsKnown ? Attachment.PROGRESS : Attachment.NOTHING;

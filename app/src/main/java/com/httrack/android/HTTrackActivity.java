@@ -1981,7 +1981,18 @@ public class HTTrackActivity extends FragmentActivity {
       return runner.stopMirror(force);
     }
     final MirrorSession.Crawl crawl = MirrorSession.get().live();
-    return crawl != null && crawl.stopMirror(force);
+    if (crawl != null) {
+      return crawl.stopMirror(force);
+    }
+    // A job the scheduler is still holding owns no engine, so only the cancel can abandon it.
+    MirrorJobService.cancel(this);
+    return false;
+  }
+
+  /* Is the crawl scheduled and nothing more, so no engine and no worker thread exist yet? */
+  private boolean waitsForNetwork() {
+    return HandoverPolicy.waitsForNetwork(MirrorSession.get().live() != null,
+        MirrorJobService.isPending(this));
   }
 
   /* Draw what a crawl already under way has reported, so an attaching window is never frozen. */
@@ -1989,12 +2000,16 @@ public class HTTrackActivity extends FragmentActivity {
     final MirrorSession session = MirrorSession.get();
     final HTTrackStats stats = session.lastStats();
     final MirrorSession.Verdict verdict = session.takeVerdict();
-    switch (HandoverPolicy.attaches(session.live() != null, verdict != null, stats != null)) {
+    switch (HandoverPolicy.attaches(session.live() != null, verdict != null, stats != null,
+        MirrorJobService.isPending(this))) {
     case FINISHED:
       displayFinishedPanel(verdict.message, verdict.errorsCount, verdict.mirrorFolder);
       break;
     case PROGRESS:
       setProgressLines(formatProgress(stats));
+      break;
+    case WAITING:
+      setProgressLines(new String[] { getString(R.string.waiting_for_network) });
       break;
     default:
       break;
@@ -2220,7 +2235,6 @@ public class HTTrackActivity extends FragmentActivity {
       }
       break;
     case R.layout.activity_mirror_progress:
-      setProgressLinesInternal(new String[] { getString(R.string.starting_worker_thread) });
       wireKeepScreenOn();
       // Asked at crawl start, not at launch.
       ensureNotificationsAreAllowed();
@@ -2228,6 +2242,8 @@ public class HTTrackActivity extends FragmentActivity {
       if (CrawlOwnerPolicy.startsInActivity(jobOwns, jobOwns && scheduleMirrorJob())) {
         startRunner();
       }
+      setProgressLinesInternal(new String[] { getString(waitsForNetwork()
+          ? R.string.waiting_for_network : R.string.starting_worker_thread) });
       if (runner != null || hasLiveRunner()) {
         ProgressBar.class.cast(findViewById(R.id.progressMirror))
             .setVisibility(View.VISIBLE);
@@ -2777,6 +2793,12 @@ public class HTTrackActivity extends FragmentActivity {
    * "Interrupt" or "Stop"
    */
   public void onClickStop(final View view) {
+    if (runner == null && waitsForNetwork()) {
+      // No engine ever started, so no run will show the finished pane; the cancel is the end.
+      stopCrawl(true);
+      setPane(LAYOUT_PROJECT_SETUP);
+      return;
+    }
     if (runner != null || MirrorSession.get().live() != null) {
       // Soft interrupt
       if (!interruptRequested) {

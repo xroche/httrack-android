@@ -107,6 +107,20 @@ public final class MirrorJobService extends JobService {
     return scheduler != null && scheduler.getPendingJob(JOB_ID) != null;
   }
 
+  /**
+   * Drop a job the user abandoned. Nothing else ends one the scheduler is still holding, so
+   * without this an offline start runs headless whenever connectivity comes back.
+   *
+   * @param context
+   *          any context of this app
+   */
+  static void cancel(final Context context) {
+    final JobScheduler scheduler = context.getSystemService(JobScheduler.class);
+    if (scheduler != null) {
+      scheduler.cancel(JOB_ID);
+    }
+  }
+
   @Override
   public boolean onStartJob(final JobParameters params) {
     final PersistableBundle extras = params.getExtras();

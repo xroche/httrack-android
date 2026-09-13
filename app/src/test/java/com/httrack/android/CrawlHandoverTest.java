@@ -72,7 +72,8 @@ public class CrawlHandoverTest {
   @Test
   public void theAttachAsksThePolicyAndObeysIt() throws IOException {
     final String attach = body(activity(), "private void attachToLiveCrawl()");
-    assertEquals("session.live() != null, verdict != null, stats != null",
+    assertEquals("session.live() != null, verdict != null, stats != null, "
+        + "MirrorJobService.isPending(this)",
         norm(TestSources.arguments(attach, "HandoverPolicy.attaches")));
     assertTrue("the verdict must be taken before it is shown, or every attach shows it again",
         TestSources.indexOf(attach, "session.takeVerdict()")
@@ -96,7 +97,7 @@ public class CrawlHandoverTest {
     assertEquals("the fragment owns it below 34, and force must reach it unchanged", 1,
         TestSources.occurrences(stop, "return runner.stopMirror(force);"));
     assertEquals("the session owns it from 34 on, and force must reach that one too", 1,
-        TestSources.occurrences(stop, "return crawl != null && crawl.stopMirror(force);"));
+        TestSources.occurrences(stop, "return crawl.stopMirror(force);"));
     assertTrue("the fragment must be preferred, or a below-34 stop skips the fragment's own end",
         TestSources.indexOf(stop, "runner.stopMirror(force)")
             < TestSources.indexOf(stop, "MirrorSession.get().live()"));
@@ -104,19 +105,75 @@ public class CrawlHandoverTest {
     final String click = body(source, "public void onClickStop(final View view)");
     assertTrue("the button must admit a crawl no fragment owns",
         norm(click).contains("if (runner != null || MirrorSession.get().live() != null) {"));
-    assertEquals("one soft stop", 1, TestSources.occurrences(click, "stopCrawl(false);"));
-    assertEquals("one hard stop", 1, TestSources.occurrences(click, "stopCrawl(true);"));
-    assertEquals("the soft stop belongs to the first press only", 2,
-        TestSources.depthOf(click, "stopCrawl(false);"));
-    assertEquals("the hard stop belongs to the second press only", 2,
-        TestSources.depthOf(click, "stopCrawl(true);"));
+    // Scoped to the two-press branch, since the abandon below is a third stopCrawl call.
+    final String presses = TestSources.balancedBlock(click,
+        TestSources.indexOf(click, "if (runner != null || MirrorSession.get().live() != null)"));
+    assertEquals("one soft stop", 1, TestSources.occurrences(presses, "stopCrawl(false);"));
+    assertEquals("one hard stop", 1, TestSources.occurrences(presses, "stopCrawl(true);"));
+    assertEquals("the soft stop belongs to the first press only", 1,
+        TestSources.depthOf(presses, "stopCrawl(false);"));
+    assertEquals("the hard stop belongs to the second press only", 1,
+        TestSources.depthOf(presses, "stopCrawl(true);"));
     assertTrue("the first press is the soft one",
-        TestSources.indexOf(click, "stopCrawl(false);")
-            < TestSources.indexOf(click, "stopCrawl(true);"));
+        TestSources.indexOf(presses, "stopCrawl(false);")
+            < TestSources.indexOf(presses, "stopCrawl(true);"));
 
     assertEquals("the finished pane must stop whichever owner still holds the engine", 1,
         TestSources.occurrences(TestSources.between(body(source, "protected void onEnterNewPane()"),
             "case R.layout.activity_mirror_finished:", "break;"), "stopCrawl(true);"));
+  }
+
+  /** setRequiredNetworkType(NETWORK_TYPE_ANY) still requires a network, so offline the job is
+   *  scheduled and sits there. No owner holds an engine, and nothing but the cancel ends it. */
+  @Test
+  public void aCrawlThatNeverStartedCanStillBeAbandoned() throws IOException {
+    final String source = activity();
+    final String stop = body(source, "private boolean stopCrawl(final boolean force)");
+    assertEquals("one cancel, and only where no owner answered", 1,
+        TestSources.occurrences(stop, "MirrorJobService.cancel(this);"));
+    assertTrue("a cancel ahead of the owners would hard-stop a crawl that is running",
+        TestSources.indexOf(stop, "crawl.stopMirror(force)")
+            < TestSources.indexOf(stop, "MirrorJobService.cancel(this);"));
+    assertEquals("one way to the cancel, or a caller could skip the no-owner check", 1,
+        TestSources.occurrences(source, "MirrorJobService.cancel("));
+    assertEquals("MirrorSession.get().live() != null, MirrorJobService.isPending(this)",
+        norm(TestSources.arguments(body(source, "private boolean waitsForNetwork()"),
+            "HandoverPolicy.waitsForNetwork")));
+
+    final String click = body(source, "public void onClickStop(final View view)");
+    assertTrue("the button must admit a crawl that has not started",
+        norm(click).contains("if (runner == null && waitsForNetwork()) {"));
+    assertTrue("the two-press branch reads no owner and would do nothing, so it cannot come first",
+        TestSources.indexOf(click, "waitsForNetwork()")
+            < TestSources.indexOf(click, "MirrorSession.get().live() != null"));
+    assertEquals("the abandon is a hard one: there is nothing to let finish", 2,
+        TestSources.occurrences(click, "stopCrawl(true);"));
+    assertEquals("the pane the user came from is where an abandoned crawl leaves them", 1,
+        TestSources.occurrences(click, "setPane(LAYOUT_PROJECT_SETUP);"));
+    assertEquals("the abandon must be the method's own, not nested in the two-press branch", 1,
+        TestSources.depthOf(click, "setPane(LAYOUT_PROJECT_SETUP);"));
+  }
+
+  /** "Starting worker thread" is a lie while the scheduler holds the job for want of a network,
+   *  and the pane is the only thing the user can see. */
+  @Test
+  public void theWaitForANetworkIsWhatThePaneSays() throws IOException {
+    final String source = activity();
+    final String branch = TestSources.between(body(source, "protected void onEnterNewPane()"),
+        "case R.layout.activity_mirror_progress:", "case R.layout.activity_mirror_finished:");
+    assertTrue("the line cannot know which wait it is until the owner is chosen",
+        TestSources.indexOf(branch, "scheduleMirrorJob()")
+            < TestSources.indexOf(branch, "R.string.waiting_for_network"));
+    assertEquals("two lines, one decision", 1, TestSources.occurrences(norm(branch),
+        "getString(waitsForNetwork() ? R.string.waiting_for_network "
+        + ": R.string.starting_worker_thread)"));
+    final String attach = body(source, "private void attachToLiveCrawl()");
+    assertTrue("a window attaching to a job still waiting must say the same thing",
+        attach.contains("case WAITING:")
+            && attach.contains("getString(R.string.waiting_for_network)"));
+    assertTrue("the string the pane names has to exist",
+        TestSources.read(TestSources.resFile("values/strings.xml"))
+            .contains("<string name=\"waiting_for_network\">"));
   }
 
   /** Liveness must cover a crawl no fragment owns, and still cover the window between a
