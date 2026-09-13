@@ -183,8 +183,7 @@ public final class MirrorJobService extends JobService {
     }
   }
 
-  /* Only a tap, because the Task Manager already offers Stop and the progress pane has the
-   * button the user knows. No extras: a restore from them would overwrite the option map. */
+  /* No extras: a tap restoring them would overwrite the option map the user has since edited. */
   private PendingIntent launcherIntent() {
     final Intent intent = new Intent(getApplicationContext(), HTTrackActivity.class);
     intent.setAction(Intent.ACTION_MAIN);
