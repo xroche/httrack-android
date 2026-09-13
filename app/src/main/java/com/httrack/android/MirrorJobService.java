@@ -291,16 +291,24 @@ public final class MirrorJobService extends JobService {
     @Override
     public void onProgress(final String[] lines) {
       post(new Frame(lines.length != 0 ? lines[0] : "", 0, 0), false);
+      MirrorSession.get().publishProgress(lines);
     }
 
     @Override
     public void onStats(final HTTrackStats stats) {
       post(new Frame(counters(stats), stats.linksScanned, stats.linksTotal), false);
+      MirrorSession.get().publishStats(stats);
     }
 
     @Override
     public void onFinished(final String message, final long errorsCount, final File mirrorFolder) {
       post(new Frame(getString(R.string.mirror_finished), 0, 0), true);
+      // Where no window is attached, only this notification can report the end.
+      if (MirrorSession.get().publishVerdict(
+          new MirrorSession.Verdict(message, errorsCount, mirrorFolder))
+          == HandoverPolicy.Delivery.HELD) {
+        HTTrackActivity.sendFinishedNotification(getApplicationContext(), projectName, message);
+      }
     }
   }
 }

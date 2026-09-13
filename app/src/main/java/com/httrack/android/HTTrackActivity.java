@@ -240,6 +240,24 @@ public class HTTrackActivity extends FragmentActivity {
     }
   };
 
+  /* The crawl's way back to this window, whichever owner drives it. */
+  private final MirrorSession.Listener sessionListener = new MirrorSession.Listener() {
+    @Override
+    public void onProgressLines(final String[] lines) {
+      setProgressLines(lines);
+    }
+
+    @Override
+    public void onStats(final HTTrackStats stats) {
+      setProgressLines(formatProgress(stats));
+    }
+
+    @Override
+    public void onFinished(final MirrorSession.Verdict verdict) {
+      displayFinishedPanel(verdict.message, verdict.errorsCount, verdict.mirrorFolder);
+    }
+  };
+
   // Interrupt was requested
   protected boolean interruptRequested;
 
@@ -1939,12 +1957,48 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Is a crawl still actually running? True only for a fragment reclaimed across a configuration
-   * change with a live, non-ended runner; false after process death (fragment restored empty).
+   * Is a crawl still actually running, under either owner? False after process death, where the
+   * session is empty and the fragment comes back without its runner.
    */
   protected boolean hasLiveRunner() {
+    if (MirrorSession.get().live() != null) {
+      return true;
+    }
+    // The fragment is live from the moment it is added, which is before its crawl reaches the slot.
     final Fragment f = getSupportFragmentManager().findFragmentByTag(RUNNER_FRAGMENT_TAG);
     return f instanceof RunnerFragment && ((RunnerFragment) f).hasLiveRunner();
+  }
+
+  /**
+   * Stop the crawl, whichever owner drives it.
+   *
+   * @param force
+   *          true to cut the transfers short rather than let them finish
+   * @return true when the stop reached the engine
+   */
+  private boolean stopCrawl(final boolean force) {
+    if (runner != null) {
+      return runner.stopMirror(force);
+    }
+    final MirrorSession.Crawl crawl = MirrorSession.get().live();
+    return crawl != null && crawl.stopMirror(force);
+  }
+
+  /* Draw what a crawl already under way has reported, so an attaching window is never frozen. */
+  private void attachToLiveCrawl() {
+    final MirrorSession session = MirrorSession.get();
+    final HTTrackStats stats = session.lastStats();
+    final MirrorSession.Verdict verdict = session.takeVerdict();
+    switch (HandoverPolicy.attaches(session.live() != null, verdict != null, stats != null)) {
+    case FINISHED:
+      displayFinishedPanel(verdict.message, verdict.errorsCount, verdict.mirrorFolder);
+      break;
+    case PROGRESS:
+      setProgressLines(formatProgress(stats));
+      break;
+    default:
+      break;
+    }
   }
 
   /**
@@ -1994,7 +2048,7 @@ public class HTTrackActivity extends FragmentActivity {
   private void refreshKeepScreenOn() {
     final boolean keep = ScreenOnPolicy.keepScreenOn(
         getSharedPreferences(PREFS_NAME, 0).getBoolean(KEEP_SCREEN_ON_NAME, false),
-        pane_id == LAYOUT_MIRROR_PROGRESS, runner != null && runner.hasLiveRunner());
+        pane_id == LAYOUT_MIRROR_PROGRESS, hasLiveRunner());
     if (keep) {
       getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     } else {
@@ -2174,16 +2228,14 @@ public class HTTrackActivity extends FragmentActivity {
       if (CrawlOwnerPolicy.startsInActivity(jobOwns, jobOwns && scheduleMirrorJob())) {
         startRunner();
       }
-      if (runner != null) {
+      if (runner != null || hasLiveRunner()) {
         ProgressBar.class.cast(findViewById(R.id.progressMirror))
             .setVisibility(View.VISIBLE);
       }
       break;
     case R.layout.activity_mirror_finished:
       // Ensure the engine has stopped running
-      if (runner != null) {
-        runner.stopMirror(true);
-      }
+      stopCrawl(true);
 
       // Enable browse button if index.html exists
       final boolean hasIndex = hasTargetIndexFile();
@@ -2725,10 +2777,10 @@ public class HTTrackActivity extends FragmentActivity {
    * "Interrupt" or "Stop"
    */
   public void onClickStop(final View view) {
-    if (runner != null) {
+    if (runner != null || MirrorSession.get().live() != null) {
       // Soft interrupt
       if (!interruptRequested) {
-        runner.stopMirror(false);
+        stopCrawl(false);
         interruptRequested = true;
         final TextView text = (TextView) this.findViewById(R.id.buttonStop);
         // Change text to "Stop"
@@ -2738,7 +2790,7 @@ public class HTTrackActivity extends FragmentActivity {
       }
       // Hard interrupt
       else {
-        runner.stopMirror(true);
+        stopCrawl(true);
       }
     }
   }
@@ -3150,10 +3202,56 @@ public class HTTrackActivity extends FragmentActivity {
    * makes the system prompt an app targeting 32 or lower, and launch is too early to ask.
    */
   protected void createNotificationChannel() {
+    createNotificationChannel(this);
+  }
+
+  /**
+   * Register that same channel from a context with no window.
+   *
+   * @param context
+   *          any context of this app
+   */
+  static void createNotificationChannel(final Context context) {
     final NotificationChannelCompat channel = new NotificationChannelCompat.Builder(
         NOTIFICATION_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
-        .setName(getString(R.string.app_name)).build();
-    NotificationManagerCompat.from(this).createNotificationChannel(channel);
+        .setName(context.getString(R.string.app_name)).build();
+    NotificationManagerCompat.from(context).createNotificationChannel(channel);
+  }
+
+  /**
+   * Tell the user a crawl has ended when no window took its verdict, which is what the finished
+   * pane would otherwise have shown.
+   *
+   * @param context
+   *          any context of this app
+   * @param projectName
+   *          the mirror's name
+   * @param message
+   *          the verdict, as the HTML the finished pane renders
+   */
+  static void sendFinishedNotification(final Context context, final String projectName,
+      final String message) {
+    createNotificationChannel(context);
+    final CharSequence title = context.getString(R.string.mirror_finished) + ": " + projectName;
+    final long when = System.currentTimeMillis();
+    final int id = (int) when;
+    // No extras: a tap restoring them would overwrite the option map the user has since edited.
+    final Intent intent = new Intent(context, HTTrackActivity.class);
+    intent.setAction(Intent.ACTION_MAIN);
+    intent.addCategory(Intent.CATEGORY_LAUNCHER);
+    final PendingIntent pintent = PendingIntent.getActivity(context, id, intent,
+        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    final Notification notification = new NotificationCompat.Builder(context,
+        NOTIFICATION_CHANNEL_ID).setContentTitle(title)
+        .setContentText(Html.fromHtml(message != null ? message : "")).setTicker(title)
+        .setSmallIcon(R.drawable.ic_stat_httrack).setWhen(when).setContentIntent(pintent)
+        .setAutoCancel(true).build();
+    try {
+      NotificationManagerCompat.from(context).notify(id, notification);
+    } catch (final SecurityException refused) {
+      // The user never granted POST_NOTIFICATIONS, so the verdict waits for the next attach.
+      Log.w("HTTrackActivity", "could not post the finished notification", refused);
+    }
   }
 
   /**
@@ -3299,7 +3397,7 @@ public class HTTrackActivity extends FragmentActivity {
     super.onResume();
     // Returning from the all-files-access settings screen can change what we can write.
     // Never while a crawl runs, since the engine already holds the destination.
-    if (runner == null) {
+    if (runner == null && !hasLiveRunner()) {
       computeStorageTarget();
     }
     // A grant made on the settings screen flips the button/warning off (no-op off this panel).
@@ -3307,7 +3405,8 @@ public class HTTrackActivity extends FragmentActivity {
     // Ask again once a grant may have surfaced the folder; not mid-crawl, and not on a plain
     // resume, which onCreate has already covered.
     final boolean access = hasAllFilesAccess();
-    if (runner == null && StoragePaths.accessJustAppeared(hadStorageAccess, access)) {
+    if (runner == null && !hasLiveRunner()
+        && StoragePaths.accessJustAppeared(hadStorageAccess, access)) {
       offerLegacyMirrorImportOnce();
     }
     hadStorageAccess = access;
@@ -3322,6 +3421,10 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onStart");
     super.onStart();
     started = true;
+    // Read here as well as on a Runner attach, since a job-owned crawl attaches to no Runner.
+    cacheProgressStrings();
+    MirrorSession.get().listen(sessionListener);
+    attachToLiveCrawl();
   }
 
   @Override
@@ -3329,6 +3432,7 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onStop");
     super.onStop();
     started = false;
+    MirrorSession.get().unlisten(sessionListener);
   }
 
   @Override

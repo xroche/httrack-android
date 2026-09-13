@@ -84,7 +84,7 @@ public class KeepScreenOnTest {
   public void thePolicyIsAskedWithTheUserChoiceThePaneAndTheCrawlInThatOrder() throws IOException {
     // Naming the call is not enough: a constant folded into any of the three would pass that.
     assertEquals(Arrays.asList(PREF + ".getBoolean(KEEP_SCREEN_ON_NAME, false)",
-        "pane_id == LAYOUT_MIRROR_PROGRESS", "runner != null && runner.hasLiveRunner()"),
+        "pane_id == LAYOUT_MIRROR_PROGRESS", "hasLiveRunner()"),
         split(TestSources.arguments(refresh(), "ScreenOnPolicy.keepScreenOn")));
   }
 

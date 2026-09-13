@@ -306,7 +306,8 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
    *          true to cut the transfers short rather than let them finish
    * @return true when the stop reached the engine
    */
-  boolean stopMirror(final boolean force) {
+  @Override
+  public boolean stopMirror(final boolean force) {
     // Set interrupted flags
     interrupted = true;
     if (force) {

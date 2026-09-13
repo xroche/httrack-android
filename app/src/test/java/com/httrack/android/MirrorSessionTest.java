@@ -11,12 +11,18 @@ import static com.httrack.android.MirrorSession.State.STARTING;
 import static com.httrack.android.MirrorSession.State.STOPPING;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import com.httrack.android.jni.HTTrackStats;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.junit.Test;
 
 /** The crawl state the owners read, and the profile claims that used to be a static set on the
@@ -26,10 +32,38 @@ public class MirrorSessionTest {
   /** A crawl the session can hold, so the slot is exercised rather than read as source. */
   private static final class FakeCrawl implements MirrorSession.Crawl {
     private MirrorSession.State state = STARTING;
+    private Boolean stoppedForce;
 
     @Override
     public MirrorSession.State state() {
       return state;
+    }
+
+    @Override
+    public boolean stopMirror(final boolean force) {
+      stoppedForce = Boolean.valueOf(force);
+      return true;
+    }
+  }
+
+  /** A window the session can talk to, recording what reached it and in what order. */
+  private static final class FakeWindow implements MirrorSession.Listener {
+    final List<String> reached = new ArrayList<String>();
+
+    @Override
+    public void onProgressLines(final String[] lines) {
+      reached.add("progress:" + Arrays.toString(lines));
+    }
+
+    @Override
+    public void onStats(final HTTrackStats stats) {
+      reached.add("stats:" + stats.linksScanned);
+    }
+
+    @Override
+    public void onFinished(final MirrorSession.Verdict verdict) {
+      reached.add("finished:" + verdict.message + "/" + verdict.errorsCount + "/"
+          + verdict.mirrorFolder);
     }
   }
 
@@ -179,6 +213,128 @@ public class MirrorSessionTest {
       session.end(second);
     }
     assertNull("both ends leave the slot empty", session.live());
+  }
+
+  /** The Stop button has no fragment to go through on API 34 and later. */
+  @Test
+  public void theSlotIsWhatAStopReaches() {
+    final MirrorSession session = MirrorSession.get();
+    final FakeCrawl crawl = new FakeCrawl();
+    try {
+      session.begin(crawl);
+      assertTrue("the slot must hand back a crawl that can be stopped",
+          session.live().stopMirror(false));
+      assertEquals("a soft stop must not arrive as a hard one", Boolean.FALSE, crawl.stoppedForce);
+      session.live().stopMirror(true);
+      assertEquals("a hard stop must not arrive as a soft one", Boolean.TRUE, crawl.stoppedForce);
+    } finally {
+      session.end(crawl);
+    }
+  }
+
+  /** A progress frame no window can draw is dropped; the verdict is kept for the next attach. */
+  @Test
+  public void whatSurvivesADetachedCrawlIsTheVerdict() {
+    final MirrorSession session = MirrorSession.get();
+    final FakeCrawl crawl = new FakeCrawl();
+    final File folder = new File("/tmp/httrack-test/mirror");
+    try {
+      session.begin(crawl);
+      session.publishProgress(new String[] { "Creating project" });
+      final HTTrackStats stats = new HTTrackStats();
+      stats.linksScanned = 7;
+      session.publishStats(stats);
+      assertSame("the newest refresh is what an attaching window draws", stats,
+          session.lastStats());
+      assertNull("a running crawl has left no verdict", session.takeVerdict());
+
+      assertEquals("nobody took it, so the caller must tell the user itself",
+          HandoverPolicy.Delivery.HELD,
+          session.publishVerdict(new MirrorSession.Verdict("done", 3, folder)));
+      final MirrorSession.Verdict held = session.takeVerdict();
+      assertNotNull("the verdict waits for a window", held);
+      assertEquals("done", held.message);
+      assertEquals(3, held.errorsCount);
+      assertSame(folder, held.mirrorFolder);
+      assertNull("a taken verdict must not show the finished pane twice",
+          session.takeVerdict());
+    } finally {
+      session.end(crawl);
+      session.takeVerdict();
+    }
+  }
+
+  /** An attached window gets every report, and the verdict is not left behind for a second one. */
+  @Test
+  public void anAttachedWindowIsToldEverything() {
+    final MirrorSession session = MirrorSession.get();
+    final FakeCrawl crawl = new FakeCrawl();
+    final FakeWindow window = new FakeWindow();
+    try {
+      session.begin(crawl);
+      session.listen(window);
+      session.publishProgress(new String[] { "Creating project" });
+      final HTTrackStats stats = new HTTrackStats();
+      stats.linksScanned = 12;
+      session.publishStats(stats);
+      assertEquals("a window took it, so no notification is owed",
+          HandoverPolicy.Delivery.ACTIVITY,
+          session.publishVerdict(new MirrorSession.Verdict("done", 0, null)));
+      assertEquals(Arrays.asList("progress:[Creating project]", "stats:12", "finished:done/0/null"),
+          window.reached);
+      assertNull("a delivered verdict must not also wait for the next attach",
+          session.takeVerdict());
+    } finally {
+      session.unlisten(window);
+      session.end(crawl);
+      session.takeVerdict();
+    }
+  }
+
+  /** onStop clears the slot, and a window that lost it to a later one must not clear that one. */
+  @Test
+  public void onlyTheWindowInTheSlotMayLeaveIt() {
+    final MirrorSession session = MirrorSession.get();
+    final FakeWindow first = new FakeWindow();
+    final FakeWindow second = new FakeWindow();
+    try {
+      session.listen(first);
+      session.listen(second);
+      session.unlisten(first);
+      session.publishProgress(new String[] { "still here" });
+      assertEquals("the earlier window's onStop took the later one's slot",
+          Collections.singletonList("progress:[still here]"), second.reached);
+      session.unlisten(second);
+      session.publishProgress(new String[] { "gone" });
+      assertEquals("nothing may reach a window that has stopped",
+          Collections.singletonList("progress:[still here]"), second.reached);
+    } finally {
+      session.unlisten(first);
+      session.unlisten(second);
+    }
+  }
+
+  /** A second crawl starting on a stale verdict would show the previous mirror's finished pane. */
+  @Test
+  public void aNewCrawlClearsWhatTheLastOneLeft() {
+    final MirrorSession session = MirrorSession.get();
+    final FakeCrawl first = new FakeCrawl();
+    final FakeCrawl second = new FakeCrawl();
+    try {
+      session.begin(first);
+      final HTTrackStats stats = new HTTrackStats();
+      stats.linksScanned = 4;
+      session.publishStats(stats);
+      session.publishVerdict(new MirrorSession.Verdict("done", 0, null));
+      session.begin(second);
+      assertNull("the previous verdict must not reach the new crawl's window",
+          session.takeVerdict());
+      assertNull("nor must its last refresh", session.lastStats());
+    } finally {
+      session.end(first);
+      session.end(second);
+      session.takeVerdict();
+    }
   }
 
   /** Body of the method whose declaration starts with SIGNATURE. */
