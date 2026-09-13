@@ -92,6 +92,9 @@ public class CleanupActivity extends ListActivity {
     findViewById(R.id.buttonClear).setVisibility(state);
     findViewById(R.id.horizontalLine).setVisibility(state);
 
+    // The default label fits deleting; picking a project needs its own title.
+    setTitle(CleanupTitlePolicy.titleFor(action == ACTION_SELECT));
+
     final ArrayList<HashMap<String, String>> listItem = new ArrayList<HashMap<String, String>>();
 
     for (final String name : projects) {
@@ -150,6 +153,15 @@ public class CleanupActivity extends ListActivity {
 
       // Finish activity
       finish();
+    }
+  }
+
+  /** Reuses the checkbox's own click path, since the name is the larger target a user aims at. */
+  public void OnClickName(final View v) {
+    final View row = blocCheckFor(v);
+    final CheckBox cb = row != null ? (CheckBox) row.findViewById(R.id.check) : null;
+    if (cb != null) {
+      cb.performClick();
     }
   }
 
