@@ -30,6 +30,16 @@ public class MirrorJobTest {
     return text.replaceAll("\\s+", " ").trim();
   }
 
+  /** How many times REGEX matches SOURCE, so no spelling of a call escapes the count. */
+  private static int matches(final String source, final String regex) {
+    final Matcher found = Pattern.compile(regex).matcher(source);
+    int count = 0;
+    while (found.find()) {
+      count++;
+    }
+    return count;
+  }
+
   /** Body of the CrawlRun method NAME, or null when CrawlRun declares no such method. Only a
    *  declaration of the class itself matches, never a call inside another body. */
   private static String crawlRunBody(final String crawl, final String name) {
@@ -341,15 +351,16 @@ public class MirrorJobTest {
     assertTrue("the schedule must be short-circuited, or a pre-34 device writes the profile "
         + "early and asks the scheduler for a job that cannot exist",
         norm(branch).contains("jobOwns && scheduleMirrorJob()"));
-    assertEquals("one starter, or a second call hands the activity a job-owned crawl", 1,
-        TestSources.occurrences(activity, "startRunner();"));
-    assertEquals("one caller of the schedule helper", 1,
-        TestSources.occurrences(activity, "&& scheduleMirrorJob()"));
+    // Counted by pattern: a second call spelled startRunner( ) escapes a literal count.
+    assertEquals("one declaration and one call, or a second hands the activity a job-owned crawl",
+        2, matches(activity, "\\bstartRunner\\s*\\("));
+    assertEquals("one declaration and one caller of the schedule helper", 2,
+        matches(activity, "\\bscheduleMirrorJob\\s*\\("));
     assertEquals("the starter must be the only place a RunnerFragment is created, or the "
         + "fragment's onDestroy stop could fire against a job-owned crawl", 1,
-        TestSources.occurrences(
-            body(activity, "protected synchronized void startRunner()"), "new RunnerFragment()"));
+        matches(body(activity, "protected synchronized void startRunner()"),
+            "new\\s+RunnerFragment\\s*\\("));
     assertEquals("no fragment is created anywhere else", 1,
-        TestSources.occurrences(activity, "new RunnerFragment()"));
+        matches(activity, "new\\s+RunnerFragment\\s*\\("));
   }
 }
