@@ -75,12 +75,12 @@ public class CrawlHandoverTest {
     assertEquals("session.live() != null, verdict != null, stats != null, "
         + "MirrorJobService.isPending(this)",
         norm(TestSources.arguments(attach, "HandoverPolicy.attaches")));
-    assertTrue("the verdict must be taken before it is shown, or every attach shows it again",
-        TestSources.indexOf(attach, "session.takeVerdict()")
-            < TestSources.indexOf(attach, "displayFinishedPanel("));
     assertEquals("one finished pane", 1,
         TestSources.occurrences(attach, "displayFinishedPanel("));
-    assertEquals("one verdict taken", 1, TestSources.occurrences(attach, "takeVerdict()"));
+    assertEquals("one verdict read", 1,
+        TestSources.occurrences(attach, "session.heldVerdict()"));
+    assertEquals("a verdict taken here is one a pane that never drew it has swallowed", 0,
+        TestSources.occurrences(attach, "takeVerdict()"));
     assertEquals("formatProgress(stats)",
         norm(TestSources.arguments(attach, "setProgressLines")));
     assertTrue("both answers must select a branch", attach.contains("case FINISHED:")
@@ -121,6 +121,24 @@ public class CrawlHandoverTest {
     assertEquals("the finished pane must stop whichever owner still holds the engine", 1,
         TestSources.occurrences(TestSources.between(body(source, "protected void onEnterNewPane()"),
             "case R.layout.activity_mirror_finished:", "break;"), "stopCrawl(true);"));
+  }
+
+  /** The finished pane is drawn from a posted message, so a verdict taken before that message
+   *  runs is one an activity that dies first swallows. */
+  @Test
+  public void theVerdictIsHeldUntilThePaneHasDrawnIt() throws IOException {
+    final String source = activity();
+    final String panel = body(source,
+        "protected void displayFinishedPanel(final String displayMessage,");
+    assertEquals("one clear", 1,
+        TestSources.occurrences(panel, "MirrorSession.get().takeVerdict();"));
+    assertTrue("cleared before the pane is set, a message that never ran would still lose it",
+        TestSources.indexOf(panel, "setPane(LAYOUT_FINISHED);")
+            < TestSources.indexOf(panel, "MirrorSession.get().takeVerdict();"));
+    assertEquals("the clear belongs inside the posted runnable, not beside the post", 2,
+        TestSources.depthOf(panel, "MirrorSession.get().takeVerdict();"));
+    assertEquals("one place clears it, or a second would empty the slot before a pane drew it", 1,
+        TestSources.occurrences(source, "takeVerdict()"));
   }
 
   /** setRequiredNetworkType(NETWORK_TYPE_ANY) still requires a network, so offline the job is

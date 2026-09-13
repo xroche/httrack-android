@@ -2013,7 +2013,7 @@ public class HTTrackActivity extends FragmentActivity {
   private void attachToLiveCrawl() {
     final MirrorSession session = MirrorSession.get();
     final HTTrackStats stats = session.lastStats();
-    final MirrorSession.Verdict verdict = session.takeVerdict();
+    final MirrorSession.Verdict verdict = session.heldVerdict();
     switch (HandoverPolicy.attaches(session.live() != null, verdict != null, stats != null,
         MirrorJobService.isPending(this))) {
     case FINISHED:
@@ -2474,6 +2474,8 @@ public class HTTrackActivity extends FragmentActivity {
           sendSystemNotification(current, finished + ": " + name,
               renderFinishedMessage(displayMessage, null));
         }
+        // Drawn at last, so the session need not keep it for the window after this one.
+        MirrorSession.get().takeVerdict();
       }
     });
   }

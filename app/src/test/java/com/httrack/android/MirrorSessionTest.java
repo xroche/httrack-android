@@ -256,6 +256,7 @@ public class MirrorSessionTest {
       assertEquals("nobody took it, so the caller must tell the user itself",
           HandoverPolicy.Delivery.HELD,
           session.publishVerdict(new MirrorSession.Verdict("done", 3, folder)));
+      assertNotNull("the verdict waits where a window can still find it", session.heldVerdict());
       final MirrorSession.Verdict held = session.takeVerdict();
       assertNotNull("the verdict waits for a window", held);
       assertEquals("done", held.message);
@@ -287,8 +288,10 @@ public class MirrorSessionTest {
           session.publishVerdict(new MirrorSession.Verdict("done", 0, null)));
       assertEquals(Arrays.asList("progress:[Creating project]", "stats:12", "finished:done/0/null"),
           window.reached);
-      assertNull("a delivered verdict must not also wait for the next attach",
+      // A window draws its finished pane from a posted message, so delivery is not drawing.
+      assertNotNull("a window that dies before its pane runs would swallow the verdict",
           session.takeVerdict());
+      assertNull("and a drawn verdict must not show the pane again", session.takeVerdict());
     } finally {
       session.unlisten(window);
       session.end(crawl);

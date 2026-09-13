@@ -208,7 +208,16 @@ final class MirrorSession {
   }
 
   /**
-   * Take the held verdict, so a second attach does not show the finished pane again.
+   * The verdict no pane has drawn yet, left where it is for whoever draws it.
+   *
+   * @return the verdict, or null when none is held
+   */
+  synchronized Verdict heldVerdict() {
+    return verdict;
+  }
+
+  /**
+   * Drop the held verdict, once a pane has drawn it, so a second attach does not show it again.
    *
    * @return the verdict, or null when none is held
    */
@@ -252,7 +261,8 @@ final class MirrorSession {
   }
 
   /**
-   * Report what the crawl left behind.
+   * Report what the crawl left behind. The verdict is held whoever takes it, because a window
+   * draws its pane from a posted message and may die before that message runs.
    *
    * @param reached
    *          the verdict
@@ -264,8 +274,7 @@ final class MirrorSession {
     synchronized (this) {
       window = listener;
       delivery = HandoverPolicy.delivers(window != null, true);
-      // Held only where no window takes it, or the next attach would show the pane again.
-      verdict = delivery == HandoverPolicy.Delivery.HELD ? reached : null;
+      verdict = reached;
     }
     if (delivery == HandoverPolicy.Delivery.ACTIVITY) {
       window.onFinished(reached);
