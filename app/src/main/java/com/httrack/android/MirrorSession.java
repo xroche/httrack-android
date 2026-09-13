@@ -40,6 +40,9 @@ final class MirrorSession {
    * the session lock is held, so a listener may take it.
    */
   interface Listener {
+    /** The slot now holds a live crawl, which some of a window's own state is decided on. */
+    void onCrawlLive();
+
     /** A one-line status, shown while the crawl has no statistics yet. */
     void onProgressLines(String[] lines);
 
@@ -139,10 +142,17 @@ final class MirrorSession {
    * @param crawl
    *          the crawl that is starting
    */
-  synchronized void begin(final Crawl crawl) {
-    run = crawl;
-    lastStats = null;
-    verdict = null;
+  void begin(final Crawl crawl) {
+    final Listener window;
+    synchronized (this) {
+      run = crawl;
+      lastStats = null;
+      verdict = null;
+      window = listener;
+    }
+    if (window != null) {
+      window.onCrawlLive();
+    }
   }
 
   /**

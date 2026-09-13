@@ -51,6 +51,11 @@ public class MirrorSessionTest {
     final List<String> reached = new ArrayList<String>();
 
     @Override
+    public void onCrawlLive() {
+      reached.add("live");
+    }
+
+    @Override
     public void onProgressLines(final String[] lines) {
       reached.add("progress:" + Arrays.toString(lines));
     }
@@ -289,6 +294,30 @@ public class MirrorSessionTest {
       session.end(crawl);
       session.takeVerdict();
     }
+  }
+
+  /** The window decides the screen-on flag on whether a crawl is live, and from API 34 on the
+   *  job thread reaches the session well after the pane was drawn. */
+  @Test
+  public void anAttachedWindowIsToldWhenTheCrawlBecomesLive() throws IOException {
+    final MirrorSession session = MirrorSession.get();
+    final FakeCrawl crawl = new FakeCrawl();
+    final FakeWindow window = new FakeWindow();
+    try {
+      session.listen(window);
+      session.begin(crawl);
+      assertEquals(Collections.singletonList("live"), window.reached);
+    } finally {
+      session.unlisten(window);
+      session.end(crawl);
+    }
+    final String begin = body(TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("MirrorSession")),
+        "void begin(final Crawl crawl)");
+    assertEquals("one window told", 1, TestSources.occurrences(begin, "window.onCrawlLive();"));
+    assertEquals("a listener called under the session lock cannot take it", 0,
+        TestSources.occurrences(TestSources.balancedBlock(begin,
+            TestSources.indexOf(begin, "synchronized (this)")), "onCrawlLive"));
   }
 
   /** onStop clears the slot, and a window that lost it to a later one must not clear that one. */

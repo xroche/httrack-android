@@ -110,6 +110,20 @@ public class KeepScreenOnTest {
         "refreshKeepScreenOn()");
   }
 
+  /** From API 34 on there is no fragment, and the job thread has not reached the session when
+   *  the pane is drawn, so the pane-change answer is always no. Only the listener corrects it. */
+  @Test
+  public void theCrawlGoingLiveReconsidersTheFlag() throws IOException {
+    final String source = activity();
+    final String listener = TestSources.balancedBlock(source, source.indexOf(
+        "private final MirrorSession.Listener sessionListener = new MirrorSession.Listener()"));
+    assertTrue("the flag belongs to the window, so the refresh has to reach the UI thread",
+        body(listener, "public void onCrawlLive()").contains("handlerUI.post(keepScreenOnTask)"));
+    assertEquals("one refresh", 1, TestSources.occurrences(
+        body(source, "private final Runnable keepScreenOnTask = new Runnable()"),
+        "refreshKeepScreenOn();"));
+  }
+
   @Test
   public void theProgressPaneShowsTheOption() throws IOException {
     final String pane = TestSources.between(activity(),

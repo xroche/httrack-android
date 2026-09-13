@@ -240,8 +240,22 @@ public class HTTrackActivity extends FragmentActivity {
     }
   };
 
+  /* The window carries the screen-on flag, so the answer has to be applied on its own thread. */
+  private final Runnable keepScreenOnTask = new Runnable() {
+    @Override
+    public void run() {
+      refreshKeepScreenOn();
+    }
+  };
+
   /* The crawl's way back to this window, whichever owner drives it. */
   private final MirrorSession.Listener sessionListener = new MirrorSession.Listener() {
+    @Override
+    public void onCrawlLive() {
+      // The pane was drawn before the job thread reached the session, so it read no live crawl.
+      handlerUI.post(keepScreenOnTask);
+    }
+
     @Override
     public void onProgressLines(final String[] lines) {
       setProgressLines(lines);
