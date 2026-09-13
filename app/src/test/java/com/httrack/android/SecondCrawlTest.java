@@ -158,8 +158,8 @@ public class SecondCrawlTest {
         .contains("throw new IOException(messages.alreadyInProgress)"));
     // CrawlMessagesTest pins which resource fills that field; only its presence is read here.
     assertTrue("no crawl message is built from mirror_already_in_progress",
-        body(activity(), "CrawlRun.Messages crawlMessages()")
-            .contains("requireString(R.string.mirror_already_in_progress)"));
+        body(activity(), "CrawlRun.Messages crawlMessages(final Context context)")
+            .contains("requireString(context, R.string.mirror_already_in_progress)"));
     // The raw source, since withoutCommentsAndStrings blanks the literal this looks for.
     assertFalse("an English literal cannot be translated",
         TestSources.javaSource("HTTrackActivity").contains("already in progress\""));
