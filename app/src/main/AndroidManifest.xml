@@ -8,6 +8,10 @@
     <!-- We tell the user when a mirror ends while the app sits in the background. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- The copy runs on as a user-initiated data transfer job, which is what keeps it alive
+         once the user leaves the app. A normal permission, and harmless below API 34. -->
+    <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS" />
+
     <!-- Mirrors live in public storage so other apps (browsers, file managers) can use them.
          Below API 30 the legacy write permission suffices; from API 30 on it needs all-files
          access, granted from a settings screen. -->
@@ -15,9 +19,9 @@
         android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
-    <!-- We need to check the Internet connection (IPv6 enabled ?). -->
-    <!-- NetworkInterface.getNetworkInterfaces() does not need that apparently, so let's remove the permission. -->
-    <!-- uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" -->
+    <!-- Required by the job's connectivity constraint: JobScheduler.schedule throws a
+         SecurityException without it. A normal permission, with no runtime prompt. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- hasFragileUserData: from Android 10 the Settings uninstall flow offers to keep our data,
          which is where private-storage mirrors live. Ignored below 29 and by the Play Store flow. -->
@@ -54,6 +58,11 @@
             android:name="com.httrack.android.FileChooserActivity"
             android:label="@string/title_activity_file_chooser" >
         </activity>
+
+        <service
+            android:name=".MirrorJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 
 </manifest>

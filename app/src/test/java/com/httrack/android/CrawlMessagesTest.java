@@ -54,12 +54,12 @@ public class CrawlMessagesTest {
   @Test
   public void theActivityFillsEachFieldFromItsOwnString() throws IOException {
     final List<String> read = split(TestSources.arguments(
-        body(source("HTTrackActivity"), "CrawlRun.Messages crawlMessages()"),
+        body(source("HTTrackActivity"), "CrawlRun.Messages crawlMessages(final Context context)"),
         "new CrawlRun.Messages"));
     assertEquals("the message count changed", PAIRS.length, read.size());
     for (int i = 0; i < PAIRS.length; i++) {
       assertEquals(PAIRS[i][0] + " is filled from the wrong string",
-          "requireString(" + PAIRS[i][1] + ")", read.get(i));
+          "requireString(context, " + PAIRS[i][1] + ")", read.get(i));
     }
   }
 

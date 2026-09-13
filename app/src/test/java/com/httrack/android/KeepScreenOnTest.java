@@ -84,7 +84,7 @@ public class KeepScreenOnTest {
   public void thePolicyIsAskedWithTheUserChoiceThePaneAndTheCrawlInThatOrder() throws IOException {
     // Naming the call is not enough: a constant folded into any of the three would pass that.
     assertEquals(Arrays.asList(PREF + ".getBoolean(KEEP_SCREEN_ON_NAME, false)",
-        "pane_id == LAYOUT_MIRROR_PROGRESS", "runner != null && runner.hasLiveRunner()"),
+        "pane_id == LAYOUT_MIRROR_PROGRESS", "hasLiveRunner()"),
         split(TestSources.arguments(refresh(), "ScreenOnPolicy.keepScreenOn")));
   }
 
@@ -108,6 +108,20 @@ public class KeepScreenOnTest {
     // The refresh reads pane_id, so ahead of that assignment it would judge the pane being left.
     assertInOrder("the refresh must see the pane being entered", pane, "pane_id = position;",
         "refreshKeepScreenOn()");
+  }
+
+  /** From API 34 on there is no fragment, and the job thread has not reached the session when
+   *  the pane is drawn, so the pane-change answer is always no. Only the listener corrects it. */
+  @Test
+  public void theCrawlGoingLiveReconsidersTheFlag() throws IOException {
+    final String source = activity();
+    final String listener = TestSources.balancedBlock(source, source.indexOf(
+        "private final MirrorSession.Listener sessionListener = new MirrorSession.Listener()"));
+    assertTrue("the flag belongs to the window, so the refresh has to reach the UI thread",
+        body(listener, "public void onCrawlLive()").contains("handlerUI.post(keepScreenOnTask)"));
+    assertEquals("one refresh", 1, TestSources.occurrences(
+        body(source, "private final Runnable keepScreenOnTask = new Runnable()"),
+        "refreshKeepScreenOn();"));
   }
 
   @Test
@@ -176,5 +190,8 @@ public class KeepScreenOnTest {
     }
     assertTrue("the label has to say what stops the copy",
         label.contains("leave") || label.contains("stops"));
+    // From Android 14 the job carries the copy on, so an unqualified stop claim is false there.
+    assertTrue("the stop claim has to name the versions it still holds for",
+        label.contains("on android 13 and earlier,"));
   }
 }

@@ -166,6 +166,12 @@ public class HTTrackActivity extends FragmentActivity {
   // choices are keyed on it, and a new id silently resets them.
   protected static final String NOTIFICATION_CHANNEL_ID = "mirror";
 
+  // The channel a running mirror's progress goes to. Never rename, and never raise: an app can
+  // only ever lower a channel's importance, and IMPORTANCE_DEFAULT would buzz on every update.
+  protected static final String PROGRESS_CHANNEL_ID = "mirror-progress";
+  // Its own id, because the job-end policy removes exactly this one.
+  protected static final int PROGRESS_NOTIFICATION_ID = 1;
+
   /*
    * Build identifiers. See
    * <http://developer.android.com/reference/android/os/Build
@@ -231,6 +237,38 @@ public class HTTrackActivity extends FragmentActivity {
       if (lines != null) {
         setProgressLinesInternal(lines);
       }
+    }
+  };
+
+  /* The window carries the screen-on flag, so the answer has to be applied on its own thread. */
+  private final Runnable keepScreenOnTask = new Runnable() {
+    @Override
+    public void run() {
+      refreshKeepScreenOn();
+    }
+  };
+
+  /* The crawl's way back to this window, whichever owner drives it. */
+  private final MirrorSession.Listener sessionListener = new MirrorSession.Listener() {
+    @Override
+    public void onCrawlLive() {
+      // The pane was drawn before the job thread reached the session, so it read no live crawl.
+      handlerUI.post(keepScreenOnTask);
+    }
+
+    @Override
+    public void onProgressLines(final String[] lines) {
+      setProgressLines(lines);
+    }
+
+    @Override
+    public void onStats(final HTTrackStats stats) {
+      setProgressLines(formatProgress(stats));
+    }
+
+    @Override
+    public void onFinished(final MirrorSession.Verdict verdict) {
+      displayFinishedPanel(verdict.message, verdict.errorsCount, verdict.mirrorFolder);
     }
   };
 
@@ -1352,7 +1390,7 @@ public class HTTrackActivity extends FragmentActivity {
      */
     public Runner(final HTTrackActivity parent) {
       appContext = parent.getApplicationContext();
-      crawl = new CrawlRun(appContext, this, parent.crawlMessages());
+      crawl = new CrawlRun(appContext, this, HTTrackActivity.crawlMessages(appContext));
       setParent(parent);
     }
 
@@ -1365,7 +1403,7 @@ public class HTTrackActivity extends FragmentActivity {
     public synchronized void setParent(final HTTrackActivity parent) {
       this.parent = parent;
       parent.cacheProgressStrings();
-      crawl.setMessages(parent.crawlMessages());
+      crawl.setMessages(HTTrackActivity.crawlMessages(parent));
 
       // Execute pending actions now we are attached
       if (pendingParentActions.size() != 0) {
@@ -1512,22 +1550,32 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /* A string resource that must exist, since a null one would reach the user as "null". */
-  private String requireString(final int id) {
-    final String s = getString(id);
+  private static String requireString(final Context context, final int id) {
+    final String s = context.getString(id);
     if (s == null) {
       throw new NullPointerException("null string #" + id);
     }
     return s;
   }
 
-  /** The messages the crawl produces itself, re-read on every attach. */
-  CrawlRun.Messages crawlMessages() {
-    return new CrawlRun.Messages(requireString(R.string.creating_project),
-        requireString(R.string.starting_mirror),
-        requireString(R.string.self_contained_conflict),
-        requireString(R.string.mirror_already_in_progress),
-        requireString(R.string.engine_faulted),
-        requireString(R.string.mirror_finished));
+  private String requireString(final int id) {
+    return requireString(this, id);
+  }
+
+  /**
+   * The messages the crawl produces itself, re-read on every attach.
+   *
+   * @param context
+   *          any context of this app, since the job owner has no activity
+   * @return the messages, in the language in force now
+   */
+  static CrawlRun.Messages crawlMessages(final Context context) {
+    return new CrawlRun.Messages(requireString(context, R.string.creating_project),
+        requireString(context, R.string.starting_mirror),
+        requireString(context, R.string.self_contained_conflict),
+        requireString(context, R.string.mirror_already_in_progress),
+        requireString(context, R.string.engine_faulted),
+        requireString(context, R.string.mirror_finished));
   }
 
   /* Read once per attach rather than per refresh, which the engine drives faster than the UI. */
@@ -1923,12 +1971,85 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Is a crawl still actually running? True only for a fragment reclaimed across a configuration
-   * change with a live, non-ended runner; false after process death (fragment restored empty).
+   * Is a crawl still actually running, under either owner? False after process death, where the
+   * session is empty and the fragment comes back without its runner.
    */
   protected boolean hasLiveRunner() {
+    if (MirrorSession.get().live() != null) {
+      return true;
+    }
+    // The fragment is live from the moment it is added, which is before its crawl reaches the slot.
     final Fragment f = getSupportFragmentManager().findFragmentByTag(RUNNER_FRAGMENT_TAG);
     return f instanceof RunnerFragment && ((RunnerFragment) f).hasLiveRunner();
+  }
+
+  /**
+   * Stop the crawl, whichever owner drives it.
+   *
+   * @param force
+   *          true to cut the transfers short rather than let them finish
+   * @return true when the stop reached the engine
+   */
+  private boolean stopCrawl(final boolean force) {
+    if (runner != null) {
+      return runner.stopMirror(force);
+    }
+    final MirrorSession.Crawl crawl = MirrorSession.get().live();
+    if (crawl != null) {
+      return crawl.stopMirror(force);
+    }
+    // A job the scheduler is still holding owns no engine, so only the cancel can abandon it.
+    MirrorJobService.cancel(this);
+    return false;
+  }
+
+  /* Is the crawl scheduled and nothing more, so no engine and no worker thread exist yet? */
+  private boolean waitsForNetwork() {
+    return HandoverPolicy.waitsForNetwork(MirrorSession.get().live() != null,
+        MirrorJobService.isPending(this));
+  }
+
+  /* Draw what a crawl already under way has reported, so an attaching window is never frozen. */
+  private void attachToLiveCrawl() {
+    final MirrorSession session = MirrorSession.get();
+    final HTTrackStats stats = session.lastStats();
+    final MirrorSession.Verdict verdict = session.heldVerdict();
+    switch (HandoverPolicy.attaches(session.live() != null, verdict != null, stats != null,
+        MirrorJobService.isPending(this))) {
+    case FINISHED:
+      displayFinishedPanel(verdict.message, verdict.errorsCount, verdict.mirrorFolder);
+      break;
+    case PROGRESS:
+      setProgressLines(formatProgress(stats));
+      break;
+    case WAITING:
+      setProgressLines(new String[] { getString(R.string.waiting_for_network) });
+      break;
+    default:
+      break;
+    }
+  }
+
+  /**
+   * Hand the crawl to the job that outlives this window.
+   *
+   * @return true when the job owns the crawl, so this activity must not start one
+   */
+  protected synchronized boolean scheduleMirrorJob() {
+    if (!CrawlOwnerPolicy.startsNewCrawl(MirrorSession.get().live() != null,
+        MirrorJobService.isPending(this))) {
+      // Scheduling over a live job id would cancel the execution it is already running.
+      return true;
+    }
+    try {
+      // Written here, while the widgets are live, so the headless job only takes the lock.
+      serialize();
+    } catch (final IOException io) {
+      Log.w(getClass().getSimpleName(), "could not write the profile before scheduling", io);
+      return false;
+    }
+    return MirrorJobService.schedule(this, mapper.getProjectName(), getTargetFile(),
+        getProjectRootFile(), getResourceFile(), buildCommandline());
   }
 
   /**
@@ -1956,7 +2077,7 @@ public class HTTrackActivity extends FragmentActivity {
   private void refreshKeepScreenOn() {
     final boolean keep = ScreenOnPolicy.keepScreenOn(
         getSharedPreferences(PREFS_NAME, 0).getBoolean(KEEP_SCREEN_ON_NAME, false),
-        pane_id == LAYOUT_MIRROR_PROGRESS, runner != null && runner.hasLiveRunner());
+        pane_id == LAYOUT_MIRROR_PROGRESS, hasLiveRunner());
     if (keep) {
       getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     } else {
@@ -2128,21 +2249,24 @@ public class HTTrackActivity extends FragmentActivity {
       }
       break;
     case R.layout.activity_mirror_progress:
-      setProgressLinesInternal(new String[] { getString(R.string.starting_worker_thread) });
       wireKeepScreenOn();
       // Asked at crawl start, not at launch.
       ensureNotificationsAreAllowed();
-      startRunner();
-      if (runner != null) {
+      final boolean jobOwns = CrawlOwnerPolicy.ownsInJob(android.os.Build.VERSION.SDK_INT);
+      if (CrawlOwnerPolicy.startsInActivity(jobOwns, jobOwns && scheduleMirrorJob())) {
+        startRunner();
+      }
+      // Posted, not drawn inline: nothing is laid out yet, so an inline draw cuts every line.
+      setProgressLines(new String[] { getString(waitsForNetwork()
+          ? R.string.waiting_for_network : R.string.starting_worker_thread) });
+      if (runner != null || hasLiveRunner()) {
         ProgressBar.class.cast(findViewById(R.id.progressMirror))
             .setVisibility(View.VISIBLE);
       }
       break;
     case R.layout.activity_mirror_finished:
       // Ensure the engine has stopped running
-      if (runner != null) {
-        runner.stopMirror(true);
-      }
+      stopCrawl(true);
 
       // Enable browse button if index.html exists
       final boolean hasIndex = hasTargetIndexFile();
@@ -2351,6 +2475,8 @@ public class HTTrackActivity extends FragmentActivity {
           sendSystemNotification(current, finished + ": " + name,
               renderFinishedMessage(displayMessage, null));
         }
+        // Drawn at last, so the session need not keep it for the window after this one.
+        MirrorSession.get().takeVerdict();
       }
     });
   }
@@ -2684,10 +2810,16 @@ public class HTTrackActivity extends FragmentActivity {
    * "Interrupt" or "Stop"
    */
   public void onClickStop(final View view) {
-    if (runner != null) {
+    if (runner == null && waitsForNetwork()) {
+      // No engine ever started, so no run will show the finished pane; the cancel is the end.
+      stopCrawl(true);
+      setPane(LAYOUT_PROJECT_SETUP);
+      return;
+    }
+    if (runner != null || MirrorSession.get().live() != null) {
       // Soft interrupt
       if (!interruptRequested) {
-        runner.stopMirror(false);
+        stopCrawl(false);
         interruptRequested = true;
         final TextView text = (TextView) this.findViewById(R.id.buttonStop);
         // Change text to "Stop"
@@ -2697,7 +2829,7 @@ public class HTTrackActivity extends FragmentActivity {
       }
       // Hard interrupt
       else {
-        runner.stopMirror(true);
+        stopCrawl(true);
       }
     }
   }
@@ -3109,10 +3241,71 @@ public class HTTrackActivity extends FragmentActivity {
    * makes the system prompt an app targeting 32 or lower, and launch is too early to ask.
    */
   protected void createNotificationChannel() {
+    createNotificationChannel(this);
+  }
+
+  /**
+   * Register that same channel from a context with no window.
+   *
+   * @param context
+   *          any context of this app
+   */
+  static void createNotificationChannel(final Context context) {
     final NotificationChannelCompat channel = new NotificationChannelCompat.Builder(
         NOTIFICATION_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
-        .setName(getString(R.string.app_name)).build();
-    NotificationManagerCompat.from(this).createNotificationChannel(channel);
+        .setName(context.getString(R.string.app_name)).build();
+    NotificationManagerCompat.from(context).createNotificationChannel(channel);
+  }
+
+  /**
+   * Tell the user a crawl has ended when no window took its verdict, which is what the finished
+   * pane would otherwise have shown.
+   *
+   * @param context
+   *          any context of this app
+   * @param projectName
+   *          the mirror's name
+   * @param message
+   *          the verdict, as the HTML the finished pane renders
+   */
+  static void sendFinishedNotification(final Context context, final String projectName,
+      final String message) {
+    createNotificationChannel(context);
+    final CharSequence title = context.getString(R.string.mirror_finished) + ": " + projectName;
+    final long when = System.currentTimeMillis();
+    final int id = (int) when;
+    // No extras: a tap restoring them would overwrite the option map the user has since edited.
+    final Intent intent = new Intent(context, HTTrackActivity.class);
+    intent.setAction(Intent.ACTION_MAIN);
+    intent.addCategory(Intent.CATEGORY_LAUNCHER);
+    final PendingIntent pintent = PendingIntent.getActivity(context, id, intent,
+        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+    final Notification notification = new NotificationCompat.Builder(context,
+        NOTIFICATION_CHANNEL_ID).setContentTitle(title)
+        .setContentText(Html.fromHtml(message != null ? message : "")).setTicker(title)
+        .setSmallIcon(R.drawable.ic_stat_httrack).setWhen(when).setContentIntent(pintent)
+        .setAutoCancel(true).build();
+    try {
+      NotificationManagerCompat.from(context).notify(id, notification);
+    } catch (final SecurityException refused) {
+      // The user never granted POST_NOTIFICATIONS, so the verdict waits for the next attach.
+      Log.w("HTTrackActivity", "could not post the finished notification", refused);
+    }
+  }
+
+  /**
+   * Register the channel a running mirror's progress is posted to. Idempotent, like the one
+   * above, and separate from it because a progress update must never make a sound.
+   *
+   * @param context
+   *          any context of this app
+   */
+  static void createProgressChannel(final Context context) {
+    final NotificationChannelCompat channel = new NotificationChannelCompat.Builder(
+        PROGRESS_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
+        .setName(context.getString(R.string.mirror_progress_channel))
+        .setDescription(context.getString(R.string.mirror_progress_channel_description)).build();
+    NotificationManagerCompat.from(context).createNotificationChannel(channel);
   }
 
   /** Send a notification. **/
@@ -3243,7 +3436,7 @@ public class HTTrackActivity extends FragmentActivity {
     super.onResume();
     // Returning from the all-files-access settings screen can change what we can write.
     // Never while a crawl runs, since the engine already holds the destination.
-    if (runner == null) {
+    if (runner == null && !hasLiveRunner()) {
       computeStorageTarget();
     }
     // A grant made on the settings screen flips the button/warning off (no-op off this panel).
@@ -3251,7 +3444,8 @@ public class HTTrackActivity extends FragmentActivity {
     // Ask again once a grant may have surfaced the folder; not mid-crawl, and not on a plain
     // resume, which onCreate has already covered.
     final boolean access = hasAllFilesAccess();
-    if (runner == null && StoragePaths.accessJustAppeared(hadStorageAccess, access)) {
+    if (runner == null && !hasLiveRunner()
+        && StoragePaths.accessJustAppeared(hadStorageAccess, access)) {
       offerLegacyMirrorImportOnce();
     }
     hadStorageAccess = access;
@@ -3266,6 +3460,10 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onStart");
     super.onStart();
     started = true;
+    // Read here as well as on a Runner attach, since a job-owned crawl attaches to no Runner.
+    cacheProgressStrings();
+    MirrorSession.get().listen(sessionListener);
+    attachToLiveCrawl();
   }
 
   @Override
@@ -3273,6 +3471,7 @@ public class HTTrackActivity extends FragmentActivity {
     Log.d(getClass().getSimpleName(), "onStop");
     super.onStop();
     started = false;
+    MirrorSession.get().unlisten(sessionListener);
   }
 
   @Override

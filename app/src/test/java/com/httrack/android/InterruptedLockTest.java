@@ -6,9 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -91,23 +88,31 @@ public class InterruptedLockTest {
 
   /** CrawlRun.stopMirror needs a live engine, so the guard is pinned in the source instead. */
   private static String stopMirrorBody() throws IOException {
-    final String source = TestSources.javaSource("CrawlRun");
-    final int from = source.indexOf("boolean stopMirror(final boolean force) {");
-    assertTrue("CrawlRun.stopMirror is gone", from != -1);
+    return crawlRunBody("boolean stopMirror(final boolean force) {");
+  }
+
+  private static String crawlRunBody(final String declaration) throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("CrawlRun"));
+    final int from = source.indexOf(declaration);
+    assertTrue("CrawlRun no longer declares " + declaration, from != -1);
     return TestSources.balancedBlock(source, from);
   }
 
+  /** A stop runs on whichever thread asked for it, and onStopJob's is the main one on an 8
+   *  second budget, so the stop may only record that a marker is owed. */
   @Test
-  public void aStopRequestOnlyEverWritesTheMarker() throws Exception {
-    final Matcher m = Pattern.compile("setInterruptedProfile\\(([^)]*)\\)")
-        .matcher(stopMirrorBody());
-    int calls = 0;
-    while (m.find()) {
-      calls++;
-      assertEquals("stopMirror must not clear the marker, nor pass a verdict it cannot make",
-          "true", m.group(1));
-    }
-    assertEquals("stopMirror no longer touches the marker at all", 1, calls);
+  public void aStopRequestOnlyEverAsksForTheMarker() throws Exception {
+    final String stop = stopMirrorBody();
+    assertEquals("a write here is disk work on the stopper's own thread", 0,
+        TestSources.occurrences(stop, "setInterruptedProfile"));
+    assertEquals("one request, and it belongs to the guard that made the stop the recorder", 1,
+        TestSources.occurrences(stop, "requestMarker();"));
+    final String run = crawlRunBody("void runMirror() {");
+    assertEquals("the crawl thread must write what a stop asked for, as well as its own", 1,
+        TestSources.occurrences(run, "if (closeMarker(engineRan)) {"));
+    assertEquals("the run's own reading of what it left behind", "pendingWork",
+        TestSources.arguments(run, "setInterruptedProfile").trim());
   }
 
   @Test

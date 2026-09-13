@@ -3,6 +3,8 @@ package com.httrack.android;
 import java.io.File;
 import java.util.HashSet;
 
+import com.httrack.android.jni.HTTrackStats;
+
 /**
  * The one crawl this process runs, and the profiles a run holds. Whoever starts a crawl puts it
  * in the slot, so a second starter finds it rather than taking the same project twice.
@@ -22,6 +24,46 @@ final class MirrorSession {
   interface Crawl {
     /** How far this crawl has got. */
     State state();
+
+    /**
+     * Stop this crawl.
+     *
+     * @param force
+     *          true to cut the transfers short rather than let them finish
+     * @return true when the stop reached the engine
+     */
+    boolean stopMirror(boolean force);
+  }
+
+  /**
+   * What an attached window is told, from whichever thread the crawl runs on. Never called while
+   * the session lock is held, so a listener may take it.
+   */
+  interface Listener {
+    /** The slot now holds a live crawl, which some of a window's own state is decided on. */
+    void onCrawlLive();
+
+    /** A one-line status, shown while the crawl has no statistics yet. */
+    void onProgressLines(String[] lines);
+
+    /** A refresh to render. */
+    void onStats(HTTrackStats stats);
+
+    /** The crawl is over, and this is what to show. */
+    void onFinished(Verdict verdict);
+  }
+
+  /** What a crawl left behind, held until a window shows it. */
+  static final class Verdict {
+    final String message;
+    final long errorsCount;
+    final File mirrorFolder;
+
+    Verdict(final String message, final long errorsCount, final File mirrorFolder) {
+      this.message = message;
+      this.errorsCount = errorsCount;
+      this.mirrorFolder = mirrorFolder;
+    }
   }
 
   /**
@@ -61,6 +103,14 @@ final class MirrorSession {
   /** The last crawl started, live or not; only the crawl itself clears it. */
   private Crawl run;
 
+  /** At most one, because only the window on screen can draw anything. */
+  private Listener listener;
+
+  private HTTrackStats lastStats;
+
+  /** Non-null only while a verdict is waiting for a window to show it. */
+  private Verdict verdict;
+
   private MirrorSession() {
   }
 
@@ -92,8 +142,17 @@ final class MirrorSession {
    * @param crawl
    *          the crawl that is starting
    */
-  synchronized void begin(final Crawl crawl) {
-    run = crawl;
+  void begin(final Crawl crawl) {
+    final Listener window;
+    synchronized (this) {
+      run = crawl;
+      lastStats = null;
+      verdict = null;
+      window = listener;
+    }
+    if (window != null) {
+      window.onCrawlLive();
+    }
   }
 
   /**
@@ -109,12 +168,117 @@ final class MirrorSession {
   }
 
   /**
-   * The crawl an owner may attach to. Its production caller arrives with stage 3's job owner,
-   * so meanwhile the Crawl seam above is what puts a test double in the slot.
+   * The crawl an owner may attach to, or stop.
    *
    * @return the crawl in the slot while it has not ended, else null
    */
   synchronized Crawl live() {
     return run != null && run.state() != State.ENDED ? run : null;
+  }
+
+  /**
+   * Take the single listener slot, replacing whoever held it.
+   *
+   * @param window
+   *          the window that will draw what the crawl reports
+   */
+  synchronized void listen(final Listener window) {
+    listener = window;
+  }
+
+  /**
+   * Give the slot back, unless a later window already took it.
+   *
+   * @param window
+   *          the window that is going away
+   */
+  synchronized void unlisten(final Listener window) {
+    if (listener == window) {
+      listener = null;
+    }
+  }
+
+  /**
+   * The newest refresh this crawl published.
+   *
+   * @return the statistics, or null before the first refresh
+   */
+  synchronized HTTrackStats lastStats() {
+    return lastStats;
+  }
+
+  /**
+   * The verdict no pane has drawn yet, left where it is for whoever draws it.
+   *
+   * @return the verdict, or null when none is held
+   */
+  synchronized Verdict heldVerdict() {
+    return verdict;
+  }
+
+  /**
+   * Drop the held verdict, once a pane has drawn it, so a second attach does not show it again.
+   *
+   * @return the verdict, or null when none is held
+   */
+  synchronized Verdict takeVerdict() {
+    final Verdict held = verdict;
+    verdict = null;
+    return held;
+  }
+
+  /**
+   * Report a one-line status.
+   *
+   * @param lines
+   *          the status lines
+   */
+  void publishProgress(final String[] lines) {
+    final Listener window;
+    synchronized (this) {
+      window = listener;
+    }
+    if (HandoverPolicy.delivers(window != null, false) == HandoverPolicy.Delivery.ACTIVITY) {
+      window.onProgressLines(lines);
+    }
+  }
+
+  /**
+   * Report a refresh, which is kept whether or not a window is there to draw it.
+   *
+   * @param stats
+   *          the engine's statistics
+   */
+  void publishStats(final HTTrackStats stats) {
+    final Listener window;
+    synchronized (this) {
+      lastStats = stats;
+      window = listener;
+    }
+    if (HandoverPolicy.delivers(window != null, false) == HandoverPolicy.Delivery.ACTIVITY) {
+      window.onStats(stats);
+    }
+  }
+
+  /**
+   * Report what the crawl left behind. The verdict is held whoever takes it, because a window
+   * draws its pane from a posted message and may die before that message runs.
+   *
+   * @param reached
+   *          the verdict
+   * @return ACTIVITY when a window took it, HELD when the caller must tell the user itself
+   */
+  HandoverPolicy.Delivery publishVerdict(final Verdict reached) {
+    final HandoverPolicy.Delivery delivery;
+    final Listener window;
+    synchronized (this) {
+      window = listener;
+      delivery = HandoverPolicy.delivers(window != null, true);
+      verdict = reached;
+    }
+    if (delivery == HandoverPolicy.Delivery.ACTIVITY) {
+      window.onFinished(reached);
+    }
+    return delivery;
   }
 }
