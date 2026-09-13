@@ -239,11 +239,13 @@ public class WinProfileParityTest {
   /* No flag may re-assert an engine default to mean "off", whichever primitive
      spells it: the -%q bug wore SimpleOption0 rather than a reverted flag.
      Reads the real fieldsMapper table, so it also covers the -%r, -%m and -%Z
-     toggles GatedFeatureHandler builds behind its private Toggle class. */
+     toggles GatedFeatureHandler builds behind its private Toggle class. Only
+     wired entries are covered, since a mapper no key names emits nothing. */
   @Test
   public void noOffSwitchEmitsABareEnablingForm() {
     final List<String> reverted = new ArrayList<String>();
     final List<String> tristate = new ArrayList<String>();
+    final List<String> toggles = new ArrayList<String>();
     for (final Pair<String, OptionMapper> field : MAPPER.fieldsMapper) {
       final OptionMapper mapper = field.second;
       if (mapper instanceof OptionsMapper.SimpleOptionFlag) {
@@ -260,6 +262,7 @@ public class WinProfileParityTest {
         assertFalse("-" + option + " emits both forms, so it may not be "
             + "spelled as its own off switch", option.endsWith("0"));
       } else if (GATED_TOGGLE.equals(mapper.getClass())) {
+        toggles.add(field.first);
         /* Toggle has no fields of its own, so behavior stands in for reverted. */
         final List<String> off = emit(mapper, "0");
         assertTrue(field.first + " must carry its 0 form or emit nothing "
@@ -270,6 +273,10 @@ public class WinProfileParityTest {
         "j0", "I0", "C0")), new TreeSet<String>(reverted));
     assertEquals("tri-state options", new TreeSet<String>(Arrays.asList("%P",
         "%k", "%u", "%f")), new TreeSet<String>(tristate));
+    /* The branch above matches on class identity, so a wrapped or subclassed
+       Toggle would drop all three toggles out of the test in silence. */
+    assertEquals("gated toggles", new TreeSet<String>(Arrays.asList("Warc",
+        "Sitemap", "SingleFile")), new TreeSet<String>(toggles));
   }
 
   /* The engine reads -iC1 as -i followed by -C1, so a Cache token later in
