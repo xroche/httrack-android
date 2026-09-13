@@ -160,7 +160,8 @@ public class CleanupActivity extends ListActivity {
   public void OnClickName(final View v) {
     final View row = blocCheckFor(v);
     final CheckBox cb = row != null ? (CheckBox) row.findViewById(R.id.check) : null;
-    if (cb != null) {
+    // performClick() ignores enabled, so only isEnabled() keeps a deleted row's box untouched.
+    if (cb != null && cb.isEnabled()) {
       cb.performClick();
     }
   }
