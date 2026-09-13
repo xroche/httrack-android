@@ -190,5 +190,8 @@ public class KeepScreenOnTest {
     }
     assertTrue("the label has to say what stops the copy",
         label.contains("leave") || label.contains("stops"));
+    // From Android 14 the job carries the copy on, so an unqualified stop claim is false there.
+    assertTrue("the stop claim has to name the versions it still holds for",
+        label.contains("on android 13 and earlier,"));
   }
 }

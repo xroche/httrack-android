@@ -252,7 +252,7 @@
     <string name="engine_faulted">The copier engine crashed and cannot be used again until HTTrack restarts. The app closes when you leave this screen; open it again to start a new mirror.</string>
     <string name="mirror_progress_channel">Copy in progress</string>
     <string name="mirror_progress_channel_description">Shows how far a website copy has got, while it runs.</string>
-    <string name="keep_screen_on">Keep the screen on while copying. Copying still stops when you leave HTTrack.</string>
+    <string name="keep_screen_on">Keep the screen on while copying. On Android 13 and earlier, copying stops when you leave HTTrack.</string>
     <string name="load_default">Load default options</string>
     <string name="save_default">Save default options</string>
     <string name="reset_default">Reset to default options</string>
