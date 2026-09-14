@@ -176,6 +176,15 @@ public class ResumeArgvTest {
     assertAheadOfEveryUrl(out);
   }
 
+  /** No caller emits one today, because CrawlArgv.build always writes the program name first.
+   *  The insert still has to be total: index 1 of an argv the filter emptied does not exist. */
+  @Test
+  public void anArgvOfNothingButDroppableTokensStillResumes() {
+    assertArrayEquals(new String[] { ResumeArgv.CONTINUE }, retry("-C0"));
+    assertArrayEquals(new String[] { ResumeArgv.CONTINUE }, retry("-iC2", "-C0"));
+    assertArrayEquals(new String[] { "httrack", ResumeArgv.CONTINUE }, retry("httrack", "-C0"));
+  }
+
   /** The oracle has to fire on the shape it exists to reject, or every row above passes vacuously
    *  whatever forStart returns. */
   @Test

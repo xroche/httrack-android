@@ -31,17 +31,19 @@ final class ResumeArgv {
    * @return argv itself on a first attempt, otherwise one forcing the resume mode
    */
   static String[] forStart(final String[] argv, final boolean projectInterrupted) {
-    // An argv with no program name has no crawl to resume, and CONTINUE_INDEX would not exist.
+    // An argv with no program name has no crawl to resume.
     if (argv == null || argv.length == 0 || !projectInterrupted) {
       return argv;
     }
+    // Position-blind: a dashvalue_opt field whose value the user typed as -C0 is dropped as well.
     final List<String> out = new ArrayList<String>(argv.length + 1);
     for (final String token : argv) {
       if (!isActionToken(token) && !isCacheToken(token)) {
         out.add(token);
       }
     }
-    out.add(CONTINUE_INDEX, CONTINUE);
+    // An argv whose every token was dropped has no index 1 left to insert at.
+    out.add(Math.min(CONTINUE_INDEX, out.size()), CONTINUE);
     return out.toArray(new String[] {});
   }
 
