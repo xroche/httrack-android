@@ -148,8 +148,10 @@ public class SecondCrawlTest {
         "catch (final OverlappingFileLockException", POLICY);
     assertInOrder("a refusal after the engine starts is two crawls, not a message", run, POLICY,
         "engine.main(cargs)");
-    assertTrue("the refusal must throw, or the run carries on unlocked",
-        flat(blockAfter(run, POLICY)).startsWith("throw new IOException("));
+    assertEquals("the refusal records why and throws, and does nothing else: anything more here "
+        + "runs with the profile another crawl holds",
+        "refusedInProgress = true; throw new IOException(messages.alreadyInProgress);",
+        flat(blockAfter(run, POLICY)).replaceAll("^\\{\\s*|\\s*\\}$", ""));
   }
 
   @Test

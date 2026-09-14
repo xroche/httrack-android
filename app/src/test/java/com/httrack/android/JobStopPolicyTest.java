@@ -54,6 +54,32 @@ public class JobStopPolicyTest {
     assertEquals(false, JobStopPolicy.tellsTheUser(JobStopPolicy.STOP_REASON_CANCELLED_BY_APP));
   }
 
+  /** Both answers at once, so a wrong row cannot hide behind an earlier one. */
+  private static String pairs(final boolean[] answers) {
+    return "tt=" + answers[0] + " tf=" + answers[1] + " ft=" + answers[2] + " ff=" + answers[3];
+  }
+
+  /** Stopping has to mean stopped: the engine's own stop leaves the job scheduled, and a job the
+   *  system then stops reschedules itself over the mirror the user cancelled. */
+  @Test
+  public void everyFinalStopDropsTheJob() {
+    assertEquals("tt=true tf=true ft=false ff=true", pairs(new boolean[] {
+        JobStopPolicy.cancelsScheduledJob(true, true), JobStopPolicy.cancelsScheduledJob(true,
+            false), JobStopPolicy.cancelsScheduledJob(false, true),
+        JobStopPolicy.cancelsScheduledJob(false, false) }));
+  }
+
+  /** A refused start comes back only where its own predecessor refused it. A second crawl of the
+   *  same project holds the profile for as long as it runs, and looping would never clear it. */
+  @Test
+  public void onlyAPredecessorsRefusalIsWorthRetrying() {
+    assertEquals("tt=true tf=false ft=false ff=false", pairs(new boolean[] {
+        JobStopPolicy.reschedulesRefusedStart(true, true),
+        JobStopPolicy.reschedulesRefusedStart(true, false),
+        JobStopPolicy.reschedulesRefusedStart(false, true),
+        JobStopPolicy.reschedulesRefusedStart(false, false) }));
+  }
+
   /** The constants have to match android.app.job.JobParameters, which the unit suite cannot
    *  load, so the values the plan read off the framework are pinned here. */
   @Test

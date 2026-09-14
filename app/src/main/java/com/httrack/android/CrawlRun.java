@@ -45,6 +45,9 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
     /** The engine options the option map emits. */
     List<String> options() throws IOException;
 
+    /** Is this a retry over a mirror an earlier execution of the same crawl left unfinished? */
+    boolean resumesInterrupted();
+
     /** Write the profile through the locked channel, which stays open. */
     void serializeProfile(FileChannel channel, File profile) throws IOException;
 
@@ -95,6 +98,8 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
   private volatile MirrorSession.State state = MirrorSession.State.NONE;
   private volatile boolean interrupted;
   private volatile boolean interruptedHard;
+  // Read by the job, which has to tell a refused start from a run that reached the engine.
+  private volatile boolean refusedInProgress;
   // Guards the marker bookkeeping alone, so nothing ever writes a file while holding it.
   private final Object markerLock = new Object();
   private boolean stopMarkerPending;
@@ -124,6 +129,11 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
   /** Has the mirror stopped? */
   boolean isEnded() {
     return state == MirrorSession.State.ENDED;
+  }
+
+  /** Was this run turned away because a mirror of the same project already held the profile? */
+  boolean wasRefusedInProgress() {
+    return refusedInProgress;
   }
 
   /**
@@ -187,6 +197,7 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
       }
       if (ProfileLockPolicy.alreadyInProgress(!profileMarked, lock == null,
           lockOverlapped)) {
+        refusedInProgress = true;
         throw new IOException(messages.alreadyInProgress);
       }
 
@@ -197,8 +208,9 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
       }
 
       // Final args array
-      final String[] cargs = CrawlArgv.build(HTTrackActivity.isIPv6Enabled(),
-          target.getAbsolutePath(), options);
+      final String[] cargs = ResumeArgv.forStart(
+          CrawlArgv.build(HTTrackActivity.isIPv6Enabled(), target.getAbsolutePath(), options),
+          owner.resumesInterrupted());
       Log.v(getClass().getSimpleName(),
           "starting engine: " + HTTrackActivity.printArray(cargs));
 

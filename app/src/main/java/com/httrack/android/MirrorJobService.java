@@ -71,6 +71,8 @@ public final class MirrorJobService extends JobService {
     if (target == null || projectRoot == null || resources == null) {
       return false;
     }
+    // The start the user just asked for, so the next execution of it is a retry.
+    attemptFile(target).delete();
     final PersistableBundle extras = new PersistableBundle();
     extras.putString(EXTRA_PROJECT_NAME, projectName != null ? projectName : "");
     extras.putString(EXTRA_TARGET, target.getAbsolutePath());
@@ -109,6 +111,33 @@ public final class MirrorJobService extends JobService {
   }
 
   /**
+   * The file an execution stamps before it reaches the engine. A killed process runs no finally,
+   * so only this can tell the next execution that it is a retry.
+   *
+   * @param target
+   *          the mirror directory
+   * @return the stamp, which may not exist
+   */
+  static File attemptFile(final File target) {
+    return new File(new File(target, "hts-cache"), "job-attempt.lock");
+  }
+
+  /* Stamps TARGET and answers whether an earlier execution had already stamped it. */
+  static boolean alreadyAttempted(final File target) {
+    final File stamp = attemptFile(target);
+    if (stamp.exists()) {
+      return true;
+    }
+    try {
+      stamp.createNewFile();
+    } catch (final IOException io) {
+      // Unstamped, so a retry replays this argv rather than resuming.
+      Log.w("MirrorJobService", "could not stamp the crawl attempt", io);
+    }
+    return false;
+  }
+
+  /**
    * Does the scheduler already hold our job?
    *
    * @param context
@@ -143,6 +172,16 @@ public final class MirrorJobService extends JobService {
         build(new Frame(getString(R.string.starting_mirror), 0, 0)),
         JobService.JOB_END_NOTIFICATION_POLICY_REMOVE);
 
+    // Before the first CrawlRun, whose engine field calls native init() as it is constructed.
+    final boolean freshProcess = !HTTrackLib.loadAttempted();
+    if (!HTTrackLib.loadLibraries()) {
+      // False ends the job unrescheduled, so the activity keeps the crawl rather than the system
+      // restarting a process that can only crash again.
+      Log.e("MirrorJobService", "no native engine; the activity keeps the crawl",
+          HTTrackLib.loadError());
+      return false;
+    }
+
     final File target = new File(string(extras, EXTRA_TARGET));
     final File projectRoot = new File(string(extras, EXTRA_PROJECT_ROOT));
     final File resources = new File(string(extras, EXTRA_RESOURCES));
@@ -150,11 +189,14 @@ public final class MirrorJobService extends JobService {
     final CrawlRun run = new CrawlRun(getApplicationContext(),
         new JobOwner(target, projectRoot, resources, options),
         HTTrackActivity.crawlMessages(this));
+    // Read before the slot is overwritten: a predecessor still winding down is the one refusal
+    // this execution has to survive rather than report.
+    final boolean earlierLive = crawl != null && !crawl.isEnded();
     crawl = run;
     new Thread(new Runnable() {
       @Override
       public void run() {
-        runCrawl(params, run, projectRoot.getAbsolutePath());
+        runCrawl(params, run, earlierLive, freshProcess, projectRoot.getAbsolutePath());
       }
     }, "httrack-crawl").start();
     return true;
@@ -166,17 +208,16 @@ public final class MirrorJobService extends JobService {
     if (run != null) {
       run.stopMirror(true);
     }
-    // Always false until the retry argv forces a resume, or a rescheduled job re-downloads it all.
-    return false;
+    return JobStopPolicy.reschedules(params.getStopReason());
   }
 
   /* The whole run, on its own thread, ending with the call that gives the exemptions back. */
-  private void runCrawl(final JobParameters params, final CrawlRun run, final String rootPath) {
+  private void runCrawl(final JobParameters params, final CrawlRun run, final boolean earlierLive,
+      final boolean freshProcess, final String rootPath) {
     try {
       // Only a fresh process needs the root: initRootPath truncates log.txt, and an activity in
       // this one has already pointed the engine at it.
-      final boolean freshProcess = !HTTrackLib.loadedSuccessfully();
-      if (HTTrackLib.loadLibraries() && freshProcess) {
+      if (freshProcess) {
         HTTrackLib.initRootPath(rootPath);
       }
       run.runMirror();
@@ -184,7 +225,9 @@ public final class MirrorJobService extends JobService {
       HTTrackActivity.emergencyDump(getApplicationContext(), t);
     } finally {
       run.end();
-      jobFinished(params, false);
+      // A retry the wind-down of its own predecessor turned away is the mirror's last chance.
+      jobFinished(params,
+          JobStopPolicy.reschedulesRefusedStart(run.wasRefusedInProgress(), earlierLive));
     }
   }
 
@@ -261,6 +304,8 @@ public final class MirrorJobService extends JobService {
     private final File projectRoot;
     private final File resources;
     private final List<String> options;
+    // Read and written on the crawl thread alone, between createProfileDirectory and the argv.
+    private boolean retried;
 
     JobOwner(final File target, final File projectRoot, final File resources,
         final String[] options) {
@@ -301,12 +346,20 @@ public final class MirrorJobService extends JobService {
       }
       HTTrackActivity.setFileReadWrite(target);
       HTTrackActivity.setFileReadWrite(cache);
+      // Here rather than in onStartJob, whose ten second notification deadline forbids the disk.
+      retried = alreadyAttempted(target);
       return profile;
     }
 
     @Override
     public List<String> options() throws IOException {
       return options;
+    }
+
+    @Override
+    public boolean resumesInterrupted() {
+      // The user's own Update must stand, and a finished mirror has nothing left to resume.
+      return retried && HTTrackActivity.isInterruptedProfile(target);
     }
 
     @Override

@@ -1,8 +1,10 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -10,11 +12,23 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /** The job that owns the crawl from API 34 on. Its lifecycle is device-only, so what is left
  *  here is the wiring a wrong edit would break silently. */
 public class MirrorJobTest {
+  @Rule
+  public final TemporaryFolder tmp = new TemporaryFolder();
+
+  /** A project whose hts-cache exists, as createProfileDirectory leaves it before it asks. */
+  private File project(final String name) throws IOException {
+    final File target = tmp.newFolder(name);
+    assertTrue(new File(target, "hts-cache").mkdirs());
+    return target;
+  }
+
   private static String source(final String name) throws IOException {
     return TestSources.withoutCommentsAndStrings(TestSources.javaSource(name));
   }
@@ -28,6 +42,16 @@ public class MirrorJobTest {
 
   private static String norm(final String text) {
     return text.replaceAll("\\s+", " ").trim();
+  }
+
+  /** How often TEXT appears across the whole app, so a second caller in another file counts. */
+  private static int occurrencesInApp(final String text) throws IOException {
+    int found = 0;
+    for (final File file : TestSources.javaSources()) {
+      found += TestSources.occurrences(
+          TestSources.withoutCommentsAndStrings(TestSources.read(file)), text);
+    }
+    return found;
   }
 
   /** How many times REGEX matches SOURCE, so no spelling of a call escapes the count. */
@@ -197,6 +221,28 @@ public class MirrorJobTest {
         "Thread.sleep", "runMirror", "RandomAccessFile", "tryLock", "mkdirs");
   }
 
+  /** A job the system starts in a fresh process has loaded no native library, and CrawlRun's
+   *  engine field calls native init() the moment it is constructed. */
+  @Test
+  public void onStartJobLoadsTheEngineBeforeItBuildsTheCrawl() throws IOException {
+    final String body = body(source("MirrorJobService"),
+        "public boolean onStartJob(final JobParameters params)");
+    assertEquals("no load in onStartJob leaves a fresh process to crash on native init()", 1,
+        TestSources.occurrences(body, "HTTrackLib.loadLibraries()"));
+    assertEquals("one construction, so one ordering to hold", 1,
+        TestSources.occurrences(body, "new CrawlRun("));
+    assertEquals("a load nested in a branch is a load a fresh process can skip", 0,
+        TestSources.depthOf(body, "HTTrackLib.loadLibraries()"));
+    assertTrue("the libraries must be loaded before anything constructs a CrawlRun",
+        TestSources.indexOf(body, "HTTrackLib.loadLibraries()")
+            < TestSources.indexOf(body, "new CrawlRun("));
+    assertTrue("a load that fails must end the job, never fall through to the engine",
+        norm(body).contains("if (!HTTrackLib.loadLibraries()) {"));
+    assertTrue("the notification still comes first, load or no load",
+        TestSources.indexOf(body, "setNotification(")
+            < TestSources.indexOf(body, "HTTrackLib.loadLibraries()"));
+  }
+
   /** Stop the engine, return the verdict. Nothing else: onStopJob has an 8 second budget and an
    *  unconditional ANR, and the disk write that used to break it sat one call deep. */
   @Test
@@ -215,33 +261,157 @@ public class MirrorJobTest {
         TestSources.occurrences(source("CrawlRun"), "synchronized boolean stopMirror"));
   }
 
-  /** Stage 4 is what makes a retry resume. Until the argv forces the resume mode, a rescheduled
-   *  job would replay it and download the mirror again. */
+  /** The reason decides, not the code path: a Task Manager stop must stay stopped and a timeout
+   *  must come back. */
   @Test
-  public void onStopJobAsksForNoRetryYet() throws IOException {
+  public void onStopJobReturnsThePolicysVerdict() throws IOException {
     final String body = body(source("MirrorJobService"),
         "public boolean onStopJob(final JobParameters params)");
-    assertEquals("one verdict", 1, TestSources.occurrences(body, "return false;"));
-    assertEquals("no path may ask for a retry", 0, TestSources.occurrences(body, "return true;"));
-    assertEquals("JobStopPolicy is stage 4's to wire, not stage 3's", 0,
-        TestSources.occurrences(body, "JobStopPolicy"));
-    assertEquals("the verdict must be the method's own last statement, not a branch's", 0,
-        TestSources.depthOf(body, "return false;"));
+    assertEquals("params.getStopReason()",
+        norm(TestSources.arguments(body, "JobStopPolicy.reschedules")));
+    assertEquals("the verdict must be the method's own statement, not a branch's", 0,
+        TestSources.depthOf(body, "return JobStopPolicy.reschedules("));
+    assertEquals("one way out, or a branch could abandon the mirror by itself", 1,
+        matches(body, "\\breturn\\b"));
+    assertNonePresent("a hard-coded verdict is what the policy replaced", body, "return false;",
+        "return true;");
+  }
+
+  /** The engine raises HTS_CACHE_PRIORITY on finding its own lock and the command line overrides
+   *  it again, so an argv reaching the engine unrewritten downloads the mirror a second time. */
+  @Test
+  public void theEngineOnlyEverSeesARewrittenArgv() throws IOException {
+    final String crawl = source("CrawlRun");
+    final String run = body(crawl, "void runMirror()");
+    assertEquals("CrawlArgv.build(HTTrackActivity.isIPv6Enabled(), target.getAbsolutePath(), "
+        + "options), owner.resumesInterrupted()",
+        norm(TestSources.arguments(run, "ResumeArgv.forStart")));
+    assertEquals("the rewritten argv is the one the engine is given", "cargs",
+        norm(TestSources.arguments(run, "engine.main")));
+    assertEquals("one build in the whole app, or a second one skips the rewrite", 1,
+        occurrencesInApp("CrawlArgv.build("));
+    assertEquals("one rewrite", 1, occurrencesInApp("ResumeArgv.forStart("));
+    assertEquals("one way into the engine", 1, occurrencesInApp("engine.main("));
+  }
+
+  /** Only a retry rewrites: a first attempt over an interrupted mirror is the user asking for the
+   *  Continue or the Update the setup pane offered them. */
+  @Test
+  public void onlyARetryOverAnUnfinishedMirrorResumes() throws IOException {
+    assertEquals("return false;", norm(body(source("HTTrackActivity"),
+        "public boolean resumesInterrupted()")));
+    assertEquals("return retried && HTTrackActivity.isInterruptedProfile(target);",
+        norm(body(source("MirrorJobService"), "public boolean resumesInterrupted()")));
+  }
+
+  /** A killed process runs no finally, so only a file on disk can tell the next execution that it
+   *  is a retry, and only the start the user asks for may clear it. */
+  @Test
+  public void everyUserStartClearsTheAttemptStamp() throws IOException {
+    final String job = source("MirrorJobService");
+    assertEquals("the stamp belongs beside the engine's own locks, out of the served mirror", 1,
+        TestSources.occurrences(TestSources.javaSource("MirrorJobService"),
+            "return new File(new File(target, \"hts-cache\"), \"job-attempt.lock\");"));
+    final String schedule = body(job, "static boolean schedule(final Context context,");
+    assertTrue("the stamp must be cleared before the job is handed to the scheduler",
+        TestSources.indexOf(schedule, "attemptFile(target).delete()")
+            < TestSources.indexOf(schedule, "new JobInfo.Builder("));
+    assertEquals("one declaration, one clear and one read; a second clear would hide a retry", 3,
+        TestSources.occurrences(job, "attemptFile("));
+    assertTrue("the stamp is taken where hts-cache already exists",
+        body(job, "public File createProfileDirectory() throws IOException")
+            .contains("retried = alreadyAttempted(target);"));
+    assertEquals("one declaration and one call: one execution takes one stamp", 2,
+        TestSources.occurrences(job, "alreadyAttempted("));
+    assertNonePresent("onStartJob has ten seconds and may not read the disk",
+        body(job, "public boolean onStartJob(final JobParameters params)"), "alreadyAttempted",
+        "attemptFile");
+  }
+
+  /** The answer the whole stage turns on: false means the user asked for this start, so their own
+   *  Continue or Update stands, and true means replay it as a resume. */
+  @Test
+  public void theAttemptStampReadsFalseOnceAndTrueAfter() throws IOException {
+    final File target = project("stamped");
+    final File stamp = MirrorJobService.attemptFile(target);
+    assertFalse("nothing has run yet, so this start is the user's own",
+        MirrorJobService.alreadyAttempted(target));
+    assertTrue("the first read must leave the stamp behind", stamp.exists());
+    assertTrue("the next execution is a retry", MirrorJobService.alreadyAttempted(target));
+    assertTrue("and so is every one after it", MirrorJobService.alreadyAttempted(target));
+  }
+
+  /** A stamp an earlier execution left is read, never rewritten. */
+  @Test
+  public void anExistingStampIsReadAsARetry() throws IOException {
+    final File target = project("existing");
+    final File stamp = MirrorJobService.attemptFile(target);
+    assertTrue(stamp.createNewFile());
+    assertTrue(MirrorJobService.alreadyAttempted(target));
+    assertTrue("the stamp must outlive the read", stamp.exists());
+  }
+
+  /** schedule() clears the stamp without asking whether one was there, so a delete that finds
+   *  nothing must still leave a first attempt reading as one. */
+  @Test
+  public void clearingTheStampMakesTheNextStartAFirstAttemptAgain() throws IOException {
+    final File target = project("cleared");
+    final File stamp = MirrorJobService.attemptFile(target);
+    assertFalse("nothing to clear yet", stamp.delete());
+    assertFalse(MirrorJobService.alreadyAttempted(target));
+    assertTrue("the clear the user's next Start performs", stamp.delete());
+    assertFalse("their choice must stand again", MirrorJobService.alreadyAttempted(target));
+  }
+
+  /** Unstamped has to read as a first attempt: replaying the user's argv copies more than it
+   *  needs to, where resuming a mirror they never interrupted loses the choice they made. */
+  @Test
+  public void aStampThatCannotBeWrittenReadsAsAFirstAttempt() throws IOException {
+    final File target = tmp.newFolder("nocache");
+    assertFalse("no hts-cache, so createNewFile can only throw",
+        MirrorJobService.attemptFile(target).getParentFile().exists());
+    assertFalse(MirrorJobService.alreadyAttempted(target));
+    assertFalse("and the answer may not drift on the execution after it",
+        MirrorJobService.alreadyAttempted(target));
   }
 
   /** The job's Doze, quota and network exemptions end with this call, so a crawl still running
    *  after it has none of them. */
   @Test
   public void theRunEndsWithJobFinished() throws IOException {
-    final String body = body(source("MirrorJobService"), "private void runCrawl(final "
-        + "JobParameters params, final CrawlRun run, final String rootPath)");
+    final String body = runCrawlBody();
     assertTrue("the crawl must run before the job is finished",
         TestSources.indexOf(body, "run.runMirror()") < TestSources.indexOf(body, "jobFinished("));
     assertEquals("nothing may follow the call that gives the exemptions back",
-        "jobFinished(params, false); }",
+        "jobFinished(params, JobStopPolicy.reschedulesRefusedStart(run.wasRefusedInProgress(), "
+            + "earlierLive)); }",
         norm(body.substring(TestSources.indexOf(body, "jobFinished("))));
     assertEquals("one call, or an early one would strand a live crawl", 1,
         TestSources.occurrences(body, "jobFinished("));
+  }
+
+  /** A retry that lands while the crawl it is retrying is still winding down is refused by that
+   *  wind-down, and finishing there abandons the mirror the retry existed to save. */
+  @Test
+  public void aRetryRefusedByItsOwnPredecessorComesBack() throws IOException {
+    assertEquals("run.wasRefusedInProgress(), earlierLive",
+        norm(TestSources.arguments(runCrawlBody(), "JobStopPolicy.reschedulesRefusedStart")));
+    final String start = body(source("MirrorJobService"),
+        "public boolean onStartJob(final JobParameters params)");
+    assertEquals("read from the slot the new run is about to take", 1, TestSources.occurrences(
+        start, "final boolean earlierLive = crawl != null && !crawl.isEnded();"));
+    assertTrue("read after the assignment it would answer for the new run instead",
+        TestSources.indexOf(start, "final boolean earlierLive")
+            < TestSources.indexOf(start, "crawl = run;"));
+    assertEquals("the only way the flag is set is the refusal itself", 1, TestSources.occurrences(
+        source("CrawlRun"), "refusedInProgress = true;"));
+  }
+
+  /** runCrawl's body, whose signature the reschedule argument is part of. */
+  private static String runCrawlBody() throws IOException {
+    return body(source("MirrorJobService"), "private void runCrawl(final JobParameters params, "
+        + "final CrawlRun run, final boolean earlierLive,\n      final boolean freshProcess, "
+        + "final String rootPath)");
   }
 
   /** The connectivity constraint is what earns the Doze network bypass, and build() rejects a
