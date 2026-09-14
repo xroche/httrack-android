@@ -172,6 +172,16 @@ public final class MirrorJobService extends JobService {
         build(new Frame(getString(R.string.starting_mirror), 0, 0)),
         JobService.JOB_END_NOTIFICATION_POLICY_REMOVE);
 
+    // Before the first CrawlRun, whose engine field calls native init() as it is constructed.
+    final boolean freshProcess = !HTTrackLib.loadAttempted();
+    if (!HTTrackLib.loadLibraries()) {
+      // False ends the job unrescheduled, so the activity keeps the crawl rather than the system
+      // restarting a process that can only crash again.
+      Log.e("MirrorJobService", "no native engine; the activity keeps the crawl",
+          HTTrackLib.loadError());
+      return false;
+    }
+
     final File target = new File(string(extras, EXTRA_TARGET));
     final File projectRoot = new File(string(extras, EXTRA_PROJECT_ROOT));
     final File resources = new File(string(extras, EXTRA_RESOURCES));
@@ -186,7 +196,7 @@ public final class MirrorJobService extends JobService {
     new Thread(new Runnable() {
       @Override
       public void run() {
-        runCrawl(params, run, earlierLive, projectRoot.getAbsolutePath());
+        runCrawl(params, run, earlierLive, freshProcess, projectRoot.getAbsolutePath());
       }
     }, "httrack-crawl").start();
     return true;
@@ -203,12 +213,11 @@ public final class MirrorJobService extends JobService {
 
   /* The whole run, on its own thread, ending with the call that gives the exemptions back. */
   private void runCrawl(final JobParameters params, final CrawlRun run, final boolean earlierLive,
-      final String rootPath) {
+      final boolean freshProcess, final String rootPath) {
     try {
       // Only a fresh process needs the root: initRootPath truncates log.txt, and an activity in
       // this one has already pointed the engine at it.
-      final boolean freshProcess = !HTTrackLib.loadedSuccessfully();
-      if (HTTrackLib.loadLibraries() && freshProcess) {
+      if (freshProcess) {
         HTTrackLib.initRootPath(rootPath);
       }
       run.runMirror();

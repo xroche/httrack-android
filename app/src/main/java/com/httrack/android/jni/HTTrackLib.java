@@ -59,6 +59,14 @@ public class HTTrackLib {
   }
 
   /**
+   * Has a load already been tried in this process? False means no activity has run here, so the
+   * engine has no root path yet.
+   */
+  public static boolean loadAttempted() {
+    return HTTrackLib.loadDone;
+  }
+
+  /**
    * Return the error encounted while loading this library, if any
    */
   public static Throwable loadError() {

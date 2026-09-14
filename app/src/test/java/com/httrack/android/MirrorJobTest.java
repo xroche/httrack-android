@@ -221,6 +221,28 @@ public class MirrorJobTest {
         "Thread.sleep", "runMirror", "RandomAccessFile", "tryLock", "mkdirs");
   }
 
+  /** A job the system starts in a fresh process has loaded no native library, and CrawlRun's
+   *  engine field calls native init() the moment it is constructed. */
+  @Test
+  public void onStartJobLoadsTheEngineBeforeItBuildsTheCrawl() throws IOException {
+    final String body = body(source("MirrorJobService"),
+        "public boolean onStartJob(final JobParameters params)");
+    assertEquals("no load in onStartJob leaves a fresh process to crash on native init()", 1,
+        TestSources.occurrences(body, "HTTrackLib.loadLibraries()"));
+    assertEquals("one construction, so one ordering to hold", 1,
+        TestSources.occurrences(body, "new CrawlRun("));
+    assertEquals("a load nested in a branch is a load a fresh process can skip", 0,
+        TestSources.depthOf(body, "HTTrackLib.loadLibraries()"));
+    assertTrue("the libraries must be loaded before anything constructs a CrawlRun",
+        TestSources.indexOf(body, "HTTrackLib.loadLibraries()")
+            < TestSources.indexOf(body, "new CrawlRun("));
+    assertTrue("a load that fails must end the job, never fall through to the engine",
+        norm(body).contains("if (!HTTrackLib.loadLibraries()) {"));
+    assertTrue("the notification still comes first, load or no load",
+        TestSources.indexOf(body, "setNotification(")
+            < TestSources.indexOf(body, "HTTrackLib.loadLibraries()"));
+  }
+
   /** Stop the engine, return the verdict. Nothing else: onStopJob has an 8 second budget and an
    *  unconditional ANR, and the disk write that used to break it sat one call deep. */
   @Test
@@ -388,7 +410,8 @@ public class MirrorJobTest {
   /** runCrawl's body, whose signature the reschedule argument is part of. */
   private static String runCrawlBody() throws IOException {
     return body(source("MirrorJobService"), "private void runCrawl(final JobParameters params, "
-        + "final CrawlRun run, final boolean earlierLive,\n      final String rootPath)");
+        + "final CrawlRun run, final boolean earlierLive,\n      final boolean freshProcess, "
+        + "final String rootPath)");
   }
 
   /** The connectivity constraint is what earns the Doze network bypass, and build() rejects a
