@@ -1,9 +1,10 @@
 package com.httrack.android;
 
 /**
- * What a stopped job does next. The values mirror {@code android.app.job.JobParameters}, repeated
- * here because the unit suite cannot load {@code android.*}. A rescheduled job resumes rather than
- * re-downloads because {@link ResumeArgv} rewrites the argv it replays.
+ * What becomes of the mirror job: whether a stop brings it back, and whether a user's Stop has to
+ * drop it. The stop reasons mirror {@code android.app.job.JobParameters}, repeated here because
+ * the unit suite cannot load {@code android.*}. A rescheduled job resumes rather than re-downloads
+ * because {@link ResumeArgv} rewrites the argv it replays.
  */
 final class JobStopPolicy {
   static final int STOP_REASON_UNDEFINED = 0;
@@ -61,5 +62,36 @@ final class JobStopPolicy {
   static boolean tellsTheUser(final int stopReason) {
     return stopReason == STOP_REASON_USER
         || stopReason == STOP_REASON_BACKGROUND_RESTRICTION;
+  }
+
+  /**
+   * Must this Stop drop the job the scheduler holds? The engine's own stop leaves it scheduled,
+   * so without the cancel a mirror the user abandoned comes back as a retry.
+   *
+   * @param force
+   *          whether the stop cuts the transfers short rather than letting them finish
+   * @param ownerAnswered
+   *          whether an owner was found to take the stop
+   * @return true when MirrorJobService.cancel must be called
+   */
+  static boolean cancelsScheduledJob(final boolean force, final boolean ownerAnswered) {
+    // A soft interrupt keeps the job, whose exemptions are what let the pending transfers finish.
+    return force || !ownerAnswered;
+  }
+
+  /**
+   * Must a start refused as already in progress come back? Only where the crawl this execution is
+   * retrying was still winding down; any other holder is a second mirror of the same project,
+   * which a retry must leave refused rather than loop on.
+   *
+   * @param refusedAsInProgress
+   *          whether ProfileLockPolicy refused this run
+   * @param earlierExecutionLive
+   *          whether the previous execution of this job was still running when this one started
+   * @return true when jobFinished must ask for the reschedule
+   */
+  static boolean reschedulesRefusedStart(final boolean refusedAsInProgress,
+      final boolean earlierExecutionLive) {
+    return refusedAsInProgress && earlierExecutionLive;
   }
 }

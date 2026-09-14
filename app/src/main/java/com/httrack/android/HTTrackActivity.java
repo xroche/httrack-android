@@ -1997,16 +1997,23 @@ public class HTTrackActivity extends FragmentActivity {
    * @return true when the stop reached the engine
    */
   private boolean stopCrawl(final boolean force) {
+    boolean stopSent = false;
+    boolean ownerAnswered = false;
     if (runner != null) {
-      return runner.stopMirror(force);
+      ownerAnswered = true;
+      stopSent = runner.stopMirror(force);
+    } else {
+      final MirrorSession.Crawl crawl = MirrorSession.get().live();
+      if (crawl != null) {
+        ownerAnswered = true;
+        stopSent = crawl.stopMirror(force);
+      }
     }
-    final MirrorSession.Crawl crawl = MirrorSession.get().live();
-    if (crawl != null) {
-      return crawl.stopMirror(force);
+    // The engine's stop leaves the job scheduled, so only the cancel can abandon the mirror.
+    if (JobStopPolicy.cancelsScheduledJob(force, ownerAnswered)) {
+      MirrorJobService.cancel(this);
     }
-    // A job the scheduler is still holding owns no engine, so only the cancel can abandon it.
-    MirrorJobService.cancel(this);
-    return false;
+    return stopSent;
   }
 
   /* Is the crawl scheduled and nothing more, so no engine and no worker thread exist yet? */

@@ -98,6 +98,8 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
   private volatile MirrorSession.State state = MirrorSession.State.NONE;
   private volatile boolean interrupted;
   private volatile boolean interruptedHard;
+  // Read by the job, which has to tell a refused start from a run that reached the engine.
+  private volatile boolean refusedInProgress;
   // Guards the marker bookkeeping alone, so nothing ever writes a file while holding it.
   private final Object markerLock = new Object();
   private boolean stopMarkerPending;
@@ -127,6 +129,11 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
   /** Has the mirror stopped? */
   boolean isEnded() {
     return state == MirrorSession.State.ENDED;
+  }
+
+  /** Was this run turned away because a mirror of the same project already held the profile? */
+  boolean wasRefusedInProgress() {
+    return refusedInProgress;
   }
 
   /**
@@ -190,6 +197,7 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
       }
       if (ProfileLockPolicy.alreadyInProgress(!profileMarked, lock == null,
           lockOverlapped)) {
+        refusedInProgress = true;
         throw new IOException(messages.alreadyInProgress);
       }
 

@@ -95,9 +95,9 @@ public class CrawlHandoverTest {
     final String source = activity();
     final String stop = body(source, "private boolean stopCrawl(final boolean force)");
     assertEquals("the fragment owns it below 34, and force must reach it unchanged", 1,
-        TestSources.occurrences(stop, "return runner.stopMirror(force);"));
+        TestSources.occurrences(stop, "stopSent = runner.stopMirror(force);"));
     assertEquals("the session owns it from 34 on, and force must reach that one too", 1,
-        TestSources.occurrences(stop, "return crawl.stopMirror(force);"));
+        TestSources.occurrences(stop, "stopSent = crawl.stopMirror(force);"));
     assertTrue("the fragment must be preferred, or a below-34 stop skips the fragment's own end",
         TestSources.indexOf(stop, "runner.stopMirror(force)")
             < TestSources.indexOf(stop, "MirrorSession.get().live()"));
@@ -147,8 +147,13 @@ public class CrawlHandoverTest {
   public void aCrawlThatNeverStartedCanStillBeAbandoned() throws IOException {
     final String source = activity();
     final String stop = body(source, "private boolean stopCrawl(final boolean force)");
-    assertEquals("one cancel, and only where no owner answered", 1,
+    assertEquals("one cancel", 1,
         TestSources.occurrences(stop, "MirrorJobService.cancel(this);"));
+    assertEquals("force, ownerAnswered",
+        norm(TestSources.arguments(stop, "JobStopPolicy.cancelsScheduledJob")));
+    assertEquals("the cancel belongs to the policy's branch and to no owner's, or a crawl the "
+        + "user stopped keeps the job that brings it back", 1,
+        TestSources.depthOf(stop, "MirrorJobService.cancel(this);"));
     assertTrue("a cancel ahead of the owners would hard-stop a crawl that is running",
         TestSources.indexOf(stop, "crawl.stopMirror(force)")
             < TestSources.indexOf(stop, "MirrorJobService.cancel(this);"));

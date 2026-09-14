@@ -123,7 +123,7 @@ public final class MirrorJobService extends JobService {
   }
 
   /* Stamps TARGET and answers whether an earlier execution had already stamped it. */
-  private static boolean alreadyAttempted(final File target) {
+  static boolean alreadyAttempted(final File target) {
     final File stamp = attemptFile(target);
     if (stamp.exists()) {
       return true;
@@ -179,11 +179,14 @@ public final class MirrorJobService extends JobService {
     final CrawlRun run = new CrawlRun(getApplicationContext(),
         new JobOwner(target, projectRoot, resources, options),
         HTTrackActivity.crawlMessages(this));
+    // Read before the slot is overwritten: a predecessor still winding down is the one refusal
+    // this execution has to survive rather than report.
+    final boolean earlierLive = crawl != null && !crawl.isEnded();
     crawl = run;
     new Thread(new Runnable() {
       @Override
       public void run() {
-        runCrawl(params, run, projectRoot.getAbsolutePath());
+        runCrawl(params, run, earlierLive, projectRoot.getAbsolutePath());
       }
     }, "httrack-crawl").start();
     return true;
@@ -199,7 +202,8 @@ public final class MirrorJobService extends JobService {
   }
 
   /* The whole run, on its own thread, ending with the call that gives the exemptions back. */
-  private void runCrawl(final JobParameters params, final CrawlRun run, final String rootPath) {
+  private void runCrawl(final JobParameters params, final CrawlRun run, final boolean earlierLive,
+      final String rootPath) {
     try {
       // Only a fresh process needs the root: initRootPath truncates log.txt, and an activity in
       // this one has already pointed the engine at it.
@@ -212,7 +216,9 @@ public final class MirrorJobService extends JobService {
       HTTrackActivity.emergencyDump(getApplicationContext(), t);
     } finally {
       run.end();
-      jobFinished(params, false);
+      // A retry the wind-down of its own predecessor turned away is the mirror's last chance.
+      jobFinished(params,
+          JobStopPolicy.reschedulesRefusedStart(run.wasRefusedInProgress(), earlierLive));
     }
   }
 
