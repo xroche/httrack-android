@@ -2,9 +2,8 @@ package com.httrack.android;
 
 /**
  * What a stopped job does next. The values mirror {@code android.app.job.JobParameters}, repeated
- * here because the unit suite cannot load {@code android.*}. Nothing calls it yet. Stage 4 is
- * its consumer, where a retry's argv forces the resume mode rather than downloading the mirror
- * again.
+ * here because the unit suite cannot load {@code android.*}. A rescheduled job resumes rather than
+ * re-downloads because {@link ResumeArgv} rewrites the argv it replays.
  */
 final class JobStopPolicy {
   static final int STOP_REASON_UNDEFINED = 0;

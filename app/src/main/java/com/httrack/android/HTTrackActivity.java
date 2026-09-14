@@ -1478,6 +1478,12 @@ public class HTTrackActivity extends FragmentActivity {
     }
 
     @Override
+    public boolean resumesInterrupted() {
+      // Nothing reschedules an in-activity crawl, so the user's own Continue or Update stands.
+      return false;
+    }
+
+    @Override
     public synchronized void serializeProfile(final FileChannel channel, final File profile)
         throws IOException {
       checkAttached();

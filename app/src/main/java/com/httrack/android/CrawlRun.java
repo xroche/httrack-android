@@ -45,6 +45,9 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
     /** The engine options the option map emits. */
     List<String> options() throws IOException;
 
+    /** Is this a retry over a mirror an earlier execution of the same crawl left unfinished? */
+    boolean resumesInterrupted();
+
     /** Write the profile through the locked channel, which stays open. */
     void serializeProfile(FileChannel channel, File profile) throws IOException;
 
@@ -197,8 +200,9 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
       }
 
       // Final args array
-      final String[] cargs = CrawlArgv.build(HTTrackActivity.isIPv6Enabled(),
-          target.getAbsolutePath(), options);
+      final String[] cargs = ResumeArgv.forStart(
+          CrawlArgv.build(HTTrackActivity.isIPv6Enabled(), target.getAbsolutePath(), options),
+          owner.resumesInterrupted());
       Log.v(getClass().getSimpleName(),
           "starting engine: " + HTTrackActivity.printArray(cargs));
 

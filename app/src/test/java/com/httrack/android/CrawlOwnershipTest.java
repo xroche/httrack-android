@@ -73,7 +73,7 @@ public class CrawlOwnershipTest {
     assertTrue("no Runner class", at != -1);
     final String runner = TestSources.balancedBlock(activity, at);
     for (final String engineWork : new String[] { "engine.", "tryLock", "ProfileLockPolicy",
-        "MirrorOutcome", "CrawlArgv", "setInterruptedProfile" }) {
+        "MirrorOutcome", "CrawlArgv", "ResumeArgv", "setInterruptedProfile" }) {
       assertFalse("the adapter still does the crawl's own work: " + engineWork,
           runner.contains(engineWork));
     }

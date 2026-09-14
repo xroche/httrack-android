@@ -71,6 +71,8 @@ public final class MirrorJobService extends JobService {
     if (target == null || projectRoot == null || resources == null) {
       return false;
     }
+    // The start the user just asked for, so the next execution of it is a retry.
+    attemptFile(target).delete();
     final PersistableBundle extras = new PersistableBundle();
     extras.putString(EXTRA_PROJECT_NAME, projectName != null ? projectName : "");
     extras.putString(EXTRA_TARGET, target.getAbsolutePath());
@@ -106,6 +108,33 @@ public final class MirrorJobService extends JobService {
       return false;
     }
     return true;
+  }
+
+  /**
+   * The file an execution stamps before it reaches the engine. A killed process runs no finally,
+   * so only this can tell the next execution that it is a retry.
+   *
+   * @param target
+   *          the mirror directory
+   * @return the stamp, which may not exist
+   */
+  static File attemptFile(final File target) {
+    return new File(new File(target, "hts-cache"), "job-attempt.lock");
+  }
+
+  /* Stamps TARGET and answers whether an earlier execution had already stamped it. */
+  private static boolean alreadyAttempted(final File target) {
+    final File stamp = attemptFile(target);
+    if (stamp.exists()) {
+      return true;
+    }
+    try {
+      stamp.createNewFile();
+    } catch (final IOException io) {
+      // Unstamped, so a retry replays this argv rather than resuming.
+      Log.w("MirrorJobService", "could not stamp the crawl attempt", io);
+    }
+    return false;
   }
 
   /**
@@ -166,8 +195,7 @@ public final class MirrorJobService extends JobService {
     if (run != null) {
       run.stopMirror(true);
     }
-    // Always false until the retry argv forces a resume, or a rescheduled job re-downloads it all.
-    return false;
+    return JobStopPolicy.reschedules(params.getStopReason());
   }
 
   /* The whole run, on its own thread, ending with the call that gives the exemptions back. */
@@ -261,6 +289,8 @@ public final class MirrorJobService extends JobService {
     private final File projectRoot;
     private final File resources;
     private final List<String> options;
+    // Read and written on the crawl thread alone, between createProfileDirectory and the argv.
+    private boolean retried;
 
     JobOwner(final File target, final File projectRoot, final File resources,
         final String[] options) {
@@ -301,12 +331,20 @@ public final class MirrorJobService extends JobService {
       }
       HTTrackActivity.setFileReadWrite(target);
       HTTrackActivity.setFileReadWrite(cache);
+      // Here rather than in onStartJob, whose ten second notification deadline forbids the disk.
+      retried = alreadyAttempted(target);
       return profile;
     }
 
     @Override
     public List<String> options() throws IOException {
       return options;
+    }
+
+    @Override
+    public boolean resumesInterrupted() {
+      // The user's own Update must stand, and a finished mirror has nothing left to resume.
+      return retried && HTTrackActivity.isInterruptedProfile(target);
     }
 
     @Override
