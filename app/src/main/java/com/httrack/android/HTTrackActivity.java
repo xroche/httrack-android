@@ -3328,11 +3328,8 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
-  /**
-   * Drop a progress notification a dead process left in the shade. The system removes it with the
-   * job, so anything still there when no crawl and no execution holds this process is showing
-   * progress nothing is making.
-   */
+  /* The system removes it with the job, so one still here with nothing running is a dead
+   * process's last frame. */
   private void cancelStaleProgressNotification() {
     if (NotificationRate.cancelsStale(MirrorSession.get().live() != null,
         MirrorJobService.isExecuting())) {
