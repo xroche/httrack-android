@@ -1,10 +1,14 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.Before;
 import org.junit.Test;
 
 /** What the shade is left holding. A progress notification must die with the crawl behind it, and
@@ -32,6 +36,14 @@ public class NotificationLifecycleTest {
           TestSources.withoutCommentsAndStrings(TestSources.read(file)), text);
     }
     return found;
+  }
+
+  /* The count is process-wide, so whatever ran before this case would otherwise seed it. */
+  @Before
+  public void noExecutionIsHeld() throws Exception {
+    final Field field = MirrorJobService.class.getDeclaredField("executions");
+    field.setAccessible(true);
+    ((AtomicInteger) field.get(null)).set(0);
   }
 
   /** A process killed between a frame and the end of its job leaves the last frame on screen, and
@@ -71,20 +83,54 @@ public class NotificationLifecycleTest {
   @Test
   public void anExecutionOwnsTheNotificationBeforeItsCrawlDoes() throws IOException {
     final String job = source("MirrorJobService");
-    assertEquals("one place sets it", 1, TestSources.occurrences(job, "executing = true;"));
-    assertEquals("one place clears it", 1, TestSources.occurrences(job, "executing = false;"));
+    assertEquals("one place counts an execution in", 1,
+        TestSources.occurrences(job, "executionStarted();"));
+    assertEquals("one place counts it back out", 1,
+        TestSources.occurrences(job, "executionEnded();"));
     final String start = body(job, "public boolean onStartJob(final JobParameters params)");
-    assertTrue("set before the thread starts, or the crawl can outrun the flag",
-        TestSources.indexOf(start, "executing = true;") < TestSources.indexOf(start, "new Thread("));
-    assertEquals("an execution that ends in a branch would leave the flag set for good", 0,
-        TestSources.depthOf(start, "executing = true;"));
+    assertTrue("counted in before the thread starts, or the crawl can outrun the count",
+        TestSources.indexOf(start, "executionStarted();")
+            < TestSources.indexOf(start, "new Thread("));
+    assertEquals("an execution that ends in a branch would hold the count for good", 0,
+        TestSources.depthOf(start, "executionStarted();"));
     final String run = body(job, "private void runCrawl(final JobParameters params, "
         + "final CrawlRun run, final boolean earlierLive,\n      final boolean freshProcess, "
         + "final String rootPath)");
-    assertTrue("cleared before the call that removes the notification with the job",
-        TestSources.indexOf(run, "executing = false;") < TestSources.indexOf(run, "jobFinished("));
+    assertTrue("counted out before the call that removes the notification with the job",
+        TestSources.indexOf(run, "executionEnded();")
+            < TestSources.indexOf(run, "jobFinished("));
     assertEquals("one reader, so no second caller can answer the question differently", 2,
         occurrencesInApp("isExecuting()"));
+  }
+
+  /** Two executions overlap whenever one starts while its predecessor is still winding down, and
+   *  the older one's end must not take the notification off the crawl the newer one is making. */
+  @Test
+  public void theOlderExecutionEndingLeavesTheNewerHoldingIt() {
+    assertFalse("no execution holds a process the job never ran in",
+        MirrorJobService.isExecuting());
+    MirrorJobService.executionStarted();
+    MirrorJobService.executionStarted();
+    MirrorJobService.executionEnded();
+    assertTrue("the one still crawling owns the notification", MirrorJobService.isExecuting());
+    MirrorJobService.executionEnded();
+    assertFalse("and the last one leaves nothing behind", MirrorJobService.isExecuting());
+  }
+
+  /** A second execution can land on the same service instance, which the system never killed the
+   *  process of, and a verdict it never explained must not be suppressed by the first one's. */
+  @Test
+  public void aSecondExecutionStartsWithNothingToldToTheUser() throws IOException {
+    final String start = body(source("MirrorJobService"),
+        "public boolean onStartJob(final JobParameters params)");
+    for (final String reset : new String[] { "toldTheUser = false;",
+        "lastPostedMs = NotificationRate.NEVER;", "coalescer.disarm();" }) {
+      assertEquals(reset + " belongs to onStartJob itself, not to a branch of it", 0,
+          TestSources.depthOf(start, reset));
+    }
+    assertTrue("cleared before the crawl thread can set it again",
+        TestSources.indexOf(start, "toldTheUser = false;")
+            < TestSources.indexOf(start, "new Thread("));
   }
 
   /** Two stop reasons abandon the mirror without the user having asked us to, and the crawl just
