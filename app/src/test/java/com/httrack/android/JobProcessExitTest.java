@@ -6,6 +6,9 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.Before;
 import org.junit.Test;
 
 /** A crawl that faulted in a process no window holds. Nothing else ends such a process, and every
@@ -35,8 +38,16 @@ public class JobProcessExitTest {
     return found;
   }
 
-  /** The count is what tells a job process from one the user is looking at, and it has to survive
-   *  a rotation, which creates the replacement activity before destroying the old one. */
+  /* The count is process-wide, so whatever ran before this case would otherwise seed it. */
+  @Before
+  public void theCountStartsEmpty() throws Exception {
+    final Field field = HTTrackApplication.class.getDeclaredField("liveActivities");
+    field.setAccessible(true);
+    ((AtomicInteger) field.get(null)).set(0);
+  }
+
+  /** The count is what tells a job process from one the user is looking at, so a second activity
+   *  of ours, such as the options pane, has to keep it up when the first one goes. */
   @Test
   public void theProcessHoldsAWindowWhileAnyActivityLives() {
     assertFalse("a process the system started for the job alone",
@@ -45,10 +56,28 @@ public class JobProcessExitTest {
     assertTrue(HTTrackApplication.hasLiveActivity());
     HTTrackApplication.activityCreated();
     HTTrackApplication.activityDestroyed();
-    assertTrue("the replacement outlives the activity it replaced",
-        HTTrackApplication.hasLiveActivity());
+    assertTrue("the one still up holds the process", HTTrackApplication.hasLiveActivity());
     HTTrackApplication.activityDestroyed();
     assertFalse("and the last one leaves nothing behind", HTTrackApplication.hasLiveActivity());
+  }
+
+  /** A configuration change destroys the old activity before it creates the replacement, so the
+   *  count passes through zero with the user still sitting in front of the app. */
+  @Test
+  public void aRotationTakesTheCountThroughZero() throws IOException {
+    HTTrackApplication.activityCreated();
+    HTTrackApplication.activityDestroyed();
+    assertFalse("the old activity goes first, so a reader landing here sees no window at all",
+        HTTrackApplication.hasLiveActivity());
+    HTTrackApplication.activityCreated();
+    assertTrue("and the replacement arrives after", HTTrackApplication.hasLiveActivity());
+    // That zero is out of reach only for a reader on the thread the count is written on.
+    final String exit = body(source("MirrorJobService"), "private void endFaultedProcess()");
+    assertEquals("the decision has to be posted to the thread the lifecycle callbacks run on",
+        "Looper.getMainLooper()", norm(TestSources.arguments(exit, "new Handler")));
+    assertTrue("a count read before the post is read off the crawl thread again",
+        TestSources.indexOf(exit, ".post(")
+            < TestSources.indexOf(exit, "HTTrackApplication.hasLiveActivity()"));
   }
 
   /** A second activity of ours, such as the options or the cleanup pane, counts as a window: the
@@ -76,13 +105,16 @@ public class JobProcessExitTest {
     final String run = body(job, "private void runCrawl(final JobParameters params, "
         + "final CrawlRun run, final boolean earlierLive,\n      final boolean freshProcess, "
         + "final String rootPath)");
-    assertTrue("the exit must follow the call that gives the exemptions back",
-        TestSources.indexOf(run, "jobFinished(") < TestSources.indexOf(run, "System.exit("));
+    assertTrue("the exit must be asked for after the call that gives the exemptions back",
+        TestSources.indexOf(run, "jobFinished(")
+            < TestSources.indexOf(run, "endFaultedProcess()"));
+    assertEquals("the ask belongs to the finally itself: one a throw could skip strands the run",
+        1, TestSources.depthOf(run, "endFaultedProcess()"));
+    final String exit = body(job, "private void endFaultedProcess()");
     assertEquals("HTTrackLib.hasFaulted(), HTTrackApplication.hasLiveActivity()",
-        norm(TestSources.arguments(run, "NativeFaultPolicy.exitAfterJob")));
-    assertEquals("the exit belongs to the guard inside the finally: an unguarded one, or one a "
-        + "throw could skip, kills or strands every run", 2,
-        TestSources.depthOf(run, "System.exit("));
+        norm(TestSources.arguments(exit, "NativeFaultPolicy.exitAfterJob")));
+    assertEquals("the exit belongs to the guard: an unguarded one kills every run", 3,
+        TestSources.depthOf(exit, "System.exit("));
     assertEquals("nothing else may ask whether a window is attached", 2,
         occurrencesInApp("hasLiveActivity("));
   }

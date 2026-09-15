@@ -385,8 +385,7 @@ public class MirrorJobTest {
         TestSources.indexOf(body, "run.runMirror()") < TestSources.indexOf(body, "jobFinished("));
     assertEquals("only the faulted-process exit may follow the call that gives them back",
         "jobFinished(params, JobStopPolicy.reschedulesRefusedStart(run.wasRefusedInProgress(), "
-            + "earlierLive)); if (NativeFaultPolicy.exitAfterJob(HTTrackLib.hasFaulted(), "
-            + "HTTrackApplication.hasLiveActivity())) { Log.w( , ); System.exit(0); } }",
+            + "earlierLive)); endFaultedProcess(); }",
         norm(body.substring(TestSources.indexOf(body, "jobFinished("))));
     assertEquals("one call, or an early one would strand a live crawl", 1,
         TestSources.occurrences(body, "jobFinished("));

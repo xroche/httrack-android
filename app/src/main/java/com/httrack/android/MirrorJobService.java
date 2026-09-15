@@ -16,6 +16,8 @@ import android.app.job.JobService;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.PersistableBundle;
 import android.os.SystemClock;
 import android.util.Log;
@@ -250,13 +252,23 @@ public final class MirrorJobService extends JobService {
       // A retry the wind-down of its own predecessor turned away is the mirror's last chance.
       jobFinished(params,
           JobStopPolicy.reschedulesRefusedStart(run.wasRefusedInProgress(), earlierLive));
-      // A faulted process can never crawl again, and no window is here to end it on destruction.
-      if (NativeFaultPolicy.exitAfterJob(HTTrackLib.hasFaulted(),
-          HTTrackApplication.hasLiveActivity())) {
-        Log.w("MirrorJobService", "ending the faulted process");
-        System.exit(0);
-      }
+      endFaultedProcess();
     }
+  }
+
+  /* A faulted process can never crawl again, and no window is here to end it on destruction. On
+   * the main thread because a rotation takes the count this reads through zero. */
+  private void endFaultedProcess() {
+    new Handler(Looper.getMainLooper()).post(new Runnable() {
+      @Override
+      public void run() {
+        if (NativeFaultPolicy.exitAfterJob(HTTrackLib.hasFaulted(),
+            HTTrackApplication.hasLiveActivity())) {
+          Log.w("MirrorJobService", "ending the faulted process");
+          System.exit(0);
+        }
+      }
+    });
   }
 
   private static String string(final PersistableBundle extras, final String key) {
