@@ -55,4 +55,16 @@ public class NotificationRateTest {
   public void aZeroIntervalGatesNothing() {
     assertEquals(true, NotificationRate.shouldPost(1000L, 1000L, 0L, false));
   }
+
+  /** Cancelling one a live crawl is still repainting takes the only sign of it off the screen,
+   *  so every reason to believe something is running refuses the cancel. */
+  @Test
+  public void onlyANotificationWithNothingBehindItIsCancelled() {
+    assertEquals("nothing runs, so the shade is showing a dead process's last frame", true,
+        NotificationRate.cancelsStale(false, false));
+    assertEquals("a crawl is repainting it", false, NotificationRate.cancelsStale(true, false));
+    assertEquals("an execution that has not reached its crawl yet still owns it", false,
+        NotificationRate.cancelsStale(false, true));
+    assertEquals("both", false, NotificationRate.cancelsStale(true, true));
+  }
 }

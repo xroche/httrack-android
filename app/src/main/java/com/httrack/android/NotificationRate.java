@@ -12,6 +12,21 @@ final class NotificationRate {
   }
 
   /**
+   * Is a progress notification found in the shade the remains of a process that died? Only a
+   * crawl in this process can be behind one, so with neither a crawl nor an execution left it
+   * shows progress nothing is making any more.
+   *
+   * @param crawlLive
+   *          whether the session slot holds a crawl that has not ended
+   * @param jobExecuting
+   *          whether an execution of the mirror job holds this process
+   * @return true when the notification must be cancelled
+   */
+  static boolean cancelsStale(final boolean crawlLive, final boolean jobExecuting) {
+    return !crawlLive && !jobExecuting;
+  }
+
+  /**
    * Is this the frame to post?
    *
    * @param lastPostedMs

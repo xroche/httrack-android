@@ -43,10 +43,24 @@ public final class MirrorJobService extends JobService {
   /** The shortest gap between two progress notifications. */
   static final long PROGRESS_INTERVAL_MS = 1000L;
 
+  /** True while an execution holds this process, which is longer than its crawl is in the slot. */
+  private static volatile boolean executing;
+
   private final ProgressCoalescer<Frame> coalescer = new ProgressCoalescer<Frame>();
   private volatile CrawlRun crawl;
   private volatile String projectName = "";
   private long lastPostedMs = NotificationRate.NEVER;
+  // Set when onStopJob has already explained the stop, so the verdict does not say it again.
+  private volatile boolean toldTheUser;
+
+  /**
+   * Is an execution of the mirror job running in this process?
+   *
+   * @return true between the start of an execution and the end of its crawl
+   */
+  static boolean isExecuting() {
+    return executing;
+  }
 
   /**
    * Hand a crawl to the job. Needs the app visible, and the profile already written, because the
@@ -193,6 +207,7 @@ public final class MirrorJobService extends JobService {
     // this execution has to survive rather than report.
     final boolean earlierLive = crawl != null && !crawl.isEnded();
     crawl = run;
+    executing = true;
     new Thread(new Runnable() {
       @Override
       public void run() {
@@ -204,11 +219,17 @@ public final class MirrorJobService extends JobService {
 
   @Override
   public boolean onStopJob(final JobParameters params) {
+    final int stopReason = params.getStopReason();
     final CrawlRun run = crawl;
     if (run != null) {
       run.stopMirror(true);
     }
-    return JobStopPolicy.reschedules(params.getStopReason());
+    if (JobStopPolicy.tellsTheUser(stopReason)) {
+      // Here rather than on the way out: a Task Manager stop kills the process moments later.
+      toldTheUser = true;
+      HTTrackActivity.sendStoppedNotification(getApplicationContext(), projectName);
+    }
+    return JobStopPolicy.reschedules(stopReason);
   }
 
   /* The whole run, on its own thread, ending with the call that gives the exemptions back. */
@@ -225,9 +246,16 @@ public final class MirrorJobService extends JobService {
       HTTrackActivity.emergencyDump(getApplicationContext(), t);
     } finally {
       run.end();
+      executing = false;
       // A retry the wind-down of its own predecessor turned away is the mirror's last chance.
       jobFinished(params,
           JobStopPolicy.reschedulesRefusedStart(run.wasRefusedInProgress(), earlierLive));
+      // A faulted process can never crawl again, and no window is here to end it on destruction.
+      if (NativeFaultPolicy.exitAfterJob(HTTrackLib.hasFaulted(),
+          HTTrackApplication.hasLiveActivity())) {
+        Log.w("MirrorJobService", "ending the faulted process");
+        System.exit(0);
+      }
     }
   }
 
@@ -386,7 +414,7 @@ public final class MirrorJobService extends JobService {
       // Where no window is attached, only this notification can report the end.
       if (MirrorSession.get().publishVerdict(
           new MirrorSession.Verdict(message, errorsCount, mirrorFolder))
-          == HandoverPolicy.Delivery.HELD) {
+          == HandoverPolicy.Delivery.HELD && !toldTheUser) {
         HTTrackActivity.sendFinishedNotification(getApplicationContext(), projectName, message);
       }
     }
