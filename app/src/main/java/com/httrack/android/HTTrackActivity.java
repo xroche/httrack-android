@@ -1782,7 +1782,7 @@ public class HTTrackActivity extends FragmentActivity {
    * @param engineCode
    *          The engine return code; nonzero means it gave up rather than finished.
    * @param transportFailures
-   *          How many links the transfer failed on; see stat_transport_failures.
+   *          See HTTrackStats.transportFailures.
    * @return true if the project should reopen offering "Continue an interrupted download"
    */
   protected static boolean leavesPendingWork(final boolean stopped, final int engineCode,

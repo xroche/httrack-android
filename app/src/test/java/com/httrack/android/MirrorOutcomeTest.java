@@ -15,10 +15,6 @@ public class MirrorOutcomeTest {
   private static final boolean FINISHED = false;
   private static final boolean GAVE_UP = true;
 
-  private static HTTrackStats stats(final long errorsCount, final long filesWritten) {
-    return stats(errorsCount, filesWritten, 0);
-  }
-
   private static HTTrackStats stats(final long errorsCount, final long filesWritten,
       final long transportFailures) {
     final HTTrackStats stats = new HTTrackStats();
@@ -115,6 +111,9 @@ public class MirrorOutcomeTest {
   public void aRunWithFailedTransfersIsNotASuccess() {
     check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
         0, 40, 1);
+    // Nothing written is still Incomplete rather than Failed, because the next run can fill it.
+    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
+        5, 0, 5);
   }
 
   /** Every named ending already tells the user more than "some links failed", so it comes first. */
@@ -221,7 +220,7 @@ public class MirrorOutcomeTest {
     for (final MirrorOutcome.Stop stop : MirrorOutcome.Stop.values()) {
       for (final int abortCode : causes) {
         final MirrorOutcome.Verdict v = MirrorOutcome.decide(HTTrackLib.EXIT_MIRROR_ABORTED, stop,
-            abortCode, stats(0, 3));
+            abortCode, stats(0, 3, 0));
         final String where = "stop=" + stop + " abortCode=" + abortCode;
         assertTrue(where + " lost its folder link", v.showsFolderLink());
         assertTrue(where + " lost its cause: " + v.text(), v.text().startsWith("<b>"));
