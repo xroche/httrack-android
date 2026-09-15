@@ -62,6 +62,30 @@ public class NativeFaultPolicyTest {
     assertFalse(NativeFaultPolicy.reportOnResume(false, SETUP, FINISHED));
   }
 
+  /** A headless job process is the one place nothing else can end a poisoned process, and every
+   *  later execution handed it would refuse to crawl. */
+  @Test
+  public void onlyAFaultedProcessWithNoWindowEndsWithItsJob() {
+    assertEquals(true, NativeFaultPolicy.exitAfterJob(true, false));
+    assertEquals("the window's own onDestroy is where that process ends", false,
+        NativeFaultPolicy.exitAfterJob(true, true));
+    assertEquals("a healthy process crawls again", false,
+        NativeFaultPolicy.exitAfterJob(false, false));
+    assertEquals(false, NativeFaultPolicy.exitAfterJob(false, true));
+  }
+
+  /** The two exits answer opposite halves of the same question, so neither may stand in for the
+   *  other: a job process is never finishing, and a window is never absent from its own destroy. */
+  @Test
+  public void theHeadlessExitAndTheWindowExitDisagree() {
+    // What the job sees after a faulted run: exitOnDestroy is blind to it, since nothing finishes.
+    assertEquals(true, NativeFaultPolicy.exitAfterJob(true, false));
+    assertEquals(false, NativeFaultPolicy.exitOnDestroy(false, false, true));
+    // And what the activity sees: a window is attached, so only exitOnDestroy may end it.
+    assertEquals(false, NativeFaultPolicy.exitAfterJob(true, true));
+    assertEquals(true, NativeFaultPolicy.exitOnDestroy(true, false, true));
+  }
+
   @Test
   public void closingAndExitingAreNotTheSameQuestion() {
     // Leaving the panel closes the activity; only the destruction ends the process.

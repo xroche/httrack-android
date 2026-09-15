@@ -37,6 +37,18 @@ final class NativeFaultPolicy {
   }
 
   /**
+   * End the process a headless crawl faulted in. {@link #exitOnDestroy} is the same decision for
+   * a window, and a job process has none to reach it; a faulted process can never crawl again.
+   *
+   * @param faulted          whether a native fault has been recovered
+   * @param activityAttached whether this process still holds an activity
+   * @return true when the job must end the process it ran in
+   */
+  static boolean exitAfterJob(final boolean faulted, final boolean activityAttached) {
+    return faulted && !activityAttached;
+  }
+
+  /**
    * Report a fault that was latched away from the finished panel, where nothing else shows it.
    *
    * @param faulted      whether a native fault has been recovered

@@ -267,8 +267,9 @@ public class MirrorJobTest {
   public void onStopJobReturnsThePolicysVerdict() throws IOException {
     final String body = body(source("MirrorJobService"),
         "public boolean onStopJob(final JobParameters params)");
-    assertEquals("params.getStopReason()",
-        norm(TestSources.arguments(body, "JobStopPolicy.reschedules")));
+    assertTrue("the reason is read once, from the parameters the system handed us",
+        norm(body).contains("final int stopReason = params.getStopReason();"));
+    assertEquals("stopReason", norm(TestSources.arguments(body, "JobStopPolicy.reschedules")));
     assertEquals("the verdict must be the method's own statement, not a branch's", 0,
         TestSources.depthOf(body, "return JobStopPolicy.reschedules("));
     assertEquals("one way out, or a branch could abandon the mirror by itself", 1,
@@ -382,9 +383,9 @@ public class MirrorJobTest {
     final String body = runCrawlBody();
     assertTrue("the crawl must run before the job is finished",
         TestSources.indexOf(body, "run.runMirror()") < TestSources.indexOf(body, "jobFinished("));
-    assertEquals("nothing may follow the call that gives the exemptions back",
+    assertEquals("only the faulted-process exit may follow the call that gives them back",
         "jobFinished(params, JobStopPolicy.reschedulesRefusedStart(run.wasRefusedInProgress(), "
-            + "earlierLive)); }",
+            + "earlierLive)); endFaultedProcess(); }",
         norm(body.substring(TestSources.indexOf(body, "jobFinished("))));
     assertEquals("one call, or an early one would strand a live crawl", 1,
         TestSources.occurrences(body, "jobFinished("));

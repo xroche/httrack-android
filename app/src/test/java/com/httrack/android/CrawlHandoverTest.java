@@ -277,8 +277,9 @@ public class CrawlHandoverTest {
         norm(TestSources.arguments(finished, "HTTrackActivity.sendFinishedNotification")));
     assertTrue("a notification outside the HELD branch would double an attached window's pane",
         TestSources.depthOf(finished, "HTTrackActivity.sendFinishedNotification(") > 0);
-    assertTrue("HELD is the only answer that owes the user a notification",
-        norm(finished).contains("== HandoverPolicy.Delivery.HELD) {"));
+    assertTrue("HELD is the only answer that owes the user a notification, and a stop the job "
+        + "already explained owes them nothing more",
+        norm(finished).contains("== HandoverPolicy.Delivery.HELD && !toldTheUser) {"));
 
     assertEquals("every refresh must reach the window as well as the notification", 1,
         TestSources.occurrences(body(job, "public void onStats(final HTTrackStats stats)"),

@@ -800,6 +800,8 @@ public class HTTrackActivity extends FragmentActivity {
 
     getOnBackPressedDispatcher().addCallback(this, stayAliveWhileMirroring);
 
+    cancelStaleProgressNotification();
+
     // Attempt to load the native library.
     // Fetch httrack engine version
     if (HTTrackLib.loadLibraries()) {
@@ -3283,8 +3285,29 @@ public class HTTrackActivity extends FragmentActivity {
    */
   static void sendFinishedNotification(final Context context, final String projectName,
       final String message) {
+    postOnMirrorChannel(context, context.getString(R.string.mirror_finished) + ": " + projectName,
+        Html.fromHtml(message != null ? message : ""));
+  }
+
+  /**
+   * Tell the user a crawl was stopped for a reason that will not bring it back, which only
+   * {@link JobStopPolicy#tellsTheUser} answers for.
+   *
+   * @param context
+   *          any context of this app
+   * @param projectName
+   *          the mirror's name
+   */
+  static void sendStoppedNotification(final Context context, final String projectName) {
+    postOnMirrorChannel(context,
+        context.getString(R.string.mirror_xxx_stopped).replace("%s", projectName),
+        context.getString(R.string.mirror_stopped_will_not_resume));
+  }
+
+  /* One notification on the buzzing channel, with a launcher intent a dead crawl can survive. */
+  private static void postOnMirrorChannel(final Context context, final CharSequence title,
+      final CharSequence text) {
     createNotificationChannel(context);
-    final CharSequence title = context.getString(R.string.mirror_finished) + ": " + projectName;
     final long when = System.currentTimeMillis();
     final int id = (int) when;
     // No extras: a tap restoring them would overwrite the option map the user has since edited.
@@ -3294,15 +3317,23 @@ public class HTTrackActivity extends FragmentActivity {
     final PendingIntent pintent = PendingIntent.getActivity(context, id, intent,
         PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
     final Notification notification = new NotificationCompat.Builder(context,
-        NOTIFICATION_CHANNEL_ID).setContentTitle(title)
-        .setContentText(Html.fromHtml(message != null ? message : "")).setTicker(title)
+        NOTIFICATION_CHANNEL_ID).setContentTitle(title).setContentText(text).setTicker(title)
         .setSmallIcon(R.drawable.ic_stat_httrack).setWhen(when).setContentIntent(pintent)
         .setAutoCancel(true).build();
     try {
       NotificationManagerCompat.from(context).notify(id, notification);
     } catch (final SecurityException refused) {
-      // The user never granted POST_NOTIFICATIONS, so the verdict waits for the next attach.
-      Log.w("HTTrackActivity", "could not post the finished notification", refused);
+      // The user never granted POST_NOTIFICATIONS, so this crawl's end goes unreported.
+      Log.w("HTTrackActivity", "could not post the notification", refused);
+    }
+  }
+
+  /* The system removes it with the job, so one still here with nothing running is a dead
+   * process's last frame. */
+  private void cancelStaleProgressNotification() {
+    if (NotificationRate.cancelsStale(MirrorSession.get().live() != null,
+        MirrorJobService.isExecuting())) {
+      NotificationManagerCompat.from(this).cancel(PROGRESS_NOTIFICATION_ID);
     }
   }
 
