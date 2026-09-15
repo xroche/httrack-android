@@ -7,13 +7,21 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Before;
 import org.junit.Test;
 
 /** What the shade is left holding. A progress notification must die with the crawl behind it, and
  *  a stop the user never asked for has to say so. */
 public class NotificationLifecycleTest {
+  /** Anything of the shape X.cancel(...) or X.cancelAll(...), whatever X is. */
+  private static final Pattern CANCEL = Pattern.compile("\\.cancel(All)?\\s*\\(");
+
   private static String source(final String name) throws IOException {
     return TestSources.withoutCommentsAndStrings(TestSources.javaSource(name));
   }
@@ -38,6 +46,46 @@ public class NotificationLifecycleTest {
     return found;
   }
 
+  /** Every cancel the app makes, receiver and argument kept and sorted, so a second spelling of
+   *  one shows up as an entry of its own rather than passing as the cancel already allowed. */
+  private static List<String> cancelCalls() throws IOException {
+    final List<String> calls = new ArrayList<String>();
+    for (final File file : TestSources.javaSources()) {
+      final String source = TestSources.withoutCommentsAndStrings(TestSources.read(file));
+      final Matcher call = CANCEL.matcher(source);
+      while (call.find()) {
+        calls.add(norm(source.substring(statementStart(source, call.start()),
+            closingParen(source, call.end() - 1) + 1)));
+      }
+    }
+    Collections.sort(calls);
+    return calls;
+  }
+
+  /* Offset just past the statement boundary before AT, so the receiver comes along. */
+  private static int statementStart(final String source, final int at) {
+    for (int i = at; i > 0; i--) {
+      final char before = source.charAt(i - 1);
+      if (before == ';' || before == '{' || before == '}') {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  /* Offset of the ')' matching the '(' at OPEN. */
+  private static int closingParen(final String source, final int open) {
+    int depth = 0;
+    for (int i = open; i < source.length(); i++) {
+      if (source.charAt(i) == '(') {
+        depth++;
+      } else if (source.charAt(i) == ')' && --depth == 0) {
+        return i;
+      }
+    }
+    throw new IllegalStateException("unclosed call at " + open);
+  }
+
   /* The count is process-wide, so whatever ran before this case would otherwise seed it. */
   @Before
   public void noExecutionIsHeld() throws Exception {
@@ -55,10 +103,28 @@ public class NotificationLifecycleTest {
         occurrencesInApp("cancelStaleProgressNotification()"));
     final String create = body(activity,
         "protected void onCreate(final Bundle savedInstanceState)");
-    assertTrue("onStart and onResume run again while a crawl is live, where onCreate does not",
-        create.contains("cancelStaleProgressNotification();"));
-    assertEquals("a cancel nested in a branch is one a relaunch can skip", 0,
-        TestSources.depthOf(create, "cancelStaleProgressNotification();"));
+    final int cancel = TestSources.indexOf(create, "cancelStaleProgressNotification();");
+    assertEquals("onStart and onResume run again while a crawl is live, where onCreate does not,"
+        + " so a cancel nested in a branch is one a relaunch can skip", cancel,
+        firstAtDepthZero(create, "cancelStaleProgressNotification();"));
+    assertFalse("and one below a return is one the launch that finds the stale frame never reaches",
+        Pattern.compile("\\breturn\\b").matcher(create.substring(0, cancel)).find());
+  }
+
+  /* Offset of the first TOKEN that is a statement of BODY itself, or BODY's length for none. */
+  private static int firstAtDepthZero(final String body, final String token) {
+    int depth = 0;
+    for (int i = 0; i < body.length(); i++) {
+      final char c = body.charAt(i);
+      if (c == '{') {
+        depth++;
+      } else if (c == '}') {
+        depth--;
+      } else if (depth == 0 && body.startsWith(token, i)) {
+        return i;
+      }
+    }
+    return body.length();
   }
 
   /** Cancelling one a live crawl is still repainting takes the only sign of that crawl off the
@@ -71,11 +137,16 @@ public class NotificationLifecycleTest {
         norm(TestSources.arguments(cancel, "NotificationRate.cancelsStale")));
     assertEquals("the cancel is the branch's, not the method's", 1,
         TestSources.depthOf(cancel, ".cancel("));
-    assertEquals("the progress id is the only one a crawl owns; the finished and abort "
-        + "notifications carry clock-derived ids and are the user's to dismiss", 1,
-        occurrencesInApp("NotificationManagerCompat.from(this).cancel(PROGRESS_NOTIFICATION_ID)"));
-    assertEquals("and no other id may be cancelled anywhere", 1,
-        occurrencesInApp("NotificationManagerCompat.from(this).cancel("));
+  }
+
+  /** A cancel takes a notification off the user's screen. The progress id is the only one a crawl
+   *  owns; the finished and abort ones carry clock-derived ids and are the user's to dismiss. */
+  @Test
+  public void nothingCancelsAnyOtherNotification() throws IOException {
+    assertEquals("a cancel of any other id, however it is spelled, wipes what the user came back"
+        + " to read", "[MirrorJobService.cancel(this), "
+        + "NotificationManagerCompat.from(this).cancel(PROGRESS_NOTIFICATION_ID), "
+        + "scheduler.cancel(JOB_ID)]", cancelCalls().toString());
   }
 
   /** The execution outlives its crawl at both ends, and the launch that arrives in between must
