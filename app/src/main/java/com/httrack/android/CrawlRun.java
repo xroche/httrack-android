@@ -227,9 +227,8 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
       // One reading of the engine's verdict, so the pane and the resume offer cannot disagree.
       final MirrorOutcome.Stop stop = interrupted ? MirrorOutcome.Stop.USER
           : engine.wasStopped() ? MirrorOutcome.Stop.ENGINE : MirrorOutcome.Stop.NONE;
-      final long transportFailures = lastStats != null ? lastStats.transportFailures : 0;
       pendingWork = HTTrackActivity.leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code,
-          transportFailures);
+          lastStats.transportFailures);
       verdictRecorded = true;
 
       final MirrorOutcome.Verdict verdict = MirrorOutcome.decide(code, stop,

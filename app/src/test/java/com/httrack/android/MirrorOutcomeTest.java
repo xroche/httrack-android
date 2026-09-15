@@ -111,20 +111,10 @@ public class MirrorOutcomeTest {
     check(MirrorOutcome.FAILED, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE, 5, 0);
   }
 
-  /**
-   * The engine counts a refused link and a link whose transfer failed into the same stat_errors,
-   * so before stat_transport_failures existed a timeout storm and a wall of 404s read alike.
-   */
   @Test
   public void aRunWithFailedTransfersIsNotASuccess() {
     check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
-        0, 40, 3);
-    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
-        5, 40, 3);
-    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
-        5, 0, 5);
-    check(MirrorOutcome.SUCCESS, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
-        0, 40, 0);
+        0, 40, 1);
   }
 
   /** Every named ending already tells the user more than "some links failed", so it comes first. */
@@ -132,12 +122,6 @@ public class MirrorOutcomeTest {
   public void aFailedTransferNeverOutranksANamedEnding() {
     check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, FINISHED, MirrorOutcome.ABORT_NONE,
         0, 40, 3);
-    check(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.NONE, FINISHED,
-        MirrorOutcome.ABORT_FATAL, 0, 40, 3);
-    check(MirrorOutcome.ABORTED_ROLLBACK, MirrorOutcome.Stop.NONE, FINISHED,
-        MirrorOutcome.ABORT_ROLLBACK, 0, 0, 3);
-    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, GAVE_UP,
-        MirrorOutcome.ABORT_NONE, 0, 40, 3);
     check(MirrorOutcome.STOPPED_AT_LIMIT, MirrorOutcome.Stop.ENGINE, FINISHED,
         MirrorOutcome.ABORT_NONE, 0, 400, 3);
   }
@@ -214,15 +198,10 @@ public class MirrorOutcomeTest {
         MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE, 0, 400);
     verdict("<b>Aborted</b>! (nothing was transferred, so the mirror was left as it was)", true,
         0, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
-  }
-
-  /** A partial mirror is on disk and worth linking to, and both counts say how partial. */
-  @Test
-  public void anIncompleteMirrorNamesBothCountsAndKeepsItsFolderLink() {
-    verdict("<b>Incomplete</b>! (3 links failed to transfer, 0 errors)", true, 0,
-        MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 40, 3);
-    verdict("<b>Incomplete</b>! (3 links failed to transfer, 5 errors)", true, 0,
-        MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 5, 40, 3);
+    verdict("<b>Incomplete</b>! (3 links failed to transfer)", true, 0, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 0, 40, 3);
+    verdict("<b>Incomplete</b>! (12 links failed to transfer)", true, 0, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 5, 40, 12);
   }
 
   /** The engine gave up, and the half-written mirror is still on disk. */

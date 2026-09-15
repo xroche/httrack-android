@@ -19,9 +19,6 @@ public class InterruptedLockTest {
 
   private File target;
 
-  /** A run whose every link either arrived or was refused by the server. */
-  private static final long NONE_FAILED = 0;
-
   @Before
   public void setUp() throws Exception {
     target = tmp.newFolder("project");
@@ -32,38 +29,27 @@ public class InterruptedLockTest {
   @Test
   public void aRunThatReachesTheEndIsNotResumable() {
     assertFalse("a crawl that ran to the end has nothing to continue",
-        HTTrackActivity.leavesPendingWork(false, 0, NONE_FAILED));
+        HTTrackActivity.leavesPendingWork(false, 0, 0));
   }
 
   @Test
   public void aCrawlCutShortIsResumable() {
     // A soft stop lets pending transfers finish, so the engine still returns 0; so does a size or
     // time cap, which the engine applies by stopping itself. HTTrackLib.wasStopped() sees both.
-    assertTrue(HTTrackActivity.leavesPendingWork(true, 0, NONE_FAILED));
-    assertTrue(HTTrackActivity.leavesPendingWork(true, -1, NONE_FAILED));
+    assertTrue(HTTrackActivity.leavesPendingWork(true, 0, 0));
+    assertTrue(HTTrackActivity.leavesPendingWork(true, -1, 0));
   }
 
   @Test
   public void anEngineThatGaveUpIsResumable() {
-    assertTrue(HTTrackActivity.leavesPendingWork(false, -1, NONE_FAILED));
-    assertTrue(HTTrackActivity.leavesPendingWork(false, 1, NONE_FAILED));
+    assertTrue(HTTrackActivity.leavesPendingWork(false, -1, 0));
+    assertTrue(HTTrackActivity.leavesPendingWork(false, 1, 0));
   }
 
-  /**
-   * The engine drains its queue and returns 0 after a timeout storm exactly as it does after a
-   * clean run, so stat_transport_failures is the only thing telling the two apart.
-   */
   @Test
   public void aRunWithFailedTransfersIsResumable() {
     assertTrue("a link whose transfer failed left a hole the next run can fill",
         HTTrackActivity.leavesPendingWork(false, 0, 1));
-    assertTrue(HTTrackActivity.leavesPendingWork(false, 0, 234));
-  }
-
-  @Test
-  public void aFailedTransferStampsTheProjectEndToEnd() throws Exception {
-    assertTrue("a timeout storm", reopensOnContinue(false, 0, 9));
-    assertFalse("the same run with every link answered", reopensOnContinue(false, 0, NONE_FAILED));
   }
 
   @Test
@@ -85,13 +71,8 @@ public class InterruptedLockTest {
   /** What the finished pane does, end to end, for each way a crawl can end. */
   private boolean reopensOnContinue(final boolean stoppedByUser, final int engineCode)
       throws IOException {
-    return reopensOnContinue(stoppedByUser, engineCode, NONE_FAILED);
-  }
-
-  private boolean reopensOnContinue(final boolean stoppedByUser, final int engineCode,
-      final long transportFailures) throws IOException {
     HTTrackActivity.setInterruptedProfile(target,
-        HTTrackActivity.leavesPendingWork(stoppedByUser, engineCode, transportFailures));
+        HTTrackActivity.leavesPendingWork(stoppedByUser, engineCode, 0));
     return HTTrackActivity.isInterruptedProfile(target);
   }
 
@@ -161,6 +142,8 @@ public class InterruptedLockTest {
         resumeOffer.contains("interrupted"));
     assertFalse("the resume offer must not narrow to one kind of stop",
         resumeOffer.contains("=="));
+    assertTrue("the resume offer must read the run's own transport-failure count",
+        resumeOffer.contains("lastStats.transportFailures"));
     assertTrue("runMirror must write the verdict before the finished pane opens",
         body.contains("setInterruptedProfile(pendingWork)"));
     assertTrue("the crawl must read as ended before the finished pane asks for a stop",

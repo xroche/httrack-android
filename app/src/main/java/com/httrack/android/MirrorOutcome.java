@@ -88,8 +88,8 @@ enum MirrorOutcome {
     case SUCCESS_WITH_ERRORS:
       return "<b>Success</b>! (" + stats.errorsCount + " errors)";
     case INCOMPLETE:
-      return "<b>Incomplete</b>! (" + stats.transportFailures
-          + " links failed to transfer, " + stats.errorsCount + " errors)";
+      // No error count, because -Q leaves stat_errors at 0 while this count stays true.
+      return "<b>Incomplete</b>! (" + stats.transportFailures + " links failed to transfer)";
     case FAILED:
       return "<b>Failed</b>! (" + stats.errorsCount + " errors, no files written)";
     default:
