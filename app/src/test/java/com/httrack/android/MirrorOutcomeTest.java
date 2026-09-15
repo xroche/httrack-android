@@ -15,19 +15,28 @@ public class MirrorOutcomeTest {
   private static final boolean FINISHED = false;
   private static final boolean GAVE_UP = true;
 
-  private static HTTrackStats stats(final long errorsCount, final long filesWritten) {
+  private static HTTrackStats stats(final long errorsCount, final long filesWritten,
+      final long transportFailures) {
     final HTTrackStats stats = new HTTrackStats();
     stats.errorsCount = errorsCount;
     stats.filesWritten = filesWritten;
+    stats.transportFailures = transportFailures;
     return stats;
   }
 
   private static void check(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
       final boolean engineAborted, final int abortCode, final long errorsCount,
       final long filesWritten) {
+    check(expected, stop, engineAborted, abortCode, errorsCount, filesWritten, 0);
+  }
+
+  private static void check(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
+      final boolean engineAborted, final int abortCode, final long errorsCount,
+      final long filesWritten, final long transportFailures) {
     assertEquals("stop=" + stop + " engineAborted=" + engineAborted + " abortCode=" + abortCode
-        + " errors=" + errorsCount + " written=" + filesWritten, expected,
-        MirrorOutcome.of(stop, engineAborted, abortCode, stats(errorsCount, filesWritten)));
+        + " errors=" + errorsCount + " written=" + filesWritten + " failed=" + transportFailures,
+        expected, MirrorOutcome.of(stop, engineAborted, abortCode,
+            stats(errorsCount, filesWritten, transportFailures)));
   }
 
   /**
@@ -98,6 +107,24 @@ public class MirrorOutcomeTest {
     check(MirrorOutcome.FAILED, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE, 5, 0);
   }
 
+  @Test
+  public void aRunWithFailedTransfersIsNotASuccess() {
+    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
+        0, 40, 1);
+    // Nothing written is still Incomplete rather than Failed, because the next run can fill it.
+    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
+        5, 0, 5);
+  }
+
+  /** Every named ending already tells the user more than "some links failed", so it comes first. */
+  @Test
+  public void aFailedTransferNeverOutranksANamedEnding() {
+    check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, FINISHED, MirrorOutcome.ABORT_NONE,
+        0, 40, 3);
+    check(MirrorOutcome.STOPPED_AT_LIMIT, MirrorOutcome.Stop.ENGINE, FINISHED,
+        MirrorOutcome.ABORT_NONE, 0, 400, 3);
+  }
+
   /** Reading the aborted code before the cause would flatten every named abort to ABORTED_OTHER. */
   @Test
   public void aNamedCauseOutranksTheBareAbortedCode() {
@@ -143,8 +170,14 @@ public class MirrorOutcomeTest {
   private static void verdict(final String expectedText, final boolean expectedLink,
       final int engineCode, final MirrorOutcome.Stop stop, final int abortCode,
       final long errorsCount, final long filesWritten) {
+    verdict(expectedText, expectedLink, engineCode, stop, abortCode, errorsCount, filesWritten, 0);
+  }
+
+  private static void verdict(final String expectedText, final boolean expectedLink,
+      final int engineCode, final MirrorOutcome.Stop stop, final int abortCode,
+      final long errorsCount, final long filesWritten, final long transportFailures) {
     final MirrorOutcome.Verdict v = MirrorOutcome.decide(engineCode, stop, abortCode,
-        stats(errorsCount, filesWritten));
+        stats(errorsCount, filesWritten, transportFailures));
     final String where = "code=" + engineCode + " stop=" + stop + " abortCode=" + abortCode;
     assertEquals(where, expectedText, v.text());
     assertEquals(where + " folder link", expectedLink, v.showsFolderLink());
@@ -164,6 +197,10 @@ public class MirrorOutcomeTest {
         MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE, 0, 400);
     verdict("<b>Aborted</b>! (nothing was transferred, so the mirror was left as it was)", true,
         0, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    verdict("<b>Incomplete</b>! (3 links failed to transfer)", true, 0, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 0, 40, 3);
+    verdict("<b>Incomplete</b>! (12 links failed to transfer)", true, 0, MirrorOutcome.Stop.NONE,
+        MirrorOutcome.ABORT_NONE, 5, 40, 12);
   }
 
   /** The engine gave up, and the half-written mirror is still on disk. */
@@ -183,7 +220,7 @@ public class MirrorOutcomeTest {
     for (final MirrorOutcome.Stop stop : MirrorOutcome.Stop.values()) {
       for (final int abortCode : causes) {
         final MirrorOutcome.Verdict v = MirrorOutcome.decide(HTTrackLib.EXIT_MIRROR_ABORTED, stop,
-            abortCode, stats(0, 3));
+            abortCode, stats(0, 3, 0));
         final String where = "stop=" + stop + " abortCode=" + abortCode;
         assertTrue(where + " lost its folder link", v.showsFolderLink());
         assertTrue(where + " lost its cause: " + v.text(), v.text().startsWith("<b>"));
