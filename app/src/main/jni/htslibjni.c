@@ -273,6 +273,7 @@ DECLARE_FIELD(socketsCount); \
 DECLARE_FIELD(errorsCount); \
 DECLARE_FIELD(warningsCount); \
 DECLARE_FIELD(infosCount); \
+DECLARE_FIELD(transportFailures); \
 DECLARE_FIELD(totalTransferRate); \
 DECLARE_FIELD(transferRate)
 
@@ -698,6 +699,7 @@ static jobject build_stats(jni_context_t *const t, httrackp * opt,
   COPY(stat_errors, errorsCount);
   COPY(stat_warnings, warningsCount);
   COPY(stat_infos, infosCount);
+  COPY(stat_transport_failures, transportFailures);
   if (stat_time > 0 && stats->HTS_TOTAL_RECV > 0) {
     const jlong rate = (jlong) (stats->HTS_TOTAL_RECV / stat_time);
     COPY_(rate, totalTransferRate);

@@ -1781,13 +1781,15 @@ public class HTTrackActivity extends FragmentActivity {
    *          Was the crawl cut short, by the user or by a cap the engine enforces itself ?
    * @param engineCode
    *          The engine return code; nonzero means it gave up rather than finished.
+   * @param transportFailures
+   *          Links the engine gave up on because the transfer failed, from stat_transport_failures.
    * @return true if the project should reopen offering "Continue an interrupted download"
    */
-  protected static boolean leavesPendingWork(final boolean stopped,
-      final int engineCode) {
-    // Errors are not a criterion: the engine returns 0 once it has drained its queue, however
-    // many links failed on the way, and there is nothing left to continue.
-    return stopped || engineCode != 0;
+  protected static boolean leavesPendingWork(final boolean stopped, final int engineCode,
+      final long transportFailures) {
+    // The error count is not a criterion, because the engine returns 0 once its queue is drained
+    // and a server's error leaves nothing to fetch. A failed transfer does leave something.
+    return stopped || engineCode != 0 || transportFailures != 0;
   }
 
   /**

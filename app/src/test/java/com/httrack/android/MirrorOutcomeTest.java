@@ -16,18 +16,31 @@ public class MirrorOutcomeTest {
   private static final boolean GAVE_UP = true;
 
   private static HTTrackStats stats(final long errorsCount, final long filesWritten) {
+    return stats(errorsCount, filesWritten, 0);
+  }
+
+  private static HTTrackStats stats(final long errorsCount, final long filesWritten,
+      final long transportFailures) {
     final HTTrackStats stats = new HTTrackStats();
     stats.errorsCount = errorsCount;
     stats.filesWritten = filesWritten;
+    stats.transportFailures = transportFailures;
     return stats;
   }
 
   private static void check(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
       final boolean engineAborted, final int abortCode, final long errorsCount,
       final long filesWritten) {
+    check(expected, stop, engineAborted, abortCode, errorsCount, filesWritten, 0);
+  }
+
+  private static void check(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
+      final boolean engineAborted, final int abortCode, final long errorsCount,
+      final long filesWritten, final long transportFailures) {
     assertEquals("stop=" + stop + " engineAborted=" + engineAborted + " abortCode=" + abortCode
-        + " errors=" + errorsCount + " written=" + filesWritten, expected,
-        MirrorOutcome.of(stop, engineAborted, abortCode, stats(errorsCount, filesWritten)));
+        + " errors=" + errorsCount + " written=" + filesWritten + " failed=" + transportFailures,
+        expected, MirrorOutcome.of(stop, engineAborted, abortCode,
+            stats(errorsCount, filesWritten, transportFailures)));
   }
 
   /**
@@ -98,6 +111,37 @@ public class MirrorOutcomeTest {
     check(MirrorOutcome.FAILED, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE, 5, 0);
   }
 
+  /**
+   * The engine counts a refused link and a link whose transfer failed into the same stat_errors,
+   * so before stat_transport_failures existed a timeout storm and a wall of 404s read alike.
+   */
+  @Test
+  public void aRunWithFailedTransfersIsNotASuccess() {
+    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
+        0, 40, 3);
+    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
+        5, 40, 3);
+    check(MirrorOutcome.INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
+        5, 0, 5);
+    check(MirrorOutcome.SUCCESS, MirrorOutcome.Stop.NONE, FINISHED, MirrorOutcome.ABORT_NONE,
+        0, 40, 0);
+  }
+
+  /** Every named ending already tells the user more than "some links failed", so it comes first. */
+  @Test
+  public void aFailedTransferNeverOutranksANamedEnding() {
+    check(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, FINISHED, MirrorOutcome.ABORT_NONE,
+        0, 40, 3);
+    check(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.NONE, FINISHED,
+        MirrorOutcome.ABORT_FATAL, 0, 40, 3);
+    check(MirrorOutcome.ABORTED_ROLLBACK, MirrorOutcome.Stop.NONE, FINISHED,
+        MirrorOutcome.ABORT_ROLLBACK, 0, 0, 3);
+    check(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, GAVE_UP,
+        MirrorOutcome.ABORT_NONE, 0, 40, 3);
+    check(MirrorOutcome.STOPPED_AT_LIMIT, MirrorOutcome.Stop.ENGINE, FINISHED,
+        MirrorOutcome.ABORT_NONE, 0, 400, 3);
+  }
+
   /** Reading the aborted code before the cause would flatten every named abort to ABORTED_OTHER. */
   @Test
   public void aNamedCauseOutranksTheBareAbortedCode() {
@@ -143,8 +187,14 @@ public class MirrorOutcomeTest {
   private static void verdict(final String expectedText, final boolean expectedLink,
       final int engineCode, final MirrorOutcome.Stop stop, final int abortCode,
       final long errorsCount, final long filesWritten) {
+    verdict(expectedText, expectedLink, engineCode, stop, abortCode, errorsCount, filesWritten, 0);
+  }
+
+  private static void verdict(final String expectedText, final boolean expectedLink,
+      final int engineCode, final MirrorOutcome.Stop stop, final int abortCode,
+      final long errorsCount, final long filesWritten, final long transportFailures) {
     final MirrorOutcome.Verdict v = MirrorOutcome.decide(engineCode, stop, abortCode,
-        stats(errorsCount, filesWritten));
+        stats(errorsCount, filesWritten, transportFailures));
     final String where = "code=" + engineCode + " stop=" + stop + " abortCode=" + abortCode;
     assertEquals(where, expectedText, v.text());
     assertEquals(where + " folder link", expectedLink, v.showsFolderLink());
@@ -164,6 +214,15 @@ public class MirrorOutcomeTest {
         MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE, 0, 400);
     verdict("<b>Aborted</b>! (nothing was transferred, so the mirror was left as it was)", true,
         0, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+  }
+
+  /** A partial mirror is on disk and worth linking to, and both counts say how partial. */
+  @Test
+  public void anIncompleteMirrorNamesBothCountsAndKeepsItsFolderLink() {
+    verdict("<b>Incomplete</b>! (3 links failed to transfer, 0 errors)", true, 0,
+        MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 40, 3);
+    verdict("<b>Incomplete</b>! (3 links failed to transfer, 5 errors)", true, 0,
+        MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 5, 40, 3);
   }
 
   /** The engine gave up, and the half-written mirror is still on disk. */
