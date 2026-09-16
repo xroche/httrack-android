@@ -170,6 +170,9 @@ public class HTTrackStats {
   /** Info count **/
   public long infosCount;
 
+  /** Links given up on because the transfer failed, not because the server answered. **/
+  public long transportFailures;
+
   /** Transfer rate overall **/
   public long totalTransferRate;
 

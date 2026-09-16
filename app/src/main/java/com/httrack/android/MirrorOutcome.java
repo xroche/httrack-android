@@ -20,6 +20,8 @@ enum MirrorOutcome {
   STOPPED_AT_LIMIT,
   SUCCESS,
   SUCCESS_WITH_ERRORS,
+  /** A failed transfer left a hole a later run can fill. */
+  INCOMPLETE,
   /** Errors, and no file written. */
   FAILED;
 
@@ -85,6 +87,9 @@ enum MirrorOutcome {
       return "<b>Success</b>!";
     case SUCCESS_WITH_ERRORS:
       return "<b>Success</b>! (" + stats.errorsCount + " errors)";
+    case INCOMPLETE:
+      // Only the transport count belongs here, because stat_errors also counts answered errors.
+      return "<b>Incomplete</b>! (" + stats.transportFailures + " links failed to transfer)";
     case FAILED:
       return "<b>Failed</b>! (" + stats.errorsCount + " errors, no files written)";
     default:
@@ -130,6 +135,10 @@ enum MirrorOutcome {
     }
     if (stop == Stop.ENGINE) {
       return STOPPED_AT_LIMIT;
+    }
+    // A server's error left nothing to fetch, where a failed transfer left a hole worth retrying.
+    if (stats.transportFailures != 0) {
+      return INCOMPLETE;
     }
     if (stats.errorsCount == 0) {
       return SUCCESS;

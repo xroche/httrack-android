@@ -29,21 +29,27 @@ public class InterruptedLockTest {
   @Test
   public void aRunThatReachesTheEndIsNotResumable() {
     assertFalse("a crawl that ran to the end has nothing to continue",
-        HTTrackActivity.leavesPendingWork(false, 0));
+        HTTrackActivity.leavesPendingWork(false, 0, 0));
   }
 
   @Test
   public void aCrawlCutShortIsResumable() {
     // A soft stop lets pending transfers finish, so the engine still returns 0; so does a size or
     // time cap, which the engine applies by stopping itself. HTTrackLib.wasStopped() sees both.
-    assertTrue(HTTrackActivity.leavesPendingWork(true, 0));
-    assertTrue(HTTrackActivity.leavesPendingWork(true, -1));
+    assertTrue(HTTrackActivity.leavesPendingWork(true, 0, 0));
+    assertTrue(HTTrackActivity.leavesPendingWork(true, -1, 0));
   }
 
   @Test
   public void anEngineThatGaveUpIsResumable() {
-    assertTrue(HTTrackActivity.leavesPendingWork(false, -1));
-    assertTrue(HTTrackActivity.leavesPendingWork(false, 1));
+    assertTrue(HTTrackActivity.leavesPendingWork(false, -1, 0));
+    assertTrue(HTTrackActivity.leavesPendingWork(false, 1, 0));
+  }
+
+  @Test
+  public void aRunWithFailedTransfersIsResumable() {
+    assertTrue("a link whose transfer failed left a hole the next run can fill",
+        HTTrackActivity.leavesPendingWork(false, 0, 1));
   }
 
   @Test
@@ -66,7 +72,7 @@ public class InterruptedLockTest {
   private boolean reopensOnContinue(final boolean stoppedByUser, final int engineCode)
       throws IOException {
     HTTrackActivity.setInterruptedProfile(target,
-        HTTrackActivity.leavesPendingWork(stoppedByUser, engineCode));
+        HTTrackActivity.leavesPendingWork(stoppedByUser, engineCode, 0));
     return HTTrackActivity.isInterruptedProfile(target);
   }
 
@@ -136,6 +142,8 @@ public class InterruptedLockTest {
         resumeOffer.contains("interrupted"));
     assertFalse("the resume offer must not narrow to one kind of stop",
         resumeOffer.contains("=="));
+    assertTrue("the resume offer must read the run's own transport-failure count",
+        resumeOffer.contains("lastStats.transportFailures"));
     assertTrue("runMirror must write the verdict before the finished pane opens",
         body.contains("setInterruptedProfile(pendingWork)"));
     assertTrue("the crawl must read as ended before the finished pane asks for a stop",
