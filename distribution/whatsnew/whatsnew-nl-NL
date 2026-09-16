@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopiëren gaat door op de achtergrond.
 
-• Op Android 14 en later loopt een kopie door als u de app verlaat of het scherm vergrendelt, en pakt haar weer op als het systeem haar stopt
+• Op Android 14 en later loopt een kopie door als u de app verlaat of het scherm vergrendelt, en wordt hervat als het systeem haar stopt
 • Een nieuwe optie houdt het scherm aan tijdens het kopiëren, wat Android 13 en ouder nog nodig hebben
 • Een kopie die links verloor meldt dit en biedt aan haar af te maken
 • Zonder cache haalt het hervatten van een kopie niet meer de hele site op
