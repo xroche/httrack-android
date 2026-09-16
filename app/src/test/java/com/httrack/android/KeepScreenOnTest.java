@@ -9,7 +9,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /** FLAG_KEEP_SCREEN_ON is honoured for as long as the window carries it, so one left behind
  *  keeps the display awake over a crawl that is already over. These prove the activity asks
@@ -133,6 +137,9 @@ public class KeepScreenOnTest {
     for (final File file : TestSources.layouts("activity_mirror_progress")) {
       assertTrue(file.getName() + " has no checkKeepScreenOn",
           TestSources.read(file).contains("android:id=\"@+id/checkKeepScreenOn\""));
+      // The one seam the values-v34 override reaches a user through.
+      assertTrue(file.getName() + " must read the label from the string resource",
+          TestSources.read(file).contains("android:text=\"@string/keep_screen_on\""));
     }
   }
 
@@ -193,5 +200,44 @@ public class KeepScreenOnTest {
     // From Android 14 the job carries the copy on, so an unqualified stop claim is false there.
     assertTrue("the stop claim has to name the versions it still holds for",
         label.contains("on android 13 and earlier,"));
+  }
+
+  /** The API the job takes the crawl over at. Comments are stripped first, so a commented-out
+   *  declaration cannot stand in for the live one. */
+  private static String firstJobSdk() throws IOException {
+    final String policy =
+        TestSources.withoutCommentsAndStrings(TestSources.javaSource("CrawlOwnerPolicy"));
+    final String name = "static final int FIRST_JOB_SDK = ";
+    final int at = policy.indexOf(name);
+    assertTrue("no FIRST_JOB_SDK declaration", at != -1);
+    return policy.substring(at + name.length(), policy.indexOf(';', at)).trim();
+  }
+
+  /** Value of the string NAME in the res file at PATH, parsed rather than grepped, so a
+   *  commented-out declaration reads as absent the way aapt reads it. */
+  private static String stringResource(final String path, final String name) throws Exception {
+    final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+        .parse(TestSources.resFile(path));
+    final NodeList strings = doc.getElementsByTagName("string");
+    for (int i = 0; i < strings.getLength(); i++) {
+      final Element string = Element.class.cast(strings.item(i));
+      if (name.equals(string.getAttribute("name"))) {
+        return string.getTextContent();
+      }
+    }
+    return null;
+  }
+
+  /** The qualifier and the policy are two spellings of one number. Nothing else ties them, so
+   *  raising FIRST_JOB_SDK alone would leave the label stale. */
+  @Test
+  public void theOverrideSitsAtTheApiWhereTheJobTakesOver() throws Exception {
+    final String label = stringResource("values/strings.xml", "keep_screen_on");
+    final int stop = label.indexOf('.');
+    assertTrue("the default label must have a sentence to keep", stop != -1);
+    // Identity, not vocabulary: a reworded warning is still a warning, and this rejects it.
+    assertEquals("the override is the default label's first sentence and nothing after",
+        label.substring(0, stop + 1),
+        stringResource("values-v" + firstJobSdk() + "/strings.xml", "keep_screen_on"));
   }
 }

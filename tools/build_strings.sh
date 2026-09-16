@@ -5,7 +5,8 @@
 
 # usage: $0 path-to/lang path-to/res 
 # example:
-#	rm -rf res/values-*
+#	rm -rf res/values-?? res/values-??-r??	# language dirs only: values-* also takes the
+#					# hand-kept values-v34, values-night and the rest
 #	bash tools/build_strings.sh /temp/httrack-3.47.21/lang res/
 
 function norm_key {
