@@ -1,6 +1,6 @@
 HTTrack 3.50.2: a cópia continua em segundo plano.
 
 • No Android 14 e posterior, uma cópia continua quando sai da aplicação ou bloqueia o ecrã, e recomeça se o sistema a parar
-• Uma nova opção mantém o ecrã ligado durante a cópia, algo que o Android 13 e anteriores ainda precisam
+• Uma nova opção mantém o ecrã ligado durante a cópia, algo de que o Android 13 e anteriores ainda precisam
 • Uma cópia que perdeu ligações di-lo e propõe terminá-la
 • Sem cache, retomar uma cópia já não transfere o site todo

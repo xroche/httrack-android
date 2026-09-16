@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopyalama arka planda sürüyor.
 
-• Android 14 ve sonrasında kopyalama, uygulamadan çıkınca ya da ekranı kilitleyince sürer; sistem durdurursa yeniden başlar
+• Android 14 ve sonrasında kopyalama, uygulamadan çıkınca ya da ekranı kilitleyince sürer, sistem durdurursa da yeniden başlar
 • Yeni bir seçenek kopyalama sırasında ekranı açık tutar, Android 13 ve öncesinin hâlâ ihtiyaç duyduğu şey
 • Bağlantı kaybeden kopya bunu söyler ve tamamlamayı önerir
 • Önbelleksiz, bir kopyayı sürdürmek artık tüm siteyi indirmiyor
