@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- From API 34 the job owns the crawl, so the warning in values/ is about older releases. -->
 <resources>
+
+    <!-- From API 34 the job owns the crawl, so the warning in values/ is about older releases. -->
     <string name="keep_screen_on">Keep the screen on while copying.</string>
+
 </resources>

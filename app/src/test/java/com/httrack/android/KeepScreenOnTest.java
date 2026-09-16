@@ -9,7 +9,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /** FLAG_KEEP_SCREEN_ON is honoured for as long as the window carries it, so one left behind
  *  keeps the display awake over a crawl that is already over. These prove the activity asks
@@ -133,6 +137,9 @@ public class KeepScreenOnTest {
     for (final File file : TestSources.layouts("activity_mirror_progress")) {
       assertTrue(file.getName() + " has no checkKeepScreenOn",
           TestSources.read(file).contains("android:id=\"@+id/checkKeepScreenOn\""));
+      // The one seam the values-v34 override reaches a user through.
+      assertTrue(file.getName() + " must read the label from the string resource",
+          TestSources.read(file).contains("android:text=\"@string/keep_screen_on\""));
     }
   }
 
@@ -195,34 +202,42 @@ public class KeepScreenOnTest {
         label.contains("on android 13 and earlier,"));
   }
 
-  /** The API the job takes the crawl over at, read from the policy rather than repeated here. */
+  /** The API the job takes the crawl over at. Comments are stripped first, so a commented-out
+   *  declaration cannot stand in for the live one. */
   private static String firstJobSdk() throws IOException {
-    final String policy = TestSources.javaSource("CrawlOwnerPolicy");
-    final String name = "FIRST_JOB_SDK = ";
+    final String policy =
+        TestSources.withoutCommentsAndStrings(TestSources.javaSource("CrawlOwnerPolicy"));
+    final String name = "static final int FIRST_JOB_SDK = ";
     final int at = policy.indexOf(name);
-    assertTrue("no FIRST_JOB_SDK", at != -1);
+    assertTrue("no FIRST_JOB_SDK declaration", at != -1);
     return policy.substring(at + name.length(), policy.indexOf(';', at)).trim();
   }
 
-  /** The qualifier and the policy are two spellings of one number, and nothing else ties them:
-   *  raise FIRST_JOB_SDK alone and the label goes stale on the versions it is written for. */
-  @Test
-  public void theOverrideSitsAtTheApiWhereTheJobTakesOver() throws IOException {
-    final File override = TestSources.resFile("values-v" + firstJobSdk() + "/strings.xml");
-    assertTrue(override.getPath() + " must hold the label override", override.isFile());
-    assertTrue("the override must define keep_screen_on",
-        TestSources.read(override).contains("<string name=\"keep_screen_on\">"));
+  /** Value of the string NAME in the res file at PATH, parsed rather than grepped, so a
+   *  commented-out declaration reads as absent the way aapt reads it. */
+  private static String stringResource(final String path, final String name) throws Exception {
+    final Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+        .parse(TestSources.resFile(path));
+    final NodeList strings = doc.getElementsByTagName("string");
+    for (int i = 0; i < strings.getLength(); i++) {
+      final Element string = Element.class.cast(strings.item(i));
+      if (name.equals(string.getAttribute("name"))) {
+        return string.getTextContent();
+      }
+    }
+    return null;
   }
 
-  /** Above that API nothing stops the copy, so repeating the warning there is what #225 was. */
+  /** The qualifier and the policy are two spellings of one number. Nothing else ties them, so
+   *  raising FIRST_JOB_SDK alone would leave the label stale. */
   @Test
-  public void theOverrideDropsTheWarningTheOlderLabelKeeps() throws IOException {
-    final String override =
-        TestSources.read(TestSources.resFile("values-v" + firstJobSdk() + "/strings.xml"));
-    final int at = override.indexOf("<string name=\"keep_screen_on\">");
-    final String label = override.substring(at, override.indexOf("</string>", at)).toLowerCase();
-    assertFalse("the override must not warn about older Android", label.contains("android 13"));
-    assertFalse("nothing stops the copy there, so it must not say so", label.contains("stops"));
-    assertTrue("the override still has to offer the option", label.contains("screen on"));
+  public void theOverrideSitsAtTheApiWhereTheJobTakesOver() throws Exception {
+    final String label = stringResource("values/strings.xml", "keep_screen_on");
+    final int stop = label.indexOf('.');
+    assertTrue("the default label must have a sentence to keep", stop != -1);
+    // Identity, not vocabulary: a reworded warning is still a warning, and this rejects it.
+    assertEquals("the override is the default label's first sentence and nothing after",
+        label.substring(0, stop + 1),
+        stringResource("values-v" + firstJobSdk() + "/strings.xml", "keep_screen_on"));
   }
 }
