@@ -194,4 +194,35 @@ public class KeepScreenOnTest {
     assertTrue("the stop claim has to name the versions it still holds for",
         label.contains("on android 13 and earlier,"));
   }
+
+  /** The API the job takes the crawl over at, read from the policy rather than repeated here. */
+  private static String firstJobSdk() throws IOException {
+    final String policy = TestSources.javaSource("CrawlOwnerPolicy");
+    final String name = "FIRST_JOB_SDK = ";
+    final int at = policy.indexOf(name);
+    assertTrue("no FIRST_JOB_SDK", at != -1);
+    return policy.substring(at + name.length(), policy.indexOf(';', at)).trim();
+  }
+
+  /** The qualifier and the policy are two spellings of one number, and nothing else ties them:
+   *  raise FIRST_JOB_SDK alone and the label goes stale on the versions it is written for. */
+  @Test
+  public void theOverrideSitsAtTheApiWhereTheJobTakesOver() throws IOException {
+    final File override = TestSources.resFile("values-v" + firstJobSdk() + "/strings.xml");
+    assertTrue(override.getPath() + " must hold the label override", override.isFile());
+    assertTrue("the override must define keep_screen_on",
+        TestSources.read(override).contains("<string name=\"keep_screen_on\">"));
+  }
+
+  /** Above that API nothing stops the copy, so repeating the warning there is what #225 was. */
+  @Test
+  public void theOverrideDropsTheWarningTheOlderLabelKeeps() throws IOException {
+    final String override =
+        TestSources.read(TestSources.resFile("values-v" + firstJobSdk() + "/strings.xml"));
+    final int at = override.indexOf("<string name=\"keep_screen_on\">");
+    final String label = override.substring(at, override.indexOf("</string>", at)).toLowerCase();
+    assertFalse("the override must not warn about older Android", label.contains("android 13"));
+    assertFalse("nothing stops the copy there, so it must not say so", label.contains("stops"));
+    assertTrue("the override still has to offer the option", label.contains("screen on"));
+  }
 }
