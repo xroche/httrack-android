@@ -200,8 +200,9 @@ public class MirrorOutcomeTest {
         MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE, 0, 400);
     verdict("<b>Aborted</b>! (nothing was transferred, so the mirror was left as it was)", true,
         0, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
+    // The error count differs from the failure count, so the message cannot read either by luck.
     verdict("<b>Incomplete</b>! (3 links failed to transfer)", true, 0, MirrorOutcome.Stop.NONE,
-        MirrorOutcome.ABORT_NONE, 0, 40, 3);
+        MirrorOutcome.ABORT_NONE, 5, 40, 3);
   }
 
   /** The engine gave up, and the half-written mirror is still on disk. */
