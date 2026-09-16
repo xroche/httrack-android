@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopeerimine jätkub taustal.
 
-• Android 14 ja uuemas ei peatu koopia enam, kui lahkute rakendusest või lukustate ekraani
-• Süsteemi katkestatud koopia alustab uuesti ja säilitab juba alla laaditu
+• Android 14 ja uuemas kopeerimine jätkub, kui lahkute rakendusest või lukustate ekraani, ja alustab uuesti, kui süsteem selle peatab
+• Uus valik hoiab ekraani kopeerimise ajal sees, mida Android 13 ja vanem ikka vajavad
 • Linke kaotanud koopia ütleb seda ja pakub selle lõpetamist
-• Vahemälu väljalülitamine ei sunni Jätka enam kogu saiti alla laadima
+• Vahemäluta ei laadi koopia jätkamine enam kogu saiti alla

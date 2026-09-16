@@ -1,6 +1,6 @@
 HTTrack 3.50.2: copying keeps going in the background.
 
-• On Android 14 and later, a copy no longer stops when you leave the app or lock the screen
-• A copy the system interrupts starts again and keeps what it already downloaded
+• On Android 14 and later, a copy keeps running when you leave the app or lock the screen, and picks up again if the system stops it
+• A new option keeps the screen on while copying, which Android 13 and earlier still need
 • A copy that lost links now says so, and offers to finish it
-• Turning the cache off no longer makes Continue download the whole site again
+• With the cache off, continuing a copy no longer re-downloads the whole site

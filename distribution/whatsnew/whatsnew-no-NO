@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopieringen fortsetter i bakgrunnen.
 
-• På Android 14 og nyere stopper ikke en kopi lenger når du forlater appen eller låser skjermen
-• En kopi som systemet avbrøt, starter igjen og beholder det som alt er lastet ned
+• På Android 14 og nyere fortsetter en kopi når du forlater appen eller låser skjermen, og starter igjen hvis systemet stopper den
+• Et nytt valg holder skjermen på under kopiering, noe Android 13 og eldre fortsatt trenger
 • En kopi som har mistet lenker, sier fra og tilbyr å gjøre den ferdig
-• Å slå av hurtigbufferen får ikke lenger Fortsett til å laste ned hele nettstedet
+• Uten hurtigbuffer laster gjenopptakelsen av en kopi ikke lenger ned hele nettstedet

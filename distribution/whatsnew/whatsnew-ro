@@ -1,6 +1,6 @@
 HTTrack 3.50.2: copierea continuă în fundal.
 
-• Pe Android 14 și mai nou, o copie nu se mai oprește când ieșiți din aplicație sau blocați ecranul
-• O copie întreruptă de sistem repornește și păstrează ce s-a descărcat deja
+• Pe Android 14 și mai nou, o copie continuă când ieșiți din aplicație sau blocați ecranul și repornește dacă sistemul o oprește
+• O opțiune nouă ține ecranul aprins în timpul copierii, lucru de care Android 13 și anterior încă au nevoie
 • O copie care a pierdut legături anunță acest lucru și propune terminarea ei
-• Oprirea cache-ului nu mai face Continuare să descarce tot site-ul
+• Fără cache, reluarea unei copii nu mai descarcă tot site-ul

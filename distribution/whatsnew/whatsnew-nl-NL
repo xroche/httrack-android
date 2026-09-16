@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopiëren gaat door op de achtergrond.
 
-• Op Android 14 en later stopt een kopie niet meer als u de app verlaat of het scherm vergrendelt
-• Een door het systeem onderbroken kopie start opnieuw en behoudt wat al is opgehaald
+• Op Android 14 en later loopt een kopie door als u de app verlaat of het scherm vergrendelt, en begint opnieuw als het systeem haar stopt
+• Een nieuwe optie houdt het scherm aan tijdens het kopiëren, wat Android 13 en ouder nog nodig hebben
 • Een kopie die links verloor meldt dit en biedt aan haar af te maken
-• De cache uitzetten laat Doorgaan niet meer de hele site opnieuw ophalen
+• Zonder cache haalt het hervatten van een kopie niet meer de hele site op

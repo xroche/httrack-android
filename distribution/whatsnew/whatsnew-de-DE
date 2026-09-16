@@ -1,6 +1,6 @@
 HTTrack 3.50.2: Kopieren läuft im Hintergrund weiter.
 
-• Ab Android 14 stoppt eine Kopie nicht mehr, wenn Sie die App verlassen oder den Bildschirm sperren
-• Eine vom System unterbrochene Kopie startet neu und behält das bereits Geladene
+• Ab Android 14 läuft eine Kopie weiter, wenn Sie die App verlassen oder den Bildschirm sperren, und setzt neu an, wenn das System sie stoppt
+• Eine neue Option hält den Bildschirm beim Kopieren an, was Android 13 und älter weiter brauchen
 • Eine Kopie, die Links verloren hat, sagt es und bietet an, sie zu beenden
-• Ohne Cache lädt Fortsetzen nicht mehr die ganze Seite neu
+• Ohne Cache lädt das Fortsetzen einer Kopie nicht mehr die ganze Website neu

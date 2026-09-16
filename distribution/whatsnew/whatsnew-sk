@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopírovanie pokračuje na pozadí.
 
-• V Androide 14 a novšom sa kópia nezastaví, keď opustíte aplikáciu alebo zamknete obrazovku
-• Kópia prerušená systémom začne znova a ponechá si už stiahnuté
+• V Androide 14 a novšom kópia beží ďalej, keď opustíte aplikáciu alebo zamknete obrazovku, a znova sa rozbehne, keď ju systém zastaví
+• Nová voľba necháva obrazovku svietiť pri kopírovaní, čo Android 13 a starší stále potrebujú
 • Kópia, ktorá stratila odkazy, to oznámi a ponúkne jej dokončenie
-• Vypnutie vyrovnávacej pamäte už nenúti Pokračovať stiahnuť celý web
+• Bez vyrovnávacej pamäte už pokračovanie kópie nesťahuje celý web

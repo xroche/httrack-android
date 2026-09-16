@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopiowanie działa w tle.
 
-• W Androidzie 14 i nowszym kopia nie zatrzymuje się po wyjściu z aplikacji ani po zablokowaniu ekranu
-• Kopia przerwana przez system rusza ponownie i zachowuje to, co już pobrano
+• W Androidzie 14 i nowszym kopia działa dalej po wyjściu z aplikacji lub zablokowaniu ekranu i rusza ponownie, gdy system ją zatrzyma
+• Nowa opcja nie wygasza ekranu podczas kopiowania, czego Android 13 i starszy wciąż wymaga
 • Kopia, która straciła odnośniki, mówi o tym i proponuje dokończenie
-• Wyłączenie pamięci podręcznej nie każe już Kontynuuj pobierać całej witryny
+• Bez pamięci podręcznej wznowienie kopii nie pobiera już całej witryny

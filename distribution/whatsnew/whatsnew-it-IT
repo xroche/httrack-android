@@ -1,6 +1,6 @@
 HTTrack 3.50.2: la copia continua in secondo piano.
 
-• Su Android 14 e versioni successive, una copia non si ferma più se esci dall'app o blocchi lo schermo
-• Una copia interrotta dal sistema riparte e conserva quanto già scaricato
+• Su Android 14 e successivi, una copia prosegue se esci dall'app o blocchi lo schermo, e riparte se il sistema la ferma
+• Una nuova opzione tiene lo schermo acceso durante la copia, cosa che Android 13 e precedenti richiedono ancora
 • Una copia che ha perso collegamenti lo segnala e propone di completarla
-• Disattivare la cache non fa più riscaricare tutto il sito a Continua
+• Senza cache, riprendere una copia non riscarica più tutto il sito

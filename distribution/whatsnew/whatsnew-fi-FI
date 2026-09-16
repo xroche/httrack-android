@@ -1,6 +1,6 @@
 HTTrack 3.50.2: kopiointi jatkuu taustalla.
 
-• Android 14:ssä ja uudemmissa kopiointi ei enää pysähdy, kun poistut sovelluksesta tai lukitset näytön
-• Järjestelmän keskeyttämä kopiointi alkaa uudelleen ja säilyttää jo ladatun
+• Android 14:ssä ja uudemmissa kopiointi jatkuu, kun poistut sovelluksesta tai lukitset näytön, ja alkaa uudelleen, jos järjestelmä pysäyttää sen
+• Uusi valinta pitää näytön päällä kopioinnin ajan, mitä Android 13 ja vanhemmat yhä tarvitsevat
 • Linkkejä menettänyt kopio kertoo siitä ja tarjoutuu viimeistelemään sen
-• Välimuistin poisto ei enää saa Jatka-toimintoa lataamaan koko sivustoa
+• Ilman välimuistia kopion jatkaminen ei enää lataa koko sivustoa
