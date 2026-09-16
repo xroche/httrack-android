@@ -20,7 +20,7 @@ enum MirrorOutcome {
   STOPPED_AT_LIMIT,
   SUCCESS,
   SUCCESS_WITH_ERRORS,
-  /** Links the transfer failed on, so the mirror has holes a later run can fill. */
+  /** A failed transfer left a hole a later run can fill. */
   INCOMPLETE,
   /** Errors, and no file written. */
   FAILED;
@@ -88,7 +88,7 @@ enum MirrorOutcome {
     case SUCCESS_WITH_ERRORS:
       return "<b>Success</b>! (" + stats.errorsCount + " errors)";
     case INCOMPLETE:
-      // No error count, because -Q leaves stat_errors at 0 while this count stays true.
+      // Only the transport count belongs here, because stat_errors also counts answered errors.
       return "<b>Incomplete</b>! (" + stats.transportFailures + " links failed to transfer)";
     case FAILED:
       return "<b>Failed</b>! (" + stats.errorsCount + " errors, no files written)";

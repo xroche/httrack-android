@@ -8,7 +8,10 @@ import com.httrack.android.jni.HTTrackLib;
 import com.httrack.android.jni.HTTrackStats;
 import org.junit.Test;
 
-/** MirrorOutcome.of() has no android.* dependency, so unlike the pane it builds it can be run. */
+/**
+ * MirrorOutcome.of() has no android.* dependency, so unlike the pane it builds it can be run.
+ * check() and verdict() both end with errors, then filesWritten, then transportFailures.
+ */
 public class MirrorOutcomeTest {
   private static final int ABORT_CALLBACK = 1;
   private static final int ABORT_UNKNOWN = 3;
