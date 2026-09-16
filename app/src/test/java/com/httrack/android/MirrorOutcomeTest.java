@@ -226,7 +226,7 @@ public class MirrorOutcomeTest {
         final String where = "stop=" + stop + " abortCode=" + abortCode;
         assertTrue(where + " lost its folder link", v.showsFolderLink());
         assertTrue(where + " lost its cause: " + v.text(), v.text().startsWith("<b>"));
-        // The failed transfers above are what a hoisted INCOMPLETE branch would report instead.
+        // An abort outranks a failed transfer, so the count above must not reach the verdict.
         assertFalse(where + " read as Incomplete: " + v.text(), v.text().contains("Incomplete"));
       }
     }
