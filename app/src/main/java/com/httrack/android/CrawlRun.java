@@ -228,7 +228,7 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
       final MirrorOutcome.Stop stop = interrupted ? MirrorOutcome.Stop.USER
           : engine.wasStopped() ? MirrorOutcome.Stop.ENGINE : MirrorOutcome.Stop.NONE;
       pendingWork = HTTrackActivity.leavesPendingWork(stop != MirrorOutcome.Stop.NONE, code,
-          lastStats.transportFailures);
+          lastStats != null ? lastStats.transportFailures : 0);
       verdictRecorded = true;
 
       final MirrorOutcome.Verdict verdict = MirrorOutcome.decide(code, stop,

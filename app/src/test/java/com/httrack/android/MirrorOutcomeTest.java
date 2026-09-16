@@ -202,8 +202,6 @@ public class MirrorOutcomeTest {
         0, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_ROLLBACK, 0, 0);
     verdict("<b>Incomplete</b>! (3 links failed to transfer)", true, 0, MirrorOutcome.Stop.NONE,
         MirrorOutcome.ABORT_NONE, 0, 40, 3);
-    verdict("<b>Incomplete</b>! (12 links failed to transfer)", true, 0, MirrorOutcome.Stop.NONE,
-        MirrorOutcome.ABORT_NONE, 5, 40, 12);
   }
 
   /** The engine gave up, and the half-written mirror is still on disk. */
@@ -223,10 +221,12 @@ public class MirrorOutcomeTest {
     for (final MirrorOutcome.Stop stop : MirrorOutcome.Stop.values()) {
       for (final int abortCode : causes) {
         final MirrorOutcome.Verdict v = MirrorOutcome.decide(HTTrackLib.EXIT_MIRROR_ABORTED, stop,
-            abortCode, stats(0, 3, 0));
+            abortCode, stats(0, 3, 7));
         final String where = "stop=" + stop + " abortCode=" + abortCode;
         assertTrue(where + " lost its folder link", v.showsFolderLink());
         assertTrue(where + " lost its cause: " + v.text(), v.text().startsWith("<b>"));
+        // The failed transfers above are what a hoisted INCOMPLETE branch would report instead.
+        assertFalse(where + " read as Incomplete: " + v.text(), v.text().contains("Incomplete"));
       }
     }
   }
