@@ -1,5 +1,6 @@
-HTTrack 3.50.2: novi pogon, ispravljeni kolačići i zaustavljanje.
+HTTrack 3.50.2: kopiranje se nastavlja u pozadini.
 
-• Kolačić jedne stranice više ne ide na stranicu sličnog naziva
-• Pri zaustavljanju HTTrack više ne traži ručno brisanje datoteka
-• Nakon zaustavljanja ažuriranje čuva već preuzete stranice
+• Na Androidu 14 i novijem kopija se više ne zaustavlja kad napustite aplikaciju ili zaključate zaslon
+• Kopija koju je sustav prekinuo kreće ponovno i zadržava već preuzeto
+• Kopija koja je izgubila poveznice to javlja i nudi da je dovrši
+• Isključivanje predmemorije više ne tjera Nastavi da preuzme cijelo web-mjesto

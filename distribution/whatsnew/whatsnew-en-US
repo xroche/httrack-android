@@ -1,5 +1,6 @@
-HTTrack 3.50.2: new engine, cookie and stop fixes.
+HTTrack 3.50.2: copying keeps going in the background.
 
-• A cookie for one site is no longer sent to a site with a similar name
-• When you stop, HTTrack no longer asks you to delete files by hand
-• After you stop, the next update keeps the pages already downloaded
+• On Android 14 and later, a copy no longer stops when you leave the app or lock the screen
+• A copy the system interrupts starts again and keeps what it already downloaded
+• A copy that lost links now says so, and offers to finish it
+• Turning the cache off no longer makes Continue download the whole site again

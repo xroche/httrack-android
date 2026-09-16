@@ -1,5 +1,6 @@
-HTTrack 3.50.2: motor nou, reparații cookie-uri și oprire.
+HTTrack 3.50.2: copierea continuă în fundal.
 
-• Un cookie al unui sit nu mai merge la un sit cu nume asemănător
-• La oprire, HTTrack nu mai cere ștergerea fișierelor cu mâna
-• După oprire, actualizarea păstrează paginile deja descărcate
+• Pe Android 14 și mai nou, o copie nu se mai oprește când ieșiți din aplicație sau blocați ecranul
+• O copie întreruptă de sistem repornește și păstrează ce s-a descărcat deja
+• O copie care a pierdut legături anunță acest lucru și propune terminarea ei
+• Oprirea cache-ului nu mai face Continuare să descarce tot site-ul

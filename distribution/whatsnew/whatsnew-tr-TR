@@ -1,5 +1,6 @@
-HTTrack 3.50.2: yeni motor, çerez ve durdurma düzeltmeleri.
+HTTrack 3.50.2: kopyalama arka planda sürüyor.
 
-• Bir sitenin çerezi artık benzer adlı bir siteye gönderilmiyor
-• Durdurunca HTTrack artık dosyaları elle silmenizi istemiyor
-• Durdurduktan sonra güncelleme inen sayfaları koruyor
+• Android 14 ve sonrasında kopyalama, uygulamadan çıkınca ya da ekranı kilitleyince artık durmuyor
+• Sistemin kestiği kopyalama yeniden başlar ve indirilmiş olanı korur
+• Bağlantı kaybeden kopya bunu söyler ve tamamlamayı önerir
+• Önbelleği kapatmak artık Devam'ın tüm siteyi indirmesine yol açmıyor

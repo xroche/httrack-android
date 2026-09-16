@@ -1,5 +1,6 @@
-HTTrack 3.50.2: novo motor, correções de cookies e paragem.
+HTTrack 3.50.2: a cópia continua em segundo plano.
 
-• Um cookie de um site já não é enviado a um site de nome parecido
-• Ao parar, o HTTrack já não pede para apagar ficheiros à mão
-• Depois de parar, a atualização mantém as páginas já transferidas
+• No Android 14 e posterior, uma cópia já não para quando sai da aplicação ou bloqueia o ecrã
+• Uma cópia interrompida pelo sistema recomeça e mantém o que já foi transferido
+• Uma cópia que perdeu ligações diz-lo e propõe terminá-la
+• Desligar a cache já não faz o Continuar transferir o site todo

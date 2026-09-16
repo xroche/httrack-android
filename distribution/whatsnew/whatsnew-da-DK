@@ -1,5 +1,6 @@
-HTTrack 3.50.2: ny motor, rettede cookies og stop.
+HTTrack 3.50.2: kopieringen fortsætter i baggrunden.
 
-• En cookie fra ét websted sendes ikke længere til et med lignende navn
-• Ved stop beder HTTrack ikke længere om at slette filer i hånden
-• Efter et stop beholder opdateringen de hentede sider
+• På Android 14 og nyere stopper en kopi ikke længere, når du forlader appen eller låser skærmen
+• En kopi, som systemet afbrød, starter igen og beholder det allerede hentede
+• En kopi, der har mistet links, siger det og tilbyder at gøre den færdig
+• At slå cachen fra får ikke længere Fortsæt til at hente hele webstedet

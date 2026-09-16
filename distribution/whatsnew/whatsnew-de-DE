@@ -1,5 +1,6 @@
-HTTrack 3.50.2: neue Engine, Cookie- und Stopp-Korrekturen.
+HTTrack 3.50.2: Kopieren läuft im Hintergrund weiter.
 
-• Ein Cookie einer Seite geht nicht mehr an eine Seite mit ähnlichem Namen
-• Beim Stopp verlangt HTTrack nicht mehr, Dateien von Hand zu löschen
-• Nach einem Stopp behält die Aktualisierung die geladenen Seiten
+• Ab Android 14 stoppt eine Kopie nicht mehr, wenn Sie die App verlassen oder den Bildschirm sperren
+• Eine vom System unterbrochene Kopie startet neu und behält das bereits Geladene
+• Eine Kopie, die Links verloren hat, sagt es und bietet an, sie zu beenden
+• Ohne Cache lädt Fortsetzen nicht mehr die ganze Seite neu
