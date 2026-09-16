@@ -1,5 +1,6 @@
-HTTrack 3.50.2: uusi moottori, evästeet ja pysäytys korjattu.
+HTTrack 3.50.2: kopiointi jatkuu taustalla.
 
-• Yhden sivuston eväste ei enää mene lähes samannimiselle sivustolle
-• Pysäytettäessä HTTrack ei enää pyydä poistamaan tiedostoja käsin
-• Pysäytyksen jälkeen päivitys säilyttää jo ladatut sivut
+• Android 14:ssä ja uudemmissa kopiointi jatkuu, kun poistut sovelluksesta tai lukitset näytön, ja alkaa uudelleen, jos järjestelmä pysäyttää sen
+• Uusi valinta pitää näytön päällä kopioinnin ajan, mitä Android 13 ja vanhemmat yhä tarvitsevat
+• Linkkejä menettänyt kopio kertoo siitä ja tarjoutuu viimeistelemään sen
+• Ilman välimuistia kopion jatkaminen ei enää lataa koko sivustoa

@@ -1,5 +1,6 @@
-HTTrack 3.50.2: új motor, süti- és leállításjavítások.
+HTTrack 3.50.2: a másolás a háttérben folytatódik.
 
-• Egy oldal sütije már nem megy hasonló nevű oldalra
-• Leállításkor a HTTrack már nem kéri fájlok kézi törlését
-• Leállítás után a frissítés megtartja a letöltött oldalakat
+• Android 14-től a másolás tovább fut, ha kilép az alkalmazásból vagy lezárja a képernyőt, és újraindul, ha a rendszer leállítja
+• Új beállítás ébren tartja a képernyőt másolás közben, amire az Android 13 és korábbi még rászorul
+• A linkeket vesztett másolat ezt jelzi, és felajánlja a befejezését
+• Gyorsítótár nélkül a másolás folytatása már nem tölti le az egész webhelyet

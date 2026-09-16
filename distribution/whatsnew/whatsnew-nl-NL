@@ -1,5 +1,6 @@
-HTTrack 3.50.2: nieuwe engine, cookie- en stopcorrecties.
+HTTrack 3.50.2: kopiëren gaat door op de achtergrond.
 
-• Een cookie van een site gaat niet meer naar een site met een lijkende naam
-• Bij stoppen vraagt HTTrack niet meer om bestanden met de hand te wissen
-• Na een stop houdt het bijwerken de al opgehaalde pagina's
+• Op Android 14 en later loopt een kopie door als u de app verlaat of het scherm vergrendelt, en wordt hervat als het systeem haar stopt
+• Een nieuwe optie houdt het scherm aan tijdens het kopiëren, wat Android 13 en ouder nog nodig hebben
+• Een kopie die links verloor meldt dit en biedt aan haar af te maken
+• Zonder cache haalt het hervatten van een kopie niet meer de hele site op

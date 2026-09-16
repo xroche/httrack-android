@@ -1,5 +1,6 @@
-HTTrack 3.50.2: nowy silnik, poprawki ciasteczek i zatrzymania.
+HTTrack 3.50.2: kopiowanie działa w tle.
 
-• Ciasteczko jednej strony nie trafia już na stronę o podobnej nazwie
-• Po zatrzymaniu HTTrack nie każe już kasować plików ręcznie
-• Po zatrzymaniu aktualizacja zachowuje już pobrane strony
+• W Androidzie 14 i nowszym kopia działa dalej po wyjściu z aplikacji lub zablokowaniu ekranu i rusza ponownie, gdy system ją zatrzyma
+• Nowa opcja nie wygasza ekranu podczas kopiowania, czego Android 13 i starszy wciąż wymaga
+• Kopia, która straciła odnośniki, mówi o tym i proponuje dokończenie
+• Bez pamięci podręcznej wznowienie kopii nie pobiera już całej witryny

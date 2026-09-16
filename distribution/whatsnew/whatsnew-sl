@@ -1,5 +1,6 @@
-HTTrack 3.50.2: novo jedro, popravljeni piškotki in ustavitev.
+HTTrack 3.50.2: kopiranje se nadaljuje v ozadju.
 
-• Piškotek ene strani ne gre več na stran s podobnim imenom
-• Ob ustavitvi HTTrack ne zahteva več ročnega brisanja datotek
-• Po ustavitvi posodobitev ohrani že prenesene strani
+• V Androidu 14 in novejšem se kopija nadaljuje, ko zapustite aplikacijo ali zaklenete zaslon, in se znova zažene, če jo sistem ustavi
+• Nova možnost ohranja zaslon prižgan med kopiranjem, kar Android 13 in starejši še potrebujejo
+• Kopija, ki je izgubila povezave, to sporoči in ponudi dokončanje
+• Brez predpomnilnika nadaljevanje kopije ne prenese več celotnega spletišča

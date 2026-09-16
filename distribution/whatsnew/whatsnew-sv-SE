@@ -1,5 +1,6 @@
-HTTrack 3.50.2: ny motor, rättade kakor och stopp.
+HTTrack 3.50.2: kopieringen fortsätter i bakgrunden.
 
-• En kaka från en webbplats skickas inte längre till en med liknande namn
-• Vid stopp ber HTTrack inte längre om att radera filer för hand
-• Efter ett stopp behåller uppdateringen de hämtade sidorna
+• I Android 14 och senare fortsätter en kopia när du lämnar appen eller låser skärmen, och startar om om systemet stoppar den
+• Ett nytt alternativ håller skärmen på under kopiering, vilket Android 13 och äldre fortfarande behöver
+• En kopia som förlorat länkar säger det och erbjuder sig att slutföra den
+• Utan cache hämtar återupptagandet av en kopia inte längre hela webbplatsen

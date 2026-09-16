@@ -1,5 +1,6 @@
-HTTrack 3.50.2: nové jadro, opravy cookies a zastavenia.
+HTTrack 3.50.2: kopírovanie pokračuje na pozadí.
 
-• Cookie jedného webu už nejde na web s podobným názvom
-• Pri zastavení už HTTrack nežiada ručné mazanie súborov
-• Po zastavení si aktualizácia nechá už stiahnuté stránky
+• V Androide 14 a novšom kópia beží ďalej, keď opustíte aplikáciu alebo zamknete obrazovku, a znova sa rozbehne, keď ju systém zastaví
+• Nová voľba necháva obrazovku svietiť pri kopírovaní, čo Android 13 a starší stále potrebujú
+• Kópia, ktorá stratila odkazy, to oznámi a ponúkne, že ju dokončí
+• Bez vyrovnávacej pamäte už pokračovanie kópie nesťahuje celý web

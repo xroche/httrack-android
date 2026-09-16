@@ -1,5 +1,6 @@
-HTTrack 3.50.2: uus mootor, parandatud küpsised ja peatamine.
+HTTrack 3.50.2: kopeerimine jätkub taustal.
 
-• Ühe saidi küpsis ei lähe enam sarnase nimega saidile
-• Peatamisel ei palu HTTrack enam faile käsitsi kustutada
-• Pärast peatamist säilitab uuendus juba alla laaditud lehed
+• Android 14 ja uuemas kopeerimine jätkub, kui lahkute rakendusest või lukustate ekraani, ja alustab uuesti, kui süsteem selle peatab
+• Uus valik hoiab ekraani kopeerimise ajal sees, mida Android 13 ja vanem ikka vajavad
+• Linke kaotanud koopia ütleb seda ja pakub selle lõpetamist
+• Vahemäluta ei laadi koopia jätkamine enam kogu saiti alla
