@@ -2,6 +2,7 @@ package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -31,6 +32,10 @@ import org.w3c.dom.NodeList;
  * fieldsMapper turns the value into arguments, and fieldsDefaults seeds it. A row that is missing,
  * or that points at a widget of the wrong kind, costs nothing at runtime. So these tests drive the
  * shipped OptionsMapper and read the command line it builds.
+ *
+ * <p>They reach a widget through the same table they audit, so they cannot tell two widgets of one
+ * kind apart. Swapping two checkbox ids leaves every test here green. Naming which option a key
+ * carries is WinProfileParityTest's job.
  */
 public class OptionWiringTest {
   private static final String ANDROID_NS =
@@ -41,20 +46,20 @@ public class OptionWiringTest {
   private static final String OTHER = "5678";
 
 
-  /** A string no option emits, so finding it means a widget passed its own text through. */
-  private static final String TYPED = "zzprobe";
+  /* Two strings no option emits. The digits matter: a value option drops text but keeps a
+     number, so text alone cannot tell a checkbox from a field wired to -r or -T. */
+  private static final String[] TYPED = { "zzprobe", "97" };
 
-  /** Held in the profile and never handed to the engine: both name the project, not the crawl. */
+  /** Kept in the profile only, because both name the project rather than the crawl. */
   private static final Set<String> NOT_ENGINE_OPTIONS = new TreeSet<String>(
       Arrays.asList("Category", "ProjectName"));
 
-  /** Checkbox, value field, and the two engine options the pair emits. */
   private static final String[][] GATED = {
       { "Sitemap", "SitemapUrl", "-%m", "--sitemap-url" },
       { "Warc", "WarcFile", "-%r", "--warc-file" },
       { "SingleFile", "SingleFileMaxSize", "-%Z", "--single-file-max-size" } };
 
-  /** What to set before a field's own value can reach the engine, as key to field and value. */
+  /** Maps a field to the companion field and value that must be set before it emits. */
   private static final Map<String, String[]> COMPANIONS = companions();
 
   private static Map<String, String[]> companions() {
@@ -144,7 +149,7 @@ public class OptionWiringTest {
     return id.intValue();
   }
 
-  /** What the shipped mapper hands the engine for one field, every other field left at default. */
+  /** What the shipped mapper hands the engine for one field and its companion, if it has one. */
   private static List<String> commandline(final String key, final String value) {
     final OptionsMapper mapper = new OptionsMapper();
     final String[] companion = COMPANIONS.get(key);
@@ -162,7 +167,6 @@ public class OptionWiringTest {
     final Map<String, String> kinds = new LinkedHashMap<String, String>();
     for (final Pair<Integer, String> field : OptionsMapper.fieldsSerializer) {
       final String name = names.get(field.first);
-      assertTrue(field.second + " points at no R.id", name != null);
       final String tag = widgets.get(name);
       assertTrue(field.second + " points at " + name
           + ", which no layout declares", tag != null);
@@ -228,8 +232,8 @@ public class OptionWiringTest {
     assertTrue("read " + kinds.size() + " fields", kinds.size() > 90);
   }
 
-  /** A field nobody can move is a setting the user changes for nothing. Radio groups have their
-   *  own test below. */
+  /* A field nobody can move is a setting the user changes for nothing. Radio groups have their
+     own test below. */
   @Test
   public void everyFieldChangesTheCommandLine() throws Exception {
     final Set<String> inert = new TreeSet<String>();
@@ -250,8 +254,8 @@ public class OptionWiringTest {
         inert);
   }
 
-  /* A checkbox only ever holds 0 or 1, so one wired to an option that takes a value would pass a
-     profile's stored text straight to the engine. */
+  /* A checkbox only ever holds 0 or 1. One wired to a value option would pass a profile's stored
+     text straight to the engine. */
   @Test
   public void aCheckboxNeverPassesTextToTheEngine() throws Exception {
     final Set<String> leaking = new TreeSet<String>();
@@ -261,9 +265,11 @@ public class OptionWiringTest {
         continue;
       }
       checked++;
-      for (final String argument : commandline(field.getKey(), TYPED)) {
-        if (argument.contains(TYPED)) {
-          leaking.add(field.getKey() + " emits " + argument);
+      for (final String typed : TYPED) {
+        for (final String argument : commandline(field.getKey(), typed)) {
+          if (argument.contains(typed)) {
+            leaking.add(field.getKey() + " emits " + argument);
+          }
         }
       }
     }
@@ -309,10 +315,10 @@ public class OptionWiringTest {
         continue;
       }
       final Integer group = buttons.get(names.get(field.first));
-      // A checkbox selects the first two choices and nothing else.
-      final int states = group != null ? group.intValue() : 2;
-      assertEquals(field.second + " offers " + states + " states",
-          states, MultipleChoicesOption.class.cast(mapper).choices.length);
+      // Cache once held a choices table behind a checkbox, which offers two states, not a count.
+      assertNotNull(field.second + " holds a choices table but no radio group", group);
+      assertEquals(field.second + " offers " + group + " states", group.intValue(),
+          MultipleChoicesOption.class.cast(mapper).choices.length);
       checked++;
     }
     assertTrue("read " + checked + " choice tables", checked > 3);
