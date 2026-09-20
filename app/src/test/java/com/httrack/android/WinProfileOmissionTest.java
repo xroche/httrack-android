@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.util.Pair;
 import com.httrack.android.OptionsMapper.ProfileFormat;
 import java.io.File;
 import java.io.FileWriter;
@@ -16,8 +17,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
@@ -60,25 +59,13 @@ public class WinProfileOmissionTest {
     return rows;
   }
 
-  /* Scraped from the source text. The Pair stub keeps both fields now, so reading
-     fieldsDefaults directly would work, and switching to it is a separate change. */
-  private static Map<String, String> ourDefaults() throws IOException {
-    final String source = TestSources.javaSource("OptionsMapper");
-    final int from = source.indexOf("fieldsDefaults[] = new Pair[] {");
-    final int to = source.indexOf("\n  };", from);
-    assertTrue("fieldsDefaults not found", from != -1 && to > from);
-    // One entry is commented out, and would otherwise be read as declared.
-    final String declarations = source.substring(from, to).replaceAll(
-        "(?m)^\\s*//.*$", "");
-    final Matcher m = Pattern.compile(
-        "new Pair<String, String>\\(\\s*\"([^\"]+)\",\\s*\"([^\"]*)\"\\)")
-        .matcher(declarations);
+  private static Map<String, String> ourDefaults() {
     final Map<String, String> defaults = new LinkedHashMap<String, String>();
-    while (m.find()) {
-      defaults.put(m.group(1), m.group(2));
+    for (final Pair<String, String> field : OptionsMapper.fieldsDefaults) {
+      defaults.put(field.first, field.second);
     }
-    assertEquals("fieldsDefaults entries parsed",
-        TestSources.occurrences(declarations, "new Pair<String, String>("),
+    // A key twice in the table would leave only the last one here.
+    assertEquals("one entry per key", OptionsMapper.fieldsDefaults.length,
         defaults.size());
     return defaults;
   }
