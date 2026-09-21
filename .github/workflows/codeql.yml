@@ -23,7 +23,6 @@ concurrency:
 
 env:
   NDK_VERSION: r27d
-  OPENSSL_VERSION: "3.0.15"
 
 jobs:
   analyze:
@@ -62,7 +61,7 @@ jobs:
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: |
-          OUT=/tmp/openssl-android ABIS=arm64-v8a OPENSSL_VERSION="${OPENSSL_VERSION}" bash docker/build-openssl.sh
+          OUT=/tmp/openssl-android ABIS=arm64-v8a bash docker/build-openssl.sh
           tools/ci/vendor-libiconv.sh
           OPENSSL_ANDROID_ROOT=/tmp/openssl-android ABIS=arm64-v8a tools/ci/fetch-openssl-statics.sh
           ( cd app/src/main && "${ANDROID_NDK_ROOT}/ndk-build" APP_ABI=arm64-v8a APP_PLATFORM=android-24 -j"$(nproc)" )
