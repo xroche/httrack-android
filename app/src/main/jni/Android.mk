@@ -15,14 +15,6 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# ndk-build has LOCAL_BRANCH_PROTECTION for arm64 but nothing for x86_64, so name the
-# control-flow flag here. endbr64 is a hint NOP on a CPU without CET.
-ifeq ($(TARGET_ARCH_ABI),x86_64)
-HTS_HARDENING := -fcf-protection
-endif
-# The NDK sets _FORTIFY_SOURCE=2 for every module. 3 sizes more objects at runtime.
-HTS_HARDENING += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3
-
 # <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libiconv
@@ -30,7 +22,7 @@ LOCAL_MODULE    := libiconv
 # Never raise -march to armv8.3-a or later. Clang then fuses the return into retaa,
 # which faults on an ARMv8.0 core instead of decoding as a NOP.
 LOCAL_BRANCH_PROTECTION := standard
-LOCAL_CFLAGS := $(HTS_HARDENING) \
+LOCAL_CFLAGS := \
   -Wno-multichar \
   -DANDROID \
   -DLIBDIR="\"c\"" \
@@ -106,7 +98,7 @@ LOCAL_LDLIBS := -ldl -lz
 LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild/$(TARGET_ARCH_ABI)
 LOCAL_SHARED_LIBRARIES := libiconv
 LOCAL_STATIC_LIBRARIES := libssl libcrypto
-LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC $(HTS_HARDENING) 					\
+LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC 					\
 	-fstrict-aliasing -fvisibility=hidden									\
 	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
 	-Wcast-align -Wstrict-prototypes -Wmissing-prototypes					\
@@ -139,6 +131,5 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -O3 -g -funwind-tables -DHAVE_CONFIG_H -DHTS_INTERNAL_BUILD \
-	$(HTS_HARDENING) \
 	-W -Wall -Wextra -Werror -Wno-unused-parameter
 include $(BUILD_SHARED_LIBRARY)
