@@ -18,6 +18,8 @@ LOCAL_PATH := $(call my-dir)
 # <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libiconv
+# PAC + BTI on arm64; ndk-build drops it on other ABIs. Set per module, because CLEAR_VARS does not reset it.
+LOCAL_BRANCH_PROTECTION := standard
 LOCAL_CFLAGS := \
   -Wno-multichar \
   -DANDROID \
@@ -61,6 +63,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libhttrack
+LOCAL_BRANCH_PROTECTION := standard
 LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsback.c httrack/src/htscache.c httrack/src/htscatchurl.c 	\
 	httrack/src/htsfilters.c httrack/src/htsftp.c httrack/src/htshash.c 	\
@@ -117,6 +120,7 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := htslibjni
+LOCAL_BRANCH_PROTECTION := standard
 LOCAL_SRC_FILES := htslibjni.c coffeecatch/coffeecatch.c coffeecatch/coffeejni.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/httrack/src/coucal			\
