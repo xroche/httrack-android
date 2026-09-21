@@ -98,20 +98,19 @@ LOCAL_LDLIBS := -ldl -lz
 LOCAL_LDLIBS += -L$(LOCAL_PATH)/../prebuild/$(TARGET_ARCH_ABI)
 LOCAL_SHARED_LIBRARIES := libiconv
 LOCAL_STATIC_LIBRARIES := libssl libcrypto
-LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC -rdynamic 					\
+LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC 					\
 	-fstrict-aliasing -fvisibility=hidden									\
 	-Wall -Wformat -Wformat-security -Wmultichar -Wwrite-strings -Wcast-qual\
 	-Wcast-align -Wstrict-prototypes -Wmissing-prototypes					\
 	-Wmissing-declarations -Wdeclaration-after-statement -Wpointer-arith	\
 	-Wsequence-point -Wnested-externs -Wparentheses -Winit-self				\
 	-Wunused-but-set-parameter -Waddress -Wuninitialized -Wformat=2			\
-	-Wformat-nonliteral -Wmissing-parameter-type -Wold-style-definition		\
+	-Wformat-nonliteral -Wold-style-definition		\
 	-Wignored-qualifiers -Wstrict-aliasing -Wno-sign-compare				\
 	-Wno-type-limits -Wno-missing-field-initializers -Wno-cast-align		\
 	-Wno-nested-externs														\
 	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6 -DHTS_INTERNAL_BUILD			\
-	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG\
-	-Wl,-O1
+	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
 
@@ -132,6 +131,5 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -O3 -g -funwind-tables -DHAVE_CONFIG_H -DHTS_INTERNAL_BUILD \
-	-Wl,-O1 \
 	-W -Wall -Wextra -Werror -Wno-unused-parameter
 include $(BUILD_SHARED_LIBRARY)

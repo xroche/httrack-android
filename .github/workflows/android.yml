@@ -21,7 +21,6 @@ concurrency:
 
 env:
   NDK_VERSION: r27d
-  OPENSSL_VERSION: "3.0.15"
 
 # native and assemble are the two required checks. Never give either a job-level `if:`,
 # because a skipped check run counts as success and auto-merge would land on a build that never ran.
@@ -51,12 +50,14 @@ jobs:
         uses: actions/cache@v6
         with:
           path: /tmp/openssl-android
-          key: openssl-${{ env.OPENSSL_VERSION }}-ndk-${{ env.NDK_VERSION }}-${{ env.ABIS }}
+          # Key on the recipe itself. Keying on the version alone served a stale
+          # cache whenever a build flag changed but the version did not.
+          key: openssl-${{ hashFiles('docker/build-openssl.sh') }}-ndk-${{ env.NDK_VERSION }}-${{ env.ABIS }}
       - name: Build OpenSSL (cache miss)
         if: steps.ssl-cache.outputs.cache-hit != 'true'
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
-        run: OUT=/tmp/openssl-android OPENSSL_VERSION="${OPENSSL_VERSION}" bash docker/build-openssl.sh
+        run: OUT=/tmp/openssl-android bash docker/build-openssl.sh
       - name: Vendor libiconv
         run: tools/ci/vendor-libiconv.sh
       - name: Stage OpenSSL statics into prebuild/

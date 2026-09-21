@@ -13,9 +13,17 @@
 # (wget, not curl: curl's threaded resolver fails on this host's Docker/kernel.)
 set -euo pipefail
 
-OPENSSL_VERSION="${OPENSSL_VERSION:-3.0.15}"
+DEFAULT_VERSION=3.5.8
 # Pin the hash — verify against https://www.openssl.org/source/ before bumping.
-OPENSSL_SHA256="${OPENSSL_SHA256:-23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533}"
+DEFAULT_SHA256=a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2
+OPENSSL_VERSION="${OPENSSL_VERSION:-$DEFAULT_VERSION}"
+OPENSSL_SHA256="${OPENSSL_SHA256:-$DEFAULT_SHA256}"
+# The default hash belongs to the default version, so a version override that
+# brings no hash would check one release against another's digest.
+if [ "$OPENSSL_VERSION" != "$DEFAULT_VERSION" ] && [ "$OPENSSL_SHA256" = "$DEFAULT_SHA256" ]; then
+  echo "set OPENSSL_SHA256 when overriding OPENSSL_VERSION" >&2
+  exit 1
+fi
 MIN_API="${MIN_API:-21}"
 OUT="${OUT:-/opt/openssl-android}"
 ABIS="${ABIS:-arm64-v8a x86_64}"
@@ -46,8 +54,17 @@ for abi in $ABIS; do
   echo "=== Building OpenSSL ${OPENSSL_VERSION} for ${abi} (${target}) ==="
   builddir="$work/build-$abi"
   cp -a "$src" "$builddir"
+  # Match the branch protection Android.mk gives our own code. The linker ANDs
+  # .note.gnu.property over every input, so one unmarked member clears it.
+  # OPENSSL_TLS_SECURITY_LEVEL pins what 3.0.15 shipped. 3.5 defaults to 2, which
+  # refuses the sub-2048-bit DH groups that old sites still offer.
+  harden=()
+  if [ "$abi" = arm64-v8a ]; then
+    harden=(-mbranch-protection=standard)
+  fi
   ( cd "$builddir"
-    ./Configure "$target" "-D__ANDROID_API__=${MIN_API}" \
+    ./Configure "$target" "-D__ANDROID_API__=${MIN_API}" "${harden[@]}" \
+        -DOPENSSL_TLS_SECURITY_LEVEL=1 \
         no-shared no-tests no-ui-console no-engine no-comp no-dso no-legacy \
         --prefix="$OUT/$abi" --libdir=lib
     make -j"$(nproc)" build_libs

@@ -8,6 +8,10 @@ on:
   push:
     branches: [master]
     paths: ['docker/**', '.github/workflows/docker-image.yml']
+  # Build (without publishing) when a PR touches the recipe, so a broken OpenSSL
+  # build fails the PR instead of the next master push.
+  pull_request:
+    paths: ['docker/**', '.github/workflows/docker-image.yml']
   schedule:
     - cron: "23 5 * * 1"          # weekly: pick up OpenSSL patch releases
   workflow_dispatch:
@@ -26,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -33,16 +38,18 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: docker
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/xroche/httrack-android-build:latest
             ghcr.io/xroche/httrack-android-build:${{ github.sha }}
       - name: Extract OpenSSL statics (for the container-less emulator job)
+        if: github.event_name != 'pull_request'
         run: |
           id=$(docker create ghcr.io/xroche/httrack-android-build:latest)
           docker cp "$id":/opt/openssl-android ./openssl-android
           docker rm "$id"
       - uses: actions/upload-artifact@v7
+        if: github.event_name != 'pull_request'
         with:
           name: openssl-android-statics
           path: openssl-android
