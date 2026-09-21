@@ -48,12 +48,15 @@ for abi in $ABIS; do
   cp -a "$src" "$builddir"
   # Match the branch protection Android.mk gives our own code. The linker ANDs
   # .note.gnu.property over every input, so one unmarked member clears it.
+  # OPENSSL_TLS_SECURITY_LEVEL pins what 3.0.15 shipped. 3.5 defaults to 2, which
+  # refuses the sub-2048-bit DH groups that old sites still offer.
   harden=()
   if [ "$abi" = arm64-v8a ]; then
     harden=(-mbranch-protection=standard)
   fi
   ( cd "$builddir"
     ./Configure "$target" "-D__ANDROID_API__=${MIN_API}" "${harden[@]}" \
+        -DOPENSSL_TLS_SECURITY_LEVEL=1 \
         no-shared no-tests no-ui-console no-engine no-comp no-dso no-legacy \
         --prefix="$OUT/$abi" --libdir=lib
     make -j"$(nproc)" build_libs
