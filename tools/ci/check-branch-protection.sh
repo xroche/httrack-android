@@ -41,11 +41,26 @@ rc=0
 for so in "${sos[@]}"; do
     name="$(basename "$so")"
 
+    # Capture once and fail closed. Piping objdump straight into grep -c would
+    # report zero matches when objdump itself failed, which reads as a pass.
+    dis="$("$OBJDUMP" -d "$so")" || {
+        echo "check-branch-protection: cannot disassemble $name" >&2
+        exit 1
+    }
+
     # paciasp and bti are hints, so an ARMv8.0 core runs them as a NOP. retaa and
     # retab are not, and fault there. Clang emits them once -march reaches armv8.3-a.
-    bad="$("$OBJDUMP" -d "$so" | grep -cwE 'retaa|retab' || true)"
+    bad="$(printf '%s\n' "$dis" | grep -cwE 'retaa|retab' || true)"
     if [ "$bad" -ne 0 ]; then
         echo "FAIL $name: $bad retaa/retab, which fault on an ARMv8.0 core"
+        rc=1
+    fi
+
+    # Without this the two checks above pass on a library holding no signed
+    # function at all, which is the regression they exist to catch.
+    signed="$(printf '%s\n' "$dis" | grep -cw paciasp || true)"
+    if [ "$signed" -eq 0 ]; then
+        echo "FAIL $name: no paciasp, so no return address is signed"
         rc=1
     fi
 

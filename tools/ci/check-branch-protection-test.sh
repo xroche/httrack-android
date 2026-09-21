@@ -14,7 +14,10 @@ trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/bin"
 cat >"$tmp/bin/llvm-objdump" <<'STUB'
 #!/usr/bin/env bash
-echo "   0: d503233f     paciasp"
+case "$(basename "${!#}")" in
+*-unsigned.so) ;;
+*) echo "   0: d503233f     paciasp" ;;
+esac
 case "$(basename "${!#}")" in
 *retaa*) echo "   4: d65f0bff     retaa" ;;
 *) echo "   4: d65f03c0     ret" ;;
@@ -49,10 +52,26 @@ run() { # run <want-rc> <case-name> <so-name...>
 }
 
 run 0 "marked, no retaa" good-ok.so other-ok.so
+# The pass line says how many libraries were checked, so a silently shrinking
+# walk cannot read as a clean run.
+rm -rf "$tmp/libs"
+mkdir -p "$tmp/libs/arm64-v8a"
+: >"$tmp/libs/arm64-v8a/a-ok.so"
+: >"$tmp/libs/arm64-v8a/b-ok.so"
+case "$(bash "$SUT" "$tmp/libs" 2>&1)" in
+*"2 arm64-v8a .so"*) ;;
+*)
+    echo "FAIL pass line: want the count of libraries checked"
+    fail=1
+    ;;
+esac
 run 1 "retaa faults on ARMv8.0" good-ok.so bad-retaa-ok.so
 run 1 "no feature note" good-ok.so bad-nonote.so
 run 1 "note without BTI" bad-paconly.so
 run 1 "note without PAC" bad-btionly.so
+# A note can be present on a library whose code was never signed, so the note
+# assertion alone would pass it.
+run 1 "marked but nothing signed" bad-unsigned.so
 
 # An empty or absent directory must fail, or the check reports success on a build
 # that produced no libraries at all.
