@@ -18,7 +18,9 @@ LOCAL_PATH := $(call my-dir)
 # <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libiconv
-# PAC + BTI on arm64; ndk-build drops it on other ABIs. Set per module, because CLEAR_VARS does not reset it.
+# Build arm64-v8a with pointer authentication and branch target identification.
+# Never raise -march to armv8.3-a or later. Clang then fuses the return into retaa,
+# which faults on an ARMv8.0 core instead of decoding as a NOP.
 LOCAL_BRANCH_PROTECTION := standard
 LOCAL_CFLAGS := \
   -Wno-multichar \
