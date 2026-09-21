@@ -13,9 +13,17 @@
 # (wget, not curl: curl's threaded resolver fails on this host's Docker/kernel.)
 set -euo pipefail
 
-OPENSSL_VERSION="${OPENSSL_VERSION:-3.5.8}"
+DEFAULT_VERSION=3.5.8
 # Pin the hash — verify against https://www.openssl.org/source/ before bumping.
-OPENSSL_SHA256="${OPENSSL_SHA256:-a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2}"
+DEFAULT_SHA256=a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2
+OPENSSL_VERSION="${OPENSSL_VERSION:-$DEFAULT_VERSION}"
+OPENSSL_SHA256="${OPENSSL_SHA256:-$DEFAULT_SHA256}"
+# The default hash belongs to the default version, so a version override that
+# brings no hash would check one release against another's digest.
+if [ "$OPENSSL_VERSION" != "$DEFAULT_VERSION" ] && [ "$OPENSSL_SHA256" = "$DEFAULT_SHA256" ]; then
+  echo "set OPENSSL_SHA256 when overriding OPENSSL_VERSION" >&2
+  exit 1
+fi
 MIN_API="${MIN_API:-21}"
 OUT="${OUT:-/opt/openssl-android}"
 ABIS="${ABIS:-arm64-v8a x86_64}"
