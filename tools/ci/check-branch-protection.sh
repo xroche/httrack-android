@@ -30,19 +30,33 @@ OBJDUMP="$(find_tool llvm-objdump)"
     echo "check-branch-protection: no $LIBS/$ABI directory" >&2
     exit 1
 }
-mapfile -t sos < <(find "$LIBS/$ABI" -type f -name '*.so' | sort)
+# find's status is lost through a process substitution, so a directory it could
+# not read would silently shrink the walk to the ones it could.
+listing="$(mktemp)"
+trap 'rm -f "$listing"' EXIT
+find "$LIBS/$ABI" -type f -name '*.so' >"$listing" || {
+    echo "check-branch-protection: cannot walk $LIBS/$ABI" >&2
+    exit 1
+}
+mapfile -t sos <"$listing"
 # An empty walk would pass every check below, so name that case rather than report success.
 [ "${#sos[@]}" -gt 0 ] || {
     echo "check-branch-protection: no .so under $LIBS/$ABI" >&2
     exit 1
 }
 
+# Count a mnemonic in the instruction column only. objdump prints the file path
+# and every branch target, so an unanchored match counts a directory name or a
+# symbol called paciasp as if it were a signed function.
+count_insn() {
+    printf '%s\n' "$2" | grep -cE "^[[:space:]]*[0-9a-f]+:.*[[:space:]]$1([[:space:]]|$)" || true
+}
+
 rc=0
 for so in "${sos[@]}"; do
     name="$(basename "$so")"
 
-    # Capture once and fail closed. Piping objdump straight into grep -c would
-    # report zero matches when objdump itself failed, which reads as a pass.
+    # Capture once so a failed objdump does not read as a zero-match pass.
     dis="$("$OBJDUMP" -d "$so")" || {
         echo "check-branch-protection: cannot disassemble $name" >&2
         exit 1
@@ -50,34 +64,38 @@ for so in "${sos[@]}"; do
 
     # paciasp and bti are hints, so an ARMv8.0 core runs them as a NOP. retaa and
     # retab are not, and fault there. Clang emits them once -march reaches armv8.3-a.
-    bad="$(printf '%s\n' "$dis" | grep -cwE 'retaa|retab' || true)"
+    bad=$(($(count_insn retaa "$dis") + $(count_insn retab "$dis")))
     if [ "$bad" -ne 0 ]; then
         echo "FAIL $name: $bad retaa/retab, which fault on an ARMv8.0 core"
         rc=1
     fi
 
-    # Without this the two checks above pass on a library holding no signed
-    # function at all, which is the regression they exist to catch.
-    signed="$(printf '%s\n' "$dis" | grep -cw paciasp || true)"
-    if [ "$signed" -eq 0 ]; then
+    # Without this the note check passes a library that carries the note and signs
+    # nothing, which is the regression it exists to catch.
+    if [ "$(count_insn paciasp "$dis")" -eq 0 ]; then
         echo "FAIL $name: no paciasp, so no return address is signed"
         rc=1
     fi
 
     # The linker ANDs this note over every input, so its absence means some input
-    # was built without the flag. Without it the loader never guards the pages.
-    feat="$("$READELF" -n "$so" | grep -i 'aarch64 feature' || true)"
-    case "$feat" in
-    *BTI*PAC* | *PAC*BTI*) ;;
-    "")
+    # skipped the flag.
+    mapfile -t feat < <("$READELF" -n "$so" | grep -i 'aarch64 feature' || true)
+    if [ "${#feat[@]}" -eq 0 ]; then
         echo "FAIL $name: no AArch64 feature note, so BTI is not enforced"
         rc=1
-        ;;
-    *)
-        echo "FAIL $name: feature note lacks BTI or PAC ($feat)"
+    elif [ "${#feat[@]}" -ne 1 ]; then
+        # Two notes would let a good line cover for a bad one under one match.
+        echo "FAIL $name: ${#feat[@]} AArch64 feature notes, want exactly one"
         rc=1
-        ;;
-    esac
+    else
+        case "${feat[0]}" in
+        *BTI*PAC* | *PAC*BTI*) ;;
+        *)
+            echo "FAIL $name: feature note lacks BTI or PAC (${feat[0]})"
+            rc=1
+            ;;
+        esac
+    fi
 done
 
 [ "$rc" -eq 0 ] && echo "branch protection: ${#sos[@]} $ABI .so carry BTI and PAC, none use retaa"

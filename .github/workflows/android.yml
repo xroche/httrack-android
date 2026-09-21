@@ -65,11 +65,15 @@ jobs:
       - name: ndk-build
         working-directory: app/src/main    # contains jni/ — ndk-build auto-discovers Android.mk + Application.mk
         run: ${{ steps.ndk.outputs.ndk-path }}/ndk-build APP_ABI="${ABIS}" APP_PLATFORM=android-24 -j"$(nproc)"
+      # The test runs here, not beside the other tool tests, because only this job
+      # and assemble are required checks, and it guards the gate below it.
+      - run: tools/ci/check-branch-protection-test.sh
       - name: Check arm64 branch protection
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: tools/ci/check-branch-protection.sh app/src/main/libs
       - uses: actions/upload-artifact@v7
+        if: always()                     # a failed check is when the libraries are worth reading
         with:
           name: native-libs
           path: app/src/main/libs/**/*.so
@@ -129,8 +133,6 @@ jobs:
       - run: python3 tools/ci/play_vitals_test.py
       # No job builds an .aab, so the alignment script's bundle branch has no other cover.
       - run: tools/ci/check-so-alignment-test.sh
-      # A real build only ever produces the passing case, so the failures need stubs.
-      - run: tools/ci/check-branch-protection-test.sh
 
   # --- Phases below land with the app modernization (see the plan) ---
   #
