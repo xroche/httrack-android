@@ -18,6 +18,10 @@ LOCAL_PATH := $(call my-dir)
 # <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libiconv
+# Build arm64-v8a with pointer authentication and branch target identification.
+# Never raise -march to armv8.3-a or later. Clang then fuses the return into retaa,
+# which faults on an ARMv8.0 core instead of decoding as a NOP.
+LOCAL_BRANCH_PROTECTION := standard
 LOCAL_CFLAGS := \
   -Wno-multichar \
   -DANDROID \
@@ -61,6 +65,7 @@ include $(PREBUILT_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libhttrack
+LOCAL_BRANCH_PROTECTION := standard
 LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsback.c httrack/src/htscache.c httrack/src/htscatchurl.c 	\
 	httrack/src/htsfilters.c httrack/src/htsftp.c httrack/src/htshash.c 	\
@@ -117,6 +122,7 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE    := htslibjni
+LOCAL_BRANCH_PROTECTION := standard
 LOCAL_SRC_FILES := htslibjni.c coffeecatch/coffeecatch.c coffeecatch/coffeejni.c
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/httrack/src	\
 	$(LOCAL_PATH)/httrack/src/coucal			\
