@@ -347,4 +347,32 @@ public class OptionWiringTest {
           + " is unticked", unticked.contains(gate[3]));
     }
   }
+
+  /** buildCommandline() runs finish() in iteration order, so the map must keep the table's. */
+  @Test
+  public void theMapperMapKeepsTheTableOrder() {
+    final OptionsMapper mapper = new OptionsMapper();
+    final List<String> declared = new ArrayList<String>();
+    for (final Pair<String, OptionMapper> field : mapper.fieldsMapper) {
+      declared.add(field.first);
+    }
+    assertEquals(declared,
+        new ArrayList<String>(mapper.fieldsNameToMapper.keySet()));
+  }
+
+  /** Two rows naming one extension: the engine keeps the first -%A it reads, so row 1 must win. */
+  @Test
+  public void theTopmostMimeRowWins() {
+    final OptionsMapper mapper = new OptionsMapper();
+    mapper.setMap(id("MIMEDefsExt1"), "php3");
+    mapper.setMap(id("MIMEDefsMime1"), "text/html");
+    mapper.setMap(id("MIMEDefsExt2"), "php3");
+    mapper.setMap(id("MIMEDefsMime2"), "text/plain");
+    final List<String> argv = mapper.buildCommandline();
+    final int row1 = argv.indexOf("php3=text/html");
+    final int row2 = argv.indexOf("php3=text/plain");
+    assertTrue("row 1 emitted nothing", row1 >= 0);
+    assertTrue("row 2 emitted nothing", row2 >= 0);
+    assertTrue("row 2 reaches the engine first", row1 < row2);
+  }
 }

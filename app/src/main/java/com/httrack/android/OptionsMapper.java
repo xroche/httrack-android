@@ -736,8 +736,9 @@ public class OptionsMapper {
   // Name-to-ID hash map
   protected static final HashMap<String, Integer> fieldsNameToId = new HashMap<String, Integer>();
 
-  // String-to-OptionMapper map
-  protected final HashMap<String, OptionMapper> fieldsNameToMapper = new HashMap<String, OptionMapper>();
+  // buildCommandline() runs finish() in iteration order, which HashMap never promised.
+  protected final LinkedHashMap<String, OptionMapper> fieldsNameToMapper =
+      new LinkedHashMap<String, OptionMapper>();
 
   // The options mapping
   protected final SparseArraySerializable map = new SparseArraySerializable();
