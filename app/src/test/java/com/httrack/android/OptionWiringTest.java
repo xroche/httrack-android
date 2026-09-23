@@ -348,6 +348,16 @@ public class OptionWiringTest {
     }
   }
 
+  /** A fresh project sends no rate cap, so the engine applies its own default. */
+  @Test
+  public void aFreshProjectAsksForNoRateCap() {
+    final List<String> argv = new OptionsMapper().buildCommandline();
+    assertFalse("nothing emitted, so the sweep below proves nothing", argv.isEmpty());
+    for (final String token : argv) {
+      assertFalse("rate cap " + token, token.startsWith("-A"));
+    }
+  }
+
   /** buildCommandline() runs finish() in iteration order, so the map must keep the table's. */
   @Test
   public void theMapperMapKeepsTheTableOrder() {

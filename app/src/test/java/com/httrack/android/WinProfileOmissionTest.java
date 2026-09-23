@@ -179,8 +179,8 @@ public class WinProfileOmissionTest {
   /* What a reader substitutes for an absent key. Never the map a case passes
      as the seed, so swapping the two arguments reds. */
   private static final Map<String, String> OUR_DEFAULTS = values("Dos", "0",
-      "Footer", "<!-- ours -->", "WildCardFilters", "+*.png", "MaxRate",
-      "25000", "AcceptLanguage", "en,*");
+      "Footer", "<!-- ours -->", "WildCardFilters", "+*.png", "AcceptLanguage",
+      "en,*");
 
   private static Map<String, String> written(final Map<String, String> values,
       final Map<String, String> seeded, final Set<String> present) {
@@ -237,8 +237,8 @@ public class WinProfileOmissionTest {
     assertTrue("Footer dropped", file.containsKey("Footer"));
   }
 
-  /* A key no reader substitutes for has to be seeded empty to be omissible;
-     ours seeds 25000, so it is written until that seed goes. */
+  /* A key no reader substitutes for has to be seeded empty to be omissible, so
+     a saved default puts it back in the file. */
   @Test
   public void aSeededValueNoReaderRestoresIsAlwaysWritten() {
     final Map<String, String> seeded = values("MaxRate", "25000", "Sockets",
@@ -338,6 +338,6 @@ public class WinProfileOmissionTest {
     final Set<String> file = new TreeSet<String>(ProfileFormat.toFile(seeded,
         seeded, defaults, present()).keySet());
     assertEquals(new TreeSet<String>(Arrays.asList("CurrentAction",
-        "CurrentUrl", "MaxRate", "ProjectName", "UserID")), file);
+        "CurrentUrl", "ProjectName", "UserID")), file);
   }
 }

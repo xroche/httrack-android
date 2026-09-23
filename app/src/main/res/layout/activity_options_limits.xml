@@ -162,7 +162,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".30"
                 android:digits="@string/latin_digits_list"
-                android:hint="25000"
+                android:hint="100000"
                 android:inputType="number" />
         </LinearLayout>
 
