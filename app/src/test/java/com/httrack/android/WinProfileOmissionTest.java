@@ -179,8 +179,8 @@ public class WinProfileOmissionTest {
   /* What a reader substitutes for an absent key. Never the map a case passes
      as the seed, so swapping the two arguments reds. */
   private static final Map<String, String> OUR_DEFAULTS = values("Dos", "0",
-      "Footer", "<!-- ours -->", "WildCardFilters", "+*.png", "MaxRate",
-      "25000", "AcceptLanguage", "en,*");
+      "Footer", "<!-- ours -->", "WildCardFilters", "+*.png", "AcceptLanguage",
+      "en,*");
 
   private static Map<String, String> written(final Map<String, String> values,
       final Map<String, String> seeded, final Set<String> present) {

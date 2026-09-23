@@ -348,10 +348,12 @@ public class OptionWiringTest {
     }
   }
 
-  /** No rate cap unless the user asks for one, so an untouched project leaves the engine its own. */
+  /** A fresh project sends no rate cap, so the engine applies its own default. */
   @Test
   public void aFreshProjectAsksForNoRateCap() {
-    for (final String token : new OptionsMapper().buildCommandline()) {
+    final List<String> argv = new OptionsMapper().buildCommandline();
+    assertFalse("nothing emitted, so the sweep below proves nothing", argv.isEmpty());
+    for (final String token : argv) {
       assertFalse("rate cap " + token, token.startsWith("-A"));
     }
   }
