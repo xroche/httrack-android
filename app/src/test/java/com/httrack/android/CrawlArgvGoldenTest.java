@@ -26,13 +26,13 @@ public class CrawlArgvGoldenTest {
   private static final String VALUES[] = { "demo", "http://example.com/ http://example.org/", "1",
       "3", "1", "4", "0", "0", "+*.png -*.zip", "1", "Mozilla/5.0 (probe)", "fr,en,*" };
 
-  /** This is what buildCommandline() returns for that map. */
+  /** This is what buildCommandline() returns for that map, in table order. */
   private static final String OPTIONS[] = { "-iC2", "http://example.com/", "http://example.org/",
       "+*.png", "-*.zip", "-r3", "-%e1", "-c4", "-%k0", "-%P", "-F",
       "Mozilla/5.0 (probe)", "-%F",
       "<!-- Mirrored from {url} by HTTrack Website Copier/3.x [XR&CO], {date} -->", "-%l",
-      "fr,en,*", "-u1", "-s2", "-%s", "-%u", "-%f", "-C0", "-D", "-a", "-K0", "-H0", "-N0", "-L0",
-      "-p3" };
+      "fr,en,*", "-u1", "-s2", "-%s", "-%u", "-%f", "-C0", "-D", "-a", "-K0", "-H0", "-p3", "-L0",
+      "-N0" };
 
   /** The whole argv with IPv6 available, so no family is forced. */
   private static final String ARGV_IPV6[] = full("httrack", "-O", TARGET);
