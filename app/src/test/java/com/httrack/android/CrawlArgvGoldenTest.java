@@ -26,8 +26,7 @@ public class CrawlArgvGoldenTest {
   private static final String VALUES[] = { "demo", "http://example.com/ http://example.org/", "1",
       "3", "1", "4", "0", "0", "+*.png -*.zip", "1", "Mozilla/5.0 (probe)", "fr,en,*" };
 
-  /** What buildCommandline() returns for that map. The trailing four come from the finish()
-   *  pass, which follows the fieldsMapper table order. */
+  /** This is what buildCommandline() returns for that map, in table order. */
   private static final String OPTIONS[] = { "-iC2", "http://example.com/", "http://example.org/",
       "+*.png", "-*.zip", "-r3", "-%e1", "-A25000", "-c4", "-%k0", "-%P", "-F",
       "Mozilla/5.0 (probe)", "-%F",
