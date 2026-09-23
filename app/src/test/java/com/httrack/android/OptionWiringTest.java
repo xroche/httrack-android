@@ -347,4 +347,16 @@ public class OptionWiringTest {
           + " is unticked", unticked.contains(gate[3]));
     }
   }
+
+  /** buildCommandline() runs finish() in iteration order, so the map must keep the table's. */
+  @Test
+  public void theFinishPassFollowsTheTableOrder() {
+    final OptionsMapper mapper = new OptionsMapper();
+    final List<String> declared = new ArrayList<String>();
+    for (final Pair<String, OptionMapper> field : mapper.fieldsMapper) {
+      declared.add(field.first);
+    }
+    assertEquals(declared,
+        new ArrayList<String>(mapper.fieldsNameToMapper.keySet()));
+  }
 }
