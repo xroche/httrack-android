@@ -248,7 +248,6 @@ public class OptionsMapper {
       new Pair<String, String>("AcceptLanguage", "en,*"),
       new Pair<String, String>("OtherHeaders", ""),
       new Pair<String, String>("DefaultReferer", ""),
-      new Pair<String, String>("MaxRate", "25000"),
       new Pair<String, String>(
           "WildCardFilters",
           "+*.png +*.gif +*.jpg +*.jpeg +*.css +*.js -ad.doubleclick.net/* -mime:application/foobar"),

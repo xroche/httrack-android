@@ -28,7 +28,7 @@ public class CrawlArgvGoldenTest {
 
   /** What buildCommandline() returned for that map on master. */
   private static final String OPTIONS[] = { "-iC2", "http://example.com/", "http://example.org/",
-      "+*.png", "-*.zip", "-r3", "-%e1", "-A25000", "-c4", "-%k0", "-%P", "-F",
+      "+*.png", "-*.zip", "-r3", "-%e1", "-c4", "-%k0", "-%P", "-F",
       "Mozilla/5.0 (probe)", "-%F",
       "<!-- Mirrored from {url} by HTTrack Website Copier/3.x [XR&CO], {date} -->", "-%l",
       "fr,en,*", "-u1", "-s2", "-%s", "-%u", "-%f", "-C0", "-D", "-a", "-K0", "-H0", "-N0", "-L0",

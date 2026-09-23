@@ -237,8 +237,8 @@ public class WinProfileOmissionTest {
     assertTrue("Footer dropped", file.containsKey("Footer"));
   }
 
-  /* A key no reader substitutes for has to be seeded empty to be omissible;
-     ours seeds 25000, so it is written until that seed goes. */
+  /* A key no reader substitutes for has to be seeded empty to be omissible, so
+     a saved default puts it back in the file. */
   @Test
   public void aSeededValueNoReaderRestoresIsAlwaysWritten() {
     final Map<String, String> seeded = values("MaxRate", "25000", "Sockets",
@@ -338,6 +338,6 @@ public class WinProfileOmissionTest {
     final Set<String> file = new TreeSet<String>(ProfileFormat.toFile(seeded,
         seeded, defaults, present()).keySet());
     assertEquals(new TreeSet<String>(Arrays.asList("CurrentAction",
-        "CurrentUrl", "MaxRate", "ProjectName", "UserID")), file);
+        "CurrentUrl", "ProjectName", "UserID")), file);
   }
 }

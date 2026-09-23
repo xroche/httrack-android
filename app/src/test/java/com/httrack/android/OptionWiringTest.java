@@ -347,4 +347,12 @@ public class OptionWiringTest {
           + " is unticked", unticked.contains(gate[3]));
     }
   }
+
+  /** No rate cap unless the user asks for one, so an untouched project leaves the engine its own. */
+  @Test
+  public void aFreshProjectAsksForNoRateCap() {
+    for (final String token : new OptionsMapper().buildCommandline()) {
+      assertFalse("rate cap " + token, token.startsWith("-A"));
+    }
+  }
 }
