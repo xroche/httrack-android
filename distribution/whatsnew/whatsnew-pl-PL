@@ -1,6 +1,6 @@
-HTTrack 3.50.2: kopiowanie działa w tle.
+HTTrack 3.50.4: zajęta witryna już nie przerywa kopiowania.
 
-• W Androidzie 14 i nowszym kopia działa dalej po wyjściu z aplikacji lub zablokowaniu ekranu i rusza ponownie, gdy system ją zatrzyma
-• Nowa opcja nie wygasza ekranu podczas kopiowania, czego Android 13 i starszy wciąż wymaga
-• Kopia, która straciła odnośniki, mówi o tym i proponuje dokończenie
-• Bez pamięci podręcznej wznowienie kopii nie pobiera już całej witryny
+• Gdy witryna prosi o odczekanie, jest to teraz respektowane i ponawiane, zamiast przerywać kopiowanie
+• Strony ładujące moduły JavaScript są poprawnie śledzone, więc nowoczesne witryny kopiują się pełniej
+• Stosowane są tylko te reguły robots.txt, które dotyczą HTTrack
+• Mniej awarii przy małej ilości pamięci i przy naprawie pamięci podręcznej
