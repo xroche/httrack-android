@@ -33,7 +33,7 @@ public class WinProfileOmissionTest {
      same way an unresolved one does. */
   private static final Set<String> NO_SHARED_DEFAULT = new TreeSet<String>(
       Arrays.asList("AcceptLanguage", "Debugging", "Iso9660", "MaxRate",
-          "ProjectName", "Sockets", "UserID", "WarcFile"));
+          "MaxRetryAfter", "ProjectName", "Sockets", "UserID", "WarcFile"));
 
   private static final int KEY = 0;
   private static final int OWNERS = 1;

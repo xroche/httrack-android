@@ -34,6 +34,7 @@ public class NumericFieldInputTypeTest {
       { "editMaxTransferRate", "A" }, { "editMaxConnectionsSecond", "%c" },
       { "editMaxNumberLinks", "#L" }, { "editNumberOfConnections", "c" },
       { "editTimeout", "T" }, { "editRetries", "R" },
+      { "editMaxRetryAfter", "%J" },
       { "editMinTransferRate", "J" }, { "editProxyPort", "P" },
       { "editSingleFileMaxSize", "--single-file-max-size" } };
 

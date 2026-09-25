@@ -205,7 +205,8 @@ public class OptionsActivity extends FragmentActivity implements
   @HelpPage("guide.html#droid/opt-flow-control")
   @Fields({ R.id.editNumberOfConnections, R.id.checkPersistentConnections,
       R.id.editTimeout, R.id.checkRemoveHostIfTimeout, R.id.editRetries,
-      R.id.editMinTransferRate, R.id.checkRemoveHostIfSlow, R.id.editPause })
+      R.id.editMaxRetryAfter, R.id.editMinTransferRate,
+      R.id.checkRemoveHostIfSlow, R.id.editPause })
   public static class FlowControlTab extends Tab {
   }
 

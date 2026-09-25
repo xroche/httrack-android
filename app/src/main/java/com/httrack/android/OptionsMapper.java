@@ -54,6 +54,9 @@ public class OptionsMapper {
   protected static final String PREFS_NAME = "HTTrackDefaultSettings";
   protected static final String BASE_NAME = "BasePath";
 
+  /** Mirrors the engine's HTS_MAX_RETRY_AFTER_LIMIT, which it panics above. */
+  protected static final int MAX_RETRY_AFTER_LIMIT = 3600;
+
   /** Serialization key of the cache checkbox, which CachePolicy gates on the action. */
   static final String CACHE_KEY = "Cache";
 
@@ -90,6 +93,7 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.editTimeout, "TimeOut"),
       new Pair<Integer, String>(R.id.checkRemoveHostIfTimeout, "RemoveTimeout"),
       new Pair<Integer, String>(R.id.editRetries, "Retry"),
+      new Pair<Integer, String>(R.id.editMaxRetryAfter, "MaxRetryAfter"),
       new Pair<Integer, String>(R.id.editMinTransferRate, "RateOut"),
       new Pair<Integer, String>(R.id.checkRemoveHostIfSlow, "RemoveRateout"),
       new Pair<Integer, String>(R.id.editPause, "PauseFiles"),
@@ -303,6 +307,8 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("RemoveRateout",
           hostControlHandler.getRateMapper()),
       new Pair<String, OptionMapper>("Retry", new SimpleOption("R")),
+      new Pair<String, OptionMapper>("MaxRetryAfter",
+          new CappedOption("%J", MAX_RETRY_AFTER_LIMIT)),
       new Pair<String, OptionMapper>("RateOut", new SimpleOption("J")),
       new Pair<String, OptionMapper>("ParseAll", new SimpleOption0("%P")),
       new Pair<String, OptionMapper>("Near", new SimpleOptionFlag("n")),
@@ -1668,6 +1674,28 @@ public class OptionsMapper {
        * as a URL, which turns -r1.5 into an exclusion filter. */
       if (fraction ? OptionValues.isDecimal(value) : OptionValues
           .isDigits(value)) {
+        commandline.add("-" + option + value);
+      }
+    }
+  }
+
+  /**
+   * Simple option whose value the engine refuses over a ceiling.<br/>
+   * Example: -%J60
+   */
+  public static class CappedOption extends SimpleOption {
+    protected final int max;
+
+    public CappedOption(final String option, final int max) {
+      super(option);
+      this.max = max;
+    }
+
+    @Override
+    public void emit(final List<String> commandline, final String value) {
+      /* Over the cap the engine panics and no crawl starts, so drop it instead.
+       * A saved profile can hold any value, and no layout attribute bounds one. */
+      if (OptionValues.isAtMost(value, max)) {
         commandline.add("-" + option + value);
       }
     }

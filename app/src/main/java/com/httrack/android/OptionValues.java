@@ -82,6 +82,27 @@ public final class OptionValues {
   }
 
   /**
+   * True if the value is a digit run no greater than max. A run too long to hold
+   * is over max, not an error worth reporting.
+   *
+   * @param value
+   *          The value, possibly null
+   * @param max
+   *          Highest value the engine accepts
+   * @return true if the value is digits no greater than max
+   */
+  public static boolean isAtMost(final String value, final int max) {
+    if (!isDigits(value)) {
+      return false;
+    }
+    try {
+      return Long.parseLong(value) <= max;
+    } catch (final NumberFormatException nfe) {
+      return false;
+    }
+  }
+
+  /**
    * Parse an integer.
    *
    * @param value
