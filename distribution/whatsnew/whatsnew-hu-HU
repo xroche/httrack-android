@@ -1,6 +1,6 @@
-HTTrack 3.50.2: a másolás a háttérben folytatódik.
+HTTrack 3.50.4: egy új másolás már nem korlátozódik 25 KB/s-ra.
 
-• Android 14-től a másolás tovább fut, ha kilép az alkalmazásból vagy lezárja a képernyőt, és újraindul, ha a rendszer leállítja
-• Új beállítás ébren tartja a képernyőt másolás közben, amire az Android 13 és korábbi még rászorul
-• A linkeket vesztett másolat ezt jelzi, és felajánlja a befejezését
-• Gyorsítótár nélkül a másolás folytatása már nem tölti le az egész webhelyet
+• Egy új másolás most 100 KB/s-ig megy 25 KB/s helyett. Az Ön által beállított korlát továbbra is érvényes
+• Ha egy webhely várakozást kér, a HTTrack vár és újra próbálja. Beállíthatja a leghosszabb várakozást
+• A JavaScript-modulokat használó oldalak teljesebben másolódnak
+• A HTTrack most csak a HTTracknek írt robots.txt-szabályokat alkalmazza

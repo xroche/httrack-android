@@ -1,6 +1,6 @@
-HTTrack 3.50.2: kopiointi jatkuu taustalla.
+HTTrack 3.50.4: uutta kopiointia ei enää rajoiteta 25 KB/s:aan.
 
-• Android 14:ssä ja uudemmissa kopiointi jatkuu, kun poistut sovelluksesta tai lukitset näytön, ja alkaa uudelleen, jos järjestelmä pysäyttää sen
-• Uusi valinta pitää näytön päällä kopioinnin ajan, mitä Android 13 ja vanhemmat yhä tarvitsevat
-• Linkkejä menettänyt kopio kertoo siitä ja tarjoutuu viimeistelemään sen
-• Ilman välimuistia kopion jatkaminen ei enää lataa koko sivustoa
+• Uuden kopioinnin raja on nyt 100 KB/s eikä 25 KB/s. Itse asettamasi raja on edelleen voimassa
+• Jos sivusto pyytää odottamaan, HTTrack odottaa ja yrittää uudelleen. Voit asettaa pisimmän odotuksen
+• JavaScript-moduuleja käyttävät sivut kopioituvat kattavammin
+• HTTrack käyttää nyt vain HTTrackille kirjoitettuja robots.txt-sääntöjä

@@ -1,6 +1,6 @@
-HTTrack 3.50.2: la copia continua in secondo piano.
+HTTrack 3.50.4: una nuova copia non è più limitata a 25 KB/s.
 
-• Su Android 14 e successivi, una copia prosegue se esci dall'app o blocchi lo schermo, e riparte se il sistema la ferma
-• Una nuova opzione tiene lo schermo acceso durante la copia, cosa che Android 13 e precedenti richiedono ancora
-• Una copia che ha perso collegamenti lo segnala e propone di completarla
-• Senza cache, riprendere una copia non riscarica più tutto il sito
+• Una nuova copia arriva ora a 100 KB/s invece di 25 KB/s. Un limite impostato da te resta valido
+• Se un sito chiede di attendere, HTTrack attende e riprova. Puoi impostare l'attesa massima
+• Le pagine che usano moduli JavaScript vengono copiate in modo più completo
+• HTTrack applica ora solo le regole di robots.txt scritte per HTTrack

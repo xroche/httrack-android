@@ -1,6 +1,6 @@
-HTTrack 3.50.2: Kopieren läuft im Hintergrund weiter.
+HTTrack 3.50.4: Eine neue Kopie ist nicht mehr auf 25 KB/s begrenzt.
 
-• Ab Android 14 läuft eine Kopie weiter, wenn Sie die App verlassen oder den Bildschirm sperren, und wird fortgesetzt, wenn das System sie stoppt
-• Eine neue Option lässt den Bildschirm beim Kopieren an, was Android 13 und älter weiter brauchen
-• Eine Kopie, die Links verloren hat, sagt es und bietet an, sie zu beenden
-• Ohne Cache lädt das Fortsetzen einer Kopie nicht mehr die ganze Website neu
+• Eine neue Kopie läuft jetzt mit bis zu 100 KB/s statt 25 KB/s. Ein Limit, das Sie selbst setzen, gilt weiterhin
+• Bittet eine Website um Wartezeit, wartet HTTrack und versucht es erneut. Sie können die längste Wartezeit festlegen
+• Seiten, die JavaScript-Module verwenden, werden vollständiger kopiert
+• HTTrack wendet jetzt nur die robots.txt-Regeln an, die für HTTrack geschrieben sind

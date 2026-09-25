@@ -1,6 +1,6 @@
-HTTrack 3.50.2: copying keeps going in the background.
+HTTrack 3.50.4: a new copy is no longer limited to 25 KB/s.
 
-• On Android 14 and later, a copy keeps running when you leave the app or lock the screen, and picks up again if the system stops it
-• A new option keeps the screen on while copying, which Android 13 and earlier still need
-• A copy that lost links now says so, and offers to finish it
-• With the cache off, continuing a copy no longer re-downloads the whole site
+• A new copy now runs at up to 100 KB/s instead of 25 KB/s. A limit you set yourself still applies
+• If a site asks you to wait, HTTrack waits and tries again. You can set the longest wait
+• Pages that use JavaScript modules are copied more completely
+• HTTrack now applies only the robots.txt rules written for it
