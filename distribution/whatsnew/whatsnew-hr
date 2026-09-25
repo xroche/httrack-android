@@ -1,6 +1,6 @@
 HTTrack 3.50.4: novo kopiranje više nije ograničeno na 25 KB/s.
 
-• Novo kopiranje ide punom brzinom. Ono s postavljenim ograničenjem ga zadržava
-• Ako web-mjesto zamoli da pričekate, to se poštuje i pokušaj se ponavlja umjesto neuspjeha, a možete postaviti najdulje prihvaćeno čekanje
-• Stranice koje učitavaju JavaScript module prate se ispravno, pa se moderna web-mjesta kopiraju potpunije
-• Primjenjuju se samo pravila robots.txt namijenjena HTTracku
+• Novo kopiranje sada ide do 100 KB/s umjesto 25 KB/s. Ograničenje koje sami postavite i dalje vrijedi
+• Ako web-mjesto zamoli da pričekate, HTTrack čeka i pokušava ponovno. Možete postaviti najdulje čekanje
+• Stranice koje koriste JavaScript module kopiraju se potpunije
+• HTTrack sada primjenjuje samo pravila robots.txt napisana za HTTrack

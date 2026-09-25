@@ -1,6 +1,6 @@
 HTTrack 3.50.4: en ny kopiering er ikke længere begrænset til 25 KB/s.
 
-• En ny kopiering kører nu med fuld hastighed. Den, hvor du satte en grænse, beholder den
-• Beder et websted dig vente, bliver det overholdt og forsøgt igen i stedet for at mislykkes, og du kan angive den længste ventetid du accepterer
-• Sider, der indlæser JavaScript-moduler, følges korrekt, så moderne websteder kopieres mere komplet
-• Kun robots.txt-reglerne, der gælder HTTrack, anvendes
+• En ny kopiering går nu op til 100 KB/s i stedet for 25 KB/s. En grænse du selv angiver gælder fortsat
+• Hvis et websted beder dig vente, venter HTTrack og prøver igen. Du kan angive den længste ventetid
+• Sider, der bruger JavaScript-moduler, kopieres mere komplet
+• HTTrack anvender nu kun de robots.txt-regler, der er skrevet til HTTrack

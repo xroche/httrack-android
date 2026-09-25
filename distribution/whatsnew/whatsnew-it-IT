@@ -1,6 +1,6 @@
 HTTrack 3.50.4: una nuova copia non è più limitata a 25 KB/s.
 
-• Una nuova copia va a piena velocità. Quella con un limite impostato lo mantiene
-• Se un sito chiede di attendere, viene rispettato e riprovato invece di fallire, e puoi impostare l'attesa massima accettata
-• Le pagine che caricano moduli JavaScript vengono seguite correttamente, così i siti moderni si copiano più completamente
-• Si applicano solo le regole di robots.txt destinate a HTTrack
+• Una nuova copia arriva ora a 100 KB/s invece di 25 KB/s. Un limite impostato da te resta valido
+• Se un sito chiede di attendere, HTTrack attende e riprova. Puoi impostare l'attesa massima
+• Le pagine che usano moduli JavaScript vengono copiate in modo più completo
+• HTTrack applica ora solo le regole di robots.txt scritte per HTTrack

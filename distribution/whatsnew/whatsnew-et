@@ -1,6 +1,6 @@
-HTTrack 3.50.4: uus kopeerimine ei ole enam piiratud 25 KB/s-ga.
+HTTrack 3.50.4: uut kopeerimist ei piirata enam 25 KB/s-ga.
 
-• Uus kopeerimine töötab nüüd täiskiirusel. See, millele seadsite piiri, säilitab selle
-• Kui sait palub oodata, seda järgitakse ja proovitakse uuesti, mitte ei ebaõnnestu, ja saate määrata pikima lubatud ootamise
-• JavaScripti mooduleid laadivaid lehti jälgitakse õigesti, seega kopeeritakse nüüdisaegsed saidid täielikumalt
-• Rakendatakse ainult HTTrackile mõeldud robots.txt reegleid
+• Uus kopeerimine jõuab nüüd 100 KB/s-ni, mitte 25 KB/s-ni. Teie enda seatud piir kehtib edasi
+• Kui sait palub oodata, HTTrack ootab ja proovib uuesti. Saate määrata pikima ootamise
+• JavaScripti mooduleid kasutavad lehed kopeeritakse täielikumalt
+• HTTrack rakendab nüüd ainult HTTrackile kirjutatud robots.txt reegleid

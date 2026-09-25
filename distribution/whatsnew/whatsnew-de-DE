@@ -1,6 +1,6 @@
 HTTrack 3.50.4: Eine neue Kopie ist nicht mehr auf 25 KB/s begrenzt.
 
-• Eine neue Kopie läuft jetzt mit voller Geschwindigkeit. Eine mit gesetztem Limit behält es
-• Bittet eine Website um Wartezeit, wird das beachtet und erneut versucht statt abzubrechen, und Sie können die längste Wartezeit festlegen
-• Seiten mit JavaScript-Modulen werden richtig verfolgt, moderne Websites werden vollständiger kopiert
-• Es gelten nur die robots.txt-Regeln, die für HTTrack gedacht sind
+• Eine neue Kopie läuft jetzt mit bis zu 100 KB/s statt 25 KB/s. Ein Limit, das Sie selbst setzen, gilt weiterhin
+• Bittet eine Website um Wartezeit, wartet HTTrack und versucht es erneut. Sie können die längste Wartezeit festlegen
+• Seiten, die JavaScript-Module verwenden, werden vollständiger kopiert
+• HTTrack wendet jetzt nur die robots.txt-Regeln an, die für HTTrack geschrieben sind
