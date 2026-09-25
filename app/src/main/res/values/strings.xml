@@ -87,6 +87,7 @@
     <string name="timeout">File timeout</string>
     <string name="remove_host_if_timeout">Cancel all links from host if timeout occurs</string>
     <string name="retries">Retries</string>
+    <string name="max_retry_after">Longest wait a server may ask for (seconds)</string>
     <string name="min_transfer_rate">Minimum admissible transfer rate</string>
     <string name="remove_host_if_slow">Cancel all links from host if too slow</string>
     <string name="browser_identity">Browser identity</string>
