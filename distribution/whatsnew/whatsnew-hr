@@ -1,6 +1,6 @@
-HTTrack 3.50.4: zauzeta stranica više ne zaustavlja kopiranje.
+HTTrack 3.50.2: kopiranje se nastavlja u pozadini.
 
-• Ako web-mjesto zamoli da pričekate, to se sada poštuje i pokušaj se ponavlja, umjesto da kopiranje ne uspije
-• Stranice koje učitavaju JavaScript module prate se ispravno, pa se moderna web-mjesta kopiraju potpunije
-• Primjenjuju se samo pravila robots.txt namijenjena HTTracku
-• Manje rušenja kad nedostaje memorije i pri popravku predmemorije
+• Na Androidu 14 i novijem kopija radi dalje kad napustite aplikaciju ili zaključate zaslon i kreće ponovno ako je sustav zaustavi
+• Nova opcija drži zaslon uključenim tijekom kopiranja, što Android 13 i stariji još trebaju
+• Kopija koja je izgubila poveznice to javlja i nudi da je dovrši
+• Bez predmemorije nastavak kopije više ne preuzima cijelo web-mjesto

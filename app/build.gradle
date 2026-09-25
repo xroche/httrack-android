@@ -16,9 +16,9 @@ android {
         // insets (EdgeToEdge) are now mandatory: the platform ignores the opt-out at this level.
         targetSdk 36
         // Must exceed the versionCode currently live on the Play listing before uploading.
-        versionCode 106
+        versionCode 105
         // Prefix is the pinned engine's HTTRACK_VERSIONID; fourth part is versionCode.
-        versionName "3.50.4.106"
+        versionName "3.50.4.105"
 
         ndk {
             abiFilters "arm64-v8a", "x86_64"

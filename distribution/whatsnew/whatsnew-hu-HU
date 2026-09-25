@@ -1,6 +1,6 @@
-HTTrack 3.50.4: a leterhelt webhely már nem állítja le a másolást.
+HTTrack 3.50.2: a másolás a háttérben folytatódik.
 
-• Ha egy webhely várakozást kér, azt a program most betartja és újrapróbálja, nem hiúsul meg a másolás
-• A JavaScript-modulokat betöltő oldalakat helyesen követi, így a modern webhelyek teljesebben másolódnak
-• Csak azok a robots.txt szabályok érvényesek, amelyek a HTTracknek szólnak
-• Kevesebb összeomlás kevés memória esetén és a gyorsítótár javításakor
+• Android 14-től a másolás tovább fut, ha kilép az alkalmazásból vagy lezárja a képernyőt, és újraindul, ha a rendszer leállítja
+• Új beállítás ébren tartja a képernyőt másolás közben, amire az Android 13 és korábbi még rászorul
+• A linkeket vesztett másolat ezt jelzi, és felajánlja a befejezését
+• Gyorsítótár nélkül a másolás folytatása már nem tölti le az egész webhelyet

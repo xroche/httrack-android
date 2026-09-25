@@ -1,6 +1,6 @@
-HTTrack 3.50.4: un sito occupato non ferma più la copia.
+HTTrack 3.50.2: la copia continua in secondo piano.
 
-• Se un sito chiede di attendere, ora viene rispettato e riprovato, invece di far fallire la copia
-• Le pagine che caricano moduli JavaScript vengono seguite correttamente, così i siti moderni si copiano in modo più completo
-• Si applicano solo le regole di robots.txt destinate a HTTrack
-• Meno arresti anomali quando la memoria è scarsa o quando la cache viene riparata
+• Su Android 14 e successivi, una copia prosegue se esci dall'app o blocchi lo schermo, e riparte se il sistema la ferma
+• Una nuova opzione tiene lo schermo acceso durante la copia, cosa che Android 13 e precedenti richiedono ancora
+• Una copia che ha perso collegamenti lo segnala e propone di completarla
+• Senza cache, riprendere una copia non riscarica più tutto il sito

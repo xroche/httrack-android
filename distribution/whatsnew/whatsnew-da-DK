@@ -1,6 +1,6 @@
-HTTrack 3.50.4: et travlt websted stopper ikke længere kopieringen.
+HTTrack 3.50.2: kopieringen fortsætter i baggrunden.
 
-• Beder et websted dig vente, bliver det nu overholdt og forsøgt igen, i stedet for at kopieringen mislykkes
-• Sider, der indlæser JavaScript-moduler, følges korrekt, så moderne websteder kopieres mere komplet
-• Kun de robots.txt-regler, der gælder HTTrack, anvendes nu
-• Færre nedbrud når hukommelsen er lav, eller når cachen repareres
+• På Android 14 og nyere fortsætter en kopi, når du forlader appen eller låser skærmen, og starter igen, hvis systemet stopper den
+• En ny indstilling holder skærmen tændt under kopiering, hvilket Android 13 og ældre stadig har brug for
+• En kopi, der har mistet links, siger det og tilbyder at gøre den færdig
+• Uden cache henter genoptagelsen af en kopi ikke længere hele webstedet

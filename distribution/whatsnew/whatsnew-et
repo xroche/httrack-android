@@ -1,6 +1,6 @@
-HTTrack 3.50.4: hõivatud sait ei peata enam kopeerimist.
+HTTrack 3.50.2: kopeerimine jätkub taustal.
 
-• Kui sait palub oodata, siis seda nüüd järgitakse ja proovitakse uuesti, selle asemel et kopeerimine ebaõnnestuks
-• JavaScripti mooduleid laadivaid lehti jälgitakse õigesti, seega kopeeritakse nüüdisaegsed saidid täielikumalt
-• Rakendatakse ainult neid robots.txt reegleid, mis on mõeldud HTTrackile
-• Vähem krahhe, kui mälu on vähe või kui vahemälu parandatakse
+• Android 14 ja uuemas kopeerimine jätkub, kui lahkute rakendusest või lukustate ekraani, ja alustab uuesti, kui süsteem selle peatab
+• Uus valik hoiab ekraani kopeerimise ajal sees, mida Android 13 ja vanem ikka vajavad
+• Linke kaotanud koopia ütleb seda ja pakub selle lõpetamist
+• Vahemäluta ei laadi koopia jätkamine enam kogu saiti alla

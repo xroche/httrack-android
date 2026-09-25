@@ -1,6 +1,6 @@
-HTTrack 3.50.4: yoğun bir site artık kopyalamayı durdurmuyor.
+HTTrack 3.50.2: kopyalama arka planda sürüyor.
 
-• Bir site beklemenizi isterse buna artık uyuluyor ve yeniden deneniyor, kopyalama başarısız olmuyor
-• JavaScript modülleri yükleyen sayfalar doğru izleniyor, böylece modern siteler daha eksiksiz kopyalanıyor
-• Yalnızca HTTrack için yazılmış robots.txt kuralları uygulanıyor
-• Bellek azaldığında ve önbellek onarıldığında daha az çökme
+• Android 14 ve sonrasında kopyalama, uygulamadan çıkınca ya da ekranı kilitleyince sürer, sistem durdurursa da yeniden başlar
+• Yeni bir seçenek kopyalama sırasında ekranı açık tutar, Android 13 ve öncesinin hâlâ ihtiyaç duyduğu şey
+• Bağlantı kaybeden kopya bunu söyler ve tamamlamayı önerir
+• Önbelleksiz, bir kopyayı sürdürmek artık tüm siteyi indirmiyor
