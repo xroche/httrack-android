@@ -82,25 +82,21 @@ public final class OptionValues {
   }
 
   /**
-   * True if the value is a digit run inside min..max inclusive. A run too long
-   * to hold is over max, not an error worth reporting.
+   * True if the value is a digit run no greater than max. A run too long to hold
+   * is over max, not an error worth reporting.
    *
    * @param value
    *          The value, possibly null
-   * @param min
-   *          Lowest value the engine accepts
    * @param max
    *          Highest value the engine accepts
-   * @return true if the value is digits within min..max
+   * @return true if the value is digits no greater than max
    */
-  public static boolean isInRange(final String value, final int min,
-      final int max) {
+  public static boolean isAtMost(final String value, final int max) {
     if (!isDigits(value)) {
       return false;
     }
     try {
-      final long parsed = Long.parseLong(value);
-      return parsed >= min && parsed <= max;
+      return Long.parseLong(value) <= max;
     } catch (final NumberFormatException nfe) {
       return false;
     }

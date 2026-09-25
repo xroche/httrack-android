@@ -307,8 +307,8 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("RemoveRateout",
           hostControlHandler.getRateMapper()),
       new Pair<String, OptionMapper>("Retry", new SimpleOption("R")),
-      new Pair<String, OptionMapper>("MaxRetryAfter", new BoundedOption(
-          "%J", 0, MAX_RETRY_AFTER_LIMIT)),
+      new Pair<String, OptionMapper>("MaxRetryAfter",
+          new CappedOption("%J", MAX_RETRY_AFTER_LIMIT)),
       new Pair<String, OptionMapper>("RateOut", new SimpleOption("J")),
       new Pair<String, OptionMapper>("ParseAll", new SimpleOption0("%P")),
       new Pair<String, OptionMapper>("Near", new SimpleOptionFlag("n")),
@@ -1680,24 +1680,22 @@ public class OptionsMapper {
   }
 
   /**
-   * Simple option whose value the engine refuses outside a range.<br/>
+   * Simple option whose value the engine refuses over a ceiling.<br/>
    * Example: -%J60
    */
-  public static class BoundedOption extends SimpleOption {
-    protected final int min;
+  public static class CappedOption extends SimpleOption {
     protected final int max;
 
-    public BoundedOption(final String option, final int min, final int max) {
+    public CappedOption(final String option, final int max) {
       super(option);
-      this.min = min;
       this.max = max;
     }
 
     @Override
     public void emit(final List<String> commandline, final String value) {
-      /* Out of range the engine panics and no crawl starts, so drop it instead.
+      /* Over the cap the engine panics and no crawl starts, so drop it instead.
        * A saved profile can hold any value, and no layout attribute bounds one. */
-      if (OptionValues.isInRange(value, min, max)) {
+      if (OptionValues.isAtMost(value, max)) {
         commandline.add("-" + option + value);
       }
     }

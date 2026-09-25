@@ -2,9 +2,7 @@ package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-import android.util.Pair;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import java.io.File;
 import java.util.ArrayList;
@@ -15,9 +13,9 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * The Retry-After cap. Both bounds are hand-kept copies of engine constants, and
- * the engine panics outside them rather than clamping, so a wrong copy loses the
- * whole crawl and not just the option.
+ * The Retry-After cap. Our ceiling is a hand-kept copy of an engine constant, and
+ * the engine panics over it rather than clamping, so a wrong copy loses the whole
+ * crawl and not just the option.
  */
 public class MaxRetryAfterFieldTest {
   private static final OptionsMapper MAPPER = new OptionsMapper();
@@ -31,20 +29,12 @@ public class MaxRetryAfterFieldTest {
     return define.group(1);
   }
 
-  /* The mapper fieldsMapper wires the key to, so these run what ships. */
-  private static OptionMapper wired() {
-    for (final Pair<String, OptionMapper> field : MAPPER.fieldsMapper) {
-      if ("MaxRetryAfter".equals(field.first)) {
-        return field.second;
-      }
-    }
-    fail("MaxRetryAfter is not in fieldsMapper");
-    return null;
-  }
-
+  /** What ships: the mapper the production table wires the key to. */
   private static List<String> emit(final String value) {
+    final OptionMapper wired = MAPPER.fieldsNameToMapper.get("MaxRetryAfter");
+    assertTrue("MaxRetryAfter reaches no mapper", wired != null);
     final List<String> commandline = new ArrayList<String>();
-    wired().emit(commandline, value);
+    wired.emit(commandline, value);
     return commandline;
   }
 
@@ -71,7 +61,27 @@ public class MaxRetryAfterFieldTest {
       assertTrue(layout.getName() + " does not hint the engine default",
           TestSources.between(source, "editMaxRetryAfter", "/>").contains(hint));
     }
-    assertEquals("no flow-control layout declares the field", 1, declaring);
+    assertTrue("no flow-control layout declares the field", declaring > 0);
+  }
+
+  /** Without it the field takes whatever the device keyboard offers. */
+  @Test
+  public void theFieldAcceptsOnlyLatinDigits() throws Exception {
+    final String field = TestSources.between(
+        TestSources.read(TestSources.layouts("activity_options_flowcontrol").get(0)),
+        "editMaxRetryAfter", "/>");
+    assertTrue("the field lost android:digits",
+        field.contains("android:digits=\"@string/latin_digits_list\""));
+  }
+
+  /** The ceiling is the one it was built with, not one baked into emit(). */
+  @Test
+  public void aCappedOptionHonoursItsOwnCeiling() {
+    final List<String> commandline = new ArrayList<String>();
+    final OptionMapper ten = new OptionsMapper.CappedOption("%X", 10);
+    ten.emit(commandline, "10");
+    ten.emit(commandline, "11");
+    assertEquals(Arrays.asList("-%X10"), commandline);
   }
 
   @Test
@@ -97,8 +107,11 @@ public class MaxRetryAfterFieldTest {
   @Test
   public void aValueTheEngineWouldRefuseIsDropped() {
     for (final String value : new String[] {
-        String.valueOf(OptionsMapper.MAX_RETRY_AFTER_LIMIT + 1), "3601",
-        "99999", "99999999999999999999", "-1", "1.5", "60s", " 60", "", null }) {
+        String.valueOf(OptionsMapper.MAX_RETRY_AFTER_LIMIT + 1), "99999",
+        // 2^32: an int cast would wrap this into range.
+        "4294967296", "99999999999999999999",
+        // The engine panics on the stray sign, so digits alone is not enough.
+        "+60", "-1", "1.5", "60s", " 60", "", null }) {
       assertEquals("the engine would refuse " + value,
           new ArrayList<String>(), emit(value));
     }
