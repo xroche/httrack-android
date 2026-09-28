@@ -88,7 +88,7 @@ public final class OptionValues {
    * @param value
    *          The value, possibly null
    * @param max
-   *          Highest value the engine accepts
+   *          Highest value to accept
    * @return true if the value is digits no greater than max
    */
   public static boolean isAtMost(final String value, final int max) {
