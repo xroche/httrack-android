@@ -13,9 +13,8 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * The Retry-After cap. Our ceiling is a hand-kept copy of an engine constant, and
- * the engine panics over it rather than clamping, so a wrong copy loses the whole
- * crawl and not just the option.
+ * The Retry-After cap. Our ceiling is a hand-kept copy of an engine constant,
+ * so a wrong copy sends the engine a value it clips or refuses.
  */
 public class MaxRetryAfterFieldTest {
   private static final OptionsMapper MAPPER = new OptionsMapper();
@@ -102,8 +101,8 @@ public class MaxRetryAfterFieldTest {
         emit(String.valueOf(OptionsMapper.MAX_RETRY_AFTER_LIMIT)));
   }
 
-  /* Each of these panics htscoremain.c and returns -1, so the crawl never
-     starts. A profile saved by another front end can hold any of them. */
+  /* The engine clips or refuses each of these, and a profile saved by another
+     front end can hold any of them. */
   @Test
   public void aValueTheEngineWouldRefuseIsDropped() {
     for (final String value : new String[] {

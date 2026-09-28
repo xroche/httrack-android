@@ -54,7 +54,7 @@ public class OptionsMapper {
   protected static final String PREFS_NAME = "HTTrackDefaultSettings";
   protected static final String BASE_NAME = "BasePath";
 
-  /** Mirrors the engine's HTS_MAX_RETRY_AFTER_LIMIT, which it panics above. */
+  /** Mirrors the engine's HTS_MAX_RETRY_AFTER_LIMIT, which clips a larger value. */
   protected static final int MAX_RETRY_AFTER_LIMIT = 3600;
 
   /** Serialization key of the cache checkbox, which CachePolicy gates on the action. */
