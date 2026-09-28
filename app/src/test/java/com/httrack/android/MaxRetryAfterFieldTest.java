@@ -14,7 +14,7 @@ import org.junit.Test;
 
 /**
  * The Retry-After cap. Our ceiling is a hand-kept copy of an engine constant,
- * so a wrong copy sends the engine a value it clips or refuses.
+ * so a wrong copy makes the engine clip or reject the value.
  */
 public class MaxRetryAfterFieldTest {
   private static final OptionsMapper MAPPER = new OptionsMapper();
@@ -101,17 +101,20 @@ public class MaxRetryAfterFieldTest {
         emit(String.valueOf(OptionsMapper.MAX_RETRY_AFTER_LIMIT)));
   }
 
-  /* The engine clips or refuses each of these, and a profile saved by another
-     front end can hold any of them. */
+  /* The engine clips, panics, or reads the leftover as another flag, and dropping
+     leaves its 60s default rather than its 3600s ceiling. A profile saved by
+     another front end can hold any of them. */
   @Test
-  public void aValueTheEngineWouldRefuseIsDropped() {
+  public void aValueTheEngineWouldMishandleIsDropped() {
     for (final String value : new String[] {
         String.valueOf(OptionsMapper.MAX_RETRY_AFTER_LIMIT + 1), "99999",
         // 2^32: an int cast would wrap this into range.
         "4294967296", "99999999999999999999",
         // The engine panics on the stray sign, so digits alone is not enough.
-        "+60", "-1", "1.5", "60s", " 60", "", null }) {
-      assertEquals("the engine would refuse " + value,
+        "+60", "-1", "1.5",
+        // -%J60s stores 60, then reads the leftover 's' as -s, weakening robots.txt.
+        "60s", " 60", "", null }) {
+      assertEquals("the engine would mishandle " + value,
           new ArrayList<String>(), emit(value));
     }
   }

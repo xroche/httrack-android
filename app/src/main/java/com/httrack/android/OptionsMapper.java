@@ -54,7 +54,7 @@ public class OptionsMapper {
   protected static final String PREFS_NAME = "HTTrackDefaultSettings";
   protected static final String BASE_NAME = "BasePath";
 
-  /** Mirrors the engine's HTS_MAX_RETRY_AFTER_LIMIT, which clips a larger value. */
+  /** Mirrors HTS_MAX_RETRY_AFTER_LIMIT, the ceiling the engine clips to. */
   protected static final int MAX_RETRY_AFTER_LIMIT = 3600;
 
   /** Serialization key of the cache checkbox, which CachePolicy gates on the action. */
@@ -1680,7 +1680,7 @@ public class OptionsMapper {
   }
 
   /**
-   * Simple option whose value the engine refuses over a ceiling.<br/>
+   * Simple option whose value the engine clips over a ceiling.<br/>
    * Example: -%J60
    */
   public static class CappedOption extends SimpleOption {
@@ -1693,8 +1693,8 @@ public class OptionsMapper {
 
     @Override
     public void emit(final List<String> commandline, final String value) {
-      /* Over the cap the engine panics and no crawl starts, so drop it instead.
-       * A saved profile can hold any value, and no layout attribute bounds one. */
+      /* Over the cap the engine clips to its ceiling, so drop it instead. A saved
+       * profile can hold any value, and no layout attribute bounds one. */
       if (OptionValues.isAtMost(value, max)) {
         commandline.add("-" + option + value);
       }
