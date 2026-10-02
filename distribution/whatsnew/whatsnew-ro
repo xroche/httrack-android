@@ -1,6 +1,5 @@
-HTTrack 3.50.4: o copiere nouă nu mai este limitată la 25 KB/s.
+HTTrack 3.50.5: corecții pentru o copiere pe care o opriți.
 
-• O copiere nouă ajunge acum la 100 KB/s în loc de 25 KB/s. O limită setată de tine rămâne valabilă
-• Dacă un site cere să aștepți, HTTrack așteaptă și încearcă din nou. Poți seta așteptarea maximă
-• Paginile care folosesc module JavaScript sunt copiate mai complet
-• HTTrack aplică acum doar regulile robots.txt scrise pentru HTTrack
+• Dacă opriți în timp ce HTTrack verifică un tip de fișier, linkul arată tot spre pagina reală și nu deranjează altă descărcare
+• O copiere oprită lasă mai puține fișiere și foldere de prisos în copie
+• O scriere eșuată șterge fișierul parțial, iar copierea următoare curăță restul

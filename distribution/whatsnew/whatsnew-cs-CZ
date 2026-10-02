@@ -1,6 +1,5 @@
-HTTrack 3.50.4: nové kopírování už není omezeno na 25 KB/s.
+HTTrack 3.50.5: opravy pro kopírování, které zastavíte.
 
-• Nové kopírování teď jde až do 100 KB/s místo 25 KB/s. Limit, který nastavíte sami, platí dál
-• Pokud web požádá o čekání, HTTrack počká a zkusí to znovu. Můžete nastavit nejdelší čekání
-• Stránky používající moduly JavaScriptu se kopírují úplněji
-• HTTrack teď uplatňuje jen pravidla robots.txt napsaná pro HTTrack
+• Když zastavíte, zatímco HTTrack zjišťuje typ souboru, odkaz stále míří na skutečnou stránku a neruší jiné stahování
+• Zastavené kopírování nechává ve vaší kopii méně zbytečných souborů a složek
+• Neúspěšný zápis smaže svůj dílčí soubor a další kopírování uklidí zbytek

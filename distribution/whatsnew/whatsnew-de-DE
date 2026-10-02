@@ -1,6 +1,5 @@
-HTTrack 3.50.4: Eine neue Kopie ist nicht mehr auf 25 KB/s begrenzt.
+HTTrack 3.50.5: Korrekturen für eine Kopie, die Sie anhalten.
 
-• Eine neue Kopie läuft jetzt mit bis zu 100 KB/s statt 25 KB/s. Ein Limit, das Sie selbst setzen, gilt weiterhin
-• Bittet eine Website um Wartezeit, wartet HTTrack und versucht es erneut. Sie können die längste Wartezeit festlegen
-• Seiten, die JavaScript-Module verwenden, werden vollständiger kopiert
-• HTTrack wendet jetzt nur die robots.txt-Regeln an, die für HTTrack geschrieben sind
+• Wenn Sie anhalten, während HTTrack einen Dateityp prüft, zeigt der Link weiterhin auf die echte Seite und stört keinen anderen Download
+• Eine angehaltene Kopie lässt weniger überflüssige Dateien und Ordner im Spiegel zurück
+• Ein fehlgeschlagener Schreibvorgang löscht seine Teildatei, die nächste Kopie räumt den Rest auf

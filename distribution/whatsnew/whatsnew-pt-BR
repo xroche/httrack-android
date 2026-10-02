@@ -1,6 +1,5 @@
-HTTrack 3.50.4: uma cópia nova não é mais limitada a 25 KB/s.
+HTTrack 3.50.5: correções para uma cópia que você para.
 
-• Uma cópia nova chega agora a 100 KB/s em vez de 25 KB/s. Um limite definido por você continua valendo
-• Se um site pedir para esperar, o HTTrack espera e tenta de novo. Você pode definir a espera máxima
-• As páginas que usam módulos JavaScript são copiadas de forma mais completa
-• O HTTrack aplica agora só as regras de robots.txt escritas para o HTTrack
+• Se você para uma cópia enquanto o HTTrack verifica um tipo de arquivo, o link continua apontando para a página real e não atrapalha outro download
+• Uma cópia interrompida deixa menos arquivos e pastas sobrando na sua cópia
+• Uma gravação que falha apaga o arquivo parcial, e a cópia seguinte limpa o resto

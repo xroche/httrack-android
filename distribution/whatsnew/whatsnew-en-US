@@ -1,6 +1,5 @@
-HTTrack 3.50.4: a new copy is no longer limited to 25 KB/s.
+HTTrack 3.50.5: fixes for a copy you stop.
 
-• A new copy now runs at up to 100 KB/s instead of 25 KB/s. A limit you set yourself still applies
-• If a site asks you to wait, HTTrack waits and tries again. You can set the longest wait
-• Pages that use JavaScript modules are copied more completely
-• HTTrack now applies only the robots.txt rules written for it
+• Stopping a copy while HTTrack checks a file type now leaves the link pointing at the real page, and cannot disturb another download
+• A stopped copy leaves fewer leftover files and folders in your mirror
+• A failed write drops its partial file, and the next copy clears what an interrupted one left
