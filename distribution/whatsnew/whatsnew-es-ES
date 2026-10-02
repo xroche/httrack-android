@@ -1,6 +1,6 @@
-HTTrack 3.50.5: una copia que detiene no deja archivos a medio escribir.
+HTTrack 3.50.5: una copia que detiene conserva enlaces que funcionan.
 
-• Una copia que detiene ya no deja archivos sin terminar
-• Una página que nunca se guarda ya no deja una carpeta vacía en su copia
-• Detener una copia ya no puede confundir el nombre de otro archivo que se está guardando
+• Un enlace que nunca se descargó apunta a la web, no a una página que nunca se guardó
+• Las páginas que nunca se guardan ya no dejan carpetas vacías en su copia
+• Detener una copia ya no puede sobrescribir el nombre de archivo de otra descarga
 • Una escritura fallida borra su archivo parcial, y la copia siguiente limpia el resto

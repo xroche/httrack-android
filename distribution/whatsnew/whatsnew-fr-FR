@@ -1,6 +1,6 @@
-HTTrack 3.50.5 : une copie que vous arrêtez ne laisse aucun fichier à moitié écrit.
+HTTrack 3.50.5 : une copie que vous arrêtez garde des liens qui marchent.
 
-• Une copie que vous arrêtez ne laisse plus de fichiers inachevés
-• Une page jamais enregistrée ne laisse plus de dossier vide dans votre copie
-• Arrêter une copie ne peut plus confondre le nom d'un autre fichier en cours d'enregistrement
+• Un lien jamais téléchargé pointe vers le web, et non vers une page jamais enregistrée
+• Les pages jamais enregistrées ne laissent plus de dossiers vides dans votre copie
+• Arrêter une copie ne peut plus écraser le nom de fichier d'un autre téléchargement
 • Une écriture en échec supprime son fichier partiel, et la copie suivante nettoie le reste

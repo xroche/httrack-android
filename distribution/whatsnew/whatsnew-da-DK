@@ -1,6 +1,6 @@
-HTTrack 3.50.5: en kopiering, du stopper, efterlader ingen halve filer.
+HTTrack 3.50.5: en stoppet kopiering beholder links, der virker.
 
-• En kopiering, du stopper, efterlader ikke længere ufærdige filer
-• En side, der aldrig bliver gemt, efterlader ikke længere en tom mappe i din kopi
-• At stoppe en kopiering kan ikke længere bytte om på navnet på en anden fil
+• Et link, der aldrig blev hentet, peger på nettet og ikke på en side, der aldrig blev gemt
+• Sider, der aldrig bliver gemt, efterlader ikke længere tomme mapper i din kopi
+• At stoppe en kopiering kan ikke længere overskrive filnavnet på en anden hentning
 • En mislykket skrivning sletter sin halve fil, og næste kopiering rydder resten op

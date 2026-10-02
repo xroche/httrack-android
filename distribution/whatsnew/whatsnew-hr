@@ -1,6 +1,6 @@
-HTTrack 3.50.5: kopiranje koje zaustavite ne ostavlja napola zapisane datoteke.
+HTTrack 3.50.5: zaustavljeno kopiranje ostavlja veze koje rade.
 
-• Kopiranje koje zaustavite više ne ostavlja nedovršene datoteke
-• Stranica koja se nikada ne spremi više ne ostavlja praznu mapu u vašoj kopiji
-• Zaustavljanje kopiranja više ne može zamijeniti ime druge datoteke koja se sprema
+• Veza koja nikada nije preuzeta pokazuje na web, a ne na stranicu koja nije spremljena
+• Stranice koje se nikada ne spreme više ne ostavljaju prazne mape u vašoj kopiji
+• Zaustavljanje kopiranja više ne može prepisati ime datoteke drugog preuzimanja
 • Neuspjeli zapis briše svoju nepotpunu datoteku, a sljedeće kopiranje počisti ostatak

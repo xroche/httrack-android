@@ -1,6 +1,6 @@
-HTTrack 3.50.5: una copia che fermi non lascia file scritti a metà.
+HTTrack 3.50.5: una copia che fermi conserva collegamenti che funzionano.
 
-• Una copia che fermi non lascia più file incompleti
-• Una pagina che non viene mai salvata non lascia più una cartella vuota nella copia
-• Fermare una copia non può più confondere il nome di un altro file in salvataggio
+• Un collegamento mai scaricato punta al web, non a una pagina che non è stata salvata
+• Le pagine mai salvate non lasciano più cartelle vuote nella tua copia
+• Fermare una copia non può più sovrascrivere il nome di file di un altro download
 • Una scrittura fallita elimina il file parziale, e la copia successiva pulisce il resto

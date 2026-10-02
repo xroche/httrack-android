@@ -1,6 +1,6 @@
-HTTrack 3.50.5: kopírovanie, ktoré zastavíte, nenechá rozpísané súbory.
+HTTrack 3.50.5: zastavené kopírovanie necháva funkčné odkazy.
 
-• Kopírovanie, ktoré zastavíte, už nenecháva nedokončené súbory
-• Stránka, ktorá sa nikdy neuloží, už nenecháva vo vašej kópii prázdny priečinok
-• Zastavenie kopírovania už nemôže zameniť názov iného ukladaného súboru
+• Odkaz, ktorý sa nikdy nestiahol, smeruje na web, a nie na stránku, ktorá sa neuložila
+• Stránky, ktoré sa nikdy neuložia, už nenechávajú vo vašej kópii prázdne priečinky
+• Zastavenie kopírovania už nemôže prepísať názov súboru iného stahovania
 • Neúspešný zápis zmaže svoj čiastočný súbor a ďalšie kopírovanie uklidí zvyšok

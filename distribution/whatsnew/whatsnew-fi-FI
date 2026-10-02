@@ -1,6 +1,6 @@
-HTTrack 3.50.5: pysäyttämäsi kopiointi ei jätä puolivalmiita tiedostoja.
+HTTrack 3.50.5: pysäytetty kopiointi jättää toimivat linkit.
 
-• Pysäyttämäsi kopiointi ei enää jätä kesken jääneitä tiedostoja
-• Sivu, jota ei koskaan tallenneta, ei enää jätä tyhjää kansiota kopioosi
-• Kopioinnin pysäytys ei voi enää sekoittaa toisen tallennettavan tiedoston nimeä
+• Linkki, jota ei koskaan noudettu, osoittaa verkkoon eikä sivuun, jota ei tallennettu
+• Sivut, joita ei koskaan tallenneta, eivät enää jätä tyhjiä kansioita kopioosi
+• Kopioinnin pysäytys ei voi enää korvata toisen latauksen tiedostonimeä
 • Epäonnistunut kirjoitus poistaa osittaisen tiedoston, ja seuraava kopiointi siivoaa loput
