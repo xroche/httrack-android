@@ -1,6 +1,5 @@
-HTTrack 3.50.5: zatrzymane kopiowanie zostawia działające odnośniki.
+HTTrack 3.50.5: poprawki dla kopiowania, które zatrzymasz.
 
-• Odnośnik, który nigdy nie został pobrany, wskazuje na sieć, a nie na niezapisaną stronę
-• Strony, które nigdy nie są zapisywane, nie zostawiają już pustych folderów w kopii
-• Zatrzymanie kopiowania nie może już nadpisać nazwy pliku innego pobierania
+• Gdy zatrzymasz w chwili, gdy HTTrack sprawdza typ pliku, odnośnik wciąż wskazuje prawdziwą stronę i nie przeszkadza innemu pobieraniu
+• Zatrzymane kopiowanie zostawia w kopii mniej zbędnych plików i folderów
 • Nieudany zapis usuwa swój niepełny plik, a następne kopiowanie sprząta resztę

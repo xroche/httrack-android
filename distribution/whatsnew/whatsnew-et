@@ -1,6 +1,5 @@
-HTTrack 3.50.5: peatatud kopeerimine jätab töötavad lingid.
+HTTrack 3.50.5: parandused peatatud kopeerimisele.
 
-• Link, mida kunagi ei laaditud, osutab veebi, mitte lehele, mida kunagi ei salvestatud
-• Lehed, mida kunagi ei salvestata, ei jäta enam tühje kaustu teie koopiasse
-• Kopeerimise peatamine ei saa enam üle kirjutada teise allalaadimise failinime
+• Kui peatate kopeerimise ajal, mil HTTrack kontrollib failitüüpi, osutab link endiselt päris lehele ega sega teist allalaadimist
+• Peatatud kopeerimine jätab teie koopiasse vähem ülejäänud faile ja kaustu
 • Ebaõnnestunud kirjutamine kustutab oma pooliku faili ja järgmine kopeerimine koristab ülejäänu

@@ -1,6 +1,5 @@
-HTTrack 3.50.5: Eine angehaltene Kopie behält funktionierende Links.
+HTTrack 3.50.5: Korrekturen für eine Kopie, die Sie anhalten.
 
-• Ein nie geladener Link zeigt ins Web, nicht auf eine nie gespeicherte Seite
-• Nie gespeicherte Seiten lassen keine leeren Ordner in Ihrer Kopie zurück
-• Das Anhalten kann den Dateinamen eines anderen Downloads nicht mehr überschreiben
+• Halten Sie an, während HTTrack einen Dateityp prüft, zeigt der Link weiter auf die echte Seite und stört keinen anderen Download
+• Eine angehaltene Kopie lässt weniger überflüssige Dateien und Ordner im Spiegel zurück
 • Ein fehlgeschlagener Schreibvorgang löscht seine Teildatei, die nächste Kopie räumt den Rest auf

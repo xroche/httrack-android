@@ -1,6 +1,5 @@
-HTTrack 3.50.5: durdurulan bir kopyalama çalışan bağlantılar bırakır.
+HTTrack 3.50.5: durdurduğunuz bir kopyalama için düzeltmeler.
 
-• Hiç indirilmemiş bir bağlantı web'i gösterir, hiç kaydedilmemiş bir sayfayı değil
-• Hiç kaydedilmeyen sayfalar artık kopyanızda boş klasör bırakmıyor
-• Kopyalamayı durdurmak artık başka bir indirmenin dosya adının üzerine yazamaz
+• HTTrack bir dosya türünü denetlerken durdurursanız, bağlantı gerçek sayfayı göstermeye devam eder ve başka bir indirmeyi bozmaz
+• Durdurulan bir kopyalama kopyanızda daha az gereksiz dosya ve klasör bırakır
 • Başarısız bir yazma yarım dosyayı siler, sonraki kopyalama kalanı temizler

@@ -1,6 +1,5 @@
-HTTrack 3.50.5: o copiere oprită păstrează linkuri care funcționează.
+HTTrack 3.50.5: corecții pentru o copiere pe care o opriți.
 
-• Un link care nu a fost descărcat arată spre web, nu spre o pagină care nu a fost salvată
-• Paginile care nu sunt salvate niciodată nu mai lasă foldere goale în copie
-• Oprirea unei copieri nu mai poate suprascrie numele de fișier al altei descărcări
+• Dacă opriți în timp ce HTTrack verifică un tip de fișier, linkul arată tot spre pagina reală și nu deranjează altă descărcare
+• O copiere oprită lasă mai puține fișiere și foldere de prisos în copie
 • O scriere eșuată șterge fișierul parțial, iar copierea următoare curăță restul

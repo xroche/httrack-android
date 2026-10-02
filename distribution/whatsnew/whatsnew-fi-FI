@@ -1,6 +1,5 @@
-HTTrack 3.50.5: pysäytetty kopiointi jättää toimivat linkit.
+HTTrack 3.50.5: korjauksia pysäytettyyn kopiointiin.
 
-• Linkki, jota ei koskaan noudettu, osoittaa verkkoon eikä sivuun, jota ei tallennettu
-• Sivut, joita ei koskaan tallenneta, eivät enää jätä tyhjiä kansioita kopioosi
-• Kopioinnin pysäytys ei voi enää korvata toisen latauksen tiedostonimeä
+• Jos pysäytät kopioinnin kun HTTrack tarkistaa tiedostotyyppiä, linkki osoittaa edelleen oikeaan sivuun eikä häiritse toista latausta
+• Pysäytetty kopiointi jättää vähemmän turhia tiedostoja ja kansioita kopioosi
 • Epäonnistunut kirjoitus poistaa osittaisen tiedoston, ja seuraava kopiointi siivoaa loput

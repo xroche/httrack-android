@@ -1,6 +1,5 @@
-HTTrack 3.50.5: a leállított másolás működő hivatkozásokat hagy.
+HTTrack 3.50.5: javítások a leállított másoláshoz.
 
-• A soha le nem töltött hivatkozás a webre mutat, nem egy soha el nem mentett oldalra
-• A soha el nem mentett oldalak már nem hagynak üres mappákat a másolatban
-• A másolás leállítása már nem írhatja felül egy másik letöltés fájlnevét
+• Ha akkor állítja le, amikor a HTTrack fájltípust ellenőriz, a hivatkozás továbbra is a valódi oldalra mutat, és nem zavar másik letöltést
+• A leállított másolás kevesebb felesleges fájlt és mappát hagy a másolatban
 • A sikertelen írás törli a részleges fájlt, a következő másolás elviszi a többit

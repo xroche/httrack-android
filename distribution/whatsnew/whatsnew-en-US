@@ -1,6 +1,5 @@
-HTTrack 3.50.5: a copy you stop leaves working links.
+HTTrack 3.50.5: fixes for a copy you stop.
 
-• A link your stopped copy never fetched now points at the web, not at a page that was never saved
-• Pages that are never saved no longer leave empty folders in your copy
-• Stopping a copy can no longer overwrite the file name of another download
+• Stopping a copy while HTTrack checks a file type now leaves the link pointing at the real page, and cannot disturb another download
+• A stopped copy leaves fewer leftover files and folders in your mirror
 • A failed write drops its partial file, and the next copy clears what an interrupted one left

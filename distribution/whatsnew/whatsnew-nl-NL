@@ -1,6 +1,5 @@
-HTTrack 3.50.5: een gestopte kopie houdt werkende links.
+HTTrack 3.50.5: correcties voor een kopie die u stopt.
 
-• Een nooit opgehaalde link wijst naar het web, niet naar een pagina die nooit is opgeslagen
-• Nooit opgeslagen pagina's laten geen lege mappen meer achter in uw kopie
-• Het stoppen van een kopie kan de bestandsnaam van een andere download niet meer overschrijven
+• Stopt u terwijl HTTrack een bestandstype controleert, dan blijft de link naar de echte pagina wijzen en stoort hij geen andere download
+• Een gestopte kopie laat minder overgebleven bestanden en mappen achter in uw kopie
 • Een mislukte schrijfactie wist het halve bestand, en de volgende kopie ruimt de rest op

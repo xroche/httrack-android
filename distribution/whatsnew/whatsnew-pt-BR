@@ -1,6 +1,5 @@
-HTTrack 3.50.5: uma cópia que você para mantém links que funcionam.
+HTTrack 3.50.5: correções para uma cópia que você para.
 
-• Um link que nunca foi baixado aponta para a web, não para uma página que nunca foi salva
-• Páginas que nunca são salvas não deixam mais pastas vazias na sua cópia
-• Parar uma cópia não pode mais sobrescrever o nome de arquivo de outro download
+• Se você para uma cópia enquanto o HTTrack verifica um tipo de arquivo, o link continua apontando para a página real e não atrapalha outro download
+• Uma cópia interrompida deixa menos arquivos e pastas sobrando na sua cópia
 • Uma gravação que falha apaga o arquivo parcial, e a cópia seguinte limpa o resto

@@ -1,6 +1,5 @@
-HTTrack 3.50.5: zastavené kopírovanie necháva funkčné odkazy.
+HTTrack 3.50.5: opravy pre kopírovanie, ktoré zastavíte.
 
-• Odkaz, ktorý sa nikdy nestiahol, smeruje na web, a nie na stránku, ktorá sa neuložila
-• Stránky, ktoré sa nikdy neuložia, už nenechávajú vo vašej kópii prázdne priečinky
-• Zastavenie kopírovania už nemôže prepísať názov súboru iného stahovania
+• Keď zastavíte, zatiaľ čo HTTrack zisťuje typ súboru, odkaz stále smeruje na skutočnú stránku a neruší iné stahovanie
+• Zastavené kopírovanie necháva vo vašej kópii menej zbytočných súborov a priečinkov
 • Neúspešný zápis zmaže svoj čiastočný súbor a ďalšie kopírovanie uklidí zvyšok

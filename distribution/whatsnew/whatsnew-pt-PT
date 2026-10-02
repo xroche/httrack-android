@@ -1,6 +1,5 @@
-HTTrack 3.50.5: uma cópia que para mantém ligações que funcionam.
+HTTrack 3.50.5: correções para uma cópia que para.
 
-• Uma ligação que nunca foi transferida aponta para a web, não para uma página não guardada
-• As páginas que nunca são guardadas já não deixam pastas vazias na sua cópia
-• Parar uma cópia já não pode substituir o nome de ficheiro de outra transferência
+• Se parar uma cópia enquanto o HTTrack verifica um tipo de ficheiro, a ligação continua a apontar para a página real e não atrapalha outra transferência
+• Uma cópia parada deixa menos ficheiros e pastas a mais na sua cópia
 • Uma escrita falhada apaga o ficheiro parcial, e a cópia seguinte limpa o resto

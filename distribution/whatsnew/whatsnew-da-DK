@@ -1,6 +1,5 @@
-HTTrack 3.50.5: en stoppet kopiering beholder links, der virker.
+HTTrack 3.50.5: rettelser til en kopiering, du stopper.
 
-• Et link, der aldrig blev hentet, peger på nettet og ikke på en side, der aldrig blev gemt
-• Sider, der aldrig bliver gemt, efterlader ikke længere tomme mapper i din kopi
-• At stoppe en kopiering kan ikke længere overskrive filnavnet på en anden hentning
+• Stopper du, mens HTTrack tjekker en filtype, peger linket stadig på den rigtige side og forstyrrer ikke en anden hentning
+• En stoppet kopiering efterlader færre overskydende filer og mapper i din kopi
 • En mislykket skrivning sletter sin halve fil, og næste kopiering rydder resten op

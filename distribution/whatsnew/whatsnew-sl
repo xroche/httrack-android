@@ -1,6 +1,5 @@
-HTTrack 3.50.5: ustavljeno kopiranje pusti delujoče povezave.
+HTTrack 3.50.5: popravki za kopiranje, ki ga ustavite.
 
-• Povezava, ki ni bila nikoli prenesena, kaže na splet, ne na nikoli shranjeno stran
-• Strani, ki niso nikoli shranjene, ne puščajo več praznih map v vaši kopiji
-• Ustavitev kopiranja ne more več prepisati imena datoteke drugega prenosa
+• Če ustavite, medtem ko HTTrack preverja vrsto datoteke, povezava še vedno kaže na pravo stran in ne moti drugega prenosa
+• Ustavljeno kopiranje pusti v vaši kopiji manj nepotrebnih datotek in map
 • Neuspelo pisanje izbriše delno datoteko, naslednje kopiranje pospravi ostanek
