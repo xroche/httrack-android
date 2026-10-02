@@ -1,6 +1,6 @@
-HTTrack 3.50.5 : une copie que vous arrêtez laisse un miroir propre.
+HTTrack 3.50.5 : une copie que vous arrêtez ne laisse aucun fichier à moitié écrit.
 
-• Une copie que vous arrêtez ne laisse plus de fichiers inachevés ni de dossiers vides
-• Un lien jamais téléchargé pointe toujours vers le web, et non vers un fichier jamais enregistré
-• Avec une limite de temps, une copie se termine à l'heure au lieu d'attendre une résolution bloquée
-• Les fichiers temporaires laissés par une écriture en échec ou une copie tuée sont supprimés
+• Une copie que vous arrêtez ne laisse plus de fichiers inachevés
+• Une page jamais enregistrée ne laisse plus de dossier vide dans votre copie
+• Arrêter une copie ne peut plus confondre le nom d'un autre fichier en cours d'enregistrement
+• Une écriture en échec supprime son fichier partiel, et la copie suivante nettoie le reste

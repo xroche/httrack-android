@@ -1,6 +1,6 @@
-HTTrack 3.50.5: Eine Kopie, die Sie anhalten, lässt eine saubere Kopie zurück.
+HTTrack 3.50.5: Eine Kopie, die Sie anhalten, lässt keine halb geschriebenen Dateien zurück.
 
-• Eine Kopie, die Sie anhalten, lässt keine unfertigen Dateien und keine leeren Ordner zurück
-• Ein nie geladener Link zeigt weiter ins Web, nicht auf eine Datei, die nie gespeichert wurde
-• Mit einem Zeitlimit endet eine Kopie rechtzeitig, statt auf eine hängende Namensauflösung zu warten
-• Temporäre Dateien nach einem fehlgeschlagenen Schreibvorgang oder einer getöteten Kopie werden entfernt
+• Eine Kopie, die Sie anhalten, lässt keine unfertigen Dateien zurück
+• Eine nie gespeicherte Seite lässt keinen leeren Ordner in Ihrer Kopie zurück
+• Das Anhalten kann den Namen einer anderen Datei nicht mehr verwechseln
+• Ein fehlgeschlagener Schreibvorgang löscht seine Teildatei, die nächste Kopie räumt den Rest auf

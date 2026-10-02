@@ -1,6 +1,6 @@
-HTTrack 3.50.5: kopiowanie, które zatrzymasz, zostawia czystą kopię.
+HTTrack 3.50.5: kopiowanie, które zatrzymasz, nie zostawia plików w połowie.
 
-• Kopiowanie, które zatrzymasz, nie zostawia już niedokończonych plików ani pustych folderów
-• Odnośnik, który nigdy nie został pobrany, wciąż wskazuje na sieć, a nie na nigdy niezapisany plik
-• Z limitem czasu kopiowanie kończy się na czas, zamiast czekać na zablokowane zapytanie o nazwę
-• Pliki tymczasowe po nieudanym zapisie lub po zabitym kopiowaniu są teraz usuwane
+• Kopiowanie, które zatrzymasz, nie zostawia już niedokończonych plików
+• Strona, która nigdy nie zostaje zapisana, nie zostawia już pustego folderu w kopii
+• Zatrzymanie kopiowania nie może już pomylić nazwy innego zapisywanego pliku
+• Nieudany zapis usuwa swój niepełny plik, a następne kopiowanie sprząta resztę

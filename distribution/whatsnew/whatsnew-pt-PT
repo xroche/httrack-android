@@ -1,6 +1,6 @@
-HTTrack 3.50.5: uma cópia que para deixa um espelho limpo.
+HTTrack 3.50.5: uma cópia que para não deixa ficheiros a meio.
 
-• Uma cópia que para já não deixa ficheiros incompletos nem pastas vazias
-• Uma ligação que nunca foi transferida continua a apontar para a web, não para um ficheiro nunca guardado
-• Com um limite de tempo, uma cópia termina a horas em vez de esperar por uma consulta bloqueada
-• Os ficheiros temporários de uma escrita falhada ou de uma cópia terminada à força são removidos
+• Uma cópia que para já não deixa ficheiros incompletos
+• Uma página que nunca é guardada já não deixa uma pasta vazia na sua cópia
+• Parar uma cópia já não pode trocar o nome de outro ficheiro que está a ser guardado
+• Uma escrita falhada apaga o ficheiro parcial, e a cópia seguinte limpa o resto

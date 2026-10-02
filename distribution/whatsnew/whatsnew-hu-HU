@@ -1,6 +1,6 @@
-HTTrack 3.50.5: a leállított másolás tiszta másolatot hagy.
+HTTrack 3.50.5: a leállított másolás nem hagy félig írt fájlokat.
 
-• A leállított másolás már nem hagy félbehagyott fájlokat és üres mappákat
-• A soha le nem töltött hivatkozás továbbra is a webre mutat, nem egy soha el nem mentett fájlra
-• Időkorlát mellett a másolás időben befejeződik, nem vár egy beragadt névfeloldásra
-• A sikertelen írás vagy a megszakított másolás ideiglenes fájljait a program eltávolítja
+• A leállított másolás már nem hagy félbehagyott fájlokat
+• A soha el nem mentett oldal már nem hagy üres mappát a másolatban
+• A másolás leállítása már nem keverheti össze egy másik mentett fájl nevét
+• A sikertelen írás törli a részleges fájlt, a következő másolás elviszi a többit

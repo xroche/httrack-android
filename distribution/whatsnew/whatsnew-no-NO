@@ -1,6 +1,6 @@
-HTTrack 3.50.5: en kopiering du stopper etterlater en ren kopi.
+HTTrack 3.50.5: en kopiering du stopper etterlater ingen halve filer.
 
-• En kopiering du stopper etterlater ikke lenger uferdige filer eller tomme mapper
-• En lenke som aldri ble hentet peker fortsatt til nettet, ikke til en fil som aldri ble lagret
-• Med en tidsgrense slutter en kopiering i tid i stedet for å vente på et fastlåst oppslag
-• Midlertidige filer etter en mislykket skriving eller en drept kopiering fjernes nå
+• En kopiering du stopper etterlater ikke lenger uferdige filer
+• En side som aldri blir lagret etterlater ikke lenger en tom mappe i kopien din
+• Å stoppe en kopiering kan ikke lenger bytte om navnet på en annen fil
+• En mislykket skriving sletter den halve filen, og neste kopiering rydder resten

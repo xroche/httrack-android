@@ -1,6 +1,6 @@
-HTTrack 3.50.5: una copia che fermi lascia un mirror pulito.
+HTTrack 3.50.5: una copia che fermi non lascia file scritti a metà.
 
-• Una copia che fermi non lascia più file incompleti né cartelle vuote
-• Un collegamento mai scaricato punta ancora al web, non a un file che non è mai stato salvato
-• Con un limite di tempo, una copia termina in tempo invece di attendere una risoluzione bloccata
-• I file temporanei di una scrittura fallita o di una copia terminata a forza vengono rimossi
+• Una copia che fermi non lascia più file incompleti
+• Una pagina che non viene mai salvata non lascia più una cartella vuota nella copia
+• Fermare una copia non può più confondere il nome di un altro file in salvataggio
+• Una scrittura fallita elimina il file parziale, e la copia successiva pulisce il resto

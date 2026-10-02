@@ -1,6 +1,6 @@
-HTTrack 3.50.5: a copy you stop leaves a clean mirror.
+HTTrack 3.50.5: a copy you stop leaves no half-written files.
 
-• A copy you stop no longer leaves unfinished files or empty folders behind
-• A link that was never fetched still points at the web, not at a file that was never saved
-• With a time limit set, a copy now ends on time instead of waiting for a stuck lookup
-• Temporary files left by a failed write or by a copy that was killed are now removed
+• A copy you stop no longer leaves unfinished files behind
+• A page that is never saved no longer leaves an empty folder in your copy
+• Stopping a copy can no longer mix up the name of another file it is saving
+• A failed write drops its partial file, and the next copy clears what an interrupted one left

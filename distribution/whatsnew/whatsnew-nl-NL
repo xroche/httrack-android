@@ -1,6 +1,6 @@
-HTTrack 3.50.5: een kopie die u stopt laat een schone kopie achter.
+HTTrack 3.50.5: een kopie die u stopt laat geen halve bestanden achter.
 
-• Een kopie die u stopt laat geen onvoltooide bestanden en geen lege mappen meer achter
-• Een link die nooit is opgehaald wijst nog naar het web, niet naar een bestand dat nooit is opgeslagen
-• Met een tijdslimiet eindigt een kopie op tijd in plaats van op een vastgelopen naamopvraging te wachten
-• Tijdelijke bestanden van een mislukte schrijfactie of een afgebroken kopie worden verwijderd
+• Een kopie die u stopt laat geen onvoltooide bestanden meer achter
+• Een pagina die nooit wordt opgeslagen laat geen lege map meer achter in uw kopie
+• Het stoppen van een kopie kan de naam van een ander bestand niet meer verwisselen
+• Een mislukte schrijfactie wist het halve bestand, en de volgende kopie ruimt de rest op

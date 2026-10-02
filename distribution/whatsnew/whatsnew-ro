@@ -1,6 +1,6 @@
-HTTrack 3.50.5: o copiere pe care o opriți lasă o copie curată.
+HTTrack 3.50.5: o copiere pe care o opriți nu lasă fișiere scrise pe jumătate.
 
-• O copiere pe care o opriți nu mai lasă fișiere neterminate sau foldere goale
-• Un link care nu a fost descărcat arată tot spre web, nu spre un fișier care nu a fost salvat
-• Cu o limită de timp, o copiere se încheie la timp, fără să aștepte o căutare blocată
-• Fișierele temporare lăsate de o scriere eșuată sau de o copiere oprită forțat sunt șterse
+• O copiere pe care o opriți nu mai lasă fișiere neterminate
+• O pagină care nu este salvată niciodată nu mai lasă un folder gol în copie
+• Oprirea unei copieri nu mai poate încurca numele altui fișier care se salvează
+• O scriere eșuată șterge fișierul parțial, iar copierea următoare curăță restul
