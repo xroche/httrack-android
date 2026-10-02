@@ -1,5 +1,5 @@
 HTTrack 3.50.5: poprawki dla kopiowania, które zatrzymasz.
 
-• Gdy zatrzymasz w chwili, gdy HTTrack sprawdza typ pliku, odnośnik wciąż wskazuje prawdziwą stronę i nie przeszkadza innemu pobieraniu
+• Jeśli zatrzymasz kopiowanie w trakcie sprawdzania typu pliku, odnośnik wciąż wskazuje prawdziwą stronę i nie przeszkadza innemu pobieraniu
 • Zatrzymane kopiowanie zostawia w kopii mniej zbędnych plików i folderów
 • Nieudany zapis usuwa swój niepełny plik, a następne kopiowanie sprząta resztę
