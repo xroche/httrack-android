@@ -1,6 +1,6 @@
-HTTrack 3.50.4: uma cópia nova não é mais limitada a 25 KB/s.
+HTTrack 3.50.5: uma cópia que você para deixa um espelho limpo.
 
-• Uma cópia nova chega agora a 100 KB/s em vez de 25 KB/s. Um limite definido por você continua valendo
-• Se um site pedir para esperar, o HTTrack espera e tenta de novo. Você pode definir a espera máxima
-• As páginas que usam módulos JavaScript são copiadas de forma mais completa
-• O HTTrack aplica agora só as regras de robots.txt escritas para o HTTrack
+• Uma cópia que você para não deixa mais arquivos incompletos nem pastas vazias
+• Um link que nunca foi baixado continua apontando para a web, não para um arquivo nunca salvo
+• Com um limite de tempo, uma cópia termina no prazo em vez de esperar uma consulta travada
+• Arquivos temporários de uma gravação que falhou ou de uma cópia encerrada à força são removidos

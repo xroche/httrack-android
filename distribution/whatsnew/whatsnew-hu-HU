@@ -1,6 +1,6 @@
-HTTrack 3.50.4: egy új másolás már nem korlátozódik 25 KB/s-ra.
+HTTrack 3.50.5: a leállított másolás tiszta másolatot hagy.
 
-• Egy új másolás most 100 KB/s-ig megy 25 KB/s helyett. Az Ön által beállított korlát továbbra is érvényes
-• Ha egy webhely várakozást kér, a HTTrack vár és újra próbálja. Beállíthatja a leghosszabb várakozást
-• A JavaScript-modulokat használó oldalak teljesebben másolódnak
-• A HTTrack most csak a HTTracknek írt robots.txt-szabályokat alkalmazza
+• A leállított másolás már nem hagy félbehagyott fájlokat és üres mappákat
+• A soha le nem töltött hivatkozás továbbra is a webre mutat, nem egy soha el nem mentett fájlra
+• Időkorlát mellett a másolás időben befejeződik, nem vár egy beragadt névfeloldásra
+• A sikertelen írás vagy a megszakított másolás ideiglenes fájljait a program eltávolítja

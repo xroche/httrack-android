@@ -1,6 +1,6 @@
-HTTrack 3.50.4: Eine neue Kopie ist nicht mehr auf 25 KB/s begrenzt.
+HTTrack 3.50.5: Eine Kopie, die Sie anhalten, lässt eine saubere Kopie zurück.
 
-• Eine neue Kopie läuft jetzt mit bis zu 100 KB/s statt 25 KB/s. Ein Limit, das Sie selbst setzen, gilt weiterhin
-• Bittet eine Website um Wartezeit, wartet HTTrack und versucht es erneut. Sie können die längste Wartezeit festlegen
-• Seiten, die JavaScript-Module verwenden, werden vollständiger kopiert
-• HTTrack wendet jetzt nur die robots.txt-Regeln an, die für HTTrack geschrieben sind
+• Eine Kopie, die Sie anhalten, lässt keine unfertigen Dateien und keine leeren Ordner zurück
+• Ein nie geladener Link zeigt weiter ins Web, nicht auf eine Datei, die nie gespeichert wurde
+• Mit einem Zeitlimit endet eine Kopie rechtzeitig, statt auf eine hängende Namensauflösung zu warten
+• Temporäre Dateien nach einem fehlgeschlagenen Schreibvorgang oder einer getöteten Kopie werden entfernt

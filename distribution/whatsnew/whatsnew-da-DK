@@ -1,6 +1,6 @@
-HTTrack 3.50.4: en ny kopiering er ikke længere begrænset til 25 KB/s.
+HTTrack 3.50.5: en kopiering, du stopper, efterlader en ren kopi.
 
-• En ny kopiering går nu op til 100 KB/s i stedet for 25 KB/s. En grænse du selv angiver gælder fortsat
-• Hvis et websted beder dig vente, venter HTTrack og prøver igen. Du kan angive den længste ventetid
-• Sider, der bruger JavaScript-moduler, kopieres mere komplet
-• HTTrack anvender nu kun de robots.txt-regler, der er skrevet til HTTrack
+• En kopiering, du stopper, efterlader ikke længere ufærdige filer eller tomme mapper
+• Et link, der aldrig blev hentet, peger stadig på nettet og ikke på en fil, der aldrig blev gemt
+• Med en tidsgrænse slutter en kopiering til tiden i stedet for at vente på et fastlåst opslag
+• Midlertidige filer efter en mislykket skrivning eller en dræbt kopiering fjernes nu

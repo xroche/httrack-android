@@ -1,6 +1,6 @@
-HTTrack 3.50.4: yeni bir kopyalama artık 25 KB/s ile sınırlı değil.
+HTTrack 3.50.5: durdurduğunuz bir kopyalama temiz bir kopya bırakır.
 
-• Yeni bir kopyalama artık 25 KB/s yerine 100 KB/s hıza çıkar. Kendi koyduğunuz sınır geçerli kalır
-• Bir site beklemenizi isterse HTTrack bekler ve yeniden dener. En uzun beklemeyi ayarlayabilirsiniz
-• JavaScript modülleri kullanan sayfalar daha eksiksiz kopyalanır
-• HTTrack artık yalnızca HTTrack için yazılmış robots.txt kurallarını uygular
+• Durdurduğunuz bir kopyalama artık yarım dosyalar veya boş klasörler bırakmıyor
+• Hiç indirilmemiş bir bağlantı hâlâ web'i gösterir, hiç kaydedilmemiş bir dosyayı değil
+• Süre sınırı varsa kopyalama, takılmış bir ad sorgusunu beklemek yerine zamanında biter
+• Başarısız bir yazmanın veya öldürülen bir kopyalamanın geçici dosyaları artık siliniyor

@@ -1,6 +1,6 @@
-HTTrack 3.50.4: una nuova copia non è più limitata a 25 KB/s.
+HTTrack 3.50.5: una copia che fermi lascia un mirror pulito.
 
-• Una nuova copia arriva ora a 100 KB/s invece di 25 KB/s. Un limite impostato da te resta valido
-• Se un sito chiede di attendere, HTTrack attende e riprova. Puoi impostare l'attesa massima
-• Le pagine che usano moduli JavaScript vengono copiate in modo più completo
-• HTTrack applica ora solo le regole di robots.txt scritte per HTTrack
+• Una copia che fermi non lascia più file incompleti né cartelle vuote
+• Un collegamento mai scaricato punta ancora al web, non a un file che non è mai stato salvato
+• Con un limite di tempo, una copia termina in tempo invece di attendere una risoluzione bloccata
+• I file temporanei di una scrittura fallita o di una copia terminata a forza vengono rimossi

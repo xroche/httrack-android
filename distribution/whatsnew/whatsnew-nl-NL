@@ -1,6 +1,6 @@
-HTTrack 3.50.4: een nieuwe kopie is niet meer beperkt tot 25 KB/s.
+HTTrack 3.50.5: een kopie die u stopt laat een schone kopie achter.
 
-• Een nieuwe kopie haalt nu tot 100 KB/s in plaats van 25 KB/s. Een limiet die u zelf instelt blijft gelden
-• Vraagt een site om te wachten, dan wacht HTTrack en probeert het opnieuw. U kunt de langste wachttijd instellen
-• Pagina's die JavaScript-modules gebruiken worden vollediger gekopieerd
-• HTTrack past nu alleen de robots.txt-regels toe die voor HTTrack zijn geschreven
+• Een kopie die u stopt laat geen onvoltooide bestanden en geen lege mappen meer achter
+• Een link die nooit is opgehaald wijst nog naar het web, niet naar een bestand dat nooit is opgeslagen
+• Met een tijdslimiet eindigt een kopie op tijd in plaats van op een vastgelopen naamopvraging te wachten
+• Tijdelijke bestanden van een mislukte schrijfactie of een afgebroken kopie worden verwijderd
