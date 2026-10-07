@@ -91,7 +91,7 @@ public final class OptionValues {
    *          Highest value to accept
    * @return true if the value is digits no greater than max
    */
-  public static boolean isAtMost(final String value, final int max) {
+  public static boolean isAtMost(final String value, final long max) {
     if (!isDigits(value)) {
       return false;
     }
