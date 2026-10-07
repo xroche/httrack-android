@@ -80,10 +80,12 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htssniff.c httrack/src/htsselftest.c						\
 	httrack/src/htsselftest_util.c					\
 	httrack/src/htsback_selftest.c httrack/src/htscache_selftest.c	\
-	httrack/src/htscharset_selftest.c httrack/src/htscookie_selftest.c	\
+	httrack/src/htscharset_selftest.c httrack/src/htscmdline_selftest.c	\
+	httrack/src/htscookie_selftest.c	\
 	httrack/src/htsdns_selftest.c httrack/src/htsfilters_selftest.c	\
 	httrack/src/htsheader_selftest.c httrack/src/htsio_selftest.c	\
-	httrack/src/htslib_selftest.c httrack/src/htsmime_selftest.c	\
+	httrack/src/htslib_selftest.c httrack/src/htslines_selftest.c	\
+	httrack/src/htsmime_selftest.c	\
 	httrack/src/htsname_selftest.c httrack/src/htsnet_selftest.c	\
 	httrack/src/htsopt_selftest.c httrack/src/htsparse_selftest.c	\
 	httrack/src/htswarc_selftest.c httrack/src/htswizard_selftest.c	\
@@ -93,6 +95,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsnet.c httrack/src/htsrandom.c							\
 	httrack/src/htssitemap.c httrack/src/htssinglefile.c					\
 	httrack/src/htschanges.c httrack/src/htscmdline.c						\
+	httrack/src/htslines.c													\
 	httrack/src/htscrashtest.c												\
 	httrack/src/minizip/ioapi.c												\
 	httrack/src/minizip/mztools.c httrack/src/minizip/unzip.c				\
