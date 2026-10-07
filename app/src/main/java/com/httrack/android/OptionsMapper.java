@@ -287,11 +287,13 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("CurrentAction",
           MultipleChoicesOption.ACTION),
       new Pair<String, OptionMapper>("WildCardFilters", StringSplit.INSTANCE),
-      new Pair<String, OptionMapper>("Depth", new SimpleOption("r")),
+      new Pair<String, OptionMapper>("Depth",
+          new CappedOption("r", Integer.MAX_VALUE - 1)),
       new Pair<String, OptionMapper>("ExtDepth", new SimpleOption("%e")),
       new Pair<String, OptionMapper>("MaxHtml", maxSizeHandler.getHtml()),
       new Pair<String, OptionMapper>("MaxOther", maxSizeHandler.getNonHtml()),
-      new Pair<String, OptionMapper>("MaxAll", new SimpleOption("M")),
+      new Pair<String, OptionMapper>("MaxAll",
+          new CappedOption("M", Long.MAX_VALUE)),
       new Pair<String, OptionMapper>("MaxTime", new SimpleOption("E")),
       new Pair<String, OptionMapper>("MaxRate", new SimpleOption("A")),
       /* the only option the engine scans with %f, so the only one taking a
@@ -1267,7 +1269,7 @@ public class OptionsMapper {
     private class Type implements OptionMapper, OptionMapper.FinishMapper {
       @Override
       public void emit(final List<String> commandline, final String value) {
-        if (OptionValues.isDigits(value)) {
+        if (OptionValues.isAtMost(value, Integer.MAX_VALUE)) {
           BuildHandler.this.build = Integer.parseInt(value);
         }
       }
@@ -1347,7 +1349,7 @@ public class OptionsMapper {
     private class Type implements OptionMapper, OptionMapper.FinishMapper {
       @Override
       public void emit(final List<String> commandline, final String value) {
-        if (OptionValues.isDigits(value)) {
+        if (OptionValues.isAtMost(value, Integer.MAX_VALUE)) {
           LogHandler.this.type = Integer.parseInt(value);
         }
       }
@@ -1431,7 +1433,7 @@ public class OptionsMapper {
     private class Type implements OptionMapper, OptionMapper.FinishMapper {
       @Override
       public void emit(final List<String> commandline, final String value) {
-        if (OptionValues.isDigits(value)) {
+        if (OptionValues.isAtMost(value, Integer.MAX_VALUE)) {
           PrimaryScanHandler.this.type = Integer.parseInt(value);
         }
       }
@@ -1651,16 +1653,25 @@ public class OptionsMapper {
   public static class SimpleOption implements OptionMapper {
     protected final String option;
     protected final boolean fraction;
+    protected final long max;
 
     /**
      * @param option
      *          The engine option
      * @param fraction
      *          true if the engine scans this option's value with %f
+     * @param max
+     *          Highest value the engine accepts for this option
      */
-    public SimpleOption(final String option, final boolean fraction) {
+    public SimpleOption(final String option, final boolean fraction,
+        final long max) {
       this.option = option;
       this.fraction = fraction;
+      this.max = max;
+    }
+
+    public SimpleOption(final String option, final boolean fraction) {
+      this(option, fraction, Integer.MAX_VALUE);
     }
 
     public SimpleOption(final String option) {
@@ -1672,32 +1683,22 @@ public class OptionsMapper {
       /* A '.' anywhere else is fatal: an integer option leaves it unconsumed
        * and the engine panics, and cmdl_opt reads a '%'-less token holding one
        * as a URL, which turns -r1.5 into an exclusion filter. */
-      if (fraction ? OptionValues.isDecimal(value) : OptionValues
-          .isDigits(value)) {
+      /* Over the cap the engine refuses the command line or misreads the
+       * value, and no layout bounds these fields. */
+      if (fraction ? OptionValues.isDecimal(value) : OptionValues.isAtMost(
+          value, max)) {
         commandline.add("-" + option + value);
       }
     }
   }
 
   /**
-   * Simple option whose value the engine clips over a ceiling.<br/>
+   * Simple option whose ceiling is not the engine's plain int maximum.<br/>
    * Example: -%J60
    */
   public static class CappedOption extends SimpleOption {
-    protected final int max;
-
-    public CappedOption(final String option, final int max) {
-      super(option);
-      this.max = max;
-    }
-
-    @Override
-    public void emit(final List<String> commandline, final String value) {
-      /* Over the cap the engine clips to its ceiling, so drop it instead. A saved
-       * profile can hold any value, and no layout attribute bounds one. */
-      if (OptionValues.isAtMost(value, max)) {
-        commandline.add("-" + option + value);
-      }
+    public CappedOption(final String option, final long max) {
+      super(option, false, max);
     }
   }
 
