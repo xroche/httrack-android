@@ -1683,8 +1683,8 @@ public class OptionsMapper {
       /* A '.' anywhere else is fatal: an integer option leaves it unconsumed
        * and the engine panics, and cmdl_opt reads a '%'-less token holding one
        * as a URL, which turns -r1.5 into an exclusion filter. */
-      /* Over the cap the engine refuses the whole command line, so drop the
-       * option. No layout bounds these fields, and a profile holds anything. */
+      /* Over the cap the engine refuses the command line or misreads the
+       * value, and no layout bounds these fields. */
       if (fraction ? OptionValues.isDecimal(value) : OptionValues.isAtMost(
           value, max)) {
         commandline.add("-" + option + value);

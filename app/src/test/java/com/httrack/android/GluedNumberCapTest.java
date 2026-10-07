@@ -12,9 +12,8 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * Glued numeric options the engine refuses above a ceiling. It used to read
- * them with sscanf and run on whatever it got, but it now panics, so an
- * over-range field must emit nothing.
+ * Glued numeric options the engine refuses above a ceiling. An over-range
+ * field must emit nothing, or the engine panics and the crawl never starts.
  */
 public class GluedNumberCapTest {
   private static final OptionsMapper MAPPER = new OptionsMapper();
@@ -65,7 +64,9 @@ public class GluedNumberCapTest {
     assertEquals("the engine moved the maxsite ceiling", "INT64_MAX",
         engineCeiling("maxsite"));
     assertEquals("[-M10000000000]", emit("MaxAll", "10000000000").toString());
-    assertEquals("[]", emit("MaxAll", OVER_ANY_CEILING).toString());
+    assertEquals("[-M9223372036854775807]",
+        emit("MaxAll", "9223372036854775807").toString());
+    assertEquals("[]", emit("MaxAll", "9223372036854775808").toString());
   }
 
   /** The engine scans -%c with %f and clamps it, so no integer ceiling applies. */
@@ -77,8 +78,9 @@ public class GluedNumberCapTest {
   }
 
   /**
-   * The whole population, not the keys I thought to list. The mapper's own
-   * fraction flag picks out the options the engine does not read as integers.
+   * Every mapper in the table, so no unbounded emitter survives. The exact
+   * ceilings are the boundary tests above; this one only catches a missing
+   * check, because a run this long overflows a long whatever the cap is.
    */
   @Test
   public void noFieldGluesAnOverRangeNumber() {
