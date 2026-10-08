@@ -57,6 +57,12 @@ public class OptionsMapper {
   /** Mirrors HTS_MAX_RETRY_AFTER_LIMIT, the ceiling the engine clips to. */
   protected static final int MAX_RETRY_AFTER_LIMIT = 3600;
 
+  /** The engine refuses -u above this, so the radio's range is now a hard limit. */
+  protected static final int MAX_CHECK_TYPE = 2;
+
+  /** Mirrors HTS_ROBOTS_ALWAYS_STRICT, the highest -s the engine accepts. */
+  protected static final int MAX_ROBOTS = 3;
+
   /** Serialization key of the cache checkbox, which CachePolicy gates on the action. */
   static final String CACHE_KEY = "Cache";
 
@@ -351,11 +357,13 @@ public class OptionsMapper {
           new ArgumentOption("-%R")),
       new Pair<String, OptionMapper>("Cookies",
           new SimpleOptionFlag("b0", true)),
-      new Pair<String, OptionMapper>("CheckType", new SimpleOption("u")),
+      new Pair<String, OptionMapper>("CheckType",
+          new CappedOption("u", MAX_CHECK_TYPE)),
       /* Bare -j only re-asserts the engine default; switching it off needs -j0. */
       new Pair<String, OptionMapper>("ParseJava", new SimpleOptionFlag("j0",
           true)),
-      new Pair<String, OptionMapper>("FollowRobotsTxt", new SimpleOption("s")),
+      new Pair<String, OptionMapper>("FollowRobotsTxt",
+          new CappedOption("s", MAX_ROBOTS)),
       new Pair<String, OptionMapper>("UpdateHack", new SimpleOptionFlag("%s")),
       new Pair<String, OptionMapper>("URLHack", new SimpleOption0("%u")),
       new Pair<String, OptionMapper>("TolerantRequests", new SimpleOptionFlag(
