@@ -35,10 +35,19 @@ public class GluedNumberCapTest {
     final String source =
         TestSources.read(TestSources.engineFile("src/htscoremain.c"));
     final Matcher bound = Pattern
-        .compile("readGluedU?L?L?[Ii]nt\\(opt->" + field + ",\\s*([^)]+)\\)")
+        .compile("readGlued(?:LL)?(?:[Ii]nt|Enum)\\(opt->" + field + ",\\s*([^)]+)\\)")
         .matcher(source);
     assertTrue("the engine no longer bounds opt->" + field, bound.find());
     return bound.group(1).trim();
+  }
+
+  /** The number an engine enum constant stands for. */
+  private static String engineEnumValue(final String name) throws Exception {
+    final String header = TestSources.read(TestSources.engineFile("src/htsopt.h"));
+    final Matcher value =
+        Pattern.compile(name + "\\s*=\\s*(\\d+)").matcher(header);
+    assertTrue("the engine no longer defines " + name, value.find());
+    return value.group(1);
   }
 
   @Test
@@ -67,6 +76,26 @@ public class GluedNumberCapTest {
     assertEquals("[-M9223372036854775807]",
         emit("MaxAll", "9223372036854775807").toString());
     assertEquals("[]", emit("MaxAll", "9223372036854775808").toString());
+  }
+
+  /**
+   * The engine refuses -u above 2 and -s above HTS_ROBOTS_ALWAYS_STRICT. Both are
+   * radio groups, but an imported profile carries whatever it likes.
+   */
+  @Test
+  public void anEnumeratedOptionStopsAtTheEnginesOwnCeiling() throws Exception {
+    assertEquals("the engine moved the check_type ceiling", "2",
+        engineCeiling("check_type"));
+    assertEquals("[-u2]", emit("CheckType", "2").toString());
+    assertEquals("[]", emit("CheckType", "3").toString());
+
+    assertEquals("the engine moved the robots ceiling", "HTS_ROBOTS_ALWAYS_STRICT",
+        engineCeiling("robots"));
+    assertEquals("our -s ceiling is not the engine's",
+        engineEnumValue("HTS_ROBOTS_ALWAYS_STRICT"),
+        String.valueOf(OptionsMapper.MAX_ROBOTS));
+    assertEquals("[-s3]", emit("FollowRobotsTxt", "3").toString());
+    assertEquals("[]", emit("FollowRobotsTxt", "4").toString());
   }
 
   /** The engine scans -%c with %f and clamps it, so no integer ceiling applies. */

@@ -43,7 +43,13 @@ public class NumericOptionValueTest {
     while (m.find()) {
       declared.add(new String[] { m.group(1), m.group(2) });
     }
-    assertTrue("no SimpleOption declarations parsed", declared.size() > 10);
+    /* A count breaks whenever an option moves to a CappedOption, so look for the
+       one row this test exists to check instead. */
+    boolean sawFloat = false;
+    for (final String[] option : declared) {
+      sawFloat |= FLOAT_OPTION.equals(option[0]);
+    }
+    assertTrue("the scrape missed -" + FLOAT_OPTION, sawFloat);
     return declared;
   }
 
