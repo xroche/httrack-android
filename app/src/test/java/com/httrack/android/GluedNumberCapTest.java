@@ -107,9 +107,10 @@ public class GluedNumberCapTest {
   }
 
   /**
-   * Every mapper in the table, so no unbounded emitter survives. The exact
-   * ceilings are the boundary tests above; this one only catches a missing
-   * check, because a run this long overflows a long whatever the cap is.
+   * Every mapper in the table, so no unbounded emitter survives. It cannot see a
+   * cap that is merely too HIGH, because a run this long overflows a long at any
+   * ceiling, so an option the engine bounds below INT_MAX needs its own boundary
+   * test above.
    */
   @Test
   public void noFieldGluesAnOverRangeNumber() {
