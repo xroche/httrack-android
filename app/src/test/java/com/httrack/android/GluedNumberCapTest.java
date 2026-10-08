@@ -35,10 +35,19 @@ public class GluedNumberCapTest {
     final String source =
         TestSources.read(TestSources.engineFile("src/htscoremain.c"));
     final Matcher bound = Pattern
-        .compile("readGluedU?L?L?[Ii]nt\\(opt->" + field + ",\\s*([^)]+)\\)")
+        .compile("readGlued(?:LL)?(?:[Ii]nt|Enum)\\(opt->" + field + ",\\s*([^)]+)\\)")
         .matcher(source);
     assertTrue("the engine no longer bounds opt->" + field, bound.find());
     return bound.group(1).trim();
+  }
+
+  private static String engineEnumValue(final String name) throws Exception {
+    final String header = TestSources.read(TestSources.engineFile("src/htsopt.h"));
+    final Matcher value =
+        Pattern.compile("(?<![A-Za-z0-9_])" + name + "\\b\\s*=\\s*(\\d+)")
+            .matcher(header);
+    assertTrue("the engine no longer defines " + name, value.find());
+    return value.group(1);
   }
 
   @Test
@@ -69,6 +78,26 @@ public class GluedNumberCapTest {
     assertEquals("[]", emit("MaxAll", "9223372036854775808").toString());
   }
 
+  /**
+   * The engine refuses -u above 2 and -s above HTS_ROBOTS_ALWAYS_STRICT. Both are
+   * radio groups, but an imported profile carries whatever it likes.
+   */
+  @Test
+  public void anEnumeratedOptionStopsAtTheEnginesOwnCeiling() throws Exception {
+    assertEquals("the engine moved the check_type ceiling", "2",
+        engineCeiling("check_type"));
+    assertEquals("[-u2]", emit("CheckType", "2").toString());
+    assertEquals("[]", emit("CheckType", "3").toString());
+
+    assertEquals("the engine moved the robots ceiling", "HTS_ROBOTS_ALWAYS_STRICT",
+        engineCeiling("robots"));
+    assertEquals("our -s ceiling is not the engine's",
+        engineEnumValue("HTS_ROBOTS_ALWAYS_STRICT"),
+        String.valueOf(OptionsMapper.MAX_ROBOTS));
+    assertEquals("[-s3]", emit("FollowRobotsTxt", "3").toString());
+    assertEquals("[]", emit("FollowRobotsTxt", "4").toString());
+  }
+
   /** The engine scans -%c with %f and clamps it, so no integer ceiling applies. */
   @Test
   public void aFractionOptionIsLeftAlone() {
@@ -78,9 +107,10 @@ public class GluedNumberCapTest {
   }
 
   /**
-   * Every mapper in the table, so no unbounded emitter survives. The exact
-   * ceilings are the boundary tests above; this one only catches a missing
-   * check, because a run this long overflows a long whatever the cap is.
+   * Every mapper in the table, so no unbounded emitter survives. It cannot see a
+   * cap that is merely too HIGH, because a run this long overflows a long at any
+   * ceiling, so an option the engine bounds below INT_MAX needs its own boundary
+   * test above.
    */
   @Test
   public void noFieldGluesAnOverRangeNumber() {
