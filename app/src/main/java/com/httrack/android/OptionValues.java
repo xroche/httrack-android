@@ -119,14 +119,4 @@ public final class OptionValues {
     }
   }
 
-  /**
-   * Parse an integer.
-   *
-   * @param value
-   *          The integer value
-   * @return The parsed value, or 999999999 on error
-   */
-  public static int parseInt(final String value) {
-    return parseInt(value, 999999999);
-  }
 }
