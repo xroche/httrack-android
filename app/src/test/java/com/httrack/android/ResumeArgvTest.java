@@ -37,7 +37,7 @@ public class ResumeArgvTest {
    */
   private static int firstUrlIndex(final String[] argv) {
     for (int i = 1; i < argv.length; i++) {
-      if ("-O".equals(argv[i])) {
+      if (isOutputOption(argv[i])) {
         i++;
         continue;
       }
@@ -61,6 +61,11 @@ public class ResumeArgvTest {
     assertTrue(ResumeArgv.CONTINUE + " at " + forced + " but a URL at " + url + " in " + shown,
         forced < url);
     assertEquals("one continue token in " + shown, 1, count(argv));
+  }
+
+  /* case 'O' in the pre-pass skips the next argument whatever follows the O, -O1 included. */
+  private static boolean isOutputOption(final String token) {
+    return token.startsWith("-O");
   }
 
   private static int count(final String[] argv) {
@@ -168,11 +173,11 @@ public class ResumeArgvTest {
   public void theBuiltCommandlineResumesToo() {
     final String[] built = CrawlArgv.build(false, "/mirrors/p",
         Arrays.asList("-iC2", URL, "-C0", "-r9"));
-    assertArrayEquals(new String[] { "httrack", "-@i4", "-O", "/mirrors/p", "-iC2", URL, "-C0",
+    assertArrayEquals(new String[] { "httrack", "-@i4", "-O1", "/mirrors/p", "-iC2", URL, "-C0",
         "-r9" }, built);
     final String[] out = ResumeArgv.forStart(built, true);
     assertArrayEquals(
-        new String[] { "httrack", "-iC1", "-@i4", "-O", "/mirrors/p", URL, "-r9" }, out);
+        new String[] { "httrack", "-iC1", "-@i4", "-O1", "/mirrors/p", URL, "-r9" }, out);
     assertAheadOfEveryUrl(out);
   }
 
@@ -189,10 +194,12 @@ public class ResumeArgvTest {
    *  whatever forStart returns. */
   @Test
   public void theOracleRejectsATokenPastTheUrl() {
-    final String[] wrong = { "httrack", "-O", "/t", URL, "-iC1" };
-    assertEquals("the oracle must skip the -O path it would otherwise read as a URL", 3,
+    final String[] wrong = { "httrack", "-O1", "/t", URL, "-iC1" };
+    assertEquals("the oracle must skip the -O1 path it would otherwise read as a URL", 3,
         firstUrlIndex(wrong));
     assertEquals(3, indexOf(wrong, URL));
+    assertEquals("the oracle must skip no argument after an option that takes none", 2,
+        firstUrlIndex(new String[] { "httrack", "-r3", URL }));
     assertEquals(4, indexOf(wrong, ResumeArgv.CONTINUE));
     boolean fired = false;
     try {

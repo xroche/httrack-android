@@ -35,10 +35,10 @@ public class CrawlArgvGoldenTest {
       "-N0" };
 
   /** The whole argv with IPv6 available, so no family is forced. */
-  private static final String ARGV_IPV6[] = full("httrack", "-O", TARGET);
+  private static final String ARGV_IPV6[] = full("httrack", "-O1", TARGET);
 
   /** The whole argv without IPv6, where -@i4 precedes the target. */
-  private static final String ARGV_IPV4[] = full("httrack", "-@i4", "-O", TARGET);
+  private static final String ARGV_IPV4[] = full("httrack", "-@i4", "-O1", TARGET);
 
   private static String[] full(final String... prelude) {
     final List<String> argv = new ArrayList<String>(Arrays.asList(prelude));
@@ -55,7 +55,7 @@ public class CrawlArgvGoldenTest {
     return mapper.buildCommandline();
   }
 
-  /** Runner.runInternal()'s assembly as master wrote it, kept here as the thing to match. */
+  /** A second, independent assembly, so one typo cannot move both it and the golden. */
   private static String[] masterArgv(final boolean ipv6Enabled, final String target,
       final List<String> options) {
     final List<String> args = new ArrayList<String>();
@@ -63,7 +63,7 @@ public class CrawlArgvGoldenTest {
     if (!ipv6Enabled) {
       args.add("-@i4");
     }
-    args.add("-O");
+    args.add("-O1");
     args.add(target);
     args.addAll(options);
     return args.toArray(new String[] {});

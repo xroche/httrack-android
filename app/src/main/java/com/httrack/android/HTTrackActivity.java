@@ -1102,7 +1102,7 @@ public class HTTrackActivity extends FragmentActivity {
   protected File getTargetFile() {
     final String name = mapper.getProjectName();
     if (name != null && name.length() != 0) {
-      // Backstop: a name that is not a single in-root segment must never become an -O path.
+      // Backstop: a name that is not a single in-root segment must never become an output path.
       if (!StoragePaths.isValidProjectName(name)) {
         Log.w(getClass().getSimpleName(), "rejecting unsafe project name: " + name);
         return null;
