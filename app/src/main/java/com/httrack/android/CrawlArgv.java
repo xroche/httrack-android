@@ -17,7 +17,7 @@ final class CrawlArgv {
    * @param ipv6Enabled
    *          whether this device has an IPv6 address; without one the engine is pinned to IPv4
    * @param targetPath
-   *          the mirror directory, the engine's -O argument
+   *          the mirror directory, the engine's -O1 argument
    * @param options
    *          the options the mapper emitted, appended in order
    * @return the argv, program name first
@@ -29,7 +29,9 @@ final class CrawlArgv {
     if (!ipv6Enabled) {
       args.add("-@i4");
     }
-    args.add("-O");
+    /* -O1, not -O: plain -O reads "html,log" and splits on an unquoted comma,
+     * so a comma in the project name truncates the mirror path. */
+    args.add("-O1");
     args.add(targetPath);
     args.addAll(options);
     return args.toArray(new String[] {});

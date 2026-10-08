@@ -16,25 +16,39 @@ public class CrawlArgvTest {
 
   @Test
   public void theProgramNameComesFirstAndTheOptionsLast() {
-    assertArrayEquals(new String[] { "httrack", "-O", TARGET, "-iC1", "http://example.com/" },
+    assertArrayEquals(new String[] { "httrack", "-O1", TARGET, "-iC1", "http://example.com/" },
         CrawlArgv.build(true, TARGET, Arrays.asList("-iC1", "http://example.com/")));
   }
 
   /** -@i4 pins the engine to IPv4, so it must appear exactly when the device has no IPv6. */
   @Test
   public void theFamilyIsForcedOnlyWithoutIPv6() {
-    assertArrayEquals(new String[] { "httrack", "-@i4", "-O", TARGET },
+    assertArrayEquals(new String[] { "httrack", "-@i4", "-O1", TARGET },
         CrawlArgv.build(false, TARGET, Collections.<String> emptyList()));
-    assertArrayEquals(new String[] { "httrack", "-O", TARGET },
+    assertArrayEquals(new String[] { "httrack", "-O1", TARGET },
         CrawlArgv.build(true, TARGET, Collections.<String> emptyList()));
   }
 
-  /** An option landing between -O and its path would be taken for the mirror directory. */
+  /** An option landing between -O1 and its path would be taken for the mirror directory. */
   @Test
   public void theTargetFollowsItsOwnOption() {
     final String[] argv = CrawlArgv.build(false, TARGET, Arrays.asList("http://example.com/"));
-    assertArrayEquals(new String[] { "httrack", "-@i4", "-O", TARGET, "http://example.com/" },
+    assertArrayEquals(new String[] { "httrack", "-@i4", "-O1", TARGET, "http://example.com/" },
         argv);
+  }
+
+  /**
+   * Plain -O reads "html,log" and splits on an unquoted comma, so it would cut the
+   * mirror path short. A comma is a legal project name, because isValidProjectName
+   * refuses only '/', '\\' and NUL.
+   */
+  @Test
+  public void aCommaInTheTargetKeepsTheWholePath() {
+    final String comma = "/storage/emulated/0/HTTrack/Smith, Jones & Co";
+    assertArrayEquals(new String[] { "httrack", "-O1", comma },
+        CrawlArgv.build(true, comma, Collections.<String> emptyList()));
+    assertTrue("a comma in the project name must stay a legal name",
+        StoragePaths.isValidProjectName("Smith, Jones & Co"));
   }
 
   /** The device answer has to reach the build, or every phone gets one family's argv. */
