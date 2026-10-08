@@ -29,8 +29,8 @@ final class CrawlArgv {
     if (!ipv6Enabled) {
       args.add("-@i4");
     }
-    /* -O1, not -O: plain -O reads "html,log" and splits on an unquoted comma,
-     * so a comma in the project name truncates the mirror path. */
+    /* -O1, not -O: -O splits "html,log" on an unquoted comma, which truncates a
+     * comma-bearing project name. */
     args.add("-O1");
     args.add(targetPath);
     args.addAll(options);

@@ -63,9 +63,9 @@ public class ResumeArgvTest {
     assertEquals("one continue token in " + shown, 1, count(argv));
   }
 
-  /* The pre-pass eats the digits after -O before skipping the path, so -O1 is the same shape. */
+  /* case 'O' in the pre-pass skips the next argument whatever follows the O, -O1 included. */
   private static boolean isOutputOption(final String token) {
-    return token.startsWith("-O") && OptionValues.isDigits(token.substring(2) + "0");
+    return token.startsWith("-O");
   }
 
   private static int count(final String[] argv) {
@@ -198,6 +198,8 @@ public class ResumeArgvTest {
     assertEquals("the oracle must skip the -O1 path it would otherwise read as a URL", 3,
         firstUrlIndex(wrong));
     assertEquals(3, indexOf(wrong, URL));
+    assertEquals("the oracle must skip no argument after an option that takes none", 2,
+        firstUrlIndex(new String[] { "httrack", "-r3", URL }));
     assertEquals(4, indexOf(wrong, ResumeArgv.CONTINUE));
     boolean fired = false;
     try {

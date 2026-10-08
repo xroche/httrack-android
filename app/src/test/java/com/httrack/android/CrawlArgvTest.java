@@ -37,13 +37,9 @@ public class CrawlArgvTest {
         argv);
   }
 
-  /**
-   * Plain -O reads "html,log" and splits on an unquoted comma, so it would cut the
-   * mirror path short. A comma is a legal project name, because isValidProjectName
-   * refuses only '/', '\\' and NUL.
-   */
+  /** A comma is a legal project name, so the target must ride -O1, which never splits it. */
   @Test
-  public void aCommaInTheTargetKeepsTheWholePath() {
+  public void theTargetUsesTheFlagThatDoesNotSplitOnCommas() {
     final String comma = "/storage/emulated/0/HTTrack/Smith, Jones & Co";
     assertArrayEquals(new String[] { "httrack", "-O1", comma },
         CrawlArgv.build(true, comma, Collections.<String> emptyList()));
