@@ -41,11 +41,11 @@ public class GluedNumberCapTest {
     return bound.group(1).trim();
   }
 
-  /** The number an engine enum constant stands for. */
   private static String engineEnumValue(final String name) throws Exception {
     final String header = TestSources.read(TestSources.engineFile("src/htsopt.h"));
     final Matcher value =
-        Pattern.compile(name + "\\s*=\\s*(\\d+)").matcher(header);
+        Pattern.compile("(?<![A-Za-z0-9_])" + name + "\\b\\s*=\\s*(\\d+)")
+            .matcher(header);
     assertTrue("the engine no longer defines " + name, value.find());
     return value.group(1);
   }
