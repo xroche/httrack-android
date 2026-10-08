@@ -101,15 +101,25 @@ public class MaxRetryAfterFieldTest {
         emit(String.valueOf(OptionsMapper.MAX_RETRY_AFTER_LIMIT)));
   }
 
-  /* The engine clips, panics, or reads the leftover as another flag, and dropping
-     leaves its 60s default rather than its 3600s ceiling. A profile saved by
-     another front end can hold any of them. */
+  /* Dropping these would leave the engine on its 60s default, so a user asking
+     for more than the ceiling would get far less than it. */
   @Test
-  public void aValueTheEngineWouldMishandleIsDropped() {
+  public void anOverRangeValueIsClampedToTheLimit() {
     for (final String value : new String[] {
         String.valueOf(OptionsMapper.MAX_RETRY_AFTER_LIMIT + 1), "99999",
         // 2^32: an int cast would wrap this into range.
-        "4294967296", "99999999999999999999",
+        "4294967296", "99999999999999999999" }) {
+      assertEquals("over the ceiling, " + value,
+          Arrays.asList("-%J" + OptionsMapper.MAX_RETRY_AFTER_LIMIT),
+          emit(value));
+    }
+  }
+
+  /* These are not over-range but unreadable, and clamping one would invent a
+     number the user never asked for. */
+  @Test
+  public void aValueTheEngineWouldMishandleIsDropped() {
+    for (final String value : new String[] {
         // The engine panics on the stray sign, so digits alone is not enough.
         "+60", "-1", "1.5",
         // -%J60s stores 60, then reads the leftover 's' as -s, weakening robots.txt.

@@ -316,7 +316,7 @@ public class OptionsMapper {
           hostControlHandler.getRateMapper()),
       new Pair<String, OptionMapper>("Retry", new SimpleOption("R")),
       new Pair<String, OptionMapper>("MaxRetryAfter",
-          new CappedOption("%J", MAX_RETRY_AFTER_LIMIT)),
+          new ClampedOption("%J", MAX_RETRY_AFTER_LIMIT)),
       new Pair<String, OptionMapper>("RateOut", new SimpleOption("J")),
       new Pair<String, OptionMapper>("ParseAll", new SimpleOption0("%P")),
       new Pair<String, OptionMapper>("Near", new SimpleOptionFlag("n")),
@@ -930,8 +930,10 @@ public class OptionsMapper {
    */
   public static class MaxSizeHandler {
     protected boolean finished = false;
-    protected int maxHtml = -1;
-    protected int maxNonHtml = -1;
+    /* The digits, not an int: the engine takes these up to INT64_MAX, and
+       parseInt turned anything over 2 GB into its 999999999 error default. */
+    protected String maxHtml = null;
+    protected String maxNonHtml = null;
 
     /*
      * Handle "abandon host if timeout"
@@ -939,8 +941,8 @@ public class OptionsMapper {
     private class Html implements OptionMapper, OptionMapper.FinishMapper {
       @Override
       public void emit(final List<String> commandline, final String value) {
-        if (OptionValues.isDigits(value)) {
-          MaxSizeHandler.this.maxHtml = OptionValues.parseInt(value);
+        if (OptionValues.isAtMost(value, Long.MAX_VALUE)) {
+          MaxSizeHandler.this.maxHtml = value;
         }
       }
 
@@ -956,8 +958,8 @@ public class OptionsMapper {
     private class NonHtml implements OptionMapper, OptionMapper.FinishMapper {
       @Override
       public void emit(final List<String> commandline, final String value) {
-        if (OptionValues.isDigits(value)) {
-          MaxSizeHandler.this.maxNonHtml = OptionValues.parseInt(value);
+        if (OptionValues.isAtMost(value, Long.MAX_VALUE)) {
+          MaxSizeHandler.this.maxNonHtml = value;
         }
       }
 
@@ -993,12 +995,12 @@ public class OptionsMapper {
       // mN,N2 maximum file length for non html (N) and html (N2)
       if (!finished) {
         finished = true;
-        if (maxNonHtml != -1 || maxHtml != -1) {
+        if (maxNonHtml != null || maxHtml != null) {
           final StringBuilder option = new StringBuilder("-m");
-          if (maxNonHtml != -1) {
+          if (maxNonHtml != null) {
             option.append(maxNonHtml);
           }
-          if (maxHtml != -1) {
+          if (maxHtml != null) {
             option.append(',');
             option.append(maxHtml);
           }
@@ -1696,17 +1698,46 @@ public class OptionsMapper {
       if (fraction ? OptionValues.isDecimal(value) : OptionValues.isAtMost(
           value, max)) {
         commandline.add("-" + option + value);
+      } else {
+        refused(commandline, value);
       }
+    }
+
+    /** What to send instead of a value the engine would not take. Nothing. */
+    protected void refused(final List<String> commandline, final String value) {
     }
   }
 
   /**
-   * Simple option whose ceiling is not the engine's plain int maximum.<br/>
-   * Example: -%J60
+   * Simple option whose ceiling is not the engine's plain int maximum, and
+   * which sends nothing above it. ClampedOption sends the ceiling.<br/>
+   * Example: -u2
    */
   public static class CappedOption extends SimpleOption {
     public CappedOption(final String option, final long max) {
       super(option, false, max);
+    }
+  }
+
+  /**
+   * Simple option that sends the ceiling rather than nothing above it, because
+   * the engine clips it there. CappedOption sends nothing.<br/>
+   * Example: -%J60
+   */
+  public static class ClampedOption extends SimpleOption {
+    public ClampedOption(final String option, final long max) {
+      super(option, false, max);
+    }
+
+    @Override
+    protected void refused(final List<String> commandline, final String value) {
+      /* Sending nothing would leave the engine on its own default, which is
+       * below the ceiling, so asking for more would get less. An unreadable
+       * value still goes nowhere, because its leftover characters would be
+       * read as another option. */
+      if (OptionValues.isDigits(value)) {
+        commandline.add("-" + option + max);
+      }
     }
   }
 
