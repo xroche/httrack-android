@@ -115,9 +115,8 @@ public class MaxRetryAfterFieldTest {
     }
   }
 
-  /* These are not over-range, they are unreadable, and clamping one would invent
-     a number the user never asked for. A profile from another front end can hold
-     any of them. */
+  /* These are not over-range but unreadable, and clamping one would invent a
+     number the user never asked for. */
   @Test
   public void aValueTheEngineWouldMishandleIsDropped() {
     for (final String value : new String[] {

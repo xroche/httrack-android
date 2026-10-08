@@ -122,7 +122,9 @@ public class GluedNumberCapTest {
         emitMaxSize("3000000000", "4000000000").toString());
     assertEquals("[-m9223372036854775807]",
         emitMaxSize("", "9223372036854775807").toString());
+    /* Both positions, because each field carries its own bound check. */
     assertEquals("[]", emitMaxSize("", "9223372036854775808").toString());
+    assertEquals("[]", emitMaxSize("9223372036854775808", "").toString());
   }
 
   /** The engine scans -%c with %f and clamps it, so no integer ceiling applies. */

@@ -1698,13 +1698,20 @@ public class OptionsMapper {
       if (fraction ? OptionValues.isDecimal(value) : OptionValues.isAtMost(
           value, max)) {
         commandline.add("-" + option + value);
+      } else {
+        refused(commandline, value);
       }
+    }
+
+    /** What to send instead of a value the engine would not take. Nothing. */
+    protected void refused(final List<String> commandline, final String value) {
     }
   }
 
   /**
-   * Simple option whose ceiling is not the engine's plain int maximum.<br/>
-   * Example: -%J60
+   * Simple option whose ceiling is not the engine's plain int maximum, and
+   * which sends nothing above it. ClampedOption sends the ceiling.<br/>
+   * Example: -u2
    */
   public static class CappedOption extends SimpleOption {
     public CappedOption(final String option, final long max) {
@@ -1713,8 +1720,8 @@ public class OptionsMapper {
   }
 
   /**
-   * Simple option whose value the engine clips to a ceiling rather than
-   * refusing.<br/>
+   * Simple option that sends the ceiling rather than nothing above it, because
+   * the engine clips it there. CappedOption sends nothing.<br/>
    * Example: -%J60
    */
   public static class ClampedOption extends SimpleOption {
@@ -1723,14 +1730,12 @@ public class OptionsMapper {
     }
 
     @Override
-    public void emit(final List<String> commandline, final String value) {
-      /* Dropping it would leave the engine on its own default, which is lower
-       * than the ceiling, so a user asking for more would get less. A value
-       * that is not plain digits still goes, because its leftover characters
-       * would be read as another option. */
-      if (OptionValues.isAtMost(value, max)) {
-        commandline.add("-" + option + value);
-      } else if (OptionValues.isDigits(value)) {
+    protected void refused(final List<String> commandline, final String value) {
+      /* Sending nothing would leave the engine on its own default, which is
+       * below the ceiling, so asking for more would get less. An unreadable
+       * value still goes nowhere, because its leftover characters would be
+       * read as another option. */
+      if (OptionValues.isDigits(value)) {
         commandline.add("-" + option + max);
       }
     }
