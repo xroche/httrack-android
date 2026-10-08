@@ -98,6 +98,33 @@ public class GluedNumberCapTest {
     assertEquals("[]", emit("FollowRobotsTxt", "4").toString());
   }
 
+  /* -m is emitted at finish() from two fields, and MaxSizeHandler latches after
+     the first flush, so each call needs its own mapper. */
+  private static List<String> emitMaxSize(final String html, final String other) {
+    final OptionsMapper mapper = new OptionsMapper();
+    final OptionMapper htmlField = mapper.fieldsNameToMapper.get("MaxHtml");
+    final OptionMapper otherField = mapper.fieldsNameToMapper.get("MaxOther");
+    assertTrue("MaxHtml or MaxOther reaches no mapper",
+        htmlField != null && otherField != null);
+    final List<String> commandline = new ArrayList<String>();
+    htmlField.emit(commandline, html);
+    otherField.emit(commandline, other);
+    ((OptionMapper.FinishMapper) htmlField).finish(commandline);
+    return commandline;
+  }
+
+  /** The engine takes each -m size up to INT64_MAX, so neither may be an int. */
+  @Test
+  public void aPerFileSizeKeepsItsSixtyFourBitRange() throws Exception {
+    assertEquals("the engine moved the maxfile_html ceiling", "INT64_MAX",
+        engineCeiling("maxfile_html"));
+    assertEquals("[-m4000000000,3000000000]",
+        emitMaxSize("3000000000", "4000000000").toString());
+    assertEquals("[-m9223372036854775807]",
+        emitMaxSize("", "9223372036854775807").toString());
+    assertEquals("[]", emitMaxSize("", "9223372036854775808").toString());
+  }
+
   /** The engine scans -%c with %f and clamps it, so no integer ceiling applies. */
   @Test
   public void aFractionOptionIsLeftAlone() {
