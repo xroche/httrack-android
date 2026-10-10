@@ -159,7 +159,7 @@
     <string name="rewrite_links_3">Absolute URI / Absolute URL</string>
     <string name="rewrite_links_4">Original URL / Original URL</string>
     <string name="activate_debugging">Activate Debugging Mode (winhttrack.log)</string>
-    <string name="hint_scan_rules">-* +www.example.com/*.html +*.gif +*.png +*.css</string>
+    <string name="hint_scan_rules">-* +www.example.com/*.html +*.png +*.webp +*.woff2</string>
     <string name="action_download">Download web site(s)</string>
     <string name="action_continue">Continue interrupted download</string>
     <string name="action_update">Update existing download</string>

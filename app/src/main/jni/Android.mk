@@ -88,6 +88,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsmime_selftest.c	\
 	httrack/src/htsname_selftest.c httrack/src/htsnet_selftest.c	\
 	httrack/src/htsopt_selftest.c httrack/src/htsparse_selftest.c	\
+	httrack/src/htstools_selftest.c	\
 	httrack/src/htswarc_selftest.c httrack/src/htswizard_selftest.c	\
 	httrack/src/htscodec.c httrack/src/htsproxy.c							\
 	httrack/src/htsdate.c httrack/src/htsurlport.c httrack/src/htswarc.c							\
