@@ -260,7 +260,7 @@ public class OptionsMapper {
       new Pair<String, String>("DefaultReferer", ""),
       new Pair<String, String>(
           "WildCardFilters",
-          "+*.png +*.gif +*.jpg +*.jpeg +*.css +*.js -ad.doubleclick.net/* -mime:application/foobar"),
+          "+*.png +*.gif +*.jpg +*.jpeg +*.webp +*.avif +*.svg +*.css +*.js +*.woff2 +*.woff +*.ttf +*.otf +*.mp4 +*.webm -ad.doubleclick.net/* -mime:application/foobar"),
   // new Pair<String, String>("CurrentAction", "0")
   };
 
