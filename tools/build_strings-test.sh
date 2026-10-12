@@ -9,9 +9,9 @@ SUT="$HERE/build_strings.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# lang.def pairs a symbol with its English text, symbol first. It keeps the real
-# file's shape: the LANGUAGE_ rows a catalog header needs, and two symbols
-# sharing "Cancel", which 27 of its texts really do.
+# lang.def pairs a symbol with its English text, symbol first. This fixture
+# copies the real file, including its LANGUAGE_ header rows and two symbols
+# sharing one English text, as 27 of its texts do.
 mkdir -p "$tmp/lang" "$tmp/res/values"
 cat >"$tmp/lang.def" <<'DEF'
 Francais
