@@ -3,7 +3,8 @@
 
 # Convert httrack lang/*;txt files into android xml resources
 
-# usage: $0 path-to/lang path-to/res 
+# usage: $0 path-to/lang path-to/res [path-to/lang.def]
+# lang.def defaults to the one next to the lang directory
 # example:
 #	rm -rf res/values-?? res/values-??-r??	# language dirs only: values-* also takes the
 #					# hand-kept values-v34, values-night and the rest
@@ -13,8 +14,48 @@ function norm_key {
 	echo "$1" | sed -e 's/[^a-zA-Z0-9]/_/g'
 }
 
+# Clean up catalog text. lang.def goes through it too, so a symbol resolves to
+# the same key as its English text.
+function lang_filter {
+	tr -d '\r' \
+		| sed -e 's/\\r//g' \
+		| sed -e 's/:$//' -e 's/\* //g' -e 's/\.\.\.$//g' -e 's/\([[:space:]]\)[[:space:]]*/\1/g' -e 's/[[:space:]]*$//' \
+		| sed -e 's/ & / @@amp@@ /g' -e 's/&//g' -e 's/@@amp@@/\&amp;/g' \
+		| sed -e 's/WinHTTrack/HTTrack/g' \
+		| sed -e "s/1998-2003/1998-$(date +%Y)/g" \
+		| sed -e "s/(C)/\&#169;/g"
+}
+
+# Store one translation, keyed by the lang.def symbol in $3, or by its text when
+# $3 is empty. A symbol line beats a text line, and is skipped only when the same
+# symbol already set this key, so several symbols sharing a text keep the last.
+function put_str {
+	if test -n "$3"; then
+		test "${sym_owner[$1]}" = "$3" && return 0
+		sym_owner["$1"]="$3"
+	elif test -n "${sym_owner[$1]}"; then
+		return 0
+	fi
+	arr["$1"]="$2"
+}
+
 test -d "$1" || ! echo "lang directory not found: $1" || exit 1
 test -d "$2" || ! echo "res directory not found: $2" || exit 1
+langdef="${3:-$1/../lang.def}"
+test -f "$langdef" || ! echo "lang.def not found: $langdef (give its path as the 3rd argument)" || exit 1
+
+# lang.def pairs each string's LANG_ symbol with its English text, symbol first.
+# sym_text resolves a symbol, english_text answers "is this key a known text?".
+declare -A sym_text
+declare -A english_text
+while IFS= read -r dk && IFS= read -r dv; do
+if test -n "$dk" -a -n "$dv"; then
+english_text["$dv"]=1
+case "$dk" in
+LANG_*|LISTDEF_*) sym_text["$dk"]="$dv" ;;
+esac
+fi
+done < <(lang_filter < "$langdef")
 
 for i in $1/*.txt ; do
 echo -n "processing $i .. " >&2
@@ -31,26 +72,32 @@ iso=$(head -6 $i | tail -1 | tr -d '\r' | tr '_' '-' | sed -e 's/-/-r/')
 dest=$2/values-${iso}
 mkdir -p $dest
 
-# read strings, stripping CR,
-# removing : at the end
-# replacing real & by &amp; and stripping the other ones
-# and replacing WinHTTrack by HTTrack
-cat "$i" \
-	| tr -d '\r' \
-	| sed -e 's/\\r//g' \
-	| sed -e 's/:$//' -e 's/\* //g' -e 's/\.\.\.$//g' -e 's/\([[:space:]]\)[[:space:]]*/\1/g' -e 's/[[:space:]]*$//' \
-	| sed -e 's/ & / @@amp@@ /g' -e 's/&//g' -e 's/@@amp@@/\&amp;/g' \
-	| sed -e 's/WinHTTrack/HTTrack/g' \
-	| sed -e "s/1998-2003/1998-$(date +%Y)/g" \
-	| sed -e "s/(C)/\&#169;/g" \
-	| (
-unset arr
+# read strings, cleaned up by lang_filter above
+cat "$i" | lang_filter | (
+unset arr sym_owner
 declare -A arr
+declare -A sym_owner
 while IFS= read -r rk; do
 IFS= read -r v
+
+symbol=
+case "$rk" in
+LANG_*|LISTDEF_*)
+if test -z "${english_text[$rk]}"; then
+if test -z "${sym_text[$rk]}"; then
+# No resource is keyed by a bare symbol, so drop the line rather than store it.
+echo "warning: $i: no lang.def entry for key $rk, line skipped" >&2
+continue
+fi
+symbol="$rk"
+rk="${sym_text[$rk]}"
+fi
+;;
+esac
+
 k="$(norm_key "$rk")"
 if test -n "$k" -a -n "$v"; then
-arr["$k"]="$v"
+put_str "$k" "$v" "$symbol"
 fi
 
 # hack for multiple \n-separated lines
@@ -61,7 +108,7 @@ sv=$(echo "$v" | sed -e 's/\\n/"/g' | cut -f${n} -d'"' | sed -e 's/\\r//g')
 sk=$(echo "$rk" | sed -e 's/\\n/"/g' | cut -f${n} -d'"' | sed -e 's/\\r//g')
 sk="$(norm_key "$sk")"
 if test -n "$sk" -a -n "$sv"; then
-arr["$sk"]="$sv"
+put_str "$sk" "$sv" "$symbol"
 n=$[$n+1]
 else
 n=

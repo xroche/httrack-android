@@ -68,6 +68,8 @@ jobs:
       # The test runs here, not beside the other tool tests, because only this job
       # and assemble are required checks, and it guards the gate below it.
       - run: tools/ci/check-branch-protection-test.sh
+      # This runs here too: the string generator has no other check.
+      - run: tools/build_strings-test.sh
       - name: Check arm64 branch protection
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
