@@ -9,9 +9,9 @@ SUT="$HERE/build_strings.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# lang.def pairs a symbol with its English text, symbol first. "Cancel" is there
-# twice, as the real file has it, so a repeated text cannot resolve to a symbol
-# by accident.
+# lang.def pairs a symbol with its English text, symbol first. It keeps the real
+# file's shape: the LANGUAGE_ rows a catalog header needs, and two symbols
+# sharing "Cancel", which 27 of its texts really do.
 mkdir -p "$tmp/lang" "$tmp/res/values"
 cat >"$tmp/lang.def" <<'DEF'
 Francais
@@ -34,6 +34,10 @@ LISTDEF_1
 One\nTwo
 LANG_LITERAL
 LANG_OK
+LANG_B3
+Cancel
+LANG_INFO
+Info type:
 DEF
 
 cat >"$tmp/res/values/strings.xml" <<'XML'
@@ -45,6 +49,7 @@ cat >"$tmp/res/values/strings.xml" <<'XML'
     <string name="one">One</string>
     <string name="two">Two</string>
     <string name="literal">LANG_OK</string>
+    <string name="info">Info type</string>
 </resources>
 XML
 
@@ -71,22 +76,25 @@ bad() {
     fail=1
 }
 
-# A string the generator filled, with that exact value.
+# Checks that the generator filled this string with that value.
 has() {
-    if grep -qF "<string name=\"$2\">$3</string>" "$out"; then
-        pass "$1"
+    local label="$1" name="$2" value="$3"
+    if grep -qF "<string name=\"$name\">$value</string>" "$out"; then
+        pass "$label"
     else
-        bad "$1 (wanted $2 = $3)"
-        grep -F "name=\"$2\"" "$out" || true
+        bad "$label (wanted $name = $value)"
+        grep -F "name=\"$name\"" "$out" || true
     fi
 }
 
-# A string the generator left out, which it writes back as a comment.
+# Checks that the generator left this string out, writing it back as a comment.
+# Asserting the comment, not the absence of a value, fails on an empty file too.
 missing() {
-    if grep -qF "<string name=\"$2\">" "$out"; then
-        bad "$1 ($2 should have no value)"
+    local label="$1" name="$2" text="$3"
+    if grep -qF "[string name=\"$name\"]${text}[/string]" "$out"; then
+        pass "$label"
     else
-        pass "$1"
+        bad "$label ($name should carry no value)"
     fi
 }
 
@@ -101,15 +109,25 @@ LANG_NOSUCH
 Jamais
 LANG_OK
 TexteLitteral
+LANG_INFO
+Type info
+One
+UnTexte
 CAT
 has "an English-text key still resolves" ok Valider
 has "a LANG_ symbol key resolves" cancel Annuler
 has "a LISTDEF_ symbol splits on \\n, first line" one Un
 has "a LISTDEF_ symbol splits on \\n, second line" two Deux
-missing "a string no catalog line carries stays empty" start
+# The row keyed One below the LISTDEF_ line must not take the slot its first
+# fragment filled, because a fragment belongs to the symbol that carried it.
+has "a split fragment keeps its symbol's claim" one Un
+missing "a string no catalog line carries stays empty" start Start
 # lang.def gives "LANG_OK" as a string's own English text, so a line keyed that
 # way is text, not the symbol of the same name.
 has "a key lang.def knows as text is not read as a symbol" literal TexteLitteral
+# lang.def spells this text with a trailing colon and strings.xml does not, so
+# the resolved key matches only when lang.def goes through lang_filter as well.
+has "lang.def text is cleaned up like a catalog key" info "Type info"
 if grep -q 'LANG_NOSUCH' "$err"; then
     pass "a symbol absent from lang.def is reported"
 else
@@ -134,21 +152,52 @@ FromText
 CAT
 has "symbol beats a text line below it" start FromSymbol
 
-# Two symbol lines for one string: the engine keeps the first, so keep the first.
+# One symbol twice: the engine keeps its first line, so keep the first.
 run <<'CAT'
 LANG_START
 Premier
 LANG_START
 Second
 CAT
-has "the first of two symbol lines wins" start Premier
+has "the first of two lines for one symbol wins" start Premier
+
+# A catalog converted line by line must generate what it generated before, so
+# re-keying it changes no string. LANG_CANCEL and LANG_B3 share one text here,
+# which is why the last of several symbols has to win like the last text line.
+run <<'CAT'
+Start
+Demarrer
+Cancel
+Annuler
+Cancel
+Abandonner
+Info type:
+Type info
+One\nTwo
+Un\nDeux
+CAT
+cp "$out" "$tmp/text-keyed.xml"
+run <<'CAT'
+LANG_START
+Demarrer
+LANG_CANCEL
+Annuler
+LANG_B3
+Abandonner
+LANG_INFO
+Type info
+LISTDEF_1
+Un\nDeux
+CAT
+if diff -q "$tmp/text-keyed.xml" "$out" >/dev/null; then
+    pass "a re-keyed catalog generates the same file"
+else
+    bad "a re-keyed catalog generates the same file"
+    diff "$tmp/text-keyed.xml" "$out" || true
+fi
 
 # The symbol-to-text table comes from lang.def, so a missing one must stop the
 # run rather than quietly drop every symbol-keyed line.
-run <<'CAT' || true
-OK
-Valider
-CAT
 rc=0
 bash "$SUT" "$tmp/lang" "$tmp/res" /nonexistent/lang.def >/dev/null 2>&1 || rc=$?
 if test "$rc" -eq 1; then
@@ -157,4 +206,5 @@ else
     bad "a missing lang.def fails the run (exit $rc)"
 fi
 
+test "$fail" -eq 0 && echo "build_strings-test: all cases pass"
 exit "$fail"

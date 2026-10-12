@@ -14,9 +14,8 @@ function norm_key {
 	echo "$1" | sed -e 's/[^a-zA-Z0-9]/_/g'
 }
 
-# Clean up catalog text: strip CR, drop a trailing colon, replace a real & by
-# &amp; and strip the others, and say HTTrack rather than WinHTTrack. lang.def
-# goes through it too, so a symbol resolves to the same key as its English text.
+# Clean up catalog text. lang.def goes through it too, so a symbol resolves to
+# the same key as its English text.
 function lang_filter {
 	tr -d '\r' \
 		| sed -e 's/\\r//g' \
@@ -27,14 +26,14 @@ function lang_filter {
 		| sed -e "s/(C)/\&#169;/g"
 }
 
-# Store one translation. A symbol-keyed line beats a text-keyed one for the same
-# string, and the first symbol line wins, so a catalog holding both kinds gives
-# the same result whatever order its lines are in.
+# Store one translation, keyed by the lang.def symbol in $3, or by its text when
+# $3 is empty. A symbol line beats a text line, and is skipped only when the same
+# symbol already set this key, so several symbols sharing a text keep the last.
 function put_str {
-	if test -n "$from_symbol"; then
-		test -n "${symdone[$1]}" && return 0
-		symdone["$1"]=1
-	elif test -n "${symdone[$1]}"; then
+	if test -n "$3"; then
+		test "${sym_owner[$1]}" = "$3" && return 0
+		sym_owner["$1"]="$3"
+	elif test -n "${sym_owner[$1]}"; then
 		return 0
 	fi
 	arr["$1"]="$2"
@@ -46,14 +45,14 @@ langdef="${3:-$1/../lang.def}"
 test -f "$langdef" || ! echo "lang.def not found: $langdef (give its path as the 3rd argument)" || exit 1
 
 # lang.def pairs each string's LANG_ symbol with its English text, symbol first.
-# A catalog line can be keyed either way, so read both directions.
-declare -A symtext
-declare -A langtext
+# sym_text resolves a symbol, english_text answers "is this key a known text?".
+declare -A sym_text
+declare -A english_text
 while IFS= read -r dk && IFS= read -r dv; do
 if test -n "$dk" -a -n "$dv"; then
-langtext["$dv"]=1
+english_text["$dv"]=1
 case "$dk" in
-LANG_*|LISTDEF_*) symtext["$dk"]="$dv" ;;
+LANG_*|LISTDEF_*) sym_text["$dk"]="$dv" ;;
 esac
 fi
 done < <(lang_filter < "$langdef")
@@ -75,31 +74,30 @@ mkdir -p $dest
 
 # read strings, cleaned up by lang_filter above
 cat "$i" | lang_filter | (
-unset arr symdone
+unset arr sym_owner
 declare -A arr
-declare -A symdone
+declare -A sym_owner
 while IFS= read -r rk; do
 IFS= read -r v
 
-# A catalog can key a line by its lang.def symbol instead of its English text,
-# which is what lets a string be reworded without orphaning its translations.
-from_symbol=
+symbol=
 case "$rk" in
 LANG_*|LISTDEF_*)
-if test -z "${langtext[$rk]}"; then
-if test -z "${symtext[$rk]}"; then
+if test -z "${english_text[$rk]}"; then
+if test -z "${sym_text[$rk]}"; then
+# No resource is keyed by a bare symbol, so drop the line rather than store it.
 echo "warning: $i: no lang.def entry for key $rk, line skipped" >&2
 continue
 fi
-rk="${symtext[$rk]}"
-from_symbol=1
+symbol="$rk"
+rk="${sym_text[$rk]}"
 fi
 ;;
 esac
 
 k="$(norm_key "$rk")"
 if test -n "$k" -a -n "$v"; then
-put_str "$k" "$v"
+put_str "$k" "$v" "$symbol"
 fi
 
 # hack for multiple \n-separated lines
@@ -110,7 +108,7 @@ sv=$(echo "$v" | sed -e 's/\\n/"/g' | cut -f${n} -d'"' | sed -e 's/\\r//g')
 sk=$(echo "$rk" | sed -e 's/\\n/"/g' | cut -f${n} -d'"' | sed -e 's/\\r//g')
 sk="$(norm_key "$sk")"
 if test -n "$sk" -a -n "$sv"; then
-put_str "$sk" "$sv"
+put_str "$sk" "$sv" "$symbol"
 n=$[$n+1]
 else
 n=
