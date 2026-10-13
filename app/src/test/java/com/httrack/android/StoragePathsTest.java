@@ -44,14 +44,21 @@ public class StoragePathsTest {
     assertFalse(StoragePaths.isInsideRoot(root + "2", root));
   }
 
-  /** The guard is only worth anything if the extraction loop actually calls it. */
+  /**
+   * The guard is only worth anything if the extraction loop calls it, refuses on it, and does so
+   * before it opens the file. A call whose answer is dropped, or one made after the write, would
+   * leave the predicate right and the extraction wide open.
+   */
   @Test
-  public void theResourceExtractionGuardsEachEntryName() throws IOException {
+  public void theResourceExtractionRefusesAnEscapingEntryBeforeWriting() throws IOException {
     final String source = TestSources.withoutCommentsAndStrings(
         TestSources.javaSource("HTTrackActivity")).replaceAll("\\s+", " ");
-    assertTrue("the zip entry destination must be vetted against the cache root",
-        source.contains("StoragePaths.isInsideRoot(dest.getCanonicalPath(), "
-            + "rscPath.getCanonicalPath())"));
+    final String guard = "if (!StoragePaths.isInsideRoot(dest.getCanonicalPath(), "
+        + "rscPath.getCanonicalPath())) { throw new IOException(";
+    assertTrue("the zip entry destination must be refused unless it is inside the cache root",
+        source.contains(guard));
+    assertTrue("the guard must precede the write it protects",
+        source.indexOf(guard) < source.indexOf("new FileOutputStream(dest)"));
   }
 
   @Test
