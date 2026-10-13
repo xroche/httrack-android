@@ -1,6 +1,7 @@
 # CodeQL static analysis: the Java app AND the JNI/C glue. Mirrors the httrack
-# repo's codeql.yml (security-extended). c-cpp is scoped to htslibjni*.c via
-# .github/codeql/codeql-config.yml so the vendored engine isn't double-scanned.
+# repo's codeql.yml (security-extended). The build steps below are what scope
+# c-cpp: GitHub honours a config-file path filter only for a language it does
+# not build.
 #
 # java-kotlin uses build-mode: none (the app doesn't build under modern Gradle
 # until the AGP 8 migration in Phase 3 — no build needed to analyze the source).
@@ -41,14 +42,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive
-      - uses: github/codeql-action/init@v4
-        with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
-          queries: security-extended
-          config-file: ./.github/codeql/codeql-config.yml
 
-      # c-cpp only: CodeQL must observe the native compile (arm64-v8a is enough).
+      # Untraced on purpose: anything compiled before init is never extracted,
+      # which is how the vendored engine stays out of this repo's results.
+      # One ABI is enough, since the other compiles the same sources.
       - name: Set up NDK ${{ env.NDK_VERSION }}
         if: matrix.language == 'c-cpp'
         id: ndk
@@ -56,7 +53,7 @@ jobs:
         with:
           ndk-version: ${{ env.NDK_VERSION }}
           # No local-cache: its restore can drop the NDK clang binaries.
-      - name: Build native (c-cpp)
+      - name: Build the engine, untraced (c-cpp)
         if: matrix.language == 'c-cpp'
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
@@ -65,5 +62,24 @@ jobs:
           tools/ci/vendor-libiconv.sh
           OPENSSL_ANDROID_ROOT=/tmp/openssl-android ABIS=arm64-v8a tools/ci/fetch-openssl-statics.sh
           ( cd app/src/main && "${ANDROID_NDK_ROOT}/ndk-build" APP_ABI=arm64-v8a APP_PLATFORM=android-24 -j"$(nproc)" )
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # The touched files are exactly the htslibjni module's LOCAL_SRC_FILES, so make
+      # recompiles those and relinks. Extraction happens at compile, not at link.
+      - name: Recompile our own native code, traced (c-cpp)
+        if: matrix.language == 'c-cpp'
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          touch app/src/main/jni/htslibjni.c \
+                app/src/main/jni/coffeecatch/coffeecatch.c \
+                app/src/main/jni/coffeecatch/coffeejni.c
+          ( cd app/src/main && "${ANDROID_NDK_ROOT}/ndk-build" APP_ABI=arm64-v8a APP_PLATFORM=android-24 )
 
       - uses: github/codeql-action/analyze@v4
