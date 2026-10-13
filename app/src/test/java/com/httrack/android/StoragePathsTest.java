@@ -28,6 +28,39 @@ public class StoragePathsTest {
     internal = tmp.newFolder("int", "data", "com.httrack.android", "files");
   }
 
+  /**
+   * The resource bundle is extracted entry by entry, and a ".." in a name would land outside the
+   * cache. Canonical paths are what the guard compares, so the escape must be built that way.
+   */
+  @Test
+  public void treatsAnEscapingPathAsOutsideTheRoot() throws IOException {
+    final String root = external.getCanonicalPath();
+    assertTrue(StoragePaths.isInsideRoot(new File(external, "html/index.html").getCanonicalPath(),
+        root));
+    assertTrue("the root itself is inside itself", StoragePaths.isInsideRoot(root, root));
+    assertFalse(StoragePaths.isInsideRoot(new File(external, "../evil").getCanonicalPath(), root));
+    assertFalse(StoragePaths.isInsideRoot(
+        new File(external, "html/../../../evil").getCanonicalPath(), root));
+    assertFalse(StoragePaths.isInsideRoot(root + "2", root));
+  }
+
+  /**
+   * The guard is only worth anything if the extraction loop calls it, refuses on it, and does so
+   * before it opens the file. A call whose answer is dropped, or one made after the write, would
+   * leave the predicate right and the extraction wide open.
+   */
+  @Test
+  public void theResourceExtractionRefusesAnEscapingEntryBeforeWriting() throws IOException {
+    final String source = TestSources.withoutCommentsAndStrings(
+        TestSources.javaSource("HTTrackActivity")).replaceAll("\\s+", " ");
+    final String guard = "if (!StoragePaths.isInsideRoot(dest.getCanonicalPath(), "
+        + "rscPath.getCanonicalPath())) { throw new IOException(";
+    assertTrue("the zip entry destination must be refused unless it is inside the cache root",
+        source.contains(guard));
+    assertTrue("the guard must precede the write it protects",
+        source.indexOf(guard) < source.indexOf("new FileOutputStream(dest)"));
+  }
+
   @Test
   public void acceptsOurOwnRoots() {
     assertEquals(Boolean.TRUE, StoragePaths.isWritable(new File(external, "Websites"), external, internal));

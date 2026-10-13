@@ -8,6 +8,12 @@ import java.util.List;
  * from the first argument that is not an option, so nothing may be appended after the options.
  */
 final class CrawlArgv {
+  /** -%X carries a whole header line, so its value can hold an Authorization or Cookie secret. */
+  private static final String HEADER_OPTION = "-%X";
+
+  /** The mirror directory rides -O1 and is a local path, so its text is never a credential. */
+  private static final String TARGET_OPTION = "-O1";
+
   private CrawlArgv() {
   }
 
@@ -35,5 +41,35 @@ final class CrawlArgv {
     args.add(targetPath);
     args.addAll(options);
     return args.toArray(new String[] {});
+  }
+
+  /**
+   * The argv as one log line, with credentials blanked out. A URL and the proxy address are free
+   * text and the engine takes a password in either, so the raw argv is not loggable. Redacting too
+   * much only costs log detail, so anything shaped like userinfo goes.
+   *
+   * @param argv
+   *          the argv as handed to the engine
+   * @return the log line, arguments separated by a space
+   */
+  static String redacted(final String[] argv) {
+    final StringBuilder out = new StringBuilder();
+    String option = "";
+    for (final String arg : argv) {
+      if (out.length() != 0) {
+        out.append(' ');
+      }
+      if (HEADER_OPTION.equals(option)) {
+        out.append("***");
+      } else if (TARGET_OPTION.equals(option) || arg.startsWith("-")) {
+        out.append(arg);
+      } else {
+        // Up to the LAST '@' of each run, because the engine reads that one as the end of the
+        // userinfo and a password may itself contain '@'.
+        out.append(arg.replaceAll("[^/\\s]*@", "***@"));
+      }
+      option = arg;
+    }
+    return out.toString();
   }
 }

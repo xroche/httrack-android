@@ -13,6 +13,14 @@ final class StoragePaths {
   }
 
   /**
+   * Whether a canonical path lies at or under a canonical root. The separator on both sides is
+   * what keeps a sibling like "files2" from matching "files".
+   */
+  static boolean isInsideRoot(final String path, final String root) {
+    return (path + File.separator).startsWith(root + File.separator);
+  }
+
+  /**
    * Whether {@code path} lies inside one of our own storage roots, either of which may be null.
    *
    * @param path
@@ -41,11 +49,9 @@ final class StoragePaths {
   static Boolean isWritable(final File path, final File external, final File internal,
       final File shared) {
     try {
-      // The separator on both sides is what keeps a sibling like "files2" from matching "files".
-      final String target = path.getCanonicalPath() + File.separator;
+      final String target = path.getCanonicalPath();
       for (final File root : new File[] { external, internal, shared }) {
-        if (root != null
-            && target.startsWith(root.getCanonicalPath() + File.separator)) {
+        if (root != null && isInsideRoot(target, root.getCanonicalPath())) {
           return true;
         }
       }
