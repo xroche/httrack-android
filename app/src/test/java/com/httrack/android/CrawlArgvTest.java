@@ -50,34 +50,53 @@ public class CrawlArgvTest {
   }
 
   /**
-   * The engine takes credentials in a URL and in the proxy address, and both fields are free
-   * text, so the log line must blank the userinfo out while the argv keeps it.
+   * The engine takes a password in a URL and in the proxy address, both free-text fields, and -%X
+   * carries a whole header line. Each row is one thing the log must not leak.
    */
   @Test
-  public void thePrintableArgvHidesCredentials() {
-    assertEquals("httrack -O1 " + TARGET + " https://***@example.com/ -P ***@proxy.lan:8080",
-        CrawlArgv.printable(new String[] { "httrack", "-O1", TARGET,
-            "https://bob:s3cret@example.com/", "-P", "user:pw@proxy.lan:8080" }));
+  public void theRedactedArgvHidesCredentials() {
+    assertRedacted("https://***@example.com/", "https://bob:s3cret@example.com/");
+    assertRedacted("http://***@example.com/", "http://:pw@example.com/");
+    // The engine ends the userinfo at the LAST '@', so a password may contain one.
+    assertRedacted("http://***@example.com/", "http://bob:p@ss@example.com/");
+    // Two userinfo sites in one argument: redacting only the first would leak the second.
+    assertRedacted("http://***@x/?u=http://***@y", "http://a:b@x/?u=http://c:d@y");
+    assertRedacted("-P socks5://***@proxy.lan:1080", "-P", "socks5://user:pw@proxy.lan:1080");
+    assertRedacted("-P connect://***@proxy.lan:8080", "-P", "connect://user:pw@proxy.lan:8080");
+    assertRedacted("-%X ***", "-%X", "Authorization: Bearer eyJsecret");
   }
 
   /** Blanking must not touch an argv that carries none, or the log stops being readable. */
   @Test
-  public void thePrintableArgvLeavesACredentialFreeLineAlone() {
-    final String[] argv = CrawlArgv.build(false, TARGET, Arrays.asList("-P", "proxy.lan:8080",
-        "http://example.com/a@b", "-%F", "me@example.com"));
-    assertEquals("httrack -@i4 -O1 " + TARGET + " -P proxy.lan:8080 http://example.com/a@b"
-        + " -%F me@example.com", CrawlArgv.printable(argv));
+  public void theRedactedArgvLeavesACredentialFreeLineAlone() {
+    assertRedacted("httrack -@i4 -O1 " + TARGET + " -P proxy.lan:8080 http://example.com/ -F me",
+        CrawlArgv.build(false, TARGET, Arrays.asList("-P", "proxy.lan:8080",
+            "http://example.com/", "-F", "me")));
+    // An '@' in the mirror path is not userinfo, and -O1 says the next argument is that path.
+    assertRedacted("-O1 /sdcard/HTTrack/a@b", "-O1", "/sdcard/HTTrack/a@b");
+    assertRedacted("http://[2001:db8::1]:8080/", "http://[2001:db8::1]:8080/");
+  }
+
+  /** Over-redaction is the safe direction, so record where it costs log detail. */
+  @Test
+  public void theRedactedArgvBlanksUserinfoShapesThatCarryNoPassword() {
+    assertRedacted("http://***@example.com/", "http://bob@example.com/");
+    assertRedacted("http://example.com/***@v", "http://example.com/a?x=u:p@v");
   }
 
   /** A revert to the raw join would put the credentials back in logcat. */
   @Test
-  public void theRunLogsThePrintableArgv() throws IOException {
+  public void theRunLogsTheRedactedArgv() throws IOException {
     final String source = TestSources.withoutCommentsAndStrings(
         TestSources.javaSource("CrawlRun")).replaceAll("\\s+", " ");
-    assertTrue("the engine argv must be logged through CrawlArgv.printable",
-        source.contains("CrawlArgv.printable(cargs)"));
+    assertTrue("the engine argv must be logged through CrawlArgv.redacted",
+        source.contains("CrawlArgv.redacted(cargs)"));
     assertFalse("printArray would log the credentials verbatim",
         source.contains("printArray(cargs)"));
+  }
+
+  private static void assertRedacted(final String expected, final String... argv) {
+    assertEquals(expected, CrawlArgv.redacted(argv));
   }
 
   /** The device answer has to reach the build, or every phone gets one family's argv. */

@@ -211,7 +211,7 @@ final class CrawlRun implements HTTrackCallbacks, MirrorSession.Crawl {
       final String[] cargs = ResumeArgv.forStart(
           CrawlArgv.build(HTTrackActivity.isIPv6Enabled(), target.getAbsolutePath(), options),
           owner.resumesInterrupted());
-      Log.v(getClass().getSimpleName(), "starting engine: " + CrawlArgv.printable(cargs));
+      Log.v(getClass().getSimpleName(), "starting engine: " + CrawlArgv.redacted(cargs));
 
       // Serialize settings
       owner.serializeProfile(outLock.getChannel(), profile);

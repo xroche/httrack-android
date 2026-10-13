@@ -33,7 +33,7 @@ public class StoragePathsTest {
    * cache. Canonical paths are what the guard compares, so the escape must be built that way.
    */
   @Test
-  public void refusesAnEntryNameThatEscapesItsRoot() throws IOException {
+  public void treatsAnEscapingPathAsOutsideTheRoot() throws IOException {
     final String root = external.getCanonicalPath();
     assertTrue(StoragePaths.isInsideRoot(new File(external, "html/index.html").getCanonicalPath(),
         root));
@@ -41,18 +41,12 @@ public class StoragePathsTest {
     assertFalse(StoragePaths.isInsideRoot(new File(external, "../evil").getCanonicalPath(), root));
     assertFalse(StoragePaths.isInsideRoot(
         new File(external, "html/../../../evil").getCanonicalPath(), root));
-  }
-
-  /** A sibling shares the root's text but not its tree, which is what the separator stops. */
-  @Test
-  public void refusesASiblingOfTheRoot() throws IOException {
-    assertFalse(StoragePaths.isInsideRoot(external.getCanonicalPath() + "2",
-        external.getCanonicalPath()));
+    assertFalse(StoragePaths.isInsideRoot(root + "2", root));
   }
 
   /** The guard is only worth anything if the extraction loop actually calls it. */
   @Test
-  public void theResourceExtractionGuardsEveryEntryName() throws IOException {
+  public void theResourceExtractionGuardsEachEntryName() throws IOException {
     final String source = TestSources.withoutCommentsAndStrings(
         TestSources.javaSource("HTTrackActivity")).replaceAll("\\s+", " ");
     assertTrue("the zip entry destination must be vetted against the cache root",

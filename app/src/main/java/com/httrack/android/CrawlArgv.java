@@ -8,6 +8,12 @@ import java.util.List;
  * from the first argument that is not an option, so nothing may be appended after the options.
  */
 final class CrawlArgv {
+  /** -%X carries a whole header line, so its value can hold an Authorization or Cookie secret. */
+  private static final String HEADER_OPTION = "-%X";
+
+  /** The mirror directory rides -O1 and is a local path, so its text is never a credential. */
+  private static final String TARGET_OPTION = "-O1";
+
   private CrawlArgv() {
   }
 
@@ -38,20 +44,31 @@ final class CrawlArgv {
   }
 
   /**
-   * The argv as one log line, with any "user:password@" blanked out. A URL and the proxy address
-   * are both free text, and the engine takes credentials in them, so the raw argv is not loggable.
+   * The argv as one log line, with credentials blanked out. A URL and the proxy address are free
+   * text and the engine takes a password in either, so the raw argv is not loggable. Redacting too
+   * much only costs log detail, so anything shaped like userinfo goes.
    *
    * @param argv
    *          the argv as handed to the engine
-   * @return the printable form, arguments separated by a space
+   * @return the log line, arguments separated by a space
    */
-  static String printable(final String[] argv) {
+  static String redacted(final String[] argv) {
     final StringBuilder out = new StringBuilder();
+    String option = "";
     for (final String arg : argv) {
       if (out.length() != 0) {
         out.append(' ');
       }
-      out.append(arg.replaceAll("[^/@:\\s]+:[^/@\\s]*@", "***@"));
+      if (HEADER_OPTION.equals(option)) {
+        out.append("***");
+      } else if (TARGET_OPTION.equals(option) || arg.startsWith("-")) {
+        out.append(arg);
+      } else {
+        // Up to the LAST '@' of each run, because the engine reads that one as the end of the
+        // userinfo and a password may itself contain '@'.
+        out.append(arg.replaceAll("[^/\\s]*@", "***@"));
+      }
+      option = arg;
     }
     return out.toString();
   }
