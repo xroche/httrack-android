@@ -36,4 +36,23 @@ final class CrawlArgv {
     args.addAll(options);
     return args.toArray(new String[] {});
   }
+
+  /**
+   * The argv as one log line, with any "user:password@" blanked out. A URL and the proxy address
+   * are both free text, and the engine takes credentials in them, so the raw argv is not loggable.
+   *
+   * @param argv
+   *          the argv as handed to the engine
+   * @return the printable form, arguments separated by a space
+   */
+  static String printable(final String[] argv) {
+    final StringBuilder out = new StringBuilder();
+    for (final String arg : argv) {
+      if (out.length() != 0) {
+        out.append(' ');
+      }
+      out.append(arg.replaceAll("[^/@:\\s]+:[^/@\\s]*@", "***@"));
+    }
+    return out.toString();
+  }
 }

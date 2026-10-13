@@ -930,8 +930,12 @@ public class HTTrackActivity extends FragmentActivity {
           final ZipInputStream file = new ZipInputStream(zipStream);
           ZipEntry entry;
           while ((entry = file.getNextEntry()) != null) {
-            final File dest = new File(rscPath.getAbsoluteFile() + "/"
-                + entry.getName());
+            final File dest = new File(rscPath.getAbsoluteFile(), entry.getName());
+            // An entry name is not a path segment, so a ".." in one would extract outside.
+            if (!StoragePaths.isInsideRoot(dest.getCanonicalPath(),
+                rscPath.getCanonicalPath())) {
+              throw new IOException("resource entry outside the cache: " + entry.getName());
+            }
             if (entry.getName().endsWith("/")) {
               dest.mkdirs();
             } else {
