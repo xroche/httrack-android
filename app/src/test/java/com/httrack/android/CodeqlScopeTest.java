@@ -6,53 +6,67 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.Test;
 
 /**
- * The c-cpp CodeQL analysis is scoped by build order: the engine compiles before init, where the
- * tracer cannot see it, and only our own sources are recompiled after. So the traced step must
- * touch exactly the htslibjni module's sources. A source added to that module and left out of the
- * workflow would silently drop out of the scan.
+ * A JNI glue source left out of the traced build step would drop out of the CodeQL scan with
+ * nothing turning red, because that step is what scopes the c-cpp analysis.
  */
 public class CodeqlScopeTest {
-  private static File repoFile(final String path) throws IOException {
+  private static final String WORKFLOW = ".github/workflows/codeql.yml";
+  private static final String ANDROID_MK = "app/src/main/jni/Android.mk";
+  private static final String UNTRACED = "Build the engine, untraced";
+  private static final String TRACED = "Recompile the JNI glue, traced";
+  private static final String INIT = "github/codeql-action/init";
+
+  /** Android.mk is CRLF and wraps its lists, so fold both away before matching. */
+  private static String flattened(final String path) throws IOException {
     for (final String prefix : new String[] { "", "../" }) {
       final File file = new File(prefix + path);
       if (file.isFile()) {
-        return file;
+        return TestSources.read(file).replace("\r", "").replaceAll("\\\\\n\\s*", " ");
       }
     }
     throw new IOException("no " + path + " below " + new File(".").getAbsolutePath());
   }
 
-  /** Android.mk is CRLF and wraps its lists, so fold both away before matching. */
-  private static String flattened(final String path) throws IOException {
-    return TestSources.read(repoFile(path)).replace("\r", "").replaceAll("\\\\\n\\s*", " ");
-  }
-
-  private static List<String> glueSources() throws IOException {
-    final String mk = flattened("app/src/main/jni/Android.mk");
+  /** Every source the htslibjni module builds, "+=" included, so an appended one is not missed. */
+  private static Set<String> glueSources() throws IOException {
+    final String mk = flattened(ANDROID_MK);
     final Matcher module = Pattern.compile("LOCAL_MODULE\\s*:=\\s*htslibjni\\b").matcher(mk);
     assertTrue("Android.mk must still define the htslibjni module", module.find());
-    final Matcher sources =
-        Pattern.compile("LOCAL_SRC_FILES\\s*:=\\s*([^\n]*)").matcher(mk.substring(module.end()));
+    final String body = mk.substring(module.end()).split("include \\$\\(BUILD")[0];
+    final Matcher sources = Pattern.compile("LOCAL_SRC_FILES\\s*[:+]?=\\s*([^\n]*)").matcher(body);
+    final Set<String> all = new LinkedHashSet<String>();
     assertTrue("the htslibjni module must still carry a source list", sources.find());
-    return Arrays.asList(sources.group(1).trim().split("\\s+"));
+    do {
+      all.addAll(Arrays.asList(sources.group(1).trim().split("\\s+")));
+    } while (sources.find());
+    return all;
   }
 
-  private static List<String> tracedSources() throws IOException {
-    final String workflow = flattened(".github/workflows/codeql.yml");
-    final Matcher touch = Pattern.compile("touch\\s+([^\n]*)").matcher(workflow);
+  /** The sources the traced step touches, named as Android.mk names them. */
+  private static Set<String> tracedSources() throws IOException {
+    final String workflow = flattened(WORKFLOW);
+    final Matcher touch =
+        Pattern.compile("touch\\s+([^\n]*)").matcher(workflow.substring(indexOf(workflow, TRACED)));
     assertTrue("the traced step must touch the sources it wants recompiled", touch.find());
-    final String[] paths = touch.group(1).trim().split("\\s+");
-    for (int i = 0; i < paths.length; i++) {
-      paths[i] = paths[i].replace("app/src/main/jni/", "");
+    final Set<String> all = new LinkedHashSet<String>();
+    for (final String path : touch.group(1).trim().split("\\s+")) {
+      all.add(path.replace("app/src/main/jni/", ""));
     }
-    return Arrays.asList(paths);
+    return all;
+  }
+
+  private static int indexOf(final String haystack, final String needle) {
+    final int at = haystack.indexOf(needle);
+    assertTrue(needle + " must still appear in " + WORKFLOW, at >= 0);
+    return at;
   }
 
   @Test
@@ -63,11 +77,21 @@ public class CodeqlScopeTest {
   /** Compiling the engine after init would put it back in this repo's results. */
   @Test
   public void theEngineIsBuiltBeforeCodeqlInit() throws IOException {
-    final String workflow = flattened(".github/workflows/codeql.yml");
-    final int untraced = workflow.indexOf("Build the engine, untraced");
-    final int init = workflow.indexOf("github/codeql-action/init");
-    final int traced = workflow.indexOf("Recompile our own native code, traced");
-    assertTrue("the untraced engine build must come first", untraced > 0 && untraced < init);
-    assertTrue("the traced recompile must come after init", init < traced);
+    final String workflow = flattened(WORKFLOW);
+    assertTrue("the untraced engine build must come before init",
+        indexOf(workflow, UNTRACED) < indexOf(workflow, INIT));
+    assertTrue("the traced recompile must come after init",
+        indexOf(workflow, INIT) < indexOf(workflow, TRACED));
+  }
+
+  /** A step named for a build that no longer runs ndk-build would pass the ordering check alone. */
+  @Test
+  public void bothBuildStepsStillRunNdkBuild() throws IOException {
+    final String workflow = flattened(WORKFLOW);
+    final String untraced =
+        workflow.substring(indexOf(workflow, UNTRACED), indexOf(workflow, INIT));
+    assertTrue("the untraced step must build the engine", untraced.contains("ndk-build"));
+    assertTrue("the traced step must build the glue",
+        workflow.substring(indexOf(workflow, TRACED)).contains("ndk-build"));
   }
 }

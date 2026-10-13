@@ -5,12 +5,6 @@ name: httrack-android CodeQL config
 
 # `paths` reaches java-kotlin only, because that leg runs build-mode: none. GitHub
 # honours a path filter for a compiled language only when it does not build the
-# code, so the build steps in codeql.yml are what scope c-cpp, and the JNI entries
-# below only record the same intent. A paths-ignore for the engine lived here and
-# excluded nothing.
+# code, so the build steps in codeql.yml are what scope c-cpp.
 paths:
   - app/src/main/java
-  - app/src/main/jni/htslibjni.c
-  - app/src/main/jni/htslibjni.h
-  - app/src/main/jni/htslibjni-private.h
-  - app/src/main/jni/coffeecatch

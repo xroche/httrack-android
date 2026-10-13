@@ -1,7 +1,7 @@
-# CodeQL static analysis: the Java app AND the JNI/C glue. Mirrors the httrack
+# CodeQL static analysis: the Java app AND the JNI glue. Mirrors the httrack
 # repo's codeql.yml (security-extended). The build steps below are what scope
-# c-cpp: GitHub honours a config-file path filter only for a language it does
-# not build.
+# c-cpp, because GitHub honours a config-file path filter only for a language it
+# does not build.
 #
 # java-kotlin uses build-mode: none (the app doesn't build under modern Gradle
 # until the AGP 8 migration in Phase 3 — no build needed to analyze the source).
@@ -43,9 +43,6 @@ jobs:
         with:
           submodules: recursive
 
-      # Untraced on purpose: anything compiled before init is never extracted,
-      # which is how the vendored engine stays out of this repo's results.
-      # One ABI is enough, since the other compiles the same sources.
       - name: Set up NDK ${{ env.NDK_VERSION }}
         if: matrix.language == 'c-cpp'
         id: ndk
@@ -53,6 +50,9 @@ jobs:
         with:
           ndk-version: ${{ env.NDK_VERSION }}
           # No local-cache: its restore can drop the NDK clang binaries.
+      # This build stays untraced on purpose, so nothing it compiles reaches the
+      # extractor and the vendored engine stays out of our results. One ABI is
+      # enough, because the other compiles the same sources.
       - name: Build the engine, untraced (c-cpp)
         if: matrix.language == 'c-cpp'
         env:
@@ -72,7 +72,7 @@ jobs:
 
       # The touched files are exactly the htslibjni module's LOCAL_SRC_FILES, so make
       # recompiles those and relinks. Extraction happens at compile, not at link.
-      - name: Recompile our own native code, traced (c-cpp)
+      - name: Recompile the JNI glue, traced (c-cpp)
         if: matrix.language == 'c-cpp'
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
