@@ -136,6 +136,20 @@ public class OptionsMapper {
       new Pair<Integer, String>(R.id.editOtherHeaders, "OtherHeaders"),
       new Pair<Integer, String>(R.id.editDefaultReferer, "DefaultReferer"),
 
+      /* Accept headers, one row per kind of link plus the default. */
+      new Pair<Integer, String>(R.id.editAcceptDefault, "AcceptDefault"),
+      new Pair<Integer, String>(R.id.editAcceptDocument, "AcceptDocument"),
+      new Pair<Integer, String>(R.id.editAcceptIframe, "AcceptIframe"),
+      new Pair<Integer, String>(R.id.editAcceptFrame, "AcceptFrame"),
+      new Pair<Integer, String>(R.id.editAcceptImage, "AcceptImage"),
+      new Pair<Integer, String>(R.id.editAcceptStyle, "AcceptStyle"),
+      new Pair<Integer, String>(R.id.editAcceptScript, "AcceptScript"),
+      new Pair<Integer, String>(R.id.editAcceptFont, "AcceptFont"),
+      new Pair<Integer, String>(R.id.editAcceptAudio, "AcceptAudio"),
+      new Pair<Integer, String>(R.id.editAcceptVideo, "AcceptVideo"),
+      new Pair<Integer, String>(R.id.editAcceptObject, "AcceptObject"),
+      new Pair<Integer, String>(R.id.editAcceptEmbed, "AcceptEmbed"),
+
       /* Spider */
       new Pair<Integer, String>(R.id.checkAcceptCookies, "Cookies"),
       new Pair<Integer, String>(R.id.editCookiesFile, "CookiesFile"),
@@ -352,6 +366,30 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("Footer", new ArgumentOption("-%F")),
       new Pair<String, OptionMapper>("AcceptLanguage",
           new ArgumentOption("-%l")),
+      new Pair<String, OptionMapper>("AcceptDefault",
+          new AcceptOption("")),
+      new Pair<String, OptionMapper>("AcceptDocument",
+          new AcceptOption("document")),
+      new Pair<String, OptionMapper>("AcceptIframe",
+          new AcceptOption("iframe")),
+      new Pair<String, OptionMapper>("AcceptFrame",
+          new AcceptOption("frame")),
+      new Pair<String, OptionMapper>("AcceptImage",
+          new AcceptOption("image")),
+      new Pair<String, OptionMapper>("AcceptStyle",
+          new AcceptOption("style")),
+      new Pair<String, OptionMapper>("AcceptScript",
+          new AcceptOption("script")),
+      new Pair<String, OptionMapper>("AcceptFont",
+          new AcceptOption("font")),
+      new Pair<String, OptionMapper>("AcceptAudio",
+          new AcceptOption("audio")),
+      new Pair<String, OptionMapper>("AcceptVideo",
+          new AcceptOption("video")),
+      new Pair<String, OptionMapper>("AcceptObject",
+          new AcceptOption("object")),
+      new Pair<String, OptionMapper>("AcceptEmbed",
+          new AcceptOption("embed")),
       new Pair<String, OptionMapper>("OtherHeaders", new LineListOption("-%X")),
       new Pair<String, OptionMapper>("DefaultReferer",
           new ArgumentOption("-%R")),
@@ -1757,6 +1795,27 @@ public class OptionsMapper {
       if (value != null && value.length() != 0) {
         commandline.add(option);
         commandline.add(value);
+      }
+    }
+  }
+
+  /**
+   * Accept header of one kind of link, or of every kind KIND leaves out when it is empty. The
+   * engine reads the kind inside the value, as --accept 'image=text/avif'.
+   */
+  public static class AcceptOption extends ArgumentOption {
+    protected final String kind;
+
+    public AcceptOption(final String kind) {
+      super("--accept");
+      this.kind = kind;
+    }
+
+    @Override
+    public void emit(final List<String> commandline, final String value) {
+      final String accept = value != null ? value.trim() : "";
+      if (accept.length() != 0) {
+        super.emit(commandline, kind.length() != 0 ? kind + "=" + accept : accept);
       }
     }
   }

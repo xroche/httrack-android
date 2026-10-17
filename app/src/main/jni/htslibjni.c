@@ -593,6 +593,34 @@ JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getFeatures(JNIEnv* env,
   return (*env)->NewStringUTF(env, features);
 }
 
+JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getAcceptPreset(JNIEnv* env,
+                                                                        jclass clazz,
+                                                                        jstring obrowser,
+                                                                        jstring okind) {
+  const char *browser, *kind, *accept;
+  jstring result = NULL;
+
+  UNUSED(clazz);
+  if (obrowser == NULL || okind == NULL) {
+    throwNPException(env, "null browser or kind");
+    return NULL;
+  }
+  browser = (*env)->GetStringUTFChars(env, obrowser, NULL);
+  if (browser == NULL) {
+    return NULL;
+  }
+  kind = (*env)->GetStringUTFChars(env, okind, NULL);
+  if (kind != NULL) {
+    accept = hts_accept_preset(browser, kind);
+    if (accept != NULL) {
+      result = (*env)->NewStringUTF(env, accept);
+    }
+    (*env)->ReleaseStringUTFChars(env, okind, kind);
+  }
+  (*env)->ReleaseStringUTFChars(env, obrowser, browser);
+  return result;
+}
+
 JNICALL jboolean Java_com_httrack_android_jni_HTTrackLib_nativeHasFaulted(JNIEnv* env,
                                                                          jclass clazz) {
   UNUSED(env);

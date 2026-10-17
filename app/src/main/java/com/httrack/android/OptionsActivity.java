@@ -239,8 +239,17 @@ public class OptionsActivity extends FragmentActivity implements
   @ActivityId(R.layout.activity_options_browserid)
   @HelpPage("guide.html#droid/opt-browser-id")
   @Fields({ R.id.editBrowserIdentity, R.id.editHtmlFooter,
-      R.id.editAcceptLanguage, R.id.editOtherHeaders, R.id.editDefaultReferer })
+      R.id.editAcceptLanguage, R.id.editOtherHeaders, R.id.editDefaultReferer,
+      R.id.editAcceptDefault, R.id.editAcceptDocument, R.id.editAcceptIframe,
+      R.id.editAcceptFrame, R.id.editAcceptImage, R.id.editAcceptStyle,
+      R.id.editAcceptScript, R.id.editAcceptFont, R.id.editAcceptAudio,
+      R.id.editAcceptVideo, R.id.editAcceptObject, R.id.editAcceptEmbed })
   public static class BrowserId extends Tab {
+    @Override
+    public void onShow(final View view) {
+      super.onShow(view);
+      AcceptPresets.offerPresets(view);
+    }
   }
 
   @Title(R.string.spider)
