@@ -92,7 +92,7 @@ public final class AcceptPresets {
   private static final int LABELS[] = { R.string.accept_preset_chrome,
       R.string.accept_preset_firefox, R.string.accept_preset_legacy };
 
-  /** The catch-all, offered on every row. It names itself, so it carries no browser label. */
+  /** The catch-all. Every row offers it, under a browser's name where that browser sends it. */
   private static final String ANY = "*/*";
 
   /**
@@ -101,7 +101,7 @@ public final class AcceptPresets {
    *
    * @param context the context holding the labels
    * @param kind    the row's kind word, NO_KIND for the default row
-   * @return one suggestion per browser holding a value, then the catch-all
+   * @return one suggestion per distinct value, the catch-all among them
    */
   static List<Preset> suggestions(final Context context, final String kind) {
     final String labels[] = new String[BROWSERS.length];
@@ -121,7 +121,7 @@ public final class AcceptPresets {
    *
    * @param labels the label of each browser
    * @param values its value, null or empty where it has none
-   * @return the suggestions, the catch-all last
+   * @return the suggestions, one per distinct value
    */
   static List<Preset> presets(final String labels[], final String values[]) {
     final List<Preset> presets = new ArrayList<Preset>();
