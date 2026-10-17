@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -245,6 +246,21 @@ public class AcceptHeadersTest {
       }
     }
     assertEquals(ours, saved);
+  }
+
+  /* A key and the kind it asks the engine for are two hand-written halves of one row, so a
+     swap that moves BOTH passes every other test here while the Style row offers the Image
+     presets and ships image=. The key names the kind, so the row can check itself. */
+  @Test
+  public void everyKeyNamesItsOwnKind() {
+    for (final String row[] : AcceptPresets.ROWS) {
+      final String key = row[AcceptPresets.KEY];
+      final String kind = row[AcceptPresets.KIND];
+      final String named = key.substring("Accept".length()).toLowerCase(
+          Locale.ROOT);
+      assertEquals(key, AcceptPresets.NO_KIND.equals(kind) ? "default" : kind,
+          named);
+    }
   }
 
   /* Both tables are keyed by name alone, so swapping two rows' ids in fieldsSerializer leaves

@@ -3,11 +3,17 @@ package com.httrack.android;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 
 import org.junit.Before;
 import org.junit.Rule;
+import java.io.IOException;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
@@ -104,5 +110,32 @@ public class HelpTest {
   public void fallsBackToTheOverviewWithoutATab() {
     assertEquals(Help.PAGE_OPTIONS, Help.pageForTab(null));
     assertEquals(Help.PAGE_OPTIONS, Help.pageForTab(BareTab.class));
+  }
+
+  /* The anchors are a cross-repo contract: the ids live in the engine's guide and the engine
+     pins them in its own test 239. One that does not resolve opens the page at the top, which
+     no runtime check and no build would report. */
+  @Test
+  public void everyHelpAnchorResolvesInThePinnedGuide() throws IOException {
+    final String guide = TestSources.read(TestSources
+        .engineFile("html/guide.html"));
+    final Set<String> ids = new TreeSet<String>();
+    for (final String name : new String[] { "OptionsActivity", "Help" }) {
+      final Matcher m = Pattern.compile(
+          "guide\\.html#droid/([a-z0-9-]+)").matcher(
+          TestSources.javaSource(name));
+      while (m.find()) {
+        ids.add(m.group(1));
+      }
+    }
+    assertTrue("parsed " + ids.size() + " anchors", ids.size() > 10);
+    final Set<String> missing = new TreeSet<String>();
+    for (final String id : ids) {
+      if (!guide.contains("id=\"" + id + "\"")) {
+        missing.add(id);
+      }
+    }
+    assertEquals("anchors the pinned guide does not define",
+        new TreeSet<String>(), missing);
   }
 }
