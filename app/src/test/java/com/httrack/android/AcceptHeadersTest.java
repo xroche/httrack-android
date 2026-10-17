@@ -106,6 +106,19 @@ public class AcceptHeadersTest {
         emit("AcceptDefault", " " + VALUE + " "));
   }
 
+  /* The engine's own bound, so our copy of it cannot drift at a pin bump. HTS_ACCEPT_MAXSIZE is
+     exclusive, as HTS_CDLMAXSIZE is, and it bounds the value without the kind prefix. */
+  @Test
+  public void ourLimitIsTheEnginesOwn() throws IOException {
+    final String header = TestSources.withoutCommentsAndStrings(TestSources
+        .read(TestSources.engineFile("src/httrack-library.h")));
+    final Matcher m = Pattern.compile(
+        "#\\s*define\\s+HTS_ACCEPT_MAXSIZE\\s+\\(?\\s*([0-9]+)").matcher(header);
+    assertTrue("the pinned engine declares no HTS_ACCEPT_MAXSIZE", m.find());
+    assertEquals("HTS_ACCEPT_MAXSIZE is exclusive",
+        OptionsMapper.MAX_ACCEPT_BYTES + 1, Integer.parseInt(m.group(1)));
+  }
+
   /* Measured on the engine at 80d63de3: 255 bytes pass, 256 refuse the whole command line with
      "Accept list string too long". The kind prefix does not count towards it. */
   @Test
