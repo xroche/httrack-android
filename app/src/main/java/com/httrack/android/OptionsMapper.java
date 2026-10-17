@@ -57,6 +57,9 @@ public class OptionsMapper {
   /** Mirrors HTS_MAX_RETRY_AFTER_LIMIT, the ceiling the engine clips to. */
   protected static final int MAX_RETRY_AFTER_LIMIT = 3600;
 
+  /** The engine refuses a longer Accept value, and the whole command line with it. */
+  protected static final int MAX_ACCEPT_BYTES = 255;
+
   /** The engine refuses -u above this, so the radio's range is now a hard limit. */
   protected static final int MAX_CHECK_TYPE = 2;
 
@@ -1814,8 +1817,15 @@ public class OptionsMapper {
     @Override
     public void emit(final List<String> commandline, final String value) {
       final String accept = value != null ? value.trim() : "";
-      if (accept.length() != 0) {
-        super.emit(commandline, kind.length() != 0 ? kind + "=" + accept : accept);
+      if (accept.length() == 0
+          || !OptionValues.fitsBytes(accept, MAX_ACCEPT_BYTES)) {
+        return;
+      }
+      final String token = kind.length() != 0 ? kind + "=" + accept : accept;
+      /* A token the engine reads as the next option refuses the whole command line, which only
+         the default row can produce. */
+      if (!CommandlineTokens.isOptionLike(token)) {
+        super.emit(commandline, token);
       }
     }
   }

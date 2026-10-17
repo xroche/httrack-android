@@ -97,6 +97,9 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htssitemap.c httrack/src/htssinglefile.c					\
 	httrack/src/htschanges.c httrack/src/htscmdline.c						\
 	httrack/src/htslines.c													\
+	httrack/src/htsfetch.c httrack/src/htsfetch_selftest.c			\
+	httrack/src/htspsl.c httrack/src/htspsl_data.c					\
+	httrack/src/htspsl_selftest.c									\
 	httrack/src/htscrashtest.c												\
 	httrack/src/minizip/ioapi.c												\
 	httrack/src/minizip/mztools.c httrack/src/minizip/unzip.c				\

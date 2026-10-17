@@ -148,7 +148,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -168,7 +169,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -188,7 +190,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -208,7 +211,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -228,7 +232,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -248,7 +253,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -268,7 +274,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -288,7 +295,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -308,7 +316,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -328,7 +337,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -348,7 +358,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
 
         <LinearLayout
@@ -368,7 +379,8 @@
                 android:layout_height="wrap_content"
                 android:layout_weight=".70"
                 android:hint="@string/accept_automatic"
-                android:inputType="textNoSuggestions" />
+                android:inputType="textNoSuggestions"
+                android:maxLength="255" />
         </LinearLayout>
     </LinearLayout>
 

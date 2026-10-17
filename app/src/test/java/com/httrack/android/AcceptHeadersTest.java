@@ -106,6 +106,47 @@ public class AcceptHeadersTest {
         emit("AcceptDefault", " " + VALUE + " "));
   }
 
+  /* Measured on the engine at 80d63de3: 255 bytes pass, 256 refuse the whole command line with
+     "Accept list string too long". The kind prefix does not count towards it. */
+  @Test
+  public void aValueTooLongForTheEngineIsDropped() {
+    final String fits = "a/" + repeat('b', 253);
+    final String over = "a/" + repeat('b', 254);
+    assertEquals(255, fits.length());
+    assertEquals(Arrays.asList("--accept", "image=" + fits),
+        emit("AcceptImage", fits));
+    assertEquals(Arrays.asList("--accept", fits), emit("AcceptDefault", fits));
+    assertEquals(new ArrayList<String>(), emit("AcceptImage", over));
+    assertEquals(new ArrayList<String>(), emit("AcceptDefault", over));
+  }
+
+  /* The limit is the engine's buffer, so it counts bytes: 255 two-byte characters are 510. */
+  @Test
+  public void aNonAsciiValueIsMeasuredInBytes() {
+    final String wide = repeat('\u00e9', 128);
+    assertEquals(128, wide.length());
+    assertEquals(new ArrayList<String>(), emit("AcceptDefault", wide));
+    assertEquals(Arrays.asList("--accept", repeat('\u00e9', 127)),
+        emit("AcceptDefault", repeat('\u00e9', 127)));
+  }
+
+  /* Measured on the same engine: --accept followed by a word starting with '-' is a syntax error
+     and no mirror runs. Only the default row can emit one, since a kind row prefixes the value. */
+  @Test
+  public void aValueTheEngineWouldReadAsAnOptionIsDropped() {
+    assertEquals(new ArrayList<String>(), emit("AcceptDefault", "-foo"));
+    assertEquals(Arrays.asList("--accept", "image=-foo"),
+        emit("AcceptImage", "-foo"));
+  }
+
+  private static String repeat(final char c, final int times) {
+    final StringBuilder out = new StringBuilder();
+    for (int i = 0; i < times; i++) {
+      out.append(c);
+    }
+    return out.toString();
+  }
+
   /* The box's twelve keys and AcceptLanguage are the only ones starting that way, so a thirteenth
      row added to one table and not the other is caught here. */
   @Test
