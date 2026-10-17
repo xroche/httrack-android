@@ -601,6 +601,8 @@ JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getAcceptPreset(JNIEnv* 
   jstring result = NULL;
 
   UNUSED(clazz);
+  /* No caller passes null today, but this is a public native method and
+     GetStringUTFChars(NULL) is undefined. */
   if (obrowser == NULL || okind == NULL) {
     throwNPException(env, "null browser or kind");
     return NULL;

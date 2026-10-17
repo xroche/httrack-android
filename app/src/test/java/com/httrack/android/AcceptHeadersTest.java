@@ -167,6 +167,13 @@ public class AcceptHeadersTest {
         emit("AcceptImage", "-foo"));
   }
 
+  /* Measured on the same engine: only a leading '-' is refused, so dropping a '+' as well
+     would lose a value the engine would have sent. */
+  @Test
+  public void aPlusLeadingValueIsKept() {
+    assertEquals(Arrays.asList("--accept", "+foo"), emit("AcceptDefault", "+foo"));
+  }
+
   private static String repeat(final char c, final int times) {
     final StringBuilder out = new StringBuilder();
     for (int i = 0; i < times; i++) {
