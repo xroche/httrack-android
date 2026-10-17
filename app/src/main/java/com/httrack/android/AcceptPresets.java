@@ -146,7 +146,14 @@ public final class AcceptPresets {
           .findViewById(id.intValue()));
       field.setAdapter(new PresetAdapter(field.getContext(), suggestions(
           field.getContext(), row[KIND])));
+      /* A tap on a row that has no focus only gives it focus, so the click alone would ask for
+         two taps to see the choices. */
       field.setOnClickListener(clicked -> field.showDropDown());
+      field.setOnFocusChangeListener((focused, hasFocus) -> {
+        if (hasFocus) {
+          field.showDropDown();
+        }
+      });
     }
   }
 
