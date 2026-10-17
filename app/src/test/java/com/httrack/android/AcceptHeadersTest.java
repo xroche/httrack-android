@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -367,6 +368,35 @@ public class AcceptHeadersTest {
       assertEquals(shown, "Chrome default", presets.get(0).label);
       assertEquals(shown, pair[1], presets.get(1).value);
       assertEquals(shown, "Firefox default", presets.get(1).label);
+    }
+  }
+
+  /* The invariant behind the fold, rather than a count. A row that loses one value and gains a
+     duplicate of another counts the same either way, so check that no value is offered twice
+     and that no distinct value is lost. Pointed out by the httrack-windows session. */
+  @Test
+  public void noRowOffersAValueTwiceAndNoneIsLost() {
+    final String labels[] = { "Chrome default", "Firefox default",
+        "Old HTTrack value" };
+    final String sets[][] = { { "*/*", "*/*", "*/*" },
+        { "*/*", "*/*", "text/html" }, { "a/b", "c/d", "e/f" },
+        { "*/*", "c/d", "*/*" }, { "a/b", "a/b", "*/*" }, { null, "", "*/*" },
+        { null, null, null } };
+    for (final String values[] : sets) {
+      final List<Preset> presets = AcceptPresets.presets(labels, values);
+      final Set<String> offered = new TreeSet<String>();
+      for (final Preset preset : presets) {
+        assertTrue(preset.value + " offered twice in " + presets,
+            offered.add(preset.value));
+      }
+      final Set<String> wanted = new TreeSet<String>();
+      for (final String value : values) {
+        if (value != null && value.length() != 0) {
+          wanted.add(value);
+        }
+      }
+      wanted.add("*/*");
+      assertEquals("a value went missing from " + presets, wanted, offered);
     }
   }
 
