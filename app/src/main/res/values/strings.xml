@@ -245,8 +245,8 @@
     <string name="accept_video">Video</string>
     <string name="accept_object">Objects</string>
     <string name="accept_embed">Embedded content</string>
-    <string name="accept_preset_chrome">Chrome</string>
-    <string name="accept_preset_firefox">Firefox</string>
+    <string name="accept_preset_chrome">Chrome default</string>
+    <string name="accept_preset_firefox">Firefox default</string>
     <string name="accept_preset_legacy">Old HTTrack value</string>
     <string name="use_word_index">Make a word database</string>
     <string name="use_mail_index">Build a single-file MHTML archive (.mht)</string>

@@ -119,6 +119,27 @@ public final class OptionValues {
   }
 
   /**
+   * True if the value holds a control character. The engine turns CR, LF and TAB in any
+   * argument into spaces, so such a value reaches the server altered rather than refused.
+   *
+   * @param value
+   *          The value, possibly null
+   * @return true if any character is below a space, or is DEL
+   */
+  public static boolean hasControlCharacter(final String value) {
+    if (value == null) {
+      return false;
+    }
+    for (int i = 0; i < value.length(); i++) {
+      final char c = value.charAt(i);
+      if (c < ' ' || c == '\u007f') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Parse an integer.
    *
    * @param value

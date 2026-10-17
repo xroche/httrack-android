@@ -370,7 +370,7 @@ public class OptionsMapper {
       new Pair<String, OptionMapper>("AcceptLanguage",
           new ArgumentOption("-%l")),
       new Pair<String, OptionMapper>("AcceptDefault",
-          new AcceptOption("")),
+          new AcceptOption(AcceptPresets.NO_KIND)),
       new Pair<String, OptionMapper>("AcceptDocument",
           new AcceptOption("document")),
       new Pair<String, OptionMapper>("AcceptIframe",
@@ -1803,7 +1803,7 @@ public class OptionsMapper {
   }
 
   /**
-   * Accept header of one kind of link, or of every kind KIND leaves out when it is empty. The
+   * Accept header of one kind of link, or of every other kind under AcceptPresets.NO_KIND. The
    * engine reads the kind inside the value, as --accept 'image=text/avif'.
    */
   public static class AcceptOption extends ArgumentOption {
@@ -1818,7 +1818,8 @@ public class OptionsMapper {
     public void emit(final List<String> commandline, final String value) {
       final String accept = value != null ? value.trim() : "";
       if (accept.length() == 0
-          || !OptionValues.fitsBytes(accept, MAX_ACCEPT_BYTES)) {
+          || !OptionValues.fitsBytes(accept, MAX_ACCEPT_BYTES)
+          || OptionValues.hasControlCharacter(accept)) {
         return;
       }
       if (kind.length() != 0) {

@@ -27,6 +27,7 @@ import java.util.List;
 import com.httrack.android.jni.HTTrackLib;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -48,11 +49,14 @@ public final class AcceptPresets {
   /** Index of a row's engine kind word, empty for the default row. */
   static final int KIND = 1;
 
+  /** The kind word of the row every other kind falls back to. */
+  static final String NO_KIND = "";
+
   /**
    * The rows, in the engine's display order. A kind is one of the Sec-Fetch-Dest words
    * hts_accept_preset() takes, and the keys are the ones winprofile-keys.tsv states.
    */
-  static final String ROWS[][] = { { "AcceptDefault", "" },
+  static final String ROWS[][] = { { "AcceptDefault", NO_KIND },
       { "AcceptDocument", "document" }, { "AcceptIframe", "iframe" },
       { "AcceptFrame", "frame" }, { "AcceptImage", "image" },
       { "AcceptStyle", "style" }, { "AcceptScript", "script" },
@@ -88,7 +92,7 @@ public final class AcceptPresets {
   private static final int LABELS[] = { R.string.accept_preset_chrome,
       R.string.accept_preset_firefox, R.string.accept_preset_legacy };
 
-  /** The catch-all, offered on every row under itself as a label. */
+  /** The catch-all, offered on every row. It names itself, so it carries no browser label. */
   private static final String ANY = "*/*";
 
   /**
@@ -96,7 +100,7 @@ public final class AcceptPresets {
    * load, since the engine is the only place they are kept.
    *
    * @param context the context holding the labels
-   * @param kind    the row's kind word, empty for the default row
+   * @param kind    the row's kind word, NO_KIND for the default row
    * @return one suggestion per browser holding a value, then the catch-all
    */
   static List<Preset> suggestions(final Context context, final String kind) {
@@ -111,9 +115,9 @@ public final class AcceptPresets {
   }
 
   /**
-   * The same, over values already read. A browser the engine has no value for is left out and
-   * never offered empty, since picking that would clear the field and mean automatic. The
-   * Default row is the live case: only the legacy table answers for it.
+   * Builds the suggestion list from values already read. A browser the engine has no value for
+   * is left out and never offered empty, since picking that would clear the field and mean
+   * automatic.
    *
    * @param labels the label of each browser
    * @param values its value, null or empty where it has none
@@ -126,7 +130,7 @@ public final class AcceptPresets {
         presets.add(new Preset(labels[i], values[i]));
       }
     }
-    presets.add(new Preset(ANY, ANY));
+    presets.add(new Preset("", ANY));
     return presets;
   }
 
@@ -162,7 +166,9 @@ public final class AcceptPresets {
    * picked is what the field is left holding.
    */
   static final class Preset {
+    /** Browser the value belongs to, empty where the value names itself. */
     final String label;
+
     final String value;
 
     Preset(final String label, final String value) {
@@ -182,16 +188,30 @@ public final class AcceptPresets {
     private final List<Preset> presets;
 
     PresetAdapter(final Context context, final List<Preset> presets) {
-      super(context, android.R.layout.simple_dropdown_item_1line, presets);
+      super(context, android.R.layout.simple_list_item_2, android.R.id.text1,
+          presets);
       this.presets = presets;
     }
 
+    /* The value is what the row ships, so the value is what it shows; the browser name goes
+       under it. Showing the name alone would hide the bytes the user is choosing. */
     @Override
     public View getView(final int position, final View recycled,
         final ViewGroup parent) {
-      final TextView row = TextView.class.cast(super.getView(position,
-          recycled, parent));
-      row.setText(getItem(position).label);
+      final View row = super.getView(position, recycled, parent);
+      final Preset preset = getItem(position);
+      final TextView value = TextView.class.cast(row
+          .findViewById(android.R.id.text1));
+      final TextView label = TextView.class.cast(row
+          .findViewById(android.R.id.text2));
+      value.setText(preset.value);
+      /* Wrapped whole, one Chrome value fills six lines and the four choices stop fitting on
+         screen together, so the row shows the head of the value and the field takes all of it. */
+      value.setSingleLine(false);
+      value.setMaxLines(3);
+      value.setEllipsize(TextUtils.TruncateAt.END);
+      label.setText(preset.label);
+      label.setVisibility(preset.label.length() != 0 ? View.VISIBLE : View.GONE);
       return row;
     }
 

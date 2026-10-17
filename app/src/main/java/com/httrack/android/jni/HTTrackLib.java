@@ -92,7 +92,7 @@ public class HTTrackLib {
    * as a suggestion. A pure table lookup, so it needs no engine and no root path.
    *
    * @param browser "chrome", "firefox" or "legacy", compared exactly
-   * @param kind    the kind word, empty for the value sent when the kind is unknown
+   * @param kind    the kind word, empty for the row every other kind falls back to
    * @return the value, or null when that browser has none
    */
   public static native String getAcceptPreset(String browser, String kind);

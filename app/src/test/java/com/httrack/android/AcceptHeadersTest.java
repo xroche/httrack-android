@@ -24,10 +24,6 @@ import org.junit.Test;
  * means automatic, so a row that emitted anything for it would send a header nobody asked for.
  */
 public class AcceptHeadersTest {
-  /** The kinds the engine takes, in its display order; the default row carries none. */
-  private static final String KINDS[] = { "", "document", "iframe", "frame",
-      "image", "style", "script", "font", "audio", "video", "object", "embed" };
-
   /** A value with a comma, a slash and a q factor, since a real one has all three. */
   private static final String VALUE = "image/avif,image/webp,*/*;q=0.8";
 
@@ -47,13 +43,30 @@ public class AcceptHeadersTest {
     return commandline;
   }
 
+  /* The engine's own words, not a second copy of our belief about them. An unknown kind word is
+     not refused: the engine takes the whole token as the default Accept, so a rename there would
+     quietly turn one row's value into every row's. */
   @Test
-  public void theRowTableNamesTheKindsTheEngineTakes() {
-    final List<String> kinds = new ArrayList<String>();
-    for (final String row[] : AcceptPresets.ROWS) {
-      kinds.add(row[AcceptPresets.KIND]);
+  public void theKindsAreTheEnginesOwn() throws IOException {
+    final String table = TestSources.between(
+        TestSources.read(TestSources.engineFile("src/htsfetch.c")),
+        "static const char *const accept_kinds[]", "};");
+    final List<String> engine = new ArrayList<String>();
+    final Matcher word = Pattern.compile("\"([^\"]+)\"").matcher(table);
+    while (word.find()) {
+      engine.add(word.group(1));
     }
-    assertEquals(Arrays.asList(KINDS), kinds);
+    final List<String> ours = new ArrayList<String>();
+    for (final String row[] : AcceptPresets.ROWS) {
+      if (!AcceptPresets.NO_KIND.equals(row[AcceptPresets.KIND])) {
+        ours.add(row[AcceptPresets.KIND]);
+      }
+    }
+    assertEquals(engine, ours);
+    assertEquals("the default row comes first and carries no kind",
+        AcceptPresets.NO_KIND, AcceptPresets.ROWS[0][AcceptPresets.KIND]);
+    assertEquals("one row per kind, plus the default", engine.size() + 1,
+        AcceptPresets.ROWS.length);
   }
 
   /* The row table drives the dropdown and the mapper builds the command line, so each holds the
@@ -189,6 +202,25 @@ public class AcceptHeadersTest {
         emit("AcceptImage", "document=text/html"));
   }
 
+  /* The engine turns CR, LF and TAB in any argument into spaces (htscoremain.c), so a value
+     holding one would reach the server altered. Measured there: an interior newline comes out as
+     a space rather than as a second entry, so this is a mangled header and not an injected one. */
+  @Test
+  public void aValueHoldingAControlCharacterIsDropped() {
+    for (final String value : new String[] { "image/avif\nstyle=text/css",
+        "image/avif\rx", "image/avif\tx", "image/avif\u007fx" }) {
+      assertEquals(value, new ArrayList<String>(), emit("AcceptImage", value));
+      assertEquals(value, new ArrayList<String>(), emit("AcceptDefault", value));
+    }
+  }
+
+  /* A space is not a control character, and a media type list can hold one after a comma. */
+  @Test
+  public void aValueHoldingASpaceIsKept() {
+    assertEquals(Arrays.asList("--accept", "text/html, image/png"),
+        emit("AcceptDefault", "text/html, image/png"));
+  }
+
   /* The box's twelve keys and AcceptLanguage are the only ones starting that way, so a thirteenth
      row added to one table and not the other is caught here. */
   @Test
@@ -206,10 +238,10 @@ public class AcceptHeadersTest {
     assertEquals(ours, saved);
   }
 
-  /** The widget behind each id, read off the Browser ID layout. */
+  /** The widget behind each id, read off the Accept headers layout. */
   private static Map<String, Element> fields() throws IOException {
     final Map<String, Element> fields = new LinkedHashMap<String, Element>();
-    for (final File layout : TestSources.layouts("activity_options_browserid")) {
+    for (final File layout : TestSources.layouts("activity_options_accept")) {
       final Matcher m = Pattern.compile(
           "<(\\w+)\\b([^>]*android:id=\"@\\+?id/(\\w+)\"[^>]*)>").matcher(
           TestSources.read(layout));
@@ -239,7 +271,7 @@ public class AcceptHeadersTest {
       final String id = "editAccept"
           + row[AcceptPresets.KEY].substring("Accept".length());
       final Element field = fields.get(id);
-      assertTrue("no " + id + " in the Browser ID layout", field != null);
+      assertTrue("no " + id + " in the Accept headers layout", field != null);
       assertEquals(id, "AutoCompleteTextView", field.tag);
       assertTrue(id + " is hinted " + field.attributes,
           field.attributes.contains("android:hint=\"@string/accept_automatic\""));
@@ -251,8 +283,8 @@ public class AcceptHeadersTest {
   public void theTabOffersThePresetsWhenItIsShown() throws IOException {
     final String source = TestSources.javaSource("OptionsActivity");
     final String tab = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "class BrowserId extends Tab"));
-    assertTrue("BrowserId.onShow() must call offerPresets",
+        TestSources.indexOf(source, "class AcceptHeaders extends Tab"));
+    assertTrue("AcceptHeaders.onShow() must call offerPresets",
         tab.contains("AcceptPresets.offerPresets(view)"));
   }
 
@@ -267,7 +299,7 @@ public class AcceptHeadersTest {
     assertEquals("Old HTTrack value", presets.get(0).label);
     assertEquals("text/html,*/*;q=0.1", presets.get(0).value);
     assertEquals("*/*", presets.get(1).value);
-    assertEquals("*/*", presets.get(1).label);
+    assertEquals("the catch-all names itself", "", presets.get(1).label);
   }
 
   /* With no engine there is still something to pick, and it is never an empty entry. */
@@ -279,10 +311,11 @@ public class AcceptHeadersTest {
     assertEquals("*/*", presets.get(0).value);
   }
 
-  /* The dropdown shows a browser name and leaves the value behind, which holds only because the
-     entry's own text is the value. A label reaching the field would ship --accept 'Chrome'. */
+  /* The dropdown shows the value with the browser name under it, and picking a row leaves the
+     value behind. That holds only because the entry's own text is the value: a label reaching
+     the field would ship --accept 'Chrome default'. */
   @Test
   public void pickingASuggestionLeavesTheValueBehind() {
-    assertEquals(VALUE, new Preset("Chrome", VALUE).toString());
+    assertEquals(VALUE, new Preset("Chrome default", VALUE).toString());
   }
 }

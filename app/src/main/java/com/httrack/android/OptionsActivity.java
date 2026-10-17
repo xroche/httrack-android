@@ -62,7 +62,8 @@ public class OptionsActivity extends FragmentActivity implements
   @SuppressWarnings("unchecked")
   protected static Class<? extends Tab>[] tabClasses = new Class[] {
       ScanRulesTab.class, LimitsTab.class, FlowControlTab.class,
-      LinksTab.class, BuildTab.class, BrowserId.class, Spider.class,
+      LinksTab.class, BuildTab.class, BrowserId.class, AcceptHeaders.class,
+      Spider.class,
       Proxy.class, LogIndexCache.class, MimeDefs.class, ExpertsOnly.class };
 
   /* List of all tabs instances. */
@@ -239,12 +240,21 @@ public class OptionsActivity extends FragmentActivity implements
   @ActivityId(R.layout.activity_options_browserid)
   @HelpPage("guide.html#droid/opt-browser-id")
   @Fields({ R.id.editBrowserIdentity, R.id.editHtmlFooter,
-      R.id.editAcceptLanguage, R.id.editOtherHeaders, R.id.editDefaultReferer,
-      R.id.editAcceptDefault, R.id.editAcceptDocument, R.id.editAcceptIframe,
-      R.id.editAcceptFrame, R.id.editAcceptImage, R.id.editAcceptStyle,
-      R.id.editAcceptScript, R.id.editAcceptFont, R.id.editAcceptAudio,
-      R.id.editAcceptVideo, R.id.editAcceptObject, R.id.editAcceptEmbed })
+      R.id.editAcceptLanguage, R.id.editOtherHeaders, R.id.editDefaultReferer })
   public static class BrowserId extends Tab {
+  }
+
+  /* Its own page rather than a box under Browser ID: twelve rows would bury the five fields
+     above them. WinHTTrack opens a dialog of its own for the same reason. */
+  @Title(R.string.accept_headers)
+  @ActivityId(R.layout.activity_options_accept)
+  @HelpPage("guide.html#droid/opt-browser-id")
+  @Fields({ R.id.editAcceptDefault, R.id.editAcceptDocument,
+      R.id.editAcceptIframe, R.id.editAcceptFrame, R.id.editAcceptImage,
+      R.id.editAcceptStyle, R.id.editAcceptScript, R.id.editAcceptFont,
+      R.id.editAcceptAudio, R.id.editAcceptVideo, R.id.editAcceptObject,
+      R.id.editAcceptEmbed })
+  public static class AcceptHeaders extends Tab {
     @Override
     public void onShow(final View view) {
       super.onShow(view);
