@@ -88,6 +88,16 @@ public class HTTrackLib {
   public static native String getFeatures();
 
   /**
+   * The Accept header a browser sends for one kind of link, which the Accept headers box offers
+   * as a suggestion. A pure table lookup, so it needs no engine and no root path.
+   *
+   * @param browser "chrome", "firefox" or "legacy", compared exactly
+   * @param kind    the kind word, empty for the row every other kind falls back to
+   * @return the value, or null when that browser has none
+   */
+  public static native String getAcceptPreset(String browser, String kind);
+
+  /**
    * Has a native fault been recovered in this process ?
    *
    * @return true once a fault has been caught, after which every engine call is refused

@@ -21,10 +21,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 package com.httrack.android;
 
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 
 /**
- * Numeric helpers for the option mappers; pure, Android-free, so the mappers
+ * Value helpers for the option mappers; pure, Android-free, so the mappers
  * that use them stay reachable from unit tests.
  */
 public final class OptionValues {
@@ -100,6 +101,42 @@ public final class OptionValues {
     } catch (final NumberFormatException nfe) {
       return false;
     }
+  }
+
+  /**
+   * True if the value is at most max bytes of UTF-8. An engine buffer is a byte
+   * count, so a limit measured in characters lets a non-ASCII value through.
+   *
+   * @param value
+   *          The value, possibly null
+   * @param max
+   *          Highest byte count to accept
+   * @return true if the value fits
+   */
+  public static boolean fitsBytes(final String value, final int max) {
+    return value != null
+        && value.getBytes(StandardCharsets.UTF_8).length <= max;
+  }
+
+  /**
+   * True if the value holds a control character. The engine turns CR, LF and TAB in any
+   * argument into spaces, so such a value reaches the server altered rather than refused.
+   *
+   * @param value
+   *          The value, possibly null
+   * @return true if any character is below a space, or is DEL
+   */
+  public static boolean hasControlCharacter(final String value) {
+    if (value == null) {
+      return false;
+    }
+    for (int i = 0; i < value.length(); i++) {
+      final char c = value.charAt(i);
+      if (c < ' ' || c == '\u007f') {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
