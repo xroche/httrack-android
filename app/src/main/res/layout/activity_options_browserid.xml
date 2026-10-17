@@ -116,7 +116,6 @@
                 android:inputType="textNoSuggestions"
                 android:lines="2" />
         </LinearLayout>
-
     </LinearLayout>
 
 </ScrollView>

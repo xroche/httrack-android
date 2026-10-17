@@ -65,7 +65,7 @@ public final class AcceptPresets {
       { "AcceptEmbed", "embed" } };
 
   /**
-   * Whether the default row's VALUE would be read as one kind's own entry. A typed "image="
+   * Would the default row's VALUE be read as one kind's own entry? A typed "image="
    * followed by a media type is the image row on the command line, and the engine cannot tell
    * the two apart, so the default row refuses it rather than filling a row left empty.
    *

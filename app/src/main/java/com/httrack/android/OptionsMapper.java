@@ -1826,9 +1826,9 @@ public class OptionsMapper {
         super.emit(commandline, kind + "=" + accept);
         return;
       }
-      /* Only the default row can emit a token the engine reads as something else: one it takes
-         for the next option, refusing the whole command line, or one naming a kind, which sets
-         a row the user left empty and drops the default. */
+      /* Only the default row can emit something other than the typed value. A dash-prefixed
+         token reads as the next option and kills the whole command line. A token naming a kind
+         sets that kind's row instead and drops the default. */
       if (!CommandlineTokens.isOptionLike(accept)
           && !AcceptPresets.namesAKind(accept)) {
         super.emit(commandline, accept);

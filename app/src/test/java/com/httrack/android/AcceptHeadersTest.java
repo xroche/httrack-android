@@ -8,6 +8,7 @@ import com.httrack.android.AcceptPresets.Preset;
 import com.httrack.android.OptionsMapper.AcceptOption;
 import com.httrack.android.OptionsMapper.OptionMapper;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -132,7 +133,7 @@ public class AcceptHeadersTest {
         OptionsMapper.MAX_ACCEPT_BYTES + 1, Integer.parseInt(m.group(1)));
   }
 
-  /* Measured on the engine at 80d63de3: 255 bytes pass, 256 refuse the whole command line with
+  /* Measured on the pinned engine b6d8d69b: 255 bytes pass, 256 refuse the whole command line with
      "Accept list string too long". The kind prefix does not count towards it. */
   @Test
   public void aValueTooLongForTheEngineIsDropped() {
@@ -156,8 +157,9 @@ public class AcceptHeadersTest {
         emit("AcceptDefault", repeat('\u00e9', 127)));
   }
 
-  /* Measured on the same engine: --accept followed by a word starting with '-' is a syntax error
-     and no mirror runs. Only the default row can emit one, since a kind row prefixes the value. */
+  /* Measured on the same engine b6d8d69b: --accept followed by a word starting with '-' is a
+     syntax error and no mirror runs. Only the default row can emit one, since a kind row
+     prefixes the value. */
   @Test
   public void aValueTheEngineWouldReadAsAnOptionIsDropped() {
     assertEquals(new ArrayList<String>(), emit("AcceptDefault", "-foo"));
@@ -173,7 +175,7 @@ public class AcceptHeadersTest {
     return out.toString();
   }
 
-  /* Measured on the engine at 2523fc41: a default-row "image=text/probe" set the image row and
+  /* Measured on the pinned engine b6d8d69b: a default-row "image=text/probe" set the image row and
      left every other request on the built-in default, and a bare "image=" sent images no Accept
      header at all. The command line cannot tell either from the image row. */
   @Test
@@ -202,9 +204,8 @@ public class AcceptHeadersTest {
         emit("AcceptImage", "document=text/html"));
   }
 
-  /* The engine turns CR, LF and TAB in any argument into spaces (htscoremain.c), so a value
-     holding one would reach the server altered. Measured there: an interior newline comes out as
-     a space rather than as a second entry, so this is a mangled header and not an injected one. */
+  /* See OptionValues.hasControlCharacter. Measured: an interior newline comes out as a space
+     rather than as a second entry, so this is a mangled header and not an injected one. */
   @Test
   public void aValueHoldingAControlCharacterIsDropped() {
     for (final String value : new String[] { "image/avif\nstyle=text/css",
@@ -236,6 +237,23 @@ public class AcceptHeadersTest {
       }
     }
     assertEquals(ours, saved);
+  }
+
+  /* Both tables are keyed by name alone, so swapping two rows' ids in fieldsSerializer leaves
+     every other test green while the Images row ships the Style row's value. */
+  @Test
+  public void everyRowIsWiredToItsOwnWidget() throws Exception {
+    final Map<Integer, String> names = new LinkedHashMap<Integer, String>();
+    for (final Field field : R.id.class.getFields()) {
+      names.put(Integer.valueOf(field.getInt(null)), field.getName());
+    }
+    for (final String row[] : AcceptPresets.ROWS) {
+      final String key = row[AcceptPresets.KEY];
+      final Integer id = OptionsMapper.fieldsNameToId.get(key);
+      assertTrue(key + " names no widget", id != null);
+      assertEquals(key, "editAccept" + key.substring("Accept".length()),
+          names.get(id));
+    }
   }
 
   /** The widget behind each id, read off the Accept headers layout. */
@@ -281,7 +299,8 @@ public class AcceptHeadersTest {
   /* Nothing at runtime says a row has no dropdown, so the call that gives it one is pinned. */
   @Test
   public void theTabOffersThePresetsWhenItIsShown() throws IOException {
-    final String source = TestSources.javaSource("OptionsActivity");
+    final String source = TestSources.withoutCommentsAndStrings(TestSources
+        .javaSource("OptionsActivity"));
     final String tab = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "class AcceptHeaders extends Tab"));
     assertTrue("AcceptHeaders.onShow() must call offerPresets",
