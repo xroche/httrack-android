@@ -160,6 +160,35 @@ public class AcceptHeadersTest {
     return out.toString();
   }
 
+  /* Measured on the engine at 2523fc41: a default-row "image=text/probe" set the image row and
+     left every other request on the built-in default, and a bare "image=" sent images no Accept
+     header at all. The command line cannot tell either from the image row. */
+  @Test
+  public void aDefaultThatNamesAKindIsDropped() {
+    for (final String value : new String[] { "image=text/probe", "image=",
+        "document=text/html", "embed=*/*" }) {
+      assertEquals(value, new ArrayList<String>(), emit("AcceptDefault", value));
+    }
+  }
+
+  /* Only a kind word, and only before the first equals sign: a q factor and a media-type
+     parameter both carry one, and no kind word is a media type. */
+  @Test
+  public void aDefaultHoldingAnEqualsButNoKindIsKept() {
+    for (final String value : new String[] { "*/*;q=0.8", "text/html;level=1",
+        "images=text/html", "=text/html", "image/png=x" }) {
+      assertEquals(value, Arrays.asList("--accept", value),
+          emit("AcceptDefault", value));
+    }
+  }
+
+  /* A kind row prefixes its own value, so the engine reads that prefix and never the typed one. */
+  @Test
+  public void aKindRowKeepsAValueThatNamesAKind() {
+    assertEquals(Arrays.asList("--accept", "image=document=text/html"),
+        emit("AcceptImage", "document=text/html"));
+  }
+
   /* The box's twelve keys and AcceptLanguage are the only ones starting that way, so a thirteenth
      row added to one table and not the other is caught here. */
   @Test

@@ -60,6 +60,28 @@ public final class AcceptPresets {
       { "AcceptVideo", "video" }, { "AcceptObject", "object" },
       { "AcceptEmbed", "embed" } };
 
+  /**
+   * Whether the default row's VALUE would be read as one kind's own entry. A typed "image="
+   * followed by a media type is the image row on the command line, and the engine cannot tell
+   * the two apart, so the default row refuses it rather than filling a row left empty.
+   *
+   * @param value the typed value, already trimmed
+   * @return true when the text before the first equals sign is a kind word
+   */
+  static boolean namesAKind(final String value) {
+    final int equals = value.indexOf('=');
+    if (equals == -1) {
+      return false;
+    }
+    final String prefix = value.substring(0, equals);
+    for (final String row[] : ROWS) {
+      if (row[KIND].length() != 0 && row[KIND].equals(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Browsers the engine holds a table for, with the label each one's value is offered under. */
   private static final String BROWSERS[] = { "chrome", "firefox", "legacy" };
 

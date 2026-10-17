@@ -1821,11 +1821,16 @@ public class OptionsMapper {
           || !OptionValues.fitsBytes(accept, MAX_ACCEPT_BYTES)) {
         return;
       }
-      final String token = kind.length() != 0 ? kind + "=" + accept : accept;
-      /* A token the engine reads as the next option refuses the whole command line, which only
-         the default row can produce. */
-      if (!CommandlineTokens.isOptionLike(token)) {
-        super.emit(commandline, token);
+      if (kind.length() != 0) {
+        super.emit(commandline, kind + "=" + accept);
+        return;
+      }
+      /* Only the default row can emit a token the engine reads as something else: one it takes
+         for the next option, refusing the whole command line, or one naming a kind, which sets
+         a row the user left empty and drops the default. */
+      if (!CommandlineTokens.isOptionLike(accept)
+          && !AcceptPresets.namesAKind(accept)) {
+        super.emit(commandline, accept);
       }
     }
   }
