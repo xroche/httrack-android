@@ -127,11 +127,37 @@ public final class AcceptPresets {
     final List<Preset> presets = new ArrayList<Preset>();
     for (int i = 0; i < values.length; i++) {
       if (values[i] != null && values[i].length() != 0) {
-        presets.add(new Preset(labels[i], values[i]));
+        offer(presets, labels[i], values[i]);
       }
     }
-    presets.add(new Preset("", ANY));
+    offer(presets, "", ANY);
     return presets;
+  }
+
+  /**
+   * Add VALUE under LABEL, or name LABEL on the row that already holds it. Chrome and Firefox
+   * send the same thing for several kinds, and for scripts both send the catch-all, so a row
+   * per browser would offer one value three times over.
+   *
+   * @param presets the rows so far
+   * @param label   the browser, empty for the catch-all
+   * @param value   its value
+   */
+  private static void offer(final List<Preset> presets, final String label,
+      final String value) {
+    for (int i = 0; i < presets.size(); i++) {
+      final Preset seen = presets.get(i);
+      /* Whole-value equality. A prefix test would name Chrome for anything merely starting
+         like Chrome's value, which is the bug the WinHTTrack box had to fix. */
+      if (seen.value.equals(value)) {
+        if (label.length() != 0) {
+          presets.set(i, new Preset(seen.label.length() != 0 ? seen.label
+              + ", " + label : label, value));
+        }
+        return;
+      }
+    }
+    presets.add(new Preset(label, value));
   }
 
   /**

@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -326,6 +327,77 @@ public class AcceptHeadersTest {
     assertEquals("text/html,*/*;q=0.1", presets.get(0).value);
     assertEquals("*/*", presets.get(1).value);
     assertEquals("the catch-all names itself", "", presets.get(1).label);
+  }
+
+  /* Chrome and Firefox both send the catch-all for scripts, so three rows offered the same
+     bytes before this folded them. Device-checked on the Scripts row. */
+  @Test
+  public void browsersSendingTheSameValueShareOneRow() {
+    final List<Preset> presets = AcceptPresets.presets(new String[] {
+        "Chrome default", "Firefox default", "Old HTTrack value" },
+        new String[] { "*/*", "*/*", "text/html,*/*;q=0.1" });
+    assertEquals(2, presets.size());
+    assertEquals("*/*", presets.get(0).value);
+    assertEquals("Chrome default, Firefox default", presets.get(0).label);
+    assertEquals("text/html,*/*;q=0.1", presets.get(1).value);
+    assertEquals("Old HTTrack value", presets.get(1).label);
+  }
+
+  /* The catch-all is not offered twice when a browser already sends it. */
+  @Test
+  public void theCatchAllFoldsIntoABrowserRowThatHoldsIt() {
+    final List<Preset> presets = AcceptPresets.presets(
+        new String[] { "Chrome default" }, new String[] { "*/*" });
+    assertEquals(1, presets.size());
+    assertEquals("*/*", presets.get(0).value);
+    assertEquals("Chrome default", presets.get(0).label);
+  }
+
+  /* The fold is whole-value equality, and it has to hold BOTH ways round. A prefix test one
+     way names Chrome for a value that only starts like Chrome's; the other way it swallows the
+     shorter value, and the user can no longer pick it. */
+  @Test
+  public void aValueThatMerelyStartsLikeAnotherKeepsItsOwnRow() {
+    final String pairs[][] = { { "*/*", "*/*;q=0.8" }, { "*/*;q=0.8", "*/*" } };
+    for (final String pair[] : pairs) {
+      final List<Preset> presets = AcceptPresets.presets(new String[] {
+          "Chrome default", "Firefox default" }, pair);
+      final String shown = presets.toString();
+      assertEquals(shown, 2, presets.size());
+      assertEquals(shown, pair[0], presets.get(0).value);
+      assertEquals(shown, "Chrome default", presets.get(0).label);
+      assertEquals(shown, pair[1], presets.get(1).value);
+      assertEquals(shown, "Firefox default", presets.get(1).label);
+    }
+  }
+
+  /* The invariant behind the fold, rather than a count. A row that loses one value and gains a
+     duplicate of another counts the same either way, so check that no value is offered twice
+     and that no distinct value is lost. Pointed out by the httrack-windows session. */
+  @Test
+  public void noRowOffersAValueTwiceAndNoneIsLost() {
+    final String labels[] = { "Chrome default", "Firefox default",
+        "Old HTTrack value" };
+    final String sets[][] = { { "*/*", "*/*", "*/*" },
+        { "*/*", "*/*", "text/html" }, { "a/b", "c/d", "e/f" },
+        { "*/*", "c/d", "*/*" }, { "a/b", "a/b", "*/*" }, { null, "", "*/*" },
+        { null, null, null } };
+    for (final String values[] : sets) {
+      final List<Preset> presets = AcceptPresets.presets(labels, values);
+      final Set<String> offered = new TreeSet<String>();
+      for (final Preset preset : presets) {
+        assertTrue(preset.value + " offered twice in " + presets,
+            offered.add(preset.value));
+      }
+      final Set<String> wanted = new TreeSet<String>();
+      for (final String value : values) {
+        if (value != null && value.length() != 0) {
+          wanted.add(value);
+        }
+      }
+      wanted.add("*/*");
+      assertEquals("a value went missing from " + presets, wanted, offered);
+    }
   }
 
   /* With no engine there is still something to pick, and it is never an empty entry. */
