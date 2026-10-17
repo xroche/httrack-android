@@ -248,7 +248,7 @@ public class OptionsActivity extends FragmentActivity implements
      above them. WinHTTrack opens a dialog of its own for the same reason. */
   @Title(R.string.accept_headers)
   @ActivityId(R.layout.activity_options_accept)
-  @HelpPage("guide.html#droid/opt-browser-id")
+  @HelpPage("guide.html#droid/opt-accept-headers")
   @Fields({ R.id.editAcceptDefault, R.id.editAcceptDocument,
       R.id.editAcceptIframe, R.id.editAcceptFrame, R.id.editAcceptImage,
       R.id.editAcceptStyle, R.id.editAcceptScript, R.id.editAcceptFont,
