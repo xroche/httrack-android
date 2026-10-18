@@ -58,6 +58,11 @@
             android:name="com.httrack.android.FileChooserActivity"
             android:label="@string/title_activity_file_chooser" >
         </activity>
+        <activity
+            android:name="com.httrack.android.BrowserLoginActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:label="@string/title_activity_browser_login" >
+        </activity>
 
         <service
             android:name=".MirrorJobService"
