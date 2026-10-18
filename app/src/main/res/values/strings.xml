@@ -290,6 +290,7 @@
     <string name="browser_login_https_only">This window opens https addresses only.</string>
     <string name="browser_login_no_cookies">This site set no cookies, so there is no login to save.</string>
     <string name="browser_login_write_failed">The login could not be saved on this device.</string>
+    <string name="browser_login_dropped">%1$d cookies were too long for the copier and were left out.</string>
     <string name="browser_login_saved">The login is saved: %1$d cookies from %2$d hosts.\n\nThe copy sends them with this browser\'s User-Agent. It opens %3$d connections and skips logout links.\n\nA site that uses bot protection can still refuse the copy.</string>
 
 </resources>

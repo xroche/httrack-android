@@ -2939,11 +2939,15 @@ public class HTTrackActivity extends FragmentActivity {
     setMap(R.id.editNumberOfConnections,
         BrowserLoginPolicy.sockets(getMap(R.id.editNumberOfConnections)));
     setMap(R.id.editRules, BrowserLoginPolicy.rules(getMap(R.id.editRules)));
-    new AlertDialog.Builder(this)
-        .setMessage(getString(R.string.browser_login_saved,
-            data.getIntExtra(BrowserLoginActivity.EXTRA_COOKIE_COUNT, 0),
-            data.getIntExtra(BrowserLoginActivity.EXTRA_HOST_COUNT, 0),
-            BrowserLoginPolicy.MAX_SOCKETS))
+    final int droppedCookies = data.getIntExtra(BrowserLoginActivity.EXTRA_DROPPED_COUNT, 0);
+    final String saved = getString(R.string.browser_login_saved,
+        data.getIntExtra(BrowserLoginActivity.EXTRA_COOKIE_COUNT, 0),
+        data.getIntExtra(BrowserLoginActivity.EXTRA_HOST_COUNT, 0),
+        BrowserLoginPolicy.MAX_SOCKETS);
+    // A cookie the engine's jar refuses is not saved, so saying only how many were is a lie.
+    final String message = droppedCookies == 0 ? saved
+        : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies);
+    new AlertDialog.Builder(this).setMessage(message)
         .setPositiveButton(android.R.string.ok, null).show();
   }
 

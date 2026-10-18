@@ -1,25 +1,3 @@
-/*
-HTTrack Android Java Interface.
-
-HTTrack Website Copier, Offline Browser for Windows and Unix
-Copyright (C) Xavier Roche and other contributors
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 3
-of the License, or any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
-
-
 package com.httrack.android;
 
 import java.net.URI;
@@ -27,12 +5,10 @@ import java.net.URISyntaxException;
 import java.util.Locale;
 
 /**
- * What the browser login opens, and what it changes about the crawl.
- *
- * The engine reads a -%K file only when it accepts cookies, and a logged-in crawl needs to stay
- * quiet and keep away from the links that end the session, so the hand-off settles those too.
+ * What the browser login opens, and what it changes about the crawl. A logged-in crawl has to
+ * stay quiet and keep away from the links that end the session, so the hand-off settles those.
  */
-public final class BrowserLoginPolicy {
+final class BrowserLoginPolicy {
   private BrowserLoginPolicy() {
   }
 
@@ -42,13 +18,10 @@ public final class BrowserLoginPolicy {
   /** Keeps the crawl off the links that end the session. The engine's last match wins. */
   static final String LOGOUT_FILTER = "-*logout*";
 
-  /**
-   * The login window only opens this scheme. The app declares no cleartext permission, so a
-   * WebView will not load http at all, and a password does not belong on cleartext either.
-   */
+  /** The login window only opens this scheme, because a password does not belong on cleartext. */
   static final String SCHEME = "https";
 
-  /** A leading "scheme:", which is what tells an address apart from a bare host name. */
+  /** A leading "scheme:", which tells an address from a bare host name. */
   private static final String HAS_SCHEME = "^[a-zA-Z][a-zA-Z0-9+.-]*:.*";
 
   /**
@@ -60,13 +33,8 @@ public final class BrowserLoginPolicy {
    * @return the first address we may open, or null when the field holds none
    */
   static String startUrl(final String urlField) {
-    if (urlField == null) {
-      return null;
-    }
-    for (final String token : urlField.trim().split("\\s+")) {
-      if (token.length() == 0 || CommandlineTokens.isOptionLike(token)) {
-        continue;
-      }
+    // urlTokens also drops what a tampered profile puts in that field, such as an engine option.
+    for (final String token : CommandlineTokens.urlTokens(urlField)) {
       final String url = secureUrl(token);
       if (hostOf(url) != null) {
         return url;
@@ -117,14 +85,14 @@ public final class BrowserLoginPolicy {
    *          the Sockets value the project holds, possibly empty or absent
    */
   static String sockets(final String current) {
-    if (current != null) {
-      try {
-        final int value = Integer.parseInt(current.trim());
-        if (value > 0 && value <= MAX_SOCKETS) {
-          return current.trim();
-        }
-      } catch (final NumberFormatException e) {
-        // An empty or unreadable field leaves the engine on its own default, which is higher.
+    final String value = current == null ? "" : current.trim();
+    /* The same ASCII-digit test the option mapper applies, because Integer.parseInt also takes
+       an Arabic-Indic digit that the mapper then refuses, dropping -c and leaving the crawl on
+       the engine's own higher default. */
+    if (OptionValues.isAtMost(value, MAX_SOCKETS)) {
+      final int count = Integer.parseInt(value);
+      if (count > 0) {
+        return String.valueOf(count);
       }
     }
     return String.valueOf(MAX_SOCKETS);

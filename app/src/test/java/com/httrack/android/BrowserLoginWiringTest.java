@@ -61,7 +61,8 @@ public class BrowserLoginWiringTest {
     for (final String owner : new String[] { "BrowserLoginActivity", "HTTrackActivity" }) {
       collect(TestSources.javaSource(owner), "R\\.string\\.(browser_login[A-Za-z0-9_]*)", names);
     }
-    assertTrue("no strings found to check", names.size() >= 10);
+    // The two resources name ten today, so a collection that silently broke reads as a failure.
+    assertTrue("only " + names.size() + " strings found", names.size() >= 10);
     for (final String name : names) {
       assertTrue("no <string name=\"" + name + "\">",
           strings.contains("<string name=\"" + name + "\">"));
@@ -107,12 +108,14 @@ public class BrowserLoginWiringTest {
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */
   @Test
   public void theHandOverTurnsCookiesOn() throws IOException {
-    final String source = TestSources
-        .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
-    final String body = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "private void applyBrowserLogin("));
-    assertTrue(body.contains("setMap(R.id.checkAcceptCookies,"));
-    assertTrue(body.contains("setMap(R.id.editCookiesFile,"));
-    assertTrue(body.contains("setMap(R.id.editBrowserIdentity,"));
+    // The raw source, because the value is the point here and blanking literals would hide it.
+    final String source = TestSources.javaSource("HTTrackActivity");
+    final String blanked = TestSources.withoutCommentsAndStrings(source);
+    final int at = TestSources.indexOf(blanked, "private void applyBrowserLogin(");
+    final String body = source.substring(at,
+        at + TestSources.balancedBlock(blanked, at).length());
+    assertTrue(body, body.contains("setMap(R.id.checkAcceptCookies, \"1\")"));
+    assertTrue(body, body.contains("setMap(R.id.editCookiesFile,"));
+    assertTrue(body, body.contains("setMap(R.id.editBrowserIdentity,"));
   }
 }

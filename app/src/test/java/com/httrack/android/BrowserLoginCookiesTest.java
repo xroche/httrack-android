@@ -1,5 +1,6 @@
 package com.httrack.android;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -84,12 +85,10 @@ public class BrowserLoginCookiesTest {
 
   @Test
   public void splitReadsNameThenValueInOrder() {
-    final List<String> pairs = BrowserLoginCookies.split("a=1; b=2");
-    assertEquals(4, pairs.size());
-    assertEquals("a", pairs.get(0));
-    assertEquals("1", pairs.get(1));
-    assertEquals("b", pairs.get(2));
-    assertEquals("2", pairs.get(3));
+    final List<String[]> cookies = BrowserLoginCookies.split("a=1; b=2");
+    assertEquals(2, cookies.size());
+    assertArrayEquals(new String[] { "a", "1" }, cookies.get(0));
+    assertArrayEquals(new String[] { "b", "2" }, cookies.get(1));
   }
 
   /** A tab would add a field and a newline a record, so neither may reach the file. */
@@ -99,6 +98,8 @@ public class BrowserLoginCookiesTest {
     assertNull(BrowserLoginCookies.line("h.example", "n", "v\nevil.example\tTRUE\t/"));
     assertNull(BrowserLoginCookies.line("h.example", "n", "v\rx"));
     assertNull(BrowserLoginCookies.line("evil\t.example", "n", "v"));
+    assertNull(BrowserLoginCookies.line("h.example", "n", "v\u0000x"));
+    assertNull(BrowserLoginCookies.line("h.example", "n", "v\u007fx"));
   }
 
   @Test
@@ -110,22 +111,16 @@ public class BrowserLoginCookiesTest {
     assertNull(BrowserLoginCookies.line(repeat("d", BrowserLoginCookies.MAX_DOMAIN + 1), "n", "v"));
   }
 
-  /** The engine drops a whole line at line_max, so a line that long never gets written. */
-  @Test
-  public void refusesALineTheEngineWouldDropWhole() {
-    final String host = "h.example";
-    final int overhead = (host + "\tTRUE\t/\tFALSE\t0\t" + "n" + "\t").length();
-    final String fits = repeat("v", BrowserLoginCookies.MAX_LINE - overhead);
-    assertNotNull(BrowserLoginCookies.line(host, "n", fits));
-    assertNull(BrowserLoginCookies.line(host, "n", fits + "v"));
-  }
-
   /** strlen() counts bytes, so a two-byte character must count twice against every limit. */
   @Test
   public void measuresLimitsInBytesNotCharacters() {
+    // Half the limit plus one character: inside it by Java's count, over it by the engine's.
     final String twoByte = repeat("é", BrowserLoginCookies.MAX_NAME / 2 + 1);
-    assertTrue(twoByte.length() <= BrowserLoginCookies.MAX_NAME);
+    assertEquals(BrowserLoginCookies.MAX_NAME / 2 + 1, twoByte.length());
     assertNull(BrowserLoginCookies.line("h.example", twoByte, "v"));
+    // One character shorter fits, so the limit is the byte count and not an off-by-one.
+    assertNotNull(BrowserLoginCookies.line("h.example",
+        repeat("é", BrowserLoginCookies.MAX_NAME / 2), "v"));
   }
 
   @Test
@@ -141,6 +136,20 @@ public class BrowserLoginCookiesTest {
         <= BrowserLoginCookies.MAX_BYTES);
     assertTrue(result.dropped > 0);
     assertEquals(cookies, result.cookies + result.dropped);
+  }
+
+  /**
+   * A cookie the jar will not keep must not be reported as saved. cookie_add() refuses a value
+   * over MAX_VALUE even though the line parses, so counting it would tell the user a session
+   * was saved while the crawl runs logged out.
+   */
+  @Test
+  public void aCookieTheJarWouldRefuseCountsAsDropped() {
+    final BrowserLoginCookies.Result result = BrowserLoginCookies.file(one("h.example",
+        "small=ok; big=" + repeat("v", BrowserLoginCookies.MAX_VALUE + 1)));
+    assertEquals(1, result.cookies);
+    assertEquals(1, result.dropped);
+    assertFalse(result.text, result.text.contains("big"));
   }
 
   @Test

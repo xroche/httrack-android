@@ -41,6 +41,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
@@ -53,8 +54,8 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.fragment.app.FragmentActivity;
 
 /**
- * The login window: the user passes a login form or a CAPTCHA here, and the crawl then reuses
- * this browser's cookies and its exact User-Agent.
+ * The user passes a login form or a CAPTCHA here, and the crawl then reuses this browser's
+ * cookies and its exact User-Agent.
  *
  * Every host the user reaches is queried on the way out, because WebView hands back cookies per
  * host and a login usually bounces through more than one.
@@ -70,6 +71,7 @@ public class BrowserLoginActivity extends FragmentActivity {
   static final String EXTRA_USER_AGENT = "com.httrack.android.userAgent";
   static final String EXTRA_COOKIE_COUNT = "com.httrack.android.cookieCount";
   static final String EXTRA_HOST_COUNT = "com.httrack.android.hostCount";
+  static final String EXTRA_DROPPED_COUNT = "com.httrack.android.droppedCount";
 
   private static final Charset UTF8 = Charset.forName("UTF-8");
 
@@ -85,7 +87,6 @@ public class BrowserLoginActivity extends FragmentActivity {
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    EdgeToEdge.fitSystemWindows(this);
     setContentView(R.layout.activity_browser_login);
 
     final Bundle extras = getIntent().getExtras();
@@ -137,6 +138,11 @@ public class BrowserLoginActivity extends FragmentActivity {
   @Override
   protected void onDestroy() {
     if (web != null) {
+      // destroy() is only safe off the hierarchy, and leaks the window if it is still attached.
+      final ViewGroup parent = ViewGroup.class.cast(web.getParent());
+      if (parent != null) {
+        parent.removeView(web);
+      }
       web.destroy();
       web = null;
     }
@@ -180,7 +186,7 @@ public class BrowserLoginActivity extends FragmentActivity {
       if (BrowserLoginPolicy.hostOf(url) != null) {
         return false;
       }
-      // Say why nothing happened: the app declares no cleartext permission, so http stays blank.
+      // Without this the http case would just sit there blank.
       Toast.makeText(BrowserLoginActivity.this,
           getString(R.string.browser_login_https_only), Toast.LENGTH_LONG).show();
       return true;
@@ -204,6 +210,9 @@ public class BrowserLoginActivity extends FragmentActivity {
 
   /** Drop the saved session: the browser's cookies and the file the engine would have read. */
   private void forget() {
+    if (cookiesFile == null) {
+      return;
+    }
     CookieManager.getInstance().removeAllCookies(null);
     CookieManager.getInstance().flush();
     hosts.clear();
@@ -248,6 +257,7 @@ public class BrowserLoginActivity extends FragmentActivity {
     data.putExtra(EXTRA_USER_AGENT, web.getSettings().getUserAgentString());
     data.putExtra(EXTRA_COOKIE_COUNT, result.cookies);
     data.putExtra(EXTRA_HOST_COUNT, result.hosts);
+    data.putExtra(EXTRA_DROPPED_COUNT, result.dropped);
     setResult(RESULT_OK, data);
     finish();
   }
@@ -255,8 +265,8 @@ public class BrowserLoginActivity extends FragmentActivity {
   /**
    * Write TEXT to FILE, readable by this app alone.
    *
-   * The file holds a live session, so it goes through a neighbour and a rename: a write that
-   * fails halfway would otherwise leave the previous login truncated and the crawl with nothing.
+   * The file holds a live session, so it writes a .new beside it and renames, because a write
+   * that failed halfway would leave the previous login truncated and the crawl with nothing.
    *
    * @return true when FILE now holds TEXT
    */
@@ -273,7 +283,8 @@ public class BrowserLoginActivity extends FragmentActivity {
       staged.delete();
       return false;
     }
-    // Before the rename, so the name the engine reads is never briefly world-readable.
+    // Before the rename, so the name the engine reads is never briefly world-readable. The
+    // second argument is ownerOnly, so the pair clears everyone then grants the owner back.
     staged.setReadable(false, false);
     staged.setWritable(false, false);
     staged.setReadable(true, true);
