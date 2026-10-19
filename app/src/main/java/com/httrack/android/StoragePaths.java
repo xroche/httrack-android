@@ -2,6 +2,8 @@ package com.httrack.android;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -247,6 +249,31 @@ final class StoragePaths {
       return null;
     }
     return new File(new File(internal, "logins"), projectName + ".txt");
+  }
+
+  /**
+   * Every file holding PROJECTNAME's saved login: the one the engine reads, plus whatever its
+   * own save left beside it.
+   *
+   * @param internal
+   *          getFilesDir(), the app's own storage
+   * @param projectName
+   *          the project, which has to be one valid path segment
+   * @return the files to delete, empty when nothing is saved
+   */
+  static List<File> savedLoginFiles(final File internal, final String projectName) {
+    final File login = loginCookiesFile(internal, projectName);
+    final File dir = login != null ? login.getParentFile() : null;
+    final File[] saved = dir != null ? dir.listFiles() : null;
+    final List<File> files = new ArrayList<File>();
+    if (saved != null) {
+      for (final File file : saved) {
+        if (isLoginSibling(login.getName(), file.getName())) {
+          files.add(file);
+        }
+      }
+    }
+    return files;
   }
 
   /**

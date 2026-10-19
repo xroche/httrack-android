@@ -110,6 +110,8 @@ public class BrowserLoginCookiesTest {
     // Exactly the budget fits, whichever side of the pair carries it.
     assertNotNull(BrowserLoginCookies.line(host, "n", repeat("v", pair - 1)));
     assertNotNull(BrowserLoginCookies.line(host, repeat("n", pair), ""));
+    // Both sides loaded and summing to the budget, which no other case covers.
+    assertNotNull(BrowserLoginCookies.line(host, repeat("n", pair / 2), repeat("v", pair / 2)));
     // One byte more does not, and a long name now costs the value its room.
     assertNull(BrowserLoginCookies.line(host, "n", repeat("v", pair)));
     assertNull(BrowserLoginCookies.line(host, repeat("n", pair + 1), ""));
@@ -169,6 +171,19 @@ public class BrowserLoginCookiesTest {
     assertEquals(0, result.dropped);
     assertTrue(result.text, result.text.contains("\tsid\tnewer\n"));
     assertFalse(result.text, result.text.contains("older"));
+  }
+
+  /** The same name on two hosts is two cookies, so the key has to carry the host. */
+  @Test
+  public void aNameOnTwoHostsSurvivesOnBoth() {
+    final Map<String, String> byHost = new LinkedHashMap<String, String>();
+    byHost.put("a.example", "sid=one");
+    byHost.put("b.example", "sid=two");
+    final BrowserLoginCookies.Result result = BrowserLoginCookies.file(byHost);
+    assertEquals(2, result.cookies);
+    assertEquals(2, result.hosts);
+    assertTrue(result.text, result.text.contains("a.example\tTRUE\t/\tFALSE\t0\tsid\tone\n"));
+    assertTrue(result.text, result.text.contains("b.example\tTRUE\t/\tFALSE\t0\tsid\ttwo\n"));
   }
 
   @Test

@@ -96,9 +96,15 @@ public class BrowserLoginEngineLimitsTest {
    */
   @Test
   public void everyHeaderLineIsACommentTheEngineKnows() throws IOException {
-    final String known = TestSources.between(source("htsbauth.c"),
-        "static hts_boolean cookie_known_comment", "static const char wget");
-    for (final String line : BrowserLoginCookies.HEADER.split("\n")) {
+    // The array initializer alone, so a comment elsewhere in the function cannot pose as it.
+    final String known = TestSources.between(source("htsbauth.c"), "known[] = {", "};");
+    final java.util.Map<String, String> host = new java.util.LinkedHashMap<String, String>();
+    host.put("h.example", "a=1");
+    // What file() emits, not the constant, so an extra comment from anywhere is caught.
+    for (final String line : BrowserLoginCookies.file(host).text.split("\n")) {
+      if (line.isEmpty() || line.charAt(0) != '#') {
+        break;
+      }
       assertTrue(line + " is not in cookie_known_comment", known.contains('"' + line + '"'));
     }
   }

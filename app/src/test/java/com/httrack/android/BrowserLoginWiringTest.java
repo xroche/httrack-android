@@ -112,13 +112,13 @@ public class BrowserLoginWiringTest {
         .withoutCommentsAndStrings(TestSources.javaSource("CleanupActivity"));
     final String body = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void deleteProjects()"));
-    assertTrue(body, body.contains("forgetLogin("));
+    assertTrue(body, body.contains("forgetLogin(projects[position])"));
     // Gated on the mirror being gone, so a folder deleted outside the app still drops it.
     assertTrue(body, body.contains("!project.exists()"));
     // The path comes from the one helper both callers use, never a second copy.
     final String forget = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "private void forgetLogin("));
-    assertTrue(forget, forget.contains("StoragePaths.loginCookiesFile("));
+    assertTrue(forget, forget.contains("StoragePaths.savedLoginFiles("));
   }
 
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */

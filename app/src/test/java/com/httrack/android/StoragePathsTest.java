@@ -28,10 +28,6 @@ public class StoragePathsTest {
     internal = tmp.newFolder("int", "data", "com.httrack.android", "files");
   }
 
-  /**
-   * The resource bundle is extracted entry by entry, and a ".." in a name would land outside the
-   * cache. Canonical paths are what the guard compares, so the escape must be built that way.
-   */
   /** The engine keeps a .bak and stages a .tmp, so a delete that takes only the name leaks. */
   @Test
   public void aDeletedLoginTakesWhatTheEngineLeftBesideIt() {
@@ -60,6 +56,32 @@ public class StoragePathsTest {
     assertFalse(StoragePaths.isLoginSibling("A+.txt", "AA.txt"));
     assertTrue(StoragePaths.isLoginSibling("a(.txt", "a(.txt"));
     assertTrue(StoragePaths.isLoginSibling("a(.txt", "a(.txt.bak"));
+  }
+
+  /** Over real files, because the matching decides what gets deleted off a user's device. */
+  @Test
+  public void savedLoginFilesTakesOurOwnAndLeavesTheNeighbour() throws IOException {
+    final File internal = tmp.newFolder("files");
+    final File logins = new File(internal, "logins");
+    assertTrue(logins.mkdirs());
+    for (final String name : new String[] { "P.txt", "P.txt.bak", "P.txt.4321.tmp",
+        "P.txt.bak.4321.tmp", "Q.txt", "Q.txt.bak", "notes.txt" }) {
+      assertTrue(new File(logins, name).createNewFile());
+    }
+    final java.util.List<File> ours = StoragePaths.savedLoginFiles(internal, "P");
+    final java.util.Set<String> names = new java.util.TreeSet<String>();
+    for (final File file : ours) {
+      names.add(file.getName());
+    }
+    assertEquals(new java.util.TreeSet<String>(java.util.Arrays.asList("P.txt", "P.txt.bak",
+        "P.txt.4321.tmp", "P.txt.bak.4321.tmp")), names);
+  }
+
+  @Test
+  public void savedLoginFilesIsEmptyBeforeAnyLoginIsSaved() throws IOException {
+    final File internal = tmp.newFolder("files-empty");
+    assertTrue(StoragePaths.savedLoginFiles(internal, "P").isEmpty());
+    assertTrue(StoragePaths.savedLoginFiles(internal, "..").isEmpty());
   }
 
   /** A deleted project must not leave a live session behind, so both callers share this path. */
@@ -98,6 +120,10 @@ public class StoragePathsTest {
    * The guard is only worth anything if the extraction loop calls it, refuses on it, and does so
    * before it opens the file. A call whose answer is dropped, or one made after the write, would
    * leave the predicate right and the extraction wide open.
+   */
+  /**
+   * The resource bundle is extracted entry by entry, and a ".." in a name would land outside the
+   * cache. Canonical paths are what the guard compares, so the escape must be built that way.
    */
   @Test
   public void theResourceExtractionRefusesAnEscapingEntryBeforeWriting() throws IOException {
