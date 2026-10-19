@@ -105,6 +105,20 @@ public class BrowserLoginWiringTest {
     assertFalse(body.contains("getTargetFile()"));
   }
 
+  /** The delete flow must wait for a crawl, or the engine recreates the login it just removed. */
+  @Test
+  public void cleanupWaitsForALiveCrawl() throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
+    final String body = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onCleanup("));
+    assertTrue(body, body.contains("CleanupTitlePolicy.opens(false, isCrawlLive()"));
+    // The button's enabled state alone is not a guard, because performClick ignores it.
+    final String live = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "private boolean isCrawlLive()"));
+    assertTrue(live, live.contains("MirrorSession.get().live()"));
+  }
+
   /** Deleting a project has to take its saved login with it, or a live session is orphaned. */
   @Test
   public void deletingAProjectForgetsItsLogin() throws IOException {

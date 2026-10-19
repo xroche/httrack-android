@@ -2178,7 +2178,7 @@ public class HTTrackActivity extends FragmentActivity {
       // Enable or disable browse & cleanup button depending on existing
       // project(s)
       View.class.cast(this.findViewById(R.id.buttonClear)).setEnabled(
-          hasProjectNames());
+          CleanupTitlePolicy.opens(false, isCrawlLive(), hasProjectNames()));
       View.class.cast(this.findViewById(R.id.buttonBrowseAll)).setEnabled(
           hasProjectRootIndexFile());
 
@@ -3165,11 +3165,23 @@ public class HTTrackActivity extends FragmentActivity {
     intent.putExtra("com.httrack.android.resourceFile", getResourceFile());
   }
 
+  /** Whether a crawl owns a mirror right now, in this window or in the job that outlives it. */
+  private boolean isCrawlLive() {
+    return hasLiveRunner() || MirrorSession.get().live() != null;
+  }
+
   /**
    * "Cleanup"
    */
   public void onCleanup(final View view) {
     final String[] names = getProjectNames();
+    // Also guarded here, not only by the button's enabled state, which performClick ignores.
+    if (!CleanupTitlePolicy.opens(false, isCrawlLive(), names != null && names.length != 0)) {
+      if (isCrawlLive()) {
+        Toast.makeText(this, R.string.cleanup_while_copying, Toast.LENGTH_LONG).show();
+      }
+      return;
+    }
     if (names != null && names.length != 0) {
       final Intent intent = new Intent(this, CleanupActivity.class);
       fillExtra(intent);

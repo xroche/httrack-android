@@ -269,6 +269,7 @@
     <string name="starting_mirror">Starting the mirror…</string>
     <string name="self_contained_conflict">The mirror cannot make a self-contained page two ways at once. Untick either \"Build a single-file MHTML archive\" (Log, index, cache) or \"Inline assets as data: URIs\" (Build).</string>
     <string name="mirror_already_in_progress">A mirror is already in progress. Wait for it to finish, or stop it, before you start another one.</string>
+    <string name="cleanup_while_copying">A copy is running. Wait for it to finish, or stop it, before you delete projects.</string>
     <string name="engine_faulted">The copier engine crashed and cannot be used again until HTTrack restarts. The app closes when you leave this screen; open it again to start a new mirror.</string>
     <string name="mirror_progress_channel">Copy in progress</string>
     <string name="mirror_progress_channel_description">Shows how far a website copy has got, while it runs.</string>
