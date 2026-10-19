@@ -240,6 +240,23 @@ final class StoragePaths {
    *          the project name, already whitespace-collapsed
    * @return true if it denotes a single, in-root directory segment
    */
+  /**
+   * Where PROJECTNAME's browser login is kept. Private storage, because the file holds a live
+   * session and a mirror folder is readable by every app on the device.
+   *
+   * @param internal
+   *          getFilesDir(), the app's own storage
+   * @param projectName
+   *          the project, which has to be one valid path segment
+   * @return the file, or null when there is no name we may build a path from
+   */
+  static File loginCookiesFile(final File internal, final String projectName) {
+    if (internal == null || !isValidProjectName(projectName)) {
+      return null;
+    }
+    return new File(new File(internal, "logins"), projectName + ".txt");
+  }
+
   static boolean isValidProjectName(final String name) {
     if (name == null || name.isEmpty() || name.equals(".") || name.equals("..")) {
       return false;

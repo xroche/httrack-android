@@ -32,6 +32,26 @@ public class StoragePathsTest {
    * The resource bundle is extracted entry by entry, and a ".." in a name would land outside the
    * cache. Canonical paths are what the guard compares, so the escape must be built that way.
    */
+  /** A deleted project must not leave a live session behind, so both callers share this path. */
+  @Test
+  public void theLoginCookiesFileSitsInPrivateStorage() {
+    final File internal = new File("/data/user/0/com.httrack.android/files");
+    assertEquals(new File(internal, "logins/My Site.txt"),
+        StoragePaths.loginCookiesFile(internal, "My Site"));
+  }
+
+  @Test
+  public void noLoginPathIsBuiltFromAnUnusableName() {
+    final File internal = new File("/data/user/0/com.httrack.android/files");
+    assertNull(StoragePaths.loginCookiesFile(internal, null));
+    assertNull(StoragePaths.loginCookiesFile(internal, ""));
+    // A name that is not one segment must never become a path under our own storage.
+    assertNull(StoragePaths.loginCookiesFile(internal, ".."));
+    assertNull(StoragePaths.loginCookiesFile(internal, "a/b"));
+    assertNull(StoragePaths.loginCookiesFile(internal, "/etc/passwd"));
+    assertNull(StoragePaths.loginCookiesFile(null, "My Site"));
+  }
+
   @Test
   public void treatsAnEscapingPathAsOutsideTheRoot() throws IOException {
     final String root = external.getCanonicalPath();

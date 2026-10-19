@@ -176,6 +176,14 @@ public class CleanupActivity extends ListActivity {
     return view;
   }
 
+  /** Drop a deleted project's saved browser login, which private storage would otherwise keep. */
+  private void forgetLogin(final String projectName) {
+    final File login = StoragePaths.loginCookiesFile(getFilesDir(), projectName);
+    if (login != null && login.exists() && !login.delete()) {
+      Log.w(getClass().getSimpleName(), "could not delete saved login: " + login);
+    }
+  }
+
   /* Delete recursively a directory, or delete a file. */
   public static boolean deleteRecursively(final File file) {
     return deleteRecursively(file, MAX_DEPTH);
@@ -243,6 +251,7 @@ public class CleanupActivity extends ListActivity {
         for (final int position : positions) {
           if (deleteRecursively(new File(projectRootFile, projects[position]))) {
             deleted.add(position);
+            forgetLogin(projects[position]);
           }
         }
 

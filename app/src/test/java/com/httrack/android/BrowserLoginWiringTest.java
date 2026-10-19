@@ -105,6 +105,20 @@ public class BrowserLoginWiringTest {
     assertFalse(body.contains("getTargetFile()"));
   }
 
+  /** Deleting a project has to take its saved login with it, or a live session is orphaned. */
+  @Test
+  public void deletingAProjectForgetsItsLogin() throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("CleanupActivity"));
+    final String body = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "protected void deleteProjects()"));
+    assertTrue(body, body.contains("forgetLogin("));
+    // The path comes from the one helper both callers use, never a second copy.
+    final String forget = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "private void forgetLogin("));
+    assertTrue(forget, forget.contains("StoragePaths.loginCookiesFile("));
+  }
+
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */
   @Test
   public void theHandOverTurnsCookiesOn() throws IOException {

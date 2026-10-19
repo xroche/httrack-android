@@ -2893,11 +2893,7 @@ public class HTTrackActivity extends FragmentActivity {
    * @return the file, or null until the project has a usable name
    */
   private File getLoginCookiesFile() {
-    final String name = mapper.getProjectName();
-    if (name == null || name.length() == 0 || !StoragePaths.isValidProjectName(name)) {
-      return null;
-    }
-    return new File(new File(getFilesDir(), "logins"), name + ".txt");
+    return StoragePaths.loginCookiesFile(getFilesDir(), mapper.getProjectName());
   }
 
   /**
