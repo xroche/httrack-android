@@ -37,14 +37,16 @@ public final class BrowserLoginCookies {
   private BrowserLoginCookies() {
   }
 
-  /**
-   * Longest field the engine's jar keeps. cookie_add() refuses a longer one, which costs the
-   * cookie: cookie_load() reads the line into a much larger buffer first, so a record can parse
-   * and still never reach the jar. BrowserLoginCookiesTest checks these against the pinned engine.
-   */
+  /** Longest domain the loader keeps, because cookie_load_field refuses len >= its buffer. */
   static final int MAX_DOMAIN = 255;
-  static final int MAX_NAME = 256;
-  static final int MAX_VALUE = 1024;
+
+  /**
+   * Longest name plus value the engine's jar keeps. cookie_add refuses a pair over
+   * COOKIE_MAX_PAIR, which is RFC 6265's limit, so neither field has a cap of its own.
+   * A record can parse and still never reach the jar, so this is the gate that decides.
+   * BrowserLoginEngineLimitsTest checks it against the pinned engine.
+   */
+  static final int MAX_PAIR = 4096;
 
   /**
    * Bytes we may write. The engine's jar holds 30000 and loads the mirror's own cookies.txt
@@ -99,8 +101,12 @@ public final class BrowserLoginCookies {
     if (host.length() == 0 || name.length() == 0 || host.charAt(0) == '#') {
       return null;
     }
-    if (!OptionValues.fitsBytes(host, MAX_DOMAIN) || !OptionValues.fitsBytes(name, MAX_NAME)
-        || !OptionValues.fitsBytes(value, MAX_VALUE)) {
+    if (!OptionValues.fitsBytes(host, MAX_DOMAIN)) {
+      return null;
+    }
+    // Name and value share one budget, tested the way the engine tests it.
+    final int nameBytes = utf8Length(name);
+    if (nameBytes > MAX_PAIR || utf8Length(value) > MAX_PAIR - nameBytes) {
       return null;
     }
     /* No length check on the whole line: the three caps above bound it well under the

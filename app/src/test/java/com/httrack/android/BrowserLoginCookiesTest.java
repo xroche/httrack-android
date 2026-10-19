@@ -102,12 +102,18 @@ public class BrowserLoginCookiesTest {
     assertNull(BrowserLoginCookies.line("h.example", "n", "v\u007fx"));
   }
 
+  /** The jar spends one budget across the pair, so neither field has a limit of its own. */
   @Test
-  public void refusesAFieldLongerThanTheEnginesBuffer() {
+  public void refusesAPairTheJarWouldNotHold() {
     final String host = "h.example";
-    assertNull(BrowserLoginCookies.line(host, repeat("n", BrowserLoginCookies.MAX_NAME + 1), "v"));
-    assertNotNull(BrowserLoginCookies.line(host, repeat("n", BrowserLoginCookies.MAX_NAME), "v"));
-    assertNull(BrowserLoginCookies.line(host, "n", repeat("v", BrowserLoginCookies.MAX_VALUE + 1)));
+    final int pair = BrowserLoginCookies.MAX_PAIR;
+    // Exactly the budget fits, whichever side of the pair carries it.
+    assertNotNull(BrowserLoginCookies.line(host, "n", repeat("v", pair - 1)));
+    assertNotNull(BrowserLoginCookies.line(host, repeat("n", pair), ""));
+    // One byte more does not, and a long name now costs the value its room.
+    assertNull(BrowserLoginCookies.line(host, "n", repeat("v", pair)));
+    assertNull(BrowserLoginCookies.line(host, repeat("n", pair + 1), ""));
+    assertNull(BrowserLoginCookies.line(host, repeat("n", pair / 2), repeat("v", pair / 2 + 1)));
     assertNull(BrowserLoginCookies.line(repeat("d", BrowserLoginCookies.MAX_DOMAIN + 1), "n", "v"));
   }
 
@@ -115,12 +121,12 @@ public class BrowserLoginCookiesTest {
   @Test
   public void measuresLimitsInBytesNotCharacters() {
     // Half the limit plus one character: inside it by Java's count, over it by the engine's.
-    final String twoByte = repeat("é", BrowserLoginCookies.MAX_NAME / 2 + 1);
-    assertEquals(BrowserLoginCookies.MAX_NAME / 2 + 1, twoByte.length());
+    final String twoByte = repeat("é", BrowserLoginCookies.MAX_PAIR / 2);
+    assertEquals(BrowserLoginCookies.MAX_PAIR / 2, twoByte.length());
     assertNull(BrowserLoginCookies.line("h.example", twoByte, "v"));
-    // One character shorter fits, so the limit is the byte count and not an off-by-one.
+    // Two characters shorter fits, so the limit is the byte count and not an off-by-one.
     assertNotNull(BrowserLoginCookies.line("h.example",
-        repeat("é", BrowserLoginCookies.MAX_NAME / 2), "v"));
+        repeat("é", BrowserLoginCookies.MAX_PAIR / 2 - 1), "v"));
   }
 
   @Test
@@ -139,14 +145,14 @@ public class BrowserLoginCookiesTest {
   }
 
   /**
-   * A cookie the jar will not keep must not be reported as saved. cookie_add() refuses a value
-   * over MAX_VALUE even though the line parses, so counting it would tell the user a session
+   * A cookie the jar will not keep must not be reported as saved. cookie_add refuses an
+   * over-budget pair even though the line parses, so counting it would tell the user a session
    * was saved while the crawl runs logged out.
    */
   @Test
   public void aCookieTheJarWouldRefuseCountsAsDropped() {
     final BrowserLoginCookies.Result result = BrowserLoginCookies.file(one("h.example",
-        "small=ok; big=" + repeat("v", BrowserLoginCookies.MAX_VALUE + 1)));
+        "small=ok; big=" + repeat("v", BrowserLoginCookies.MAX_PAIR)));
     assertEquals(1, result.cookies);
     assertEquals(1, result.dropped);
     assertFalse(result.text, result.text.contains("big"));
