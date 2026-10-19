@@ -13,17 +13,15 @@ public class CleanupTitlePolicyTest {
    * loses the delete. Choosing a project removes nothing, so that flow stays open.
    */
   @Test
-  public void theDeleteFlowWaitsForTheCrawlButThePickerDoesNot() {
-    assertFalse("deleting during a crawl", CleanupTitlePolicy.opens(false, true, true));
-    assertTrue("deleting with no crawl", CleanupTitlePolicy.opens(false, false, true));
-    assertTrue("choosing during a crawl", CleanupTitlePolicy.opens(true, true, true));
+  public void theDeleteFlowWaitsForTheCrawl() {
+    assertFalse("deleting during a crawl", CleanupTitlePolicy.opensDelete(true, true));
+    assertTrue("deleting with no crawl", CleanupTitlePolicy.opensDelete(false, true));
   }
 
   @Test
-  public void nothingOpensWithoutAProject() {
-    assertFalse(CleanupTitlePolicy.opens(false, false, false));
-    assertFalse(CleanupTitlePolicy.opens(true, false, false));
-    assertFalse(CleanupTitlePolicy.opens(true, true, false));
+  public void theDeleteFlowNeedsAProject() {
+    assertFalse(CleanupTitlePolicy.opensDelete(false, false));
+    assertFalse(CleanupTitlePolicy.opensDelete(true, false));
   }
 
   /** Each answer is written out rather than computed, so the table cannot agree with a change

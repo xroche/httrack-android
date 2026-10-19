@@ -112,11 +112,13 @@ public class BrowserLoginWiringTest {
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String body = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "public void onCleanup("));
-    assertTrue(body, body.contains("CleanupTitlePolicy.opens(false, isCrawlLive()"));
+    assertTrue(body, body.contains("CleanupTitlePolicy.opensDelete(isCrawlLive()"));
     // The button's enabled state alone is not a guard, because performClick ignores it.
     final String live = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "private boolean isCrawlLive()"));
-    assertTrue(live, live.contains("MirrorSession.get().live()"));
+    assertTrue(live, live.contains("hasLiveRunner()"));
+    // A connectivity stop empties the session and re-arms the job, so pending counts as live.
+    assertTrue(live, live.contains("MirrorJobService.isPending(this)"));
   }
 
   /** Deleting a project has to take its saved login with it, or a live session is orphaned. */
