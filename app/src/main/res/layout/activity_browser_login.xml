@@ -1,0 +1,67 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical"
+    tools:context=".BrowserLoginActivity" >
+
+    <TextView
+        android:id="@+id/textLoginNote"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="@dimen/activity_vertical_margin"
+        android:paddingStart="@dimen/activity_horizontal_margin"
+        android:paddingEnd="@dimen/activity_horizontal_margin"
+        android:paddingTop="@dimen/activity_vertical_margin"
+        android:text="@string/browser_login_note"
+        android:textSize="12sp" />
+
+    <WebView
+        android:id="@+id/webLogin"
+        android:layout_width="fill_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <View style="@style/DividerLineHorizontal" />
+
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
+
+        <LinearLayout
+            style="@style/BorderlessButtonLeft"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.5" >
+
+            <Button
+                android:id="@+id/buttonLoginCancel"
+                style="@style/ButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:onClick="onClickLoginCancel"
+                android:text="@string/cancel" />
+        </LinearLayout>
+
+        <View style="@style/DividerLineVertical" />
+
+        <LinearLayout
+            style="@style/BorderlessButtonRight"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.5" >
+
+            <Button
+                android:id="@+id/buttonLoginDone"
+                style="@style/ButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:onClick="onClickLoginDone"
+                android:text="@string/browser_login_done" />
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>

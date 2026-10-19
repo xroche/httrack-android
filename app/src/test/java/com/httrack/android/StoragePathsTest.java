@@ -28,10 +28,82 @@ public class StoragePathsTest {
     internal = tmp.newFolder("int", "data", "com.httrack.android", "files");
   }
 
-  /**
-   * The resource bundle is extracted entry by entry, and a ".." in a name would land outside the
-   * cache. Canonical paths are what the guard compares, so the escape must be built that way.
-   */
+  /** The engine keeps a .bak and stages a .tmp, so a delete that takes only the name leaks. */
+  @Test
+  public void aDeletedLoginTakesWhatTheEngineLeftBesideIt() {
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt"));
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak"));
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.4321.tmp"));
+    /* The .bak is staged through a temporary of its own, and that file holds a whole jar, so
+       the suffixes stack. The engine's own self-test asserts this name. */
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak.4321.tmp"));
+  }
+
+  @Test
+  public void aDeletedLoginLeavesAnotherProjectAlone() {
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "B.txt"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak.txt"));
+    // A project may legitimately be called "A.txt", whose own login file is "A.txt.txt".
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.txt"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.tmp"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak2"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak.tmp"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.4321.bak"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", null));
+    /* isValidProjectName allows a regex metacharacter, so the name is quoted before it becomes
+       a pattern. Unquoted, "A+" would match another project's "AA.txt" and delete its session,
+       and "a(" would throw mid-delete. */
+    assertFalse(StoragePaths.isLoginSibling("A+.txt", "AA.txt"));
+    assertTrue(StoragePaths.isLoginSibling("a(.txt", "a(.txt"));
+    assertTrue(StoragePaths.isLoginSibling("a(.txt", "a(.txt.bak"));
+  }
+
+  /** Over real files, because the matching decides what gets deleted off a user's device. */
+  @Test
+  public void savedLoginFilesTakesOurOwnAndLeavesTheNeighbour() throws IOException {
+    final File internal = tmp.newFolder("files");
+    final File logins = new File(internal, "logins");
+    assertTrue(logins.mkdirs());
+    for (final String name : new String[] { "P.txt", "P.txt.bak", "P.txt.4321.tmp",
+        "P.txt.bak.4321.tmp", "Q.txt", "Q.txt.bak", "notes.txt" }) {
+      assertTrue(new File(logins, name).createNewFile());
+    }
+    final java.util.List<File> ours = StoragePaths.savedLoginFiles(internal, "P");
+    final java.util.Set<String> names = new java.util.TreeSet<String>();
+    for (final File file : ours) {
+      names.add(file.getName());
+    }
+    assertEquals(new java.util.TreeSet<String>(java.util.Arrays.asList("P.txt", "P.txt.bak",
+        "P.txt.4321.tmp", "P.txt.bak.4321.tmp")), names);
+  }
+
+  @Test
+  public void savedLoginFilesIsEmptyBeforeAnyLoginIsSaved() throws IOException {
+    final File internal = tmp.newFolder("files-empty");
+    assertTrue(StoragePaths.savedLoginFiles(internal, "P").isEmpty());
+    assertTrue(StoragePaths.savedLoginFiles(internal, "..").isEmpty());
+  }
+
+  /** A deleted project must not leave a live session behind, so both callers share this path. */
+  @Test
+  public void theLoginCookiesFileSitsInPrivateStorage() {
+    final File internal = new File("/data/user/0/com.httrack.android/files");
+    assertEquals(new File(internal, "logins/My Site.txt"),
+        StoragePaths.loginCookiesFile(internal, "My Site"));
+  }
+
+  @Test
+  public void noLoginPathIsBuiltFromAnUnusableName() {
+    final File internal = new File("/data/user/0/com.httrack.android/files");
+    assertNull(StoragePaths.loginCookiesFile(internal, null));
+    assertNull(StoragePaths.loginCookiesFile(internal, ""));
+    // A name that is not one segment must never become a path under our own storage.
+    assertNull(StoragePaths.loginCookiesFile(internal, ".."));
+    assertNull(StoragePaths.loginCookiesFile(internal, "a/b"));
+    assertNull(StoragePaths.loginCookiesFile(internal, "/etc/passwd"));
+    assertNull(StoragePaths.loginCookiesFile(null, "My Site"));
+  }
+
   @Test
   public void treatsAnEscapingPathAsOutsideTheRoot() throws IOException {
     final String root = external.getCanonicalPath();
@@ -48,6 +120,10 @@ public class StoragePathsTest {
    * The guard is only worth anything if the extraction loop calls it, refuses on it, and does so
    * before it opens the file. A call whose answer is dropped, or one made after the write, would
    * leave the predicate right and the extraction wide open.
+   */
+  /**
+   * The resource bundle is extracted entry by entry, and a ".." in a name would land outside the
+   * cache. Canonical paths are what the guard compares, so the escape must be built that way.
    */
   @Test
   public void theResourceExtractionRefusesAnEscapingEntryBeforeWriting() throws IOException {

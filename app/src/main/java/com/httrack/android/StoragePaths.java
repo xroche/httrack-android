@@ -2,6 +2,9 @@ package com.httrack.android;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Where mirrors may be written: decides whether a persisted setting is honoured or destroyed.
@@ -229,6 +232,58 @@ final class StoragePaths {
     } catch (final IOException e) {
       return null;
     }
+  }
+
+  /**
+   * Where PROJECTNAME's browser login is kept. Private storage, because the file holds a live
+   * session and a mirror folder is readable by every app on the device.
+   *
+   * @param internal
+   *          getFilesDir(), the app's own storage
+   * @param projectName
+   *          the project, which has to be one valid path segment
+   * @return the file, or null when there is no name we may build a path from
+   */
+  static File loginCookiesFile(final File internal, final String projectName) {
+    if (internal == null || !isValidProjectName(projectName)) {
+      return null;
+    }
+    return new File(new File(internal, "logins"), projectName + ".txt");
+  }
+
+  /**
+   * Every file holding PROJECTNAME's saved login: the one the engine reads, plus whatever its
+   * own save left beside it.
+   *
+   * @param internal
+   *          getFilesDir(), the app's own storage
+   * @param projectName
+   *          the project, which has to be one valid path segment
+   * @return the files to delete, empty when nothing is saved
+   */
+  static List<File> savedLoginFiles(final File internal, final String projectName) {
+    final File login = loginCookiesFile(internal, projectName);
+    final File dir = login != null ? login.getParentFile() : null;
+    final File[] saved = dir != null ? dir.listFiles() : null;
+    final List<File> files = new ArrayList<File>();
+    if (saved != null) {
+      for (final File file : saved) {
+        if (isLoginSibling(login.getName(), file.getName())) {
+          files.add(file);
+        }
+      }
+    }
+    return files;
+  }
+
+  /**
+   * Whether FILENAME is LOGINNAME, or one of the files the engine's save leaves beside it.
+   * Those are its {@code .bak}, its {@code .<pid>.tmp}, and the temporary the {@code .bak} is
+   * staged through, because each one can hold a whole jar. No run deletes another's temporary.
+   */
+  static boolean isLoginSibling(final String ourName, final String candidate) {
+    return candidate != null
+        && candidate.matches(Pattern.quote(ourName) + "(\\.bak)?(\\.[0-9]+\\.tmp)?");
   }
 
   /**

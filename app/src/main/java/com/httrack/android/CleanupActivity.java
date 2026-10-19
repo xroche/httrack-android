@@ -176,6 +176,15 @@ public class CleanupActivity extends ListActivity {
     return view;
   }
 
+  /** Drop a deleted project's saved browser login, which private storage would otherwise keep. */
+  private void forgetLogin(final String projectName) {
+    for (final File file : StoragePaths.savedLoginFiles(getFilesDir(), projectName)) {
+      if (!file.delete()) {
+        Log.w(getClass().getSimpleName(), "could not delete saved login: " + file);
+      }
+    }
+  }
+
   /* Delete recursively a directory, or delete a file. */
   public static boolean deleteRecursively(final File file) {
     return deleteRecursively(file, MAX_DEPTH);
@@ -241,8 +250,15 @@ public class CleanupActivity extends ListActivity {
         MirrorServer.stopAll();
         final HashSet<Integer> deleted = new HashSet<Integer>();
         for (final int position : positions) {
-          if (deleteRecursively(new File(projectRootFile, projects[position]))) {
+          final File project = new File(projectRootFile, projects[position]);
+          if (deleteRecursively(project)) {
             deleted.add(position);
+          }
+          /* On whether the mirror is gone, not on whether we removed it, because a directory
+             already deleted from outside the app reports failure and must still drop its
+             session. A partial failure leaves the project, so it keeps its login. */
+          if (!project.exists()) {
+            forgetLogin(projects[position]);
           }
         }
 

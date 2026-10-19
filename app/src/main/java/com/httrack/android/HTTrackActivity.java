@@ -195,6 +195,7 @@ public class HTTrackActivity extends FragmentActivity {
   protected static final int ACTIVITY_PROJECT_NAME_CHOOSER = 2;
   protected static final int ACTIVITY_CLEANUP = 3;
   protected static final int ACTIVITY_IMPORT_TREE = 4;
+  protected static final int ACTIVITY_BROWSER_LOGIN = 5;
 
   // Constant on purpose: a per-process tag travels through saved state and through notification
   // extras, so a cold launch would adopt a dead process's tag.
@@ -2177,7 +2178,7 @@ public class HTTrackActivity extends FragmentActivity {
       // Enable or disable browse & cleanup button depending on existing
       // project(s)
       View.class.cast(this.findViewById(R.id.buttonClear)).setEnabled(
-          hasProjectNames());
+          !CleanupTitlePolicy.refusesDelete(isCrawlLive(), hasProjectNames()));
       View.class.cast(this.findViewById(R.id.buttonBrowseAll)).setEnabled(
           hasProjectRootIndexFile());
 
@@ -2885,6 +2886,67 @@ public class HTTrackActivity extends FragmentActivity {
     }
   }
 
+  /**
+   * Where this project's browser login is kept. Private storage, because the file holds a live
+   * session and a mirror folder is readable by every app on the device.
+   *
+   * @return the file, or null until the project has a usable name
+   */
+  private File getLoginCookiesFile() {
+    return StoragePaths.loginCookiesFile(getFilesDir(), mapper.getProjectName());
+  }
+
+  /**
+   * "Log in with a browser"
+   */
+  public void onClickBrowserLogin(final View view) {
+    // The address field is this pane's, and the login opens what it holds right now.
+    savePaneFields();
+    final File cookies = getLoginCookiesFile();
+    if (cookies == null) {
+      Toast.makeText(this, R.string.browser_login_no_project, Toast.LENGTH_LONG).show();
+      return;
+    }
+    final String url = BrowserLoginPolicy.startUrl(getMap(R.id.fieldWebsiteURLs));
+    if (url == null) {
+      Toast.makeText(this, R.string.browser_login_no_address, Toast.LENGTH_LONG).show();
+      return;
+    }
+    final Intent intent = new Intent(this, BrowserLoginActivity.class);
+    intent.putExtra(BrowserLoginActivity.EXTRA_URL, url);
+    intent.putExtra(BrowserLoginActivity.EXTRA_COOKIES_FILE, cookies);
+    startActivityForResult(intent, ACTIVITY_BROWSER_LOGIN);
+  }
+
+  /**
+   * Point the crawl at the login the browser window saved, and tell the user what that changed.
+   */
+  private void applyBrowserLogin(final Intent data) {
+    final File cookies = getLoginCookiesFile();
+    final String agent = data.getStringExtra(BrowserLoginActivity.EXTRA_USER_AGENT);
+    if (cookies == null || agent == null || agent.length() == 0) {
+      return;
+    }
+    setMap(R.id.editCookiesFile, cookies.getAbsolutePath());
+    // The exact string, "wv" included: a clearance bound to the browser's agent breaks on any other.
+    setMap(R.id.editBrowserIdentity, agent);
+    // cookie_load() runs only when the engine accepts cookies, so an unticked box drops the file.
+    setMap(R.id.checkAcceptCookies, "1");
+    setMap(R.id.editNumberOfConnections,
+        BrowserLoginPolicy.sockets(getMap(R.id.editNumberOfConnections)));
+    setMap(R.id.editRules, BrowserLoginPolicy.rules(getMap(R.id.editRules)));
+    final int droppedCookies = data.getIntExtra(BrowserLoginActivity.EXTRA_DROPPED_COUNT, 0);
+    final String saved = getString(R.string.browser_login_saved,
+        data.getIntExtra(BrowserLoginActivity.EXTRA_COOKIE_COUNT, 0),
+        data.getIntExtra(BrowserLoginActivity.EXTRA_HOST_COUNT, 0),
+        BrowserLoginPolicy.MAX_SOCKETS);
+    // A cookie the engine's jar refuses is not saved, so saying only how many were is a lie.
+    final String message = droppedCookies == 0 ? saved
+        : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies);
+    new AlertDialog.Builder(this).setMessage(message)
+        .setPositiveButton(android.R.string.ok, null).show();
+  }
+
   /** Restore a previously saved map context. **/
   private void loadParcelable(final Parcelable data) {
     // Load modified map
@@ -2917,6 +2979,11 @@ public class HTTrackActivity extends FragmentActivity {
     case ACTIVITY_IMPORT_TREE:
       if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
         importMirrorsFrom(data.getData());
+      }
+      break;
+    case ACTIVITY_BROWSER_LOGIN:
+      if (resultCode == Activity.RESULT_OK && data != null) {
+        applyBrowserLogin(data);
       }
       break;
     case ACTIVITY_PROJECT_NAME_CHOOSER:
@@ -3099,10 +3166,27 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
+   * Does a crawl own a mirror right now? The pending term matters as much as the running
+   * one, because a connectivity stop empties the session and re-arms the job, so the copy comes
+   * back and rebuilds whatever was deleted meanwhile. hasLiveRunner already covers the session
+   * slot and the window before a crawl reaches it.
+   */
+  private boolean isCrawlLive() {
+    return hasLiveRunner() || MirrorJobService.isPending(this);
+  }
+
+  /**
    * "Cleanup"
    */
   public void onCleanup(final View view) {
     final String[] names = getProjectNames();
+    // Also guarded here, not only by the button's enabled state, which performClick ignores.
+    if (CleanupTitlePolicy.refusesDelete(isCrawlLive(), names != null && names.length != 0)) {
+      if (isCrawlLive()) {
+        Toast.makeText(this, R.string.cleanup_while_copying, Toast.LENGTH_LONG).show();
+      }
+      return;
+    }
     if (names != null && names.length != 0) {
       final Intent intent = new Intent(this, CleanupActivity.class);
       fillExtra(intent);
