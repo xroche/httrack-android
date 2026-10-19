@@ -2178,7 +2178,7 @@ public class HTTrackActivity extends FragmentActivity {
       // Enable or disable browse & cleanup button depending on existing
       // project(s)
       View.class.cast(this.findViewById(R.id.buttonClear)).setEnabled(
-          CleanupTitlePolicy.opensDelete(isCrawlLive(), hasProjectNames()));
+          !CleanupTitlePolicy.refusesDelete(isCrawlLive(), hasProjectNames()));
       View.class.cast(this.findViewById(R.id.buttonBrowseAll)).setEnabled(
           hasProjectRootIndexFile());
 
@@ -3166,7 +3166,7 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Whether a crawl owns a mirror right now. The pending term matters as much as the running
+   * Does a crawl own a mirror right now? The pending term matters as much as the running
    * one, because a connectivity stop empties the session and re-arms the job, so the copy comes
    * back and rebuilds whatever was deleted meanwhile. hasLiveRunner already covers the session
    * slot and the window before a crawl reaches it.
@@ -3181,7 +3181,7 @@ public class HTTrackActivity extends FragmentActivity {
   public void onCleanup(final View view) {
     final String[] names = getProjectNames();
     // Also guarded here, not only by the button's enabled state, which performClick ignores.
-    if (!CleanupTitlePolicy.opensDelete(isCrawlLive(), names != null && names.length != 0)) {
+    if (CleanupTitlePolicy.refusesDelete(isCrawlLive(), names != null && names.length != 0)) {
       if (isCrawlLive()) {
         Toast.makeText(this, R.string.cleanup_while_copying, Toast.LENGTH_LONG).show();
       }

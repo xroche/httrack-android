@@ -112,7 +112,13 @@ public class BrowserLoginWiringTest {
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String body = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "public void onCleanup("));
-    assertTrue(body, body.contains("CleanupTitlePolicy.opensDelete(isCrawlLive()"));
+    /* The whole call, because argument order is what a grep otherwise cannot see, and these
+       two booleans transpose silently. Phrased as a refusal, so there is no "!" to invert. */
+    assertTrue(body, body.contains(
+        "if (CleanupTitlePolicy.refusesDelete(isCrawlLive(), names != null"));
+    // The button's enabled state has to ask the same question, or it goes stale on its own.
+    assertTrue(source, source.contains(
+        "!CleanupTitlePolicy.refusesDelete(isCrawlLive(), hasProjectNames())"));
     // The button's enabled state alone is not a guard, because performClick ignores it.
     final String live = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "private boolean isCrawlLive()"));
