@@ -24,10 +24,9 @@ package com.httrack.android;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The Netscape cookies.txt the in-app browser login hands to the engine through -%K.
@@ -56,9 +55,10 @@ public final class BrowserLoginCookies {
    */
   static final int MAX_BYTES = 20000;
 
-  /* Both lines are spellings cookie_known_comment accepts. The engine counts an unrecognised
-     comment as a line a rewrite would lose, and then refuses to save its jar back over the
-     file, which costs us every cookie the site rotated during the crawl. */
+  /* Both lines are spellings cookie_known_comment accepts, so the second names the engine
+     rather than describing us. An unrecognised comment counts as a line a rewrite would lose,
+     and the engine then refuses to save its jar back, which costs us every cookie the site
+     rotated during the crawl. */
   static final String HEADER = "# Netscape HTTP Cookie File\n"
       + "# Written by HTTrack Website Copier\n";
 
@@ -149,21 +149,24 @@ public final class BrowserLoginCookies {
    */
   public static Result file(final Map<String, String> cookiesByHost) {
     final StringBuilder text = new StringBuilder(HEADER);
-    final Set<String> written = new HashSet<String>();
     int size = utf8Length(HEADER);
     int cookies = 0;
     int hosts = 0;
     int dropped = 0;
     for (final Map.Entry<String, String> entry : cookiesByHost.entrySet()) {
-      boolean used = false;
+      /* getCookie lists a name once per scope, and every record flattens onto the host we
+         asked about, so two scopes of one name would repeat in the file. The engine refuses to
+         rewrite a file holding a repeat, so only one may go in. Keep the last, which is both
+         what the engine itself keeps and the newer cookie: RFC 6265 orders equal paths by
+         creation time, earliest first, so a session set during the login sorts last. */
+      final Map<String, String> byName = new LinkedHashMap<String, String>();
       for (final String[] cookie : split(entry.getValue())) {
-        final String line = line(entry.getKey(), cookie[0], cookie[1]);
-        /* getCookie lists one cookie per scope, the most specific first, and a record flattens
-           every scope onto the host we asked about. A repeated name would therefore collide in
-           the jar, where the engine keeps the last. Keep the browser's first and count the
-           rest, rather than letting a broader scope win. */
-        if (line == null || size + utf8Length(line) > MAX_BYTES
-            || !written.add(entry.getKey() + '\t' + cookie[0])) {
+        byName.put(cookie[0], cookie[1]);
+      }
+      boolean used = false;
+      for (final Map.Entry<String, String> cookie : byName.entrySet()) {
+        final String line = line(entry.getKey(), cookie.getKey(), cookie.getValue());
+        if (line == null || size + utf8Length(line) > MAX_BYTES) {
           dropped++;
           continue;
         }

@@ -159,18 +159,16 @@ public class BrowserLoginCookiesTest {
     assertFalse(result.text, result.text.contains("big"));
   }
 
-  /**
-   * getCookie lists a name once per scope, most specific first, and every record flattens onto
-   * the host we asked about. The browser's first must win, because the engine keeps the last.
-   */
+  /** One line per name, holding the last value, which is what the engine would have kept. */
   @Test
-  public void aRepeatedNameKeepsTheBrowsersFirstScope() {
+  public void aRepeatedNameKeepsTheLastValue() {
     final BrowserLoginCookies.Result result =
-        BrowserLoginCookies.file(one("www.example.com", "sid=specific; sid=broader; other=1"));
+        BrowserLoginCookies.file(one("www.example.com", "sid=older; sid=newer; other=1"));
     assertEquals(2, result.cookies);
-    assertEquals(1, result.dropped);
-    assertTrue(result.text, result.text.contains("\tsid\tspecific\n"));
-    assertFalse(result.text, result.text.contains("broader"));
+    // Superseded rather than lost, so it is not reported to the user as left out.
+    assertEquals(0, result.dropped);
+    assertTrue(result.text, result.text.contains("\tsid\tnewer\n"));
+    assertFalse(result.text, result.text.contains("older"));
   }
 
   @Test
