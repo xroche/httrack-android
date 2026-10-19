@@ -32,6 +32,25 @@ public class StoragePathsTest {
    * The resource bundle is extracted entry by entry, and a ".." in a name would land outside the
    * cache. Canonical paths are what the guard compares, so the escape must be built that way.
    */
+  /** The engine keeps a .bak and stages a .tmp, so a delete that takes only the name leaks. */
+  @Test
+  public void aDeletedLoginTakesWhatTheEngineLeftBesideIt() {
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt"));
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak"));
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.4321.tmp"));
+  }
+
+  @Test
+  public void aDeletedLoginLeavesAnotherProjectAlone() {
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "B.txt"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak.txt"));
+    // A project may legitimately be called "A.txt", whose own login file is "A.txt.txt".
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.txt"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.tmp"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak2"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", null));
+  }
+
   /** A deleted project must not leave a live session behind, so both callers share this path. */
   @Test
   public void theLoginCookiesFileSitsInPrivateStorage() {

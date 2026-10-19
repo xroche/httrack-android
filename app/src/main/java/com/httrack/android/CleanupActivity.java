@@ -179,8 +179,15 @@ public class CleanupActivity extends ListActivity {
   /** Drop a deleted project's saved browser login, which private storage would otherwise keep. */
   private void forgetLogin(final String projectName) {
     final File login = StoragePaths.loginCookiesFile(getFilesDir(), projectName);
-    if (login != null && login.exists() && !login.delete()) {
-      Log.w(getClass().getSimpleName(), "could not delete saved login: " + login);
+    final File dir = login != null ? login.getParentFile() : null;
+    final File[] saved = dir != null ? dir.listFiles() : null;
+    if (saved == null) {
+      return;
+    }
+    for (final File file : saved) {
+      if (StoragePaths.isLoginSibling(login.getName(), file.getName()) && !file.delete()) {
+        Log.w(getClass().getSimpleName(), "could not delete saved login: " + file);
+      }
     }
   }
 

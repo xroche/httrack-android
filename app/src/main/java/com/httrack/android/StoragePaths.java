@@ -2,6 +2,7 @@ package com.httrack.android;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 /**
  * Where mirrors may be written: decides whether a persisted setting is honoured or destroyed.
@@ -255,6 +256,17 @@ final class StoragePaths {
       return null;
     }
     return new File(new File(internal, "logins"), projectName + ".txt");
+  }
+
+  /**
+   * Whether FILENAME is the login file LOGINNAME, or a file the engine's own save left beside
+   * it. From httrack 67510a96 the engine rewrites a -%K jar through {@code <file>.<pid>.tmp}
+   * and keeps the previous one as {@code <file>.bak}, so the session outlives the name we
+   * wrote unless those go too. A crashed run leaves its tmp behind.
+   */
+  static boolean isLoginSibling(final String loginName, final String fileName) {
+    return fileName != null
+        && fileName.matches(Pattern.quote(loginName) + "(\\.bak|\\.[0-9]+\\.tmp)?");
   }
 
   static boolean isValidProjectName(final String name) {
