@@ -256,8 +256,14 @@ public class CleanupActivity extends ListActivity {
         MirrorServer.stopAll();
         final HashSet<Integer> deleted = new HashSet<Integer>();
         for (final int position : positions) {
-          if (deleteRecursively(new File(projectRootFile, projects[position]))) {
+          final File project = new File(projectRootFile, projects[position]);
+          if (deleteRecursively(project)) {
             deleted.add(position);
+          }
+          /* On whether the mirror is gone, not on whether we removed it, because a directory
+             already deleted from outside the app reports failure and must still drop its
+             session. A partial failure leaves the project, so it keeps its login. */
+          if (!project.exists()) {
             forgetLogin(projects[position]);
           }
         }

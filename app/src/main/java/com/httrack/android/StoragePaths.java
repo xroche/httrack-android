@@ -233,15 +233,6 @@ final class StoragePaths {
   }
 
   /**
-   * Whether {@code name} is safe to append to a root as one directory. File does not fold "..", so
-   * a crafted winprofile.ini name like "../../sdcard/evil" would otherwise steer the engine's -O
-   * outside the Websites tree. Rejects empty, ".", ".." and anything carrying a path separator.
-   *
-   * @param name
-   *          the project name, already whitespace-collapsed
-   * @return true if it denotes a single, in-root directory segment
-   */
-  /**
    * Where PROJECTNAME's browser login is kept. Private storage, because the file holds a live
    * session and a mirror folder is readable by every app on the device.
    *
@@ -259,16 +250,24 @@ final class StoragePaths {
   }
 
   /**
-   * Whether FILENAME is the login file LOGINNAME, or a file the engine's own save left beside
-   * it. From httrack 67510a96 the engine rewrites a -%K jar through {@code <file>.<pid>.tmp}
-   * and keeps the previous one as {@code <file>.bak}, so the session outlives the name we
-   * wrote unless those go too. A crashed run leaves its tmp behind.
+   * Whether FILENAME is LOGINNAME, or one of the files the engine's save leaves beside it.
+   * Those are its {@code .bak}, its {@code .<pid>.tmp}, and the temporary the {@code .bak} is
+   * staged through, because each one can hold a whole jar. No run deletes another's temporary.
    */
-  static boolean isLoginSibling(final String loginName, final String fileName) {
-    return fileName != null
-        && fileName.matches(Pattern.quote(loginName) + "(\\.bak|\\.[0-9]+\\.tmp)?");
+  static boolean isLoginSibling(final String ourName, final String candidate) {
+    return candidate != null
+        && candidate.matches(Pattern.quote(ourName) + "(\\.bak)?(\\.[0-9]+\\.tmp)?");
   }
 
+  /**
+   * Whether {@code name} is safe to append to a root as one directory. File does not fold "..", so
+   * a crafted winprofile.ini name like "../../sdcard/evil" would otherwise steer the engine's -O
+   * outside the Websites tree. Rejects empty, ".", ".." and anything carrying a path separator.
+   *
+   * @param name
+   *          the project name, already whitespace-collapsed
+   * @return true if it denotes a single, in-root directory segment
+   */
   static boolean isValidProjectName(final String name) {
     if (name == null || name.isEmpty() || name.equals(".") || name.equals("..")) {
       return false;

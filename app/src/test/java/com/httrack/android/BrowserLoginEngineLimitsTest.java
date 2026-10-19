@@ -10,12 +10,9 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * The cookie limits against the pinned engine, which owns them.
- *
- * A record passes two gates, and only the tighter one decides whether the cookie is kept.
- * cookie_load reads each field into a buffer, then cookie_add refuses a pair the jar cannot
- * hold. Reading the buffer alone once wrote cookies the engine parsed and then discarded with
- * a warning no Android user sees.
+ * The cookie limits against the pinned engine, which owns them. A record passes two gates, and
+ * only the tighter one decides whether the cookie is kept: cookie_load reads each field into a
+ * buffer, and cookie_add then refuses a pair the jar cannot hold.
  */
 public class BrowserLoginEngineLimitsTest {
   private static String source(final String name) throws IOException {
@@ -65,6 +62,21 @@ public class BrowserLoginEngineLimitsTest {
   }
 
   /**
+   * The loader reads a field before the jar caps it, so its buffers have to hold everything the
+   * pair cap allows. A buffer shrunk below that would make cookie_load skip whole lines we
+   * consider legal, which is a silent loss rather than a refusal.
+   */
+  @Test
+  public void theLoadersBuffersHoldWhatThePairCapAllows() throws IOException {
+    final String block = parseBlock(source("htsbauth.c"));
+    // The name buffer is sized from the cap itself, so it cannot fall behind it.
+    assertTrue("cook_name is no longer sized from the pair cap",
+        block.contains("cook_name[COOKIE_MAX_PAIR + 1]"));
+    assertTrue("the cook_value buffer is below the pair cap",
+        only(block, "cook_value\\[(\\d+)\\]") - 1 >= BrowserLoginCookies.MAX_PAIR);
+  }
+
+  /**
    * cookie_load drops a whole line at line_max. The caps above have to keep every line we can
    * write under that by themselves, which is why line() carries no length check of its own.
    */
@@ -75,6 +87,20 @@ public class BrowserLoginEngineLimitsTest {
     final int longest = BrowserLoginCookies.MAX_DOMAIN + BrowserLoginCookies.MAX_PAIR
         + fixedFields;
     assertTrue(longest + " vs " + lineMax, longest < lineMax);
+  }
+
+  /**
+   * Every header line has to be one cookie_known_comment accepts. The engine counts a comment
+   * it does not know as a line a rewrite would lose, and then refuses to save its jar back over
+   * our file, so the crawl silently keeps the stale session instead of the rotated one.
+   */
+  @Test
+  public void everyHeaderLineIsACommentTheEngineKnows() throws IOException {
+    final String known = TestSources.between(source("htsbauth.c"),
+        "static hts_boolean cookie_known_comment", "static const char wget");
+    for (final String line : BrowserLoginCookies.HEADER.split("\n")) {
+      assertTrue(line + " is not in cookie_known_comment", known.contains('"' + line + '"'));
+    }
   }
 
   /** Our file has to leave the mirror's own cookies.txt room in the same jar. */

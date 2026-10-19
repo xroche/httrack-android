@@ -186,7 +186,7 @@ public class BrowserLoginActivity extends FragmentActivity {
       if (BrowserLoginPolicy.hostOf(url) != null) {
         return false;
       }
-      // Without this the http case would just sit there blank.
+      // No cleartext permission is declared, so http stays blank.
       Toast.makeText(BrowserLoginActivity.this,
           getString(R.string.browser_login_https_only), Toast.LENGTH_LONG).show();
       return true;

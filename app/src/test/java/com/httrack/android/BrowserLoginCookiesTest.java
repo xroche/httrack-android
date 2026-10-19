@@ -120,11 +120,12 @@ public class BrowserLoginCookiesTest {
   /** strlen() counts bytes, so a two-byte character must count twice against every limit. */
   @Test
   public void measuresLimitsInBytesNotCharacters() {
-    // Half the limit plus one character: inside it by Java's count, over it by the engine's.
+    /* Half as many characters as the limit, so exactly the limit in bytes. Java's count says
+       it is half spent and the engine's says it is all spent, which is the divergence. */
     final String twoByte = repeat("é", BrowserLoginCookies.MAX_PAIR / 2);
     assertEquals(BrowserLoginCookies.MAX_PAIR / 2, twoByte.length());
     assertNull(BrowserLoginCookies.line("h.example", twoByte, "v"));
-    // Two characters shorter fits, so the limit is the byte count and not an off-by-one.
+    // One character shorter leaves one byte, which the value then fills exactly.
     assertNotNull(BrowserLoginCookies.line("h.example",
         repeat("é", BrowserLoginCookies.MAX_PAIR / 2 - 1), "v"));
   }
@@ -156,6 +157,20 @@ public class BrowserLoginCookiesTest {
     assertEquals(1, result.cookies);
     assertEquals(1, result.dropped);
     assertFalse(result.text, result.text.contains("big"));
+  }
+
+  /**
+   * getCookie lists a name once per scope, most specific first, and every record flattens onto
+   * the host we asked about. The browser's first must win, because the engine keeps the last.
+   */
+  @Test
+  public void aRepeatedNameKeepsTheBrowsersFirstScope() {
+    final BrowserLoginCookies.Result result =
+        BrowserLoginCookies.file(one("www.example.com", "sid=specific; sid=broader; other=1"));
+    assertEquals(2, result.cookies);
+    assertEquals(1, result.dropped);
+    assertTrue(result.text, result.text.contains("\tsid\tspecific\n"));
+    assertFalse(result.text, result.text.contains("broader"));
   }
 
   @Test

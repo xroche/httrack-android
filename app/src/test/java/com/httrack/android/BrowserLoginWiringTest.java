@@ -113,6 +113,8 @@ public class BrowserLoginWiringTest {
     final String body = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void deleteProjects()"));
     assertTrue(body, body.contains("forgetLogin("));
+    // Gated on the mirror being gone, so a folder deleted outside the app still drops it.
+    assertTrue(body, body.contains("!project.exists()"));
     // The path comes from the one helper both callers use, never a second copy.
     final String forget = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "private void forgetLogin("));

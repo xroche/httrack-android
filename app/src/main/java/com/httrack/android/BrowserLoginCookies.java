@@ -24,8 +24,10 @@ package com.httrack.android;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The Netscape cookies.txt the in-app browser login hands to the engine through -%K.
@@ -54,8 +56,11 @@ public final class BrowserLoginCookies {
    */
   static final int MAX_BYTES = 20000;
 
-  private static final String HEADER = "# Netscape HTTP Cookie File\n"
-      + "# Saved by HTTrack Android from the in-app browser login.\n";
+  /* Both lines are spellings cookie_known_comment accepts. The engine counts an unrecognised
+     comment as a line a rewrite would lose, and then refuses to save its jar back over the
+     file, which costs us every cookie the site rotated during the crawl. */
+  static final String HEADER = "# Netscape HTTP Cookie File\n"
+      + "# Written by HTTrack Website Copier\n";
 
   /** What {@link #file} produced, for the message that tells the user what was saved. */
   public static final class Result {
@@ -104,9 +109,9 @@ public final class BrowserLoginCookies {
     if (!OptionValues.fitsBytes(host, MAX_DOMAIN)) {
       return null;
     }
-    // Name and value share one budget, tested the way the engine tests it.
-    final int nameBytes = utf8Length(name);
-    if (nameBytes > MAX_PAIR || utf8Length(value) > MAX_PAIR - nameBytes) {
+    // Name and value share one budget. An over-long name leaves a negative one, so this
+    // single test refuses the pair whichever side is at fault.
+    if (utf8Length(value) > MAX_PAIR - utf8Length(name)) {
       return null;
     }
     /* No length check on the whole line: the three caps above bound it well under the
@@ -144,6 +149,7 @@ public final class BrowserLoginCookies {
    */
   public static Result file(final Map<String, String> cookiesByHost) {
     final StringBuilder text = new StringBuilder(HEADER);
+    final Set<String> written = new HashSet<String>();
     int size = utf8Length(HEADER);
     int cookies = 0;
     int hosts = 0;
@@ -152,7 +158,12 @@ public final class BrowserLoginCookies {
       boolean used = false;
       for (final String[] cookie : split(entry.getValue())) {
         final String line = line(entry.getKey(), cookie[0], cookie[1]);
-        if (line == null || size + utf8Length(line) > MAX_BYTES) {
+        /* getCookie lists one cookie per scope, the most specific first, and a record flattens
+           every scope onto the host we asked about. A repeated name would therefore collide in
+           the jar, where the engine keeps the last. Keep the browser's first and count the
+           rest, rather than letting a broader scope win. */
+        if (line == null || size + utf8Length(line) > MAX_BYTES
+            || !written.add(entry.getKey() + '\t' + cookie[0])) {
           dropped++;
           continue;
         }

@@ -83,9 +83,9 @@ public class BrowserLoginPolicyTest {
     assertEquals("2", BrowserLoginPolicy.sockets("lots"));
     // A value too big for an int must not throw on the way to the ceiling.
     assertEquals("2", BrowserLoginPolicy.sockets("999999999999999999999"));
-    /* An Arabic-Indic digit, which setText() can put in the field. Integer.parseInt reads it as
-       two, but the option mapper only emits -c for ASCII digits, so echoing it back would drop
-       -c and leave the crawl on the engine's own higher default. */
+    /* setText() can put an Arabic-Indic digit in the field. Integer.parseInt reads it as two,
+       but the option mapper only emits -c for ASCII digits, so echoing it back would drop -c
+       and leave the crawl on the engine's own higher default. */
     assertEquals("2", BrowserLoginPolicy.sockets("\u0662"));
     // The value a project holds is handed on in the form the mapper accepts.
     assertEquals("1", BrowserLoginPolicy.sockets("01"));

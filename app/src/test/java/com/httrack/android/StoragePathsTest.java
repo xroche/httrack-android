@@ -38,6 +38,9 @@ public class StoragePathsTest {
     assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt"));
     assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak"));
     assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.4321.tmp"));
+    /* The .bak is staged through a temporary of its own, and that file holds a whole jar, so
+       the suffixes stack. The engine's own self-test asserts this name. */
+    assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak.4321.tmp"));
   }
 
   @Test
@@ -48,7 +51,15 @@ public class StoragePathsTest {
     assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.txt"));
     assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.tmp"));
     assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak2"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak.tmp"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.4321.bak"));
     assertFalse(StoragePaths.isLoginSibling("A.txt", null));
+    /* isValidProjectName allows a regex metacharacter, so the name is quoted before it becomes
+       a pattern. Unquoted, "A+" would match another project's "AA.txt" and delete its session,
+       and "a(" would throw mid-delete. */
+    assertFalse(StoragePaths.isLoginSibling("A+.txt", "AA.txt"));
+    assertTrue(StoragePaths.isLoginSibling("a(.txt", "a(.txt"));
+    assertTrue(StoragePaths.isLoginSibling("a(.txt", "a(.txt.bak"));
   }
 
   /** A deleted project must not leave a live session behind, so both callers share this path. */
