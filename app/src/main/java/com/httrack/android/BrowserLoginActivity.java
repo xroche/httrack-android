@@ -208,7 +208,18 @@ public class BrowserLoginActivity extends FragmentActivity {
     return super.onOptionsItemSelected(item);
   }
 
-  /** Drop the saved session: the browser's cookies and the file the engine would have read. */
+  /**
+   * Drop the saved session: the browser's cookies and the file the engine would have read.
+   *
+   * This signs the user out of every site in this app's browser, not just this project's. That
+   * is deliberate. CookieManager has no per-site removal, and nothing enumerates what a
+   * narrower pass would miss: getCookie answers for one path, so a cookie on a deeper path is
+   * invisible to it, a nameless cookie has no name to overwrite, and a session held by an
+   * iframe sign-on sits on a host onPageStarted never reported. A narrower Forget was measured
+   * and it left all three signed in, which is worse than reaching too far, because the user
+   * presses this to change accounts. The store is per app, so splitting it needs a per-project
+   * WebView data directory, which means a separate process.
+   */
   private void forget() {
     if (cookiesFile == null) {
       return;
