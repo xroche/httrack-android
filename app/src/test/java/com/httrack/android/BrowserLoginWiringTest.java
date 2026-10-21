@@ -143,6 +143,19 @@ public class BrowserLoginWiringTest {
     assertTrue(forget, forget.contains("StoragePaths.savedLoginFiles("));
   }
 
+  /** The staged name must come from the shared helper, so the delete pattern can match it. */
+  @Test
+  public void theStagedWriteBuildsItsNameFromTheSharedHelper() throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
+    final String body = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "static boolean writeOwnerOnly("));
+    assertTrue(body, body.contains("StoragePaths.stagedLoginFile(file)"));
+    // On the staged file, because calling the helper and then writing elsewhere saves nothing.
+    assertTrue(body, body.contains("FileOutputStream(staged)"));
+    assertTrue(body, body.contains("staged.renameTo(file)"));
+  }
+
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */
   @Test
   public void theHandOverTurnsCookiesOn() throws IOException {
