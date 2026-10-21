@@ -127,11 +127,14 @@ final class BrowserLoginPolicy {
     if (uri.getUserInfo() != null) {
       return null;
     }
+    final int query = landed.indexOf('?');
+    final int fragment = landed.indexOf('#');
     int cut = landed.length();
-    for (int i = 0; i < cut; i++) {
-      if (landed.charAt(i) == '?' || landed.charAt(i) == '#') {
-        cut = i;
-      }
+    if (query != -1) {
+      cut = query;
+    }
+    if (fragment != -1 && fragment < cut) {
+      cut = fragment;
     }
     return landed.substring(0, cut);
   }

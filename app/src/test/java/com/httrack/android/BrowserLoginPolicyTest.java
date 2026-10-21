@@ -146,9 +146,11 @@ public class BrowserLoginPolicyTest {
         BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb?code=AQAB&state=xyz"));
     assertEquals(field + "\nhttps://a.example/cb",
         BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb#access_token=eyJ.P.S"));
-    // Both at once, and the earliest separator wins.
+    // Both at once, and the EARLIEST separator wins whichever comes first in the string.
     assertEquals(field + "\nhttps://a.example/cb",
         BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb?a=1#b=2"));
+    assertEquals(field + "\nhttps://a.example/cb",
+        BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb#b=2?a=1"));
   }
 
   @Test

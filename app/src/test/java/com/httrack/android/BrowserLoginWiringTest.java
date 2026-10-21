@@ -170,7 +170,10 @@ public class BrowserLoginWiringTest {
     final String apply = TestSources.balancedBlock(caller,
         TestSources.indexOf(caller, "private void applyBrowserLogin("));
     assertTrue(apply, apply.contains("BrowserLoginPolicy.withLandedUrl("));
-    assertTrue(apply, apply.contains("R.id.fieldWebsiteURLs"));
+    assertTrue(apply, apply.contains("setMap(R.id.fieldWebsiteURLs, addresses)"));
+    /* The widget as well as the map. setMap alone left the old text on screen and the next
+       savePaneFields copied it back, so the whole feature was invisible. */
+    assertTrue(apply, apply.contains("setFieldText(R.id.fieldWebsiteURLs, addresses)"));
   }
 
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */

@@ -2930,9 +2930,12 @@ public class HTTrackActivity extends FragmentActivity {
     final String addresses = BrowserLoginPolicy.withLandedUrl(getMap(R.id.fieldWebsiteURLs),
         data.getStringExtra(BrowserLoginActivity.EXTRA_LANDED_URL));
     setMap(R.id.fieldWebsiteURLs, addresses);
-    /* The widget too, because this field is on the pane the user is looking at: setMap alone
-       leaves the old text on screen, and the next savePaneFields copies it back over the map. */
-    setFieldText(R.id.fieldWebsiteURLs, addresses);
+    /* The widget too, because this field is on the pane the user is looking at. setMap alone
+       leaves the old text on screen, and the next savePaneFields copies it back over the map.
+       Guarded on the pane, because setFieldText throws when the view is not inflated. */
+    if (pane_id == LAYOUT_PROJECT_SETUP) {
+      setFieldText(R.id.fieldWebsiteURLs, addresses);
+    }
     setMap(R.id.editCookiesFile, cookies.getAbsolutePath());
     // The exact string, "wv" included: a clearance bound to the browser's agent breaks on any other.
     setMap(R.id.editBrowserIdentity, agent);
