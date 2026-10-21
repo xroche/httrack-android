@@ -143,15 +143,16 @@ public class BrowserLoginWiringTest {
     assertTrue(forget, forget.contains("StoragePaths.savedLoginFiles("));
   }
 
-  /** A crash between the write and the rename leaves the staged copy for forgetLogin to take. */
+  /** The staged name must come from the shared helper, so the delete pattern can match it. */
   @Test
-  public void theStagedWriteUsesTheNameTheDeleteKnows() throws IOException {
+  public void theStagedWriteBuildsItsNameFromTheSharedHelper() throws IOException {
     final String source = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
     final String body = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "static boolean writeOwnerOnly("));
-    // The name comes from the helper isLoginSibling builds its pattern from, never a literal.
     assertTrue(body, body.contains("StoragePaths.stagedLoginFile(file)"));
+    // On the staged file, because calling the helper and then writing elsewhere saves nothing.
+    assertTrue(body, body.contains("FileOutputStream(staged)"));
     assertTrue(body, body.contains("staged.renameTo(file)"));
   }
 

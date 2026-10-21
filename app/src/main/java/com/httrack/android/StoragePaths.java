@@ -276,24 +276,23 @@ final class StoragePaths {
     return files;
   }
 
-  /** What {@link #stagedLoginFile} appends, which {@link #isLoginSibling} has to accept. */
+  /** {@link #isLoginSibling} must accept the name {@link #stagedLoginFile} builds. */
   private static final String STAGED_SUFFIX = ".new";
 
   /**
-   * Whether FILENAME is LOGINNAME, or one of the files a save leaves beside it. The engine
-   * leaves its {@code .bak}, its {@code .<pid>.tmp}, and the temporary the {@code .bak} is
-   * staged through. Our own write leaves its staged copy when the app dies before the rename.
-   * Each one can hold a whole jar. No run deletes another's temporary.
+   * Whether LOGINFILENAME names CANDIDATE, or one of the files a save leaves beside it. The
+   * engine leaves its {@code .bak}, its {@code .<pid>.tmp}, and the temporary the {@code .bak}
+   * is staged through. Our own write leaves its staged copy when the app dies before the
+   * rename. Each one can hold a whole jar. No run deletes another's temporary.
    */
-  static boolean isLoginSibling(final String ourName, final String candidate) {
+  static boolean isLoginSibling(final String loginFileName, final String candidate) {
     return candidate != null
-        && candidate.matches(Pattern.quote(ourName) + "(" + Pattern.quote(STAGED_SUFFIX)
+        && candidate.matches(Pattern.quote(loginFileName) + "(" + Pattern.quote(STAGED_SUFFIX)
             + "|(\\.bak)?(\\.[0-9]+\\.tmp)?)");
   }
 
   /**
-   * Where a login write stages before it renames onto FILE. {@link #savedLoginFiles} takes this
-   * name too, because the app can die between the write and the rename.
+   * Where a login write stages before it renames onto FILE.
    *
    * @param file
    *          the login file being written

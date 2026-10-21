@@ -43,6 +43,8 @@ public class StoragePathsTest {
   @Test
   public void aDeletedLoginTakesTheStagedWriteACrashLeftBehind() {
     final File login = StoragePaths.loginCookiesFile(internal, "My Site");
+    // Beside the login, because savedLoginFiles lists that one directory and nothing else.
+    assertEquals(new File(login.getPath() + ".new"), StoragePaths.stagedLoginFile(login));
     assertTrue(StoragePaths.isLoginSibling(login.getName(),
         StoragePaths.stagedLoginFile(login).getName()));
   }
