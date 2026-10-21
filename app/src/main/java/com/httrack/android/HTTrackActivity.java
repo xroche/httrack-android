@@ -2915,8 +2915,6 @@ public class HTTrackActivity extends FragmentActivity {
     final Intent intent = new Intent(this, BrowserLoginActivity.class);
     intent.putExtra(BrowserLoginActivity.EXTRA_URL, url);
     intent.putExtra(BrowserLoginActivity.EXTRA_COOKIES_FILE, cookies);
-    intent.putStringArrayListExtra(BrowserLoginActivity.EXTRA_CRAWL_HOSTS,
-        new ArrayList<String>(BrowserLoginPolicy.crawlHosts(getMap(R.id.fieldWebsiteURLs))));
     startActivityForResult(intent, ACTIVITY_BROWSER_LOGIN);
   }
 

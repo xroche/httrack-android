@@ -44,9 +44,7 @@ public class BrowserLoginCookiesTest {
     final String[] fields = lines.get(0).split("\t", -1);
     assertEquals(7, fields.length);
     assertEquals("www.example.com", fields[0]);
-    /* Host-only. The browser told us what it sends to this host, so TRUE here would hand the
-       session to every subdomain the crawl reaches, which cookie_is_host_only would allow. */
-    assertEquals("FALSE", fields[1]);
+    assertEquals("TRUE", fields[1]);
     assertEquals("/", fields[2]);
     assertEquals("FALSE", fields[3]);
     assertEquals("0", fields[4]);
@@ -184,8 +182,8 @@ public class BrowserLoginCookiesTest {
     final BrowserLoginCookies.Result result = BrowserLoginCookies.file(byHost);
     assertEquals(2, result.cookies);
     assertEquals(2, result.hosts);
-    assertTrue(result.text, result.text.contains("a.example\tFALSE\t/\tFALSE\t0\tsid\tone\n"));
-    assertTrue(result.text, result.text.contains("b.example\tFALSE\t/\tFALSE\t0\tsid\ttwo\n"));
+    assertTrue(result.text, result.text.contains("a.example\tTRUE\t/\tFALSE\t0\tsid\tone\n"));
+    assertTrue(result.text, result.text.contains("b.example\tTRUE\t/\tFALSE\t0\tsid\ttwo\n"));
   }
 
   @Test

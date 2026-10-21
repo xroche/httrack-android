@@ -116,10 +116,7 @@ public final class BrowserLoginCookies {
     }
     /* No length check on the whole line: the three caps above bound it well under the
        line_max at which cookie_load drops a line, which BrowserLoginEngineLimitsTest proves. */
-    /* Field 1 FALSE is host-only, which cookie_is_host_only reads. The browser told us what
-       it sends to this host, so widening it to every subdomain would send a session we never
-       saw there. */
-    return host + "\tFALSE\t/\tFALSE\t0\t" + name + "\t" + value + "\n";
+    return host + "\tTRUE\t/\tFALSE\t0\t" + name + "\t" + value + "\n";
   }
 
   /**

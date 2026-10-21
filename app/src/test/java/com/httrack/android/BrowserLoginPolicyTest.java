@@ -1,11 +1,15 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.junit.Test;
 
@@ -111,28 +115,51 @@ public class BrowserLoginPolicyTest {
     assertEquals("-*signout* -*logout*", BrowserLoginPolicy.rules("-*signout*"));
   }
 
-  /** Host-only cookies reach one host each, so the capture has to cover every start host. */
+  /** Chromium keys a cookie on name, domain and path, so each domain it may hold needs one. */
   @Test
-  public void everyAddressTheCrawlStartsFromIsAHostToCapture() {
-    assertEquals(Arrays.asList("a.example", "b.example"),
-        list(BrowserLoginPolicy.crawlHosts("https://a.example/x http://b.example/")));
-    // A bare host and a duplicate, because the field is free text the user typed.
-    assertEquals(Collections.singletonList("a.example"),
-        list(BrowserLoginPolicy.crawlHosts("a.example https://a.example/deep")));
-    // Lowercased, because the engine folds a cookie domain before comparing it.
-    assertEquals(Collections.singletonList("a.example"),
-        list(BrowserLoginPolicy.crawlHosts("https://A.Example/")));
-    assertTrue(BrowserLoginPolicy.crawlHosts("").isEmpty());
-    assertTrue(BrowserLoginPolicy.crawlHosts(null).isEmpty());
-    // urlTokens drops an option, so a tampered profile cannot add a host through this field.
-    assertTrue(BrowserLoginPolicy.crawlHosts("-O1 /tmp/x").isEmpty());
+  public void everyDomainTheCookieCouldSitOnIsExpired() {
+    final List<String> out = BrowserLoginPolicy.expiryHeaders("sid=abc", "www.a.example.com");
+    assertEquals(Arrays.asList("sid=; Max-Age=0; Path=/; Secure",
+        "sid=; Max-Age=0; Path=/; Secure; Domain=www.a.example.com",
+        "sid=; Max-Age=0; Path=/; Secure; Domain=a.example.com",
+        "sid=; Max-Age=0; Path=/; Secure; Domain=example.com"), out);
+  }
+
+  /** A two-label host has no parent, so its own domain form is the only one that reaches it. */
+  @Test
+  public void theHostsOwnDomainFormIsAlwaysTried() {
+    assertEquals(Arrays.asList("sid=; Max-Age=0; Path=/; Secure",
+        "sid=; Max-Age=0; Path=/; Secure; Domain=a.example"),
+        BrowserLoginPolicy.expiryHeaders("sid=abc", "a.example"));
+  }
+
+  /** Chromium refuses to set a __Host- or __Secure- cookie without Secure, and those carry
+      the session on most login sites. */
+  @Test
+  public void everyValueCarriesSecure() {
+    for (final String value : BrowserLoginPolicy.expiryHeaders("__Host-sid=a; __Secure-t=b",
+        "a.example")) {
+      assertTrue(value, value.contains("; Secure"));
+    }
   }
 
   @Test
-  public void anExpiredCookieNamesItsDomainOnlyWhenItHasOne() {
-    assertEquals("sid=; Max-Age=0; Path=/", BrowserLoginPolicy.expiredCookie("sid", null));
-    assertEquals("sid=; Max-Age=0; Path=/; Domain=example.com",
-        BrowserLoginPolicy.expiredCookie("sid", "example.com"));
+  public void nothingToExpireWhenTheHostAnswersWithNothing() {
+    assertTrue(BrowserLoginPolicy.expiryHeaders(null, "a.example").isEmpty());
+    assertTrue(BrowserLoginPolicy.expiryHeaders("", "a.example").isEmpty());
+    assertTrue(BrowserLoginPolicy.expiryHeaders("sid=abc", null).isEmpty());
+  }
+
+  /** Only the names we tried count, or an unrelated consent cookie clears every other site. */
+  @Test
+  public void aSurvivingNameWeTriedMeansStillSignedIn() {
+    final Set<String> tried = new LinkedHashSet<String>(Arrays.asList("sid", "csrf"));
+    assertTrue(BrowserLoginPolicy.stillSignedIn("sid=abc", tried));
+    assertTrue(BrowserLoginPolicy.stillSignedIn("lang=fr; csrf=x", tried));
+    assertFalse(BrowserLoginPolicy.stillSignedIn("lang=fr; consent=1", tried));
+    assertFalse(BrowserLoginPolicy.stillSignedIn("", tried));
+    assertFalse(BrowserLoginPolicy.stillSignedIn(null, tried));
+    assertFalse(BrowserLoginPolicy.stillSignedIn("sid=abc", new LinkedHashSet<String>()));
   }
 
   /** A session cookie is often set on a parent, so dropping it from the host alone leaves it. */
@@ -148,7 +175,4 @@ public class BrowserLoginPolicyTest {
     assertTrue(BrowserLoginPolicy.parentDomains(null).isEmpty());
   }
 
-  private static java.util.List<String> list(final java.util.Set<String> hosts) {
-    return new java.util.ArrayList<String>(hosts);
-  }
 }

@@ -156,34 +156,21 @@ public class BrowserLoginWiringTest {
     assertTrue(body, body.contains("staged.renameTo(file)"));
   }
 
-  /** Forget reaches the whole store only after the narrow pass leaves a session behind. */
+  /** The clear has to run off the shared helpers, which are where its rules are tested. */
   @Test
-  public void forgetClearsOurHostsBeforeItClearsEverything() throws IOException {
+  public void forgetExpiresOurOwnHostsBeforeReachingTheStore() throws IOException {
     final String source = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
     final String body = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "private void forget()"));
-    assertTrue(body, body.contains("expire(cookies, host)"));
+    assertTrue(body, body.contains("BrowserLoginPolicy.stillSignedIn("));
     // Ordered, because a wide clear ahead of the check would make the narrow pass dead code.
-    final int checked = body.indexOf("anySessionLeft(cookies)");
+    final int checked = body.indexOf("stillSignedIn");
     final int wide = body.indexOf("removeAllCookies");
     assertTrue(body, checked != -1 && wide != -1 && checked < wide);
-  }
-
-  /** A host-only cookie reaches one host, so the capture covers the crawl's own start hosts. */
-  @Test
-  public void theLoginIsToldWhichHostsTheCrawlStartsFrom() throws IOException {
-    final String caller = TestSources
-        .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
-    final String open = TestSources.balancedBlock(caller,
-        TestSources.indexOf(caller, "public void onClickBrowserLogin("));
-    assertTrue(open, open.contains("BrowserLoginPolicy.crawlHosts("));
-    assertTrue(open, open.contains("EXTRA_CRAWL_HOSTS"));
-    final String source = TestSources
-        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String created = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "protected void onCreate("));
-    assertTrue(created, created.contains("hosts.addAll(crawlHosts)"));
+    final String pass = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "private static Set<String> expire("));
+    assertTrue(pass, pass.contains("BrowserLoginPolicy.expiryHeaders(header, host)"));
   }
 
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */

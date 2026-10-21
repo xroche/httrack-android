@@ -83,39 +83,58 @@ final class BrowserLoginPolicy {
   }
 
   /**
-   * Every host the crawl starts from, which the capture needs besides the hosts the user
-   * visited. A host-only cookie reaches that host alone, and CookieManager answers for a host
-   * the browser never opened, so asking for these costs nothing and no visit.
+   * The values to hand {@code setCookie} to drop every cookie in COOKIEHEADER from HOST.
+   * CookieManager has no per-site removal, so a cookie goes by overwriting it with one already
+   * past its expiry. Chromium keys a cookie on its name, domain and path, so each name needs
+   * one value per domain it may have been set on: the host itself, the host as a domain
+   * cookie, then each parent.
    *
-   * @param urlField
-   *          the field's text, one or more whitespace-separated addresses
-   * @return the hosts, empty when the field names none
+   * @param cookieHeader
+   *          what {@code getCookie} answered for HOST, possibly null
+   * @param host
+   *          the host those cookies came from
+   * @return the values, empty when there is nothing to drop
    */
-  static Set<String> crawlHosts(final String urlField) {
-    final Set<String> out = new LinkedHashSet<String>();
-    for (final String token : CommandlineTokens.urlTokens(urlField)) {
-      final String host = hostOf(secureUrl(token));
-      if (host != null) {
-        out.add(host);
+  static List<String> expiryHeaders(final String cookieHeader, final String host) {
+    final List<String> out = new ArrayList<String>();
+    if (cookieHeader == null || host == null) {
+      return out;
+    }
+    for (final String[] cookie : BrowserLoginCookies.split(cookieHeader)) {
+      /* Secure on every one, because Chromium refuses to set a __Host- or __Secure- cookie
+         without it, and those prefixes carry the session on most login sites. It is not part
+         of the key, so the value still drops a cookie that was not secure. */
+      final String header = cookie[0] + "=; Max-Age=0; Path=/; Secure";
+      out.add(header);
+      out.add(header + "; Domain=" + host);
+      for (final String parent : parentDomains(host)) {
+        out.add(header + "; Domain=" + parent);
       }
     }
     return out;
   }
 
   /**
-   * The Set-Cookie value that drops NAME from DOMAIN, or from the host itself when DOMAIN is
-   * null. CookieManager has no per-site removal, so a cookie is dropped by overwriting it with
-   * one already past its expiry.
+   * Whether any cookie this login tried to drop is still there. Asking only about those names
+   * keeps an unrelated consent or language cookie from reading as a live session, which would
+   * send the caller on to clear every other site.
    *
-   * @param name
-   *          the cookie's name
-   * @param domain
-   *          the domain to drop it from, or null for a host-only cookie
-   * @return the value to hand setCookie
+   * @param cookieHeader
+   *          what {@code getCookie} answers now, possibly null
+   * @param dropped
+   *          the names that were expired
+   * @return true when one of them survived
    */
-  static String expiredCookie(final String name, final String domain) {
-    final String header = name + "=; Max-Age=0; Path=/";
-    return domain == null ? header : header + "; Domain=" + domain;
+  static boolean stillSignedIn(final String cookieHeader, final Set<String> dropped) {
+    if (cookieHeader == null) {
+      return false;
+    }
+    for (final String[] cookie : BrowserLoginCookies.split(cookieHeader)) {
+      if (dropped.contains(cookie[0])) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
