@@ -113,11 +113,42 @@ public class BrowserLoginPolicyTest {
   public void theLandedAddressJoinsTheField() {
     assertEquals("https://a.example\nhttps://a.example/members/",
         BrowserLoginPolicy.withLandedUrl("https://a.example", "https://a.example/members/"));
-    // An empty field takes it alone, with no leading blank line.
-    assertEquals("https://a.example/members/",
-        BrowserLoginPolicy.withLandedUrl("", "https://a.example/members/"));
-    assertEquals("https://a.example/members/",
-        BrowserLoginPolicy.withLandedUrl(null, "https://a.example/members/"));
+    // Either direction, because a login moves between a site and its subdomains both ways.
+    assertEquals("https://a.example\nhttps://login.a.example/home",
+        BrowserLoginPolicy.withLandedUrl("https://a.example", "https://login.a.example/home"));
+    assertEquals("https://www.a.example\nhttps://a.example/members/",
+        BrowserLoginPolicy.withLandedUrl("https://www.a.example", "https://a.example/members/"));
+    // Nothing in the field names a site, so there is nothing the landed address belongs to.
+    assertEquals("", BrowserLoginPolicy.withLandedUrl("", "https://a.example/members/"));
+    assertEquals("", BrowserLoginPolicy.withLandedUrl(null, "https://a.example/members/"));
+  }
+
+  /** A login often ends on an identity provider, which is not the site the user asked for. */
+  @Test
+  public void anAddressOnAnotherSiteIsRefused() {
+    assertEquals("https://a.example", BrowserLoginPolicy.withLandedUrl("https://a.example",
+        "https://accounts.idp.example/signin/oauth"));
+    // A suffix that is not a label boundary is another site, whatever it looks like.
+    assertEquals("https://a.example",
+        BrowserLoginPolicy.withLandedUrl("https://a.example", "https://nota.example/x"));
+  }
+
+  /** The field is saved into the project profile, so a secret must never reach it. */
+  @Test
+  public void noSecretRidesInOnTheLandedAddress() {
+    final String field = "https://a.example";
+    // Userinfo is dropped rather than stripped: the engine would authenticate with it.
+    assertEquals(field,
+        BrowserLoginPolicy.withLandedUrl(field, "https://user:s3cr3t@a.example/home"));
+    assertEquals(field, BrowserLoginPolicy.withLandedUrl(field, "https://:pw@a.example/home"));
+    // An OAuth callback carries the code in the query and the token in the fragment.
+    assertEquals(field + "\nhttps://a.example/cb",
+        BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb?code=AQAB&state=xyz"));
+    assertEquals(field + "\nhttps://a.example/cb",
+        BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb#access_token=eyJ.P.S"));
+    // Both at once, and the earliest separator wins.
+    assertEquals(field + "\nhttps://a.example/cb",
+        BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb?a=1#b=2"));
   }
 
   @Test

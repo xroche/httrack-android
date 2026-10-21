@@ -92,15 +92,74 @@ final class BrowserLoginPolicy {
    */
   static String withLandedUrl(final String urlField, final String landed) {
     final String current = urlField == null ? "" : urlField.trim();
-    if (hostOf(landed) == null) {
+    final String address = crawlRoot(landed);
+    if (address == null || !namesTheSameSite(current, hostOf(address))) {
       return current;
     }
     for (final String token : CommandlineTokens.urlTokens(current)) {
-      if (secureUrl(token).equals(landed)) {
+      if (secureUrl(token).equals(address)) {
         return current;
       }
     }
-    return current.length() == 0 ? landed : current + "\n" + landed;
+    return current.length() == 0 ? address : current + "\n" + address;
+  }
+
+  /**
+   * LANDED as an address the crawl may start from, or null when it is none. The address field
+   * is saved into the project's profile and handed to the engine, so a secret must not reach
+   * it: userinfo carries a password, and a query or fragment carries an OAuth code or token.
+   *
+   * @param landed
+   *          the address the login ended on
+   * @return the address without its query or fragment, or null
+   */
+  private static String crawlRoot(final String landed) {
+    if (hostOf(landed) == null) {
+      return null;
+    }
+    final URI uri;
+    try {
+      uri = new URI(landed);
+    } catch (final URISyntaxException e) {
+      return null;
+    }
+    // Dropped rather than stripped: the engine would authenticate with it, which we never meant.
+    if (uri.getUserInfo() != null) {
+      return null;
+    }
+    int cut = landed.length();
+    for (int i = 0; i < cut; i++) {
+      if (landed.charAt(i) == '?' || landed.charAt(i) == '#') {
+        cut = i;
+      }
+    }
+    return landed.substring(0, cut);
+  }
+
+  /**
+   * Whether HOST belongs to a site the address field already names. A login can end on an
+   * identity provider, and adding that would set the crawl copying someone else's site with a
+   * live session. Either direction counts, because a login moves between a site and its
+   * subdomains in both.
+   *
+   * @param urlField
+   *          the field's text
+   * @param host
+   *          the landed address's host
+   * @return true when the field names that host, a parent of it, or a child of it
+   */
+  private static boolean namesTheSameSite(final String urlField, final String host) {
+    if (host == null) {
+      return false;
+    }
+    for (final String token : CommandlineTokens.urlTokens(urlField)) {
+      final String known = hostOf(secureUrl(token));
+      if (known != null && (known.equals(host) || known.endsWith("." + host)
+          || host.endsWith("." + known))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
