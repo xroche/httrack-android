@@ -131,8 +131,8 @@ final class BrowserLoginPolicy {
     if (host == null) {
       return out;
     }
-    /* A public suffix needs no special case: the browser refuses a cookie on one, so an
-       attempt at "co.uk" is turned down rather than widening anything. */
+    /* A public suffix needs no special case, because the browser refuses a cookie on one, so
+       an attempt at "co.uk" is turned down rather than widening anything. */
     for (int cut = host.indexOf('.'); cut != -1; cut = host.indexOf('.', cut + 1)) {
       final String parent = host.substring(cut + 1);
       if (parent.indexOf('.') == -1) {
