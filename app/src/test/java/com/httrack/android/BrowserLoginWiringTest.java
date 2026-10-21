@@ -156,6 +156,26 @@ public class BrowserLoginWiringTest {
     assertTrue(body, body.contains("staged.renameTo(file)"));
   }
 
+  /** Without the landed address the user has to retype where the login took them. */
+  @Test
+  public void theLandedAddressIsReturnedAndShown() throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
+    final String done = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    // The WebView's own address, not the one the activity was started with.
+    assertTrue(done, done.contains("EXTRA_LANDED_URL, web.getUrl()"));
+    final String caller = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
+    final String apply = TestSources.balancedBlock(caller,
+        TestSources.indexOf(caller, "private void applyBrowserLogin("));
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withLandedUrl("));
+    assertTrue(apply, apply.contains("setMap(R.id.fieldWebsiteURLs, addresses)"));
+    /* The widget as well as the map. setMap alone left the old text on screen and the next
+       savePaneFields copied it back, so the whole feature was invisible. */
+    assertTrue(apply, apply.contains("setFieldText(R.id.fieldWebsiteURLs, addresses)"));
+  }
+
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */
   @Test
   public void theHandOverTurnsCookiesOn() throws IOException {

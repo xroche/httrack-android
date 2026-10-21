@@ -79,6 +79,97 @@ final class BrowserLoginPolicy {
   }
 
   /**
+   * The address field with LANDED added on a line of its own. Where the user ended up is what
+   * they opened the browser to reach, and a login usually ends deeper than it began. The
+   * addresses already there are left alone, so the user trims what they do not want.
+   *
+   * @param urlField
+   *          the field's text, one or more whitespace-separated addresses
+   * @param landed
+   *          the address the login ended on, which is ignored unless it is an https address
+   *          naming a host
+   * @return the field's new text
+   */
+  static String withLandedUrl(final String urlField, final String landed) {
+    final String current = urlField == null ? "" : urlField.trim();
+    final String address = crawlRoot(landed);
+    if (address == null || !namesTheSameSite(current, hostOf(address))) {
+      return current;
+    }
+    for (final String token : CommandlineTokens.urlTokens(current)) {
+      if (secureUrl(token).equals(address)) {
+        return current;
+      }
+    }
+    return current.length() == 0 ? address : current + "\n" + address;
+  }
+
+  /**
+   * LANDED as an address the crawl may start from, or null when it is none. The address field
+   * is saved into the project's profile and handed to the engine, so a secret must not reach
+   * it: userinfo carries a password, and a query or fragment carries an OAuth code or token.
+   *
+   * @param landed
+   *          the address the login ended on
+   * @return the address without its query or fragment, or null
+   */
+  private static String crawlRoot(final String landed) {
+    if (hostOf(landed) == null) {
+      return null;
+    }
+    final URI uri;
+    try {
+      uri = new URI(landed);
+    } catch (final URISyntaxException e) {
+      return null;
+    }
+    // Dropped rather than stripped: the engine would authenticate with it, which we never meant.
+    if (uri.getUserInfo() != null) {
+      return null;
+    }
+    /* Cutting the query costs a crawl root that needed one, which is affordable here and not
+       everywhere: onClickBrowserLogin refuses to open without an address, so the field already
+       names a start and this address is an addition to it. WinHTTrack keeps the query for that
+       reason, because its field is usually empty and this would be the only root. */
+    final int query = landed.indexOf('?');
+    final int fragment = landed.indexOf('#');
+    int cut = landed.length();
+    if (query != -1) {
+      cut = query;
+    }
+    if (fragment != -1 && fragment < cut) {
+      cut = fragment;
+    }
+    return landed.substring(0, cut);
+  }
+
+  /**
+   * Whether HOST belongs to a site the address field already names. A login can end on an
+   * identity provider, and adding that would set the crawl copying someone else's site with a
+   * live session. Either direction counts, because a login moves between a site and its
+   * subdomains in both.
+   *
+   * @param urlField
+   *          the field's text
+   * @param host
+   *          the landed address's host
+   * @return true when the field names that host, a parent of it, or a child of it
+   */
+  private static boolean namesTheSameSite(final String urlField, final String host) {
+    if (host == null) {
+      return false;
+    }
+    for (final String token : CommandlineTokens.urlTokens(urlField)) {
+      final String known = hostOf(secureUrl(token));
+      if (known != null && (known.equals(host) || known.endsWith("." + host)
+          || host.endsWith("." + known))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * The connection count to use, which only ever goes down.
    *
    * @param current
