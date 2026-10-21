@@ -156,23 +156,6 @@ public class BrowserLoginWiringTest {
     assertTrue(body, body.contains("staged.renameTo(file)"));
   }
 
-  /** The clear has to run off the shared helpers, which are where its rules are tested. */
-  @Test
-  public void forgetExpiresOurOwnHostsBeforeReachingTheStore() throws IOException {
-    final String source = TestSources
-        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String body = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "private void forget()"));
-    assertTrue(body, body.contains("BrowserLoginPolicy.stillSignedIn("));
-    // Ordered, because a wide clear ahead of the check would make the narrow pass dead code.
-    final int checked = body.indexOf("stillSignedIn");
-    final int wide = body.indexOf("removeAllCookies");
-    assertTrue(body, checked != -1 && wide != -1 && checked < wide);
-    final String pass = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "private static Set<String> expire("));
-    assertTrue(pass, pass.contains("BrowserLoginPolicy.expiryHeaders(header, host)"));
-  }
-
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */
   @Test
   public void theHandOverTurnsCookiesOn() throws IOException {

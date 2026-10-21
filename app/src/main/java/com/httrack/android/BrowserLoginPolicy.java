@@ -2,11 +2,7 @@ package com.httrack.android;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 /**
  * What the browser login opens, and what it changes about the crawl. A logged-in crawl has to
@@ -80,86 +76,6 @@ final class BrowserLoginPolicy {
       return null;
     }
     return host.toLowerCase(Locale.ROOT);
-  }
-
-  /**
-   * The values to hand {@code setCookie} to drop every cookie in COOKIEHEADER from HOST.
-   * CookieManager has no per-site removal, so a cookie goes by overwriting it with one already
-   * past its expiry. Chromium keys a cookie on its name, domain and path, so each name needs
-   * one value per domain it may have been set on: the host itself, the host as a domain
-   * cookie, then each parent.
-   *
-   * @param cookieHeader
-   *          what {@code getCookie} answered for HOST, possibly null
-   * @param host
-   *          the host those cookies came from
-   * @return the values, empty when there is nothing to drop
-   */
-  static List<String> expiryHeaders(final String cookieHeader, final String host) {
-    final List<String> out = new ArrayList<String>();
-    if (cookieHeader == null || host == null) {
-      return out;
-    }
-    for (final String[] cookie : BrowserLoginCookies.split(cookieHeader)) {
-      /* Secure on every one, because Chromium refuses to set a __Host- or __Secure- cookie
-         without it, and those prefixes carry the session on most login sites. It is not part
-         of the key, so the value still drops a cookie that was not secure. */
-      final String header = cookie[0] + "=; Max-Age=0; Path=/; Secure";
-      out.add(header);
-      out.add(header + "; Domain=" + host);
-      for (final String parent : parentDomains(host)) {
-        out.add(header + "; Domain=" + parent);
-      }
-    }
-    return out;
-  }
-
-  /**
-   * Whether any cookie this login tried to drop is still there. Asking only about those names
-   * keeps an unrelated consent or language cookie from reading as a live session, which would
-   * send the caller on to clear every other site.
-   *
-   * @param cookieHeader
-   *          what {@code getCookie} answers now, possibly null
-   * @param dropped
-   *          the names that were expired
-   * @return true when one of them survived
-   */
-  static boolean stillSignedIn(final String cookieHeader, final Set<String> dropped) {
-    if (cookieHeader == null) {
-      return false;
-    }
-    for (final String[] cookie : BrowserLoginCookies.split(cookieHeader)) {
-      if (dropped.contains(cookie[0])) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * The parent domains of HOST, longest first, stopping before the last two labels. A session
-   * cookie is often set on a parent, and dropping it from the host alone would leave it live.
-   *
-   * @param host
-   *          a lowercased host name
-   * @return the parents, empty for a host with no more than two labels
-   */
-  static List<String> parentDomains(final String host) {
-    final List<String> out = new ArrayList<String>();
-    if (host == null) {
-      return out;
-    }
-    /* A public suffix needs no special case, because the browser refuses a cookie on one, so
-       an attempt at "co.uk" is turned down rather than widening anything. */
-    for (int cut = host.indexOf('.'); cut != -1; cut = host.indexOf('.', cut + 1)) {
-      final String parent = host.substring(cut + 1);
-      if (parent.indexOf('.') == -1) {
-        break;
-      }
-      out.add(parent);
-    }
-    return out;
   }
 
   /**

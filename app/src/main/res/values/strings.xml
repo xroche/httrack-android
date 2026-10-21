@@ -285,7 +285,7 @@
     <string name="browser_login_note">Log in to the site here, then tap \"Use this login\". Google accounts refuse this window.</string>
     <string name="browser_login_done">Use this login</string>
     <string name="browser_login_forget">Forget the saved login</string>
-    <string name="browser_login_forgotten">The saved login is deleted.</string>
+    <string name="browser_login_forgotten">The saved login is deleted. This also signs you out of every site in the browser inside this app.</string>
     <string name="browser_login_no_address">Type a web address first.</string>
     <string name="browser_login_no_project">Give the project a name first.</string>
     <string name="browser_login_https_only">This window opens https addresses only.</string>

@@ -208,25 +208,24 @@ public class BrowserLoginActivity extends FragmentActivity {
     return super.onOptionsItemSelected(item);
   }
 
-  /** Drop the saved session: the browser's cookies and the file the engine would have read. */
+  /**
+   * Drop the saved session: the browser's cookies and the file the engine would have read.
+   *
+   * This signs the user out of every site in this app's browser, not just this project's. That
+   * is deliberate. CookieManager has no per-site removal, and nothing enumerates what a
+   * narrower pass would miss: getCookie answers for one path, so a cookie on a deeper path is
+   * invisible to it, a nameless cookie has no name to overwrite, and a session held by an
+   * iframe sign-on sits on a host onPageStarted never reported. A narrower Forget was measured
+   * and it left all three signed in, which is worse than reaching too far, because the user
+   * presses this to change accounts. The store is per app, so splitting it needs a per-project
+   * WebView data directory, which means a separate process.
+   */
   private void forget() {
     if (cookiesFile == null) {
       return;
     }
-    final CookieManager cookies = CookieManager.getInstance();
-    boolean signedIn = false;
-    for (final String host : hosts) {
-      final Set<String> tried = expire(cookies, host);
-      final String left = cookies.getCookie(BrowserLoginPolicy.SCHEME + "://" + host + "/");
-      signedIn = signedIn || BrowserLoginPolicy.stillSignedIn(left, tried);
-    }
-    /* The pass above is best effort, because a cookie on a path other than "/" survives it. A
-       Forget that leaves the user signed in is worse than one that reaches too far, so clear
-       the whole store when a name we tried to drop is still there. */
-    if (signedIn) {
-      cookies.removeAllCookies(null);
-    }
-    cookies.flush();
+    CookieManager.getInstance().removeAllCookies(null);
+    CookieManager.getInstance().flush();
     hosts.clear();
     if (cookiesFile.exists() && !cookiesFile.delete()) {
       Log.w(getClass().getSimpleName(), "could not delete " + cookiesFile);
@@ -236,20 +235,6 @@ public class BrowserLoginActivity extends FragmentActivity {
       web.reload();
     }
     Toast.makeText(this, getString(R.string.browser_login_forgotten), Toast.LENGTH_SHORT).show();
-  }
-
-  /** Expire every cookie HOST answers with, and return the names that were tried. */
-  private static Set<String> expire(final CookieManager cookies, final String host) {
-    final String url = BrowserLoginPolicy.SCHEME + "://" + host + "/";
-    final String header = cookies.getCookie(url);
-    final Set<String> tried = new LinkedHashSet<String>();
-    for (final String[] cookie : BrowserLoginCookies.split(header == null ? "" : header)) {
-      tried.add(cookie[0]);
-    }
-    for (final String value : BrowserLoginPolicy.expiryHeaders(header, host)) {
-      cookies.setCookie(url, value);
-    }
-    return tried;
   }
 
   /** "Cancel" */
