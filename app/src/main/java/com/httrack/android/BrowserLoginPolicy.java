@@ -127,6 +127,10 @@ final class BrowserLoginPolicy {
     if (uri.getUserInfo() != null) {
       return null;
     }
+    /* Cutting the query costs a crawl root that needed one, which is affordable here and not
+       everywhere: onClickBrowserLogin refuses to open without an address, so the field already
+       names a start and this address is an addition to it. WinHTTrack keeps the query for that
+       reason, because its field is usually empty and this would be the only root. */
     final int query = landed.indexOf('?');
     final int fragment = landed.indexOf('#');
     int cut = landed.length();
