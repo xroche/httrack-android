@@ -2,7 +2,11 @@ package com.httrack.android;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * What the browser login opens, and what it changes about the crawl. A logged-in crawl has to
@@ -76,6 +80,67 @@ final class BrowserLoginPolicy {
       return null;
     }
     return host.toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Every host the crawl starts from, which the capture needs besides the hosts the user
+   * visited. A host-only cookie reaches that host alone, and CookieManager answers for a host
+   * the browser never opened, so asking for these costs nothing and no visit.
+   *
+   * @param urlField
+   *          the field's text, one or more whitespace-separated addresses
+   * @return the hosts, empty when the field names none
+   */
+  static Set<String> crawlHosts(final String urlField) {
+    final Set<String> out = new LinkedHashSet<String>();
+    for (final String token : CommandlineTokens.urlTokens(urlField)) {
+      final String host = hostOf(secureUrl(token));
+      if (host != null) {
+        out.add(host);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * The Set-Cookie value that drops NAME from DOMAIN, or from the host itself when DOMAIN is
+   * null. CookieManager has no per-site removal, so a cookie is dropped by overwriting it with
+   * one already past its expiry.
+   *
+   * @param name
+   *          the cookie's name
+   * @param domain
+   *          the domain to drop it from, or null for a host-only cookie
+   * @return the value to hand setCookie
+   */
+  static String expiredCookie(final String name, final String domain) {
+    final String header = name + "=; Max-Age=0; Path=/";
+    return domain == null ? header : header + "; Domain=" + domain;
+  }
+
+  /**
+   * The parent domains of HOST, longest first, stopping before the last two labels. A session
+   * cookie is often set on a parent, and dropping it from the host alone would leave it live.
+   *
+   * @param host
+   *          a lowercased host name
+   * @return the parents, empty for a host with no more than two labels
+   */
+  static List<String> parentDomains(final String host) {
+    final List<String> out = new ArrayList<String>();
+    if (host == null) {
+      return out;
+    }
+    /* A public suffix needs no special case: the browser refuses a cookie on one, so an
+       attempt at "co.uk" is turned down rather than widening anything. */
+    for (int cut = host.indexOf('.'); cut != -1; cut = host.indexOf('.', cut + 1)) {
+      final String parent = host.substring(cut + 1);
+      if (parent.indexOf('.') == -1) {
+        break;
+      }
+      out.add(parent);
+    }
+    return out;
   }
 
   /**

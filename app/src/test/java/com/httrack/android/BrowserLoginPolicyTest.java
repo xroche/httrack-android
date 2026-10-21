@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
+import java.util.Collections;
+
 import org.junit.Test;
 
 /** Which address the login window opens, and what the hand-off changes about the crawl. */
@@ -106,5 +109,46 @@ public class BrowserLoginPolicyTest {
     assertEquals("+*/Logout", BrowserLoginPolicy.rules("+*/Logout"));
     // Only the word itself counts, so a rule about another name still gets the filter.
     assertEquals("-*signout* -*logout*", BrowserLoginPolicy.rules("-*signout*"));
+  }
+
+  /** Host-only cookies reach one host each, so the capture has to cover every start host. */
+  @Test
+  public void everyAddressTheCrawlStartsFromIsAHostToCapture() {
+    assertEquals(Arrays.asList("a.example", "b.example"),
+        list(BrowserLoginPolicy.crawlHosts("https://a.example/x http://b.example/")));
+    // A bare host and a duplicate, because the field is free text the user typed.
+    assertEquals(Collections.singletonList("a.example"),
+        list(BrowserLoginPolicy.crawlHosts("a.example https://a.example/deep")));
+    // Lowercased, because the engine folds a cookie domain before comparing it.
+    assertEquals(Collections.singletonList("a.example"),
+        list(BrowserLoginPolicy.crawlHosts("https://A.Example/")));
+    assertTrue(BrowserLoginPolicy.crawlHosts("").isEmpty());
+    assertTrue(BrowserLoginPolicy.crawlHosts(null).isEmpty());
+    // urlTokens drops an option, so a tampered profile cannot add a host through this field.
+    assertTrue(BrowserLoginPolicy.crawlHosts("-O1 /tmp/x").isEmpty());
+  }
+
+  @Test
+  public void anExpiredCookieNamesItsDomainOnlyWhenItHasOne() {
+    assertEquals("sid=; Max-Age=0; Path=/", BrowserLoginPolicy.expiredCookie("sid", null));
+    assertEquals("sid=; Max-Age=0; Path=/; Domain=example.com",
+        BrowserLoginPolicy.expiredCookie("sid", "example.com"));
+  }
+
+  /** A session cookie is often set on a parent, so dropping it from the host alone leaves it. */
+  @Test
+  public void theParentsStopBeforeTheLastTwoLabels() {
+    assertEquals(Arrays.asList("b.example.com", "example.com"),
+        BrowserLoginPolicy.parentDomains("a.b.example.com"));
+    assertEquals(Collections.singletonList("example.com"),
+        BrowserLoginPolicy.parentDomains("www.example.com"));
+    // Two labels are already the shortest a cookie may name, so there is no parent to try.
+    assertTrue(BrowserLoginPolicy.parentDomains("example.com").isEmpty());
+    assertTrue(BrowserLoginPolicy.parentDomains("localhost").isEmpty());
+    assertTrue(BrowserLoginPolicy.parentDomains(null).isEmpty());
+  }
+
+  private static java.util.List<String> list(final java.util.Set<String> hosts) {
+    return new java.util.ArrayList<String>(hosts);
   }
 }

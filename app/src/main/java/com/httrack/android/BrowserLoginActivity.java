@@ -67,6 +67,9 @@ public class BrowserLoginActivity extends FragmentActivity {
   /** Where to write the cookies.txt the engine will read. */
   static final String EXTRA_COOKIES_FILE = "com.httrack.android.cookiesFile";
 
+  /** The hosts the crawl starts from, which the capture covers besides the ones visited. */
+  static final String EXTRA_CRAWL_HOSTS = "com.httrack.android.crawlHosts";
+
   /** Results: the browser's own User-Agent, and what the file ended up holding. */
   static final String EXTRA_USER_AGENT = "com.httrack.android.userAgent";
   static final String EXTRA_COOKIE_COUNT = "com.httrack.android.cookieCount";
@@ -92,6 +95,11 @@ public class BrowserLoginActivity extends FragmentActivity {
     final Bundle extras = getIntent().getExtras();
     final String url = extras != null ? extras.getString(EXTRA_URL) : null;
     cookiesFile = extras != null ? File.class.cast(extras.get(EXTRA_COOKIES_FILE)) : null;
+    final List<String> crawlHosts =
+        extras != null ? extras.getStringArrayList(EXTRA_CRAWL_HOSTS) : null;
+    if (crawlHosts != null) {
+      hosts.addAll(crawlHosts);
+    }
     if (url == null || cookiesFile == null) {
       Log.w(getClass().getSimpleName(), "no address to log in to");
       finish();
@@ -213,8 +221,18 @@ public class BrowserLoginActivity extends FragmentActivity {
     if (cookiesFile == null) {
       return;
     }
-    CookieManager.getInstance().removeAllCookies(null);
-    CookieManager.getInstance().flush();
+    final CookieManager cookies = CookieManager.getInstance();
+    for (final String host : hosts) {
+      expire(cookies, host);
+    }
+    cookies.flush();
+    /* There is no per-site removal, so the loop above is best effort: a cookie on a path other
+       than "/" survives it. A Forget that leaves the user signed in is worse than one that
+       reaches too far, so fall back to the whole store when any of our hosts still answers. */
+    if (anySessionLeft(cookies)) {
+      cookies.removeAllCookies(null);
+      cookies.flush();
+    }
     hosts.clear();
     if (cookiesFile.exists() && !cookiesFile.delete()) {
       Log.w(getClass().getSimpleName(), "could not delete " + cookiesFile);
@@ -224,6 +242,32 @@ public class BrowserLoginActivity extends FragmentActivity {
       web.reload();
     }
     Toast.makeText(this, getString(R.string.browser_login_forgotten), Toast.LENGTH_SHORT).show();
+  }
+
+  /** Drop every cookie HOST answers with, from the host itself and from each parent domain. */
+  private static void expire(final CookieManager cookies, final String host) {
+    final String url = BrowserLoginPolicy.SCHEME + "://" + host + "/";
+    final String header = cookies.getCookie(url);
+    if (header == null) {
+      return;
+    }
+    for (final String[] cookie : BrowserLoginCookies.split(header)) {
+      cookies.setCookie(url, BrowserLoginPolicy.expiredCookie(cookie[0], null));
+      for (final String parent : BrowserLoginPolicy.parentDomains(host)) {
+        cookies.setCookie(url, BrowserLoginPolicy.expiredCookie(cookie[0], parent));
+      }
+    }
+  }
+
+  /** Whether any host this login knows about still hands back a cookie. */
+  private boolean anySessionLeft(final CookieManager cookies) {
+    for (final String host : hosts) {
+      final String header = cookies.getCookie(BrowserLoginPolicy.SCHEME + "://" + host + "/");
+      if (header != null && header.length() != 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** "Cancel" */
