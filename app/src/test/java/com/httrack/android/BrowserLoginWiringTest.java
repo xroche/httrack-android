@@ -143,6 +143,18 @@ public class BrowserLoginWiringTest {
     assertTrue(forget, forget.contains("StoragePaths.savedLoginFiles("));
   }
 
+  /** A crash between the write and the rename leaves the staged copy for forgetLogin to take. */
+  @Test
+  public void theStagedWriteUsesTheNameTheDeleteKnows() throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
+    final String body = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "static boolean writeOwnerOnly("));
+    // The name comes from the helper isLoginSibling builds its pattern from, never a literal.
+    assertTrue(body, body.contains("StoragePaths.stagedLoginFile(file)"));
+    assertTrue(body, body.contains("staged.renameTo(file)"));
+  }
+
   /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */
   @Test
   public void theHandOverTurnsCookiesOn() throws IOException {

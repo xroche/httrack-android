@@ -39,6 +39,14 @@ public class StoragePathsTest {
     assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak.4321.tmp"));
   }
 
+  /** The matcher must take whatever our write stages, or a crash mid-save leaks the session. */
+  @Test
+  public void aDeletedLoginTakesTheStagedWriteACrashLeftBehind() {
+    final File login = StoragePaths.loginCookiesFile(internal, "My Site");
+    assertTrue(StoragePaths.isLoginSibling(login.getName(),
+        StoragePaths.stagedLoginFile(login).getName()));
+  }
+
   @Test
   public void aDeletedLoginLeavesAnotherProjectAlone() {
     assertFalse(StoragePaths.isLoginSibling("A.txt", "B.txt"));
@@ -49,6 +57,9 @@ public class StoragePathsTest {
     assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak2"));
     assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak.tmp"));
     assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.4321.bak"));
+    // The staged suffix stands alone, because nothing writes it onto a .bak or a temporary.
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.bak.new"));
+    assertFalse(StoragePaths.isLoginSibling("A.txt", "A.txt.new.new"));
     assertFalse(StoragePaths.isLoginSibling("A.txt", null));
     /* isValidProjectName allows a regex metacharacter, so the name is quoted before it becomes
        a pattern. Unquoted, "A+" would match another project's "AA.txt" and delete its session,
@@ -65,7 +76,7 @@ public class StoragePathsTest {
     final File logins = new File(internal, "logins");
     assertTrue(logins.mkdirs());
     for (final String name : new String[] { "P.txt", "P.txt.bak", "P.txt.4321.tmp",
-        "P.txt.bak.4321.tmp", "Q.txt", "Q.txt.bak", "notes.txt" }) {
+        "P.txt.bak.4321.tmp", "P.txt.new", "Q.txt", "Q.txt.bak", "Q.txt.new", "notes.txt" }) {
       assertTrue(new File(logins, name).createNewFile());
     }
     final java.util.List<File> ours = StoragePaths.savedLoginFiles(internal, "P");
@@ -74,7 +85,7 @@ public class StoragePathsTest {
       names.add(file.getName());
     }
     assertEquals(new java.util.TreeSet<String>(java.util.Arrays.asList("P.txt", "P.txt.bak",
-        "P.txt.4321.tmp", "P.txt.bak.4321.tmp")), names);
+        "P.txt.4321.tmp", "P.txt.bak.4321.tmp", "P.txt.new")), names);
   }
 
   @Test

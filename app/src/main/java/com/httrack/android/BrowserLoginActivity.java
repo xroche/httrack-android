@@ -265,8 +265,8 @@ public class BrowserLoginActivity extends FragmentActivity {
   /**
    * Write TEXT to FILE, readable by this app alone.
    *
-   * The file holds a live session, so it writes a .new beside it and renames, because a write
-   * that failed halfway would leave the previous login truncated and the crawl with nothing.
+   * The file holds a live session, so it stages beside FILE and renames, because a write that
+   * failed halfway would leave the previous login truncated and the crawl with nothing.
    *
    * @return true when FILE now holds TEXT
    */
@@ -275,7 +275,7 @@ public class BrowserLoginActivity extends FragmentActivity {
     if (dir != null && !dir.isDirectory() && !dir.mkdirs()) {
       return false;
     }
-    final File staged = new File(file.getPath() + ".new");
+    final File staged = StoragePaths.stagedLoginFile(file);
     try (final OutputStream out = new FileOutputStream(staged)) {
       out.write(text.getBytes(UTF8));
     } catch (final IOException e) {
