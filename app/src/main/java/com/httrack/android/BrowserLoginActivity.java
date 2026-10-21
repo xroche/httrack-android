@@ -69,6 +69,9 @@ public class BrowserLoginActivity extends FragmentActivity {
 
   /** Results: the browser's own User-Agent, and what the file ended up holding. */
   static final String EXTRA_USER_AGENT = "com.httrack.android.userAgent";
+
+  /** Where the login ended, which is the address the user opened the browser to reach. */
+  static final String EXTRA_LANDED_URL = "com.httrack.android.landedUrl";
   static final String EXTRA_COOKIE_COUNT = "com.httrack.android.cookieCount";
   static final String EXTRA_HOST_COUNT = "com.httrack.android.hostCount";
   static final String EXTRA_DROPPED_COUNT = "com.httrack.android.droppedCount";
@@ -255,6 +258,8 @@ public class BrowserLoginActivity extends FragmentActivity {
     }
     final Intent data = new Intent();
     data.putExtra(EXTRA_USER_AGENT, web.getSettings().getUserAgentString());
+    // The WebView's own current address, so a redirect chain reports where it stopped.
+    data.putExtra(EXTRA_LANDED_URL, web.getUrl());
     data.putExtra(EXTRA_COOKIE_COUNT, result.cookies);
     data.putExtra(EXTRA_HOST_COUNT, result.hosts);
     data.putExtra(EXTRA_DROPPED_COUNT, result.dropped);

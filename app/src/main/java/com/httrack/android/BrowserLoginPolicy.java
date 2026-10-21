@@ -79,6 +79,31 @@ final class BrowserLoginPolicy {
   }
 
   /**
+   * The address field with LANDED added on a line of its own. Where the user ended up is what
+   * they opened the browser to reach, and a login usually ends deeper than it began. The
+   * addresses already there are left alone, so the user trims what they do not want.
+   *
+   * @param urlField
+   *          the field's text, one or more whitespace-separated addresses
+   * @param landed
+   *          the address the login ended on, which is ignored unless it is an https address
+   *          naming a host
+   * @return the field's new text
+   */
+  static String withLandedUrl(final String urlField, final String landed) {
+    final String current = urlField == null ? "" : urlField.trim();
+    if (hostOf(landed) == null) {
+      return current;
+    }
+    for (final String token : CommandlineTokens.urlTokens(current)) {
+      if (secureUrl(token).equals(landed)) {
+        return current;
+      }
+    }
+    return current.length() == 0 ? landed : current + "\n" + landed;
+  }
+
+  /**
    * The connection count to use, which only ever goes down.
    *
    * @param current

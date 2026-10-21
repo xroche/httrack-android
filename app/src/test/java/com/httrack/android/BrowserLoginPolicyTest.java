@@ -107,4 +107,42 @@ public class BrowserLoginPolicyTest {
     // Only the word itself counts, so a rule about another name still gets the filter.
     assertEquals("-*signout* -*logout*", BrowserLoginPolicy.rules("-*signout*"));
   }
+
+  /** A login ends deeper than it began, and that page is the one the user came to copy. */
+  @Test
+  public void theLandedAddressJoinsTheField() {
+    assertEquals("https://a.example\nhttps://a.example/members/",
+        BrowserLoginPolicy.withLandedUrl("https://a.example", "https://a.example/members/"));
+    // An empty field takes it alone, with no leading blank line.
+    assertEquals("https://a.example/members/",
+        BrowserLoginPolicy.withLandedUrl("", "https://a.example/members/"));
+    assertEquals("https://a.example/members/",
+        BrowserLoginPolicy.withLandedUrl(null, "https://a.example/members/"));
+  }
+
+  @Test
+  public void anAddressAlreadyInTheFieldIsNotRepeated() {
+    final String landed = "https://a.example/members/";
+    assertEquals(landed, BrowserLoginPolicy.withLandedUrl(landed, landed));
+    /* The field holds what the user typed, and startUrl raised it to https before opening it,
+       so the landed address is compared against the same raising. */
+    assertEquals("a.example/members/",
+        BrowserLoginPolicy.withLandedUrl("a.example/members/", landed));
+    assertEquals("http://a.example/members/",
+        BrowserLoginPolicy.withLandedUrl("http://a.example/members/", landed));
+  }
+
+  /** The field is the crawl's own input, so nothing the login reports may be put in unchecked. */
+  @Test
+  public void onlyAnHttpsAddressReachesTheField() {
+    assertEquals("https://a.example", BrowserLoginPolicy.withLandedUrl("https://a.example", null));
+    // A WebView can end on these, and none of them names a host the crawl may start from.
+    assertEquals("https://a.example",
+        BrowserLoginPolicy.withLandedUrl("https://a.example", "about:blank"));
+    assertEquals("https://a.example",
+        BrowserLoginPolicy.withLandedUrl("https://a.example", "file:///etc/passwd"));
+    assertEquals("https://a.example",
+        BrowserLoginPolicy.withLandedUrl("https://a.example", "http://a.example/"));
+    assertEquals("https://a.example", BrowserLoginPolicy.withLandedUrl("https://a.example", ""));
+  }
 }

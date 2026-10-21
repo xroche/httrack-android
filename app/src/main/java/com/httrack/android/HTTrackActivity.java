@@ -2927,6 +2927,8 @@ public class HTTrackActivity extends FragmentActivity {
     if (cookies == null || agent == null || agent.length() == 0) {
       return;
     }
+    setMap(R.id.fieldWebsiteURLs, BrowserLoginPolicy.withLandedUrl(
+        getMap(R.id.fieldWebsiteURLs), data.getStringExtra(BrowserLoginActivity.EXTRA_LANDED_URL)));
     setMap(R.id.editCookiesFile, cookies.getAbsolutePath());
     // The exact string, "wv" included: a clearance bound to the browser's agent breaks on any other.
     setMap(R.id.editBrowserIdentity, agent);
