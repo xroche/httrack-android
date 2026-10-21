@@ -123,6 +123,18 @@ public class BrowserLoginPolicyTest {
     assertEquals("", BrowserLoginPolicy.withLandedUrl(null, "https://a.example/members/"));
   }
 
+  /** The field is the user's own text, so a refusal must not disturb what is already in it. */
+  @Test
+  public void aFieldOfSeveralAddressesSurvivesEitherAnswer() {
+    final String many = "https://a.example/one\n-foo\nhttps://b.example/two";
+    // Accepted: appended last, the rest in order, including a token urlTokens would reject.
+    assertEquals(many + "\nhttps://b.example/deep",
+        BrowserLoginPolicy.withLandedUrl(many, "https://b.example/deep"));
+    // Refused: byte for byte what went in.
+    assertEquals(many, BrowserLoginPolicy.withLandedUrl(many, "https://other.example/x"));
+    assertEquals(many, BrowserLoginPolicy.withLandedUrl(many, "https://u:p@a.example/x"));
+  }
+
   /** A login often ends on an identity provider, which is not the site the user asked for. */
   @Test
   public void anAddressOnAnotherSiteIsRefused() {
