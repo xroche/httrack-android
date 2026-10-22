@@ -73,6 +73,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htscoremain.c httrack/src/htsname.c httrack/src/htsrobots.c	\
 	httrack/src/htstools.c httrack/src/htswizard.c httrack/src/htsalias.c 	\
 	httrack/src/htsthread.c httrack/src/htsindex.c httrack/src/htsbauth.c 	\
+	httrack/src/htsbundle.c									\
 	httrack/src/htsmd5.c httrack/src/htszlib.c httrack/src/htswrap.c 		\
 	httrack/src/htsconcat.c httrack/src/htsmodules.c 						\
 	httrack/src/htscharset.c httrack/src/punycode.c 						\
@@ -80,6 +81,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htssniff.c httrack/src/htsselftest.c						\
 	httrack/src/htsselftest_util.c					\
 	httrack/src/htsback_selftest.c httrack/src/htscache_selftest.c	\
+	httrack/src/htsbundle_selftest.c					\
 	httrack/src/htscharset_selftest.c httrack/src/htscmdline_selftest.c	\
 	httrack/src/htscookie_selftest.c	\
 	httrack/src/htsdns_selftest.c httrack/src/htsfilters_selftest.c	\
