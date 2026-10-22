@@ -20,11 +20,13 @@ public class BrowserLoginEngineLimitsTest {
   }
 
   /**
-   * Just the cookies.txt branch of cookie_load. The Windows branch above it merges copied IE
-   * cookies through buffers of its own, and one of them is spelled the same.
+   * Just the function that parses a Netscape record. Two other readers in this file declare
+   * buffers spelled the same: the Windows branch that merges copied IE cookies, and the flat
+   * header loader beside it.
    */
   private static String parseBlock(final String htsbauth) {
-    return TestSources.between(htsbauth, "// then cookies.txt", "-- basic auth --");
+    return TestSources.balancedBlock(htsbauth,
+        TestSources.indexOf(htsbauth, "static int cookie_load_records("));
   }
 
   /** The one number a regex matched, so a changed engine reads as a failure, never as a pass. */
