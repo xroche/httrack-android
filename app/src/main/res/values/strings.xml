@@ -284,6 +284,7 @@
     <string name="title_activity_browser_login">Log in with a browser</string>
     <string name="browser_login_note">Log in to the site here, then tap \"Use this login\". Google accounts refuse this window.</string>
     <string name="browser_login_done">Use this login</string>
+    <string name="other_headers_dropped">The copy will not send these extra headers. HTTrack sets them itself, or the line is not a header.</string>
     <string name="browser_login_forget">Forget the saved login</string>
     <string name="browser_login_forgotten">The saved login is deleted. This also signs you out of every site in the browser inside this app.</string>
     <string name="browser_login_no_address">Type a web address first.</string>
