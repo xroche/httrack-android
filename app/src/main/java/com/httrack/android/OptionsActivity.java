@@ -242,6 +242,11 @@ public class OptionsActivity extends FragmentActivity implements
   @Fields({ R.id.editBrowserIdentity, R.id.editHtmlFooter,
       R.id.editAcceptLanguage, R.id.editOtherHeaders, R.id.editDefaultReferer })
   public static class BrowserId extends Tab {
+    @Override
+    public void onHide(final View view) {
+      super.onHide(view);
+      HeaderWarnings.warnAboutDropped(view);
+    }
   }
 
   /* Its own page rather than a box under Browser ID: twelve rows would bury the five fields
