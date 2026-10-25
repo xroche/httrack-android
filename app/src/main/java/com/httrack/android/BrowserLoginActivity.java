@@ -90,6 +90,9 @@ public class BrowserLoginActivity extends FragmentActivity {
    */
   private final Set<String> crawlHosts = new LinkedHashSet<String>();
 
+  /** What the engine adds to a bundle's name to find its file. */
+  private static final String BUNDLE_EXTENSION = ".hts";
+
   /** Did the user press Forget? The caller then drops the bundle names, however the window ends. */
   private boolean forgotten;
 
@@ -272,6 +275,29 @@ public class BrowserLoginActivity extends FragmentActivity {
     finish();
   }
 
+  /**
+   * Delete every bundle of this project but KEPT, the one just written. A project keeps one
+   * login: two bundles covering the same site with different cookie values, or with the user
+   * agent of two WebView versions, make the engine refuse to start the crawl at all.
+   *
+   * @param kept
+   *          the name the engine gave the bundle it has just written
+   */
+  private void dropOtherBundles(final String kept) {
+    final File[] saved = bundleDir.listFiles();
+
+    if (kept == null || saved == null) {
+      return;
+    }
+    for (final File file : saved) {
+      if (!file.getName().equals(kept + BUNDLE_EXTENSION)) {
+        if (!file.delete()) {
+          Log.w(getClass().getSimpleName(), "could not delete " + file);
+        }
+      }
+    }
+  }
+
   /** Tell the caller whether Forget ran, because Cancel would otherwise bury it. */
   private void reportForgotten() {
     if (!forgotten) {
@@ -306,6 +332,12 @@ public class BrowserLoginActivity extends FragmentActivity {
           .show();
       return;
     }
+    /* crawlHosts alone can yield cookies before any page has committed, and the address is
+       what the engine names the bundle after. */
+    if (web.getUrl() == null) {
+      Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
+      return;
+    }
     if (!HTTrackLib.loadLibraries()) {
       Toast.makeText(this, getString(R.string.browser_login_write_failed), Toast.LENGTH_LONG)
           .show();
@@ -320,12 +352,14 @@ public class BrowserLoginActivity extends FragmentActivity {
       Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
       return;
     }
+    dropOtherBundles(BrowserLoginPolicy.bundleNameOf(bundle.url));
     final Intent data = new Intent();
     data.putExtra(EXTRA_BUNDLE_URL, bundle.url);
+    // The engine's own counts, because it drops a cookie outside the bundle's scope.
     data.putExtra(EXTRA_COOKIE_COUNT, bundle.cookies);
-    data.putExtra(EXTRA_HOST_COUNT, result.hosts);
-    // What the engine kept, against what we offered it, so the count the user reads is the truth.
-    data.putExtra(EXTRA_DROPPED_COUNT, result.cookies - bundle.cookies);
+    data.putExtra(EXTRA_HOST_COUNT, bundle.hosts);
+    // Ours, and only the over-long ones, which is what the message the user reads says.
+    data.putExtra(EXTRA_DROPPED_COUNT, result.dropped);
     setResult(RESULT_OK, data);
     finish();
   }

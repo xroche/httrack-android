@@ -158,6 +158,22 @@ public class BrowserLoginPolicyTest {
     final String none = "https://a.example/one\n-foo\nhttps://b.example/two";
     assertEquals(none, BrowserLoginPolicy.withoutBundleNames(none));
     assertEquals("", BrowserLoginPolicy.withoutBundleNames(null));
+    /* The field separates addresses on any whitespace, so only the token goes. Cutting to the
+       end of the line ate the address after it. */
+    assertEquals("https://a.example/ https://b.example/",
+        BrowserLoginPolicy.withoutBundleNames("https://a.example/" + BrowserLoginPolicy.BUNDLE_SUFFIX
+            + "a.example https://b.example/"));
+    assertEquals("https://a.example/\thttps://b.example/",
+        BrowserLoginPolicy.withoutBundleNames("https://a.example/" + BrowserLoginPolicy.BUNDLE_SUFFIX
+            + "a.example\thttps://b.example/"));
+  }
+
+  /** The name is what the file is called, so the login can delete the bundles it replaces. */
+  @Test
+  public void theStartUrlSaysWhichBundleItNames() {
+    assertEquals("a.example", BrowserLoginPolicy.bundleNameOf(WRITTEN));
+    assertNull(BrowserLoginPolicy.bundleNameOf("https://a.example/"));
+    assertNull(BrowserLoginPolicy.bundleNameOf(null));
   }
 
   /**

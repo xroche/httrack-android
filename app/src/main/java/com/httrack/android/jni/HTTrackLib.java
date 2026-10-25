@@ -130,9 +130,13 @@ public class HTTrackLib {
     /** Cookies the engine kept, which are the ones the crawl will send. */
     public final int cookies;
 
-    public LoginBundle(final String url, final int cookies) {
+    /** Hosts those cookies cover, which is not every host the login visited. */
+    public final int hosts;
+
+    public LoginBundle(final String url, final int cookies, final int hosts) {
       this.url = url;
       this.cookies = cookies;
+      this.hosts = hosts;
     }
   }
 

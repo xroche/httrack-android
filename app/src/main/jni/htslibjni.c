@@ -660,14 +660,35 @@ JNICALL jint Java_com_httrack_android_jni_HTTrackLib_getCustomHeaderVerdict(JNIE
 
 /* A new HTTrackLib.LoginBundle, or NULL with the exception pending. Looked up
  * here rather than cached, because one login writes one bundle. */
-static jobject newLoginBundle(JNIEnv* env, jstring url, jint cookies) {
+static jobject newLoginBundle(JNIEnv* env, jstring url, jint cookies, jint hosts) {
   jclass cls = (*env)->FindClass(env,
                                  "com/httrack/android/jni/HTTrackLib$LoginBundle");
   jmethodID cons = cls != NULL
-    ? (*env)->GetMethodID(env, cls, "<init>", "(Ljava/lang/String;I)V")
+    ? (*env)->GetMethodID(env, cls, "<init>", "(Ljava/lang/String;II)V")
     : NULL;
 
-  return cons != NULL ? (*env)->NewObject(env, cls, cons, url, cookies) : NULL;
+  return cons != NULL
+    ? (*env)->NewObject(env, cls, cons, url, cookies, hosts)
+    : NULL;
+}
+
+/* How many domains the engine listed in result->hosts, which is comma
+ * separated and ends with ",..." when they did not all fit. The marker is not a
+ * domain, so it does not count. */
+static jint countBundleHosts(const char* hosts) {
+  static const char more[] = ",...";
+  const size_t len = strlen(hosts);
+  jint count = len != 0 ? 1 : 0;
+  const char* p;
+
+  for (p = hosts; (p = strchr(p, ',')) != NULL; p++) {
+    count++;
+  }
+  if (len >= sizeof(more) - 1 &&
+      strcmp(hosts + len - (sizeof(more) - 1), more) == 0) {
+    count--;
+  }
+  return count;
 }
 
 JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv* env,
@@ -704,7 +725,8 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
       jstring written = (*env)->NewStringUTF(env, result.url);
 
       if (written != NULL) {
-        bundle = newLoginBundle(env, written, (jint) result.cookies);
+        bundle = newLoginBundle(env, written, (jint) result.cookies,
+                                countBundleHosts(result.hosts));
       }
     } else {
       /* The reason is unlocalized English, so the user gets our own message. */

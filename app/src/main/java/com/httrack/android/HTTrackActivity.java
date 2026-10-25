@@ -2960,7 +2960,10 @@ public class HTTrackActivity extends FragmentActivity {
     final String otherSite = BrowserLoginPolicy.landedElsewhere(field, bundleUrl)
         ? getString(R.string.browser_login_other_site, BrowserLoginPolicy.hostOf(bundleUrl))
         : null;
-    setAddressField(BrowserLoginPolicy.withBundleUrl(field, bundleUrl));
+    /* The new login's name replaces any older one, because two bundles covering one site with
+       different cookie values make the engine refuse to start the crawl at all. */
+    setAddressField(BrowserLoginPolicy.withBundleUrl(
+        BrowserLoginPolicy.withoutBundleNames(field), bundleUrl));
     /* The engine saves its jar at the end of the crawl, and with no -%K it saves it beside the
        mirror, in shared storage. This names a file in private storage instead, and nothing in
        the app ever writes it. */

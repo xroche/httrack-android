@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * What the browser login opens, and what it changes about the crawl. A logged-in crawl has to
@@ -115,21 +116,24 @@ final class BrowserLoginPolicy {
    *
    * @param urlField
    *          the field's text
-   * @return the text with each "#httrack-bundle=..." cut off
+   * @return the text with each "#httrack-bundle=NAME" cut out, the rest byte for byte
    */
   static String withoutBundleNames(final String urlField) {
-    if (urlField == null) {
-      return "";
-    }
-    final StringBuilder kept = new StringBuilder();
-    for (final String line : urlField.split("\n", -1)) {
-      final int at = line.indexOf(BUNDLE_SUFFIX);
-      if (kept.length() != 0) {
-        kept.append('\n');
-      }
-      kept.append(at == -1 ? line : line.substring(0, at));
-    }
-    return kept.toString();
+    /* The token only, not the rest of the line: the field separates addresses on whitespace,
+       so cutting to the end of the line would eat the address after this one. */
+    return urlField == null ? "" : urlField.replaceAll(Pattern.quote(BUNDLE_SUFFIX) + "\\S*", "");
+  }
+
+  /**
+   * The bundle STARTURL names.
+   *
+   * @param startUrl
+   *          a start URL the engine wrote
+   * @return the name, or null when STARTURL names no bundle
+   */
+  static String bundleNameOf(final String startUrl) {
+    final int at = startUrl == null ? -1 : startUrl.indexOf(BUNDLE_SUFFIX);
+    return at == -1 ? null : startUrl.substring(at + BUNDLE_SUFFIX.length());
   }
 
   /**
@@ -146,6 +150,7 @@ final class BrowserLoginPolicy {
    */
   static boolean landedElsewhere(final String urlFieldBeforeLogin, final String bundleUrl) {
     final String host = hostOf(bundleUrl);
+
     return host != null && !namesTheSameSite(
         urlFieldBeforeLogin == null ? "" : urlFieldBeforeLogin, host);
   }

@@ -224,10 +224,10 @@ public class BrowserLoginWiringTest {
   /** Without the landed address the user has to retype where the login took them. */
   @Test
   public void theLandedAddressIsReturnedAndShown() throws IOException {
-    final String source = TestSources
+    final String first = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String done = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "public void onClickLoginDone("));
+    final String done = TestSources.balancedBlock(first,
+        TestSources.indexOf(first, "public void onClickLoginDone("));
     // The WebView's own address, not the one the activity was started with.
     assertTrue(done, done.contains("web.getUrl()"));
     assertTrue(done, done.contains("EXTRA_BUNDLE_URL, bundle.url"));
@@ -235,7 +235,17 @@ public class BrowserLoginWiringTest {
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,
         TestSources.indexOf(caller, "private void applyBrowserLogin("));
-    assertTrue(apply, apply.contains("BrowserLoginPolicy.withBundleUrl(field, bundleUrl)"));
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
+    /* The new name REPLACES any older one, because two bundles covering one site with
+       different cookie values make the engine refuse to start the crawl at all. */
+    assertTrue(apply, apply.contains("withBundleUrl("));
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames(field)"));
+    // And the files follow the names, or the engine still finds two bundles for one site.
+    final String written = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    assertTrue(written,
+        written.contains("dropOtherBundles(BrowserLoginPolicy.bundleNameOf(bundle.url))"));
     /* The widget as well as the map. setMap alone left the old text on screen and the next
        savePaneFields copied it back, so the whole feature was invisible. */
     final String setter = TestSources.balancedBlock(caller,
