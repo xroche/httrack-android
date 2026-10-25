@@ -123,6 +123,27 @@ public class HTTrackLib {
   public static native int getCustomHeaderVerdict(String headers, String line);
 
   /**
+   * The registrable domain of HOST, through the engine's own public suffix list. The browser
+   * login names its bundle after this, so the whole site shares one login rather than one host.
+   *
+   * @param host
+   *          a host name, never null
+   * @return the domain, or null when HOST has none: a public suffix, a single label or an
+   *         address
+   */
+  public static native String getRegistrableDomain(String host);
+
+  /**
+   * Why the engine would refuse NAME after "#httrack-bundle=" in a start URL. A refused name
+   * stops the whole crawl, so the login asks before it writes the file.
+   *
+   * @param name
+   *          the name to check, never null
+   * @return null when the engine takes it, or a short English reason why it does not
+   */
+  public static native String getBundleNameRefusal(String name);
+
+  /**
    * Has a native fault been recovered in this process ?
    *
    * @return true once a fault has been caught, after which every engine call is refused

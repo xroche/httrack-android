@@ -1027,12 +1027,24 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Trunk to mapper's buildCommandline()
-   * 
-   * @return
+   * Trunk to mapper's buildCommandline(), plus where this project's browser logins are kept.
+   * With no --bundle-dir the engine looks for a bundle beside the mirror, which every app on the
+   * device can read. An address naming a bundle that is gone loses the name, because the engine
+   * refuses to run at all rather than run logged out.
+   *
+   * @return the engine options, the bundle folder last
    */
   public synchronized List<String> buildCommandline() {
-    return mapper.buildCommandline();
+    final List<String> options = mapper.buildCommandline();
+    final File bundles = StoragePaths.loginBundleDir(getFilesDir(), mapper.getProjectName());
+    for (int i = 0; i < options.size(); i++) {
+      options.set(i, BrowserLoginBundle.withoutMissingBundle(options.get(i), bundles));
+    }
+    if (bundles != null && bundles.isDirectory()) {
+      options.add("--bundle-dir");
+      options.add(bundles.getAbsolutePath());
+    }
+    return options;
   }
 
   /**
@@ -2887,8 +2899,9 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Where this project's browser login is kept. Private storage, because the file holds a live
-   * session and a mirror folder is readable by every app on the device.
+   * Where the engine keeps its own cookie jar for this project. Private storage, because the
+   * jar holds whatever session the crawl picked up, and with no file named the engine saves it
+   * beside the mirror, which every app on the device can read. Nothing here writes it.
    *
    * @return the file, or null until the project has a usable name
    */
@@ -2902,19 +2915,22 @@ public class HTTrackActivity extends FragmentActivity {
   public void onClickBrowserLogin(final View view) {
     // The address field is this pane's, and the login opens what it holds right now.
     savePaneFields();
-    final File cookies = getLoginCookiesFile();
-    if (cookies == null) {
+    final File bundles = StoragePaths.loginBundleDir(getFilesDir(), mapper.getProjectName());
+    if (bundles == null) {
       Toast.makeText(this, R.string.browser_login_no_project, Toast.LENGTH_LONG).show();
       return;
     }
-    final String url = BrowserLoginPolicy.startUrl(getMap(R.id.fieldWebsiteURLs));
+    final String field = getMap(R.id.fieldWebsiteURLs);
+    final String url = BrowserLoginPolicy.startUrl(field);
     if (url == null) {
       Toast.makeText(this, R.string.browser_login_no_address, Toast.LENGTH_LONG).show();
       return;
     }
     final Intent intent = new Intent(this, BrowserLoginActivity.class);
     intent.putExtra(BrowserLoginActivity.EXTRA_URL, url);
-    intent.putExtra(BrowserLoginActivity.EXTRA_COOKIES_FILE, cookies);
+    intent.putExtra(BrowserLoginActivity.EXTRA_BUNDLE_DIR, bundles);
+    intent.putStringArrayListExtra(BrowserLoginActivity.EXTRA_CRAWL_HOSTS,
+        new ArrayList<String>(BrowserLoginPolicy.fieldHosts(field)));
     startActivityForResult(intent, ACTIVITY_BROWSER_LOGIN);
   }
 
@@ -2923,12 +2939,16 @@ public class HTTrackActivity extends FragmentActivity {
    */
   private void applyBrowserLogin(final Intent data) {
     final File cookies = getLoginCookiesFile();
-    final String agent = data.getStringExtra(BrowserLoginActivity.EXTRA_USER_AGENT);
-    if (cookies == null || agent == null || agent.length() == 0) {
+    final String name = data.getStringExtra(BrowserLoginActivity.EXTRA_BUNDLE_NAME);
+    if (cookies == null || name == null || name.length() == 0) {
       return;
     }
-    final String addresses = BrowserLoginPolicy.withLandedUrl(getMap(R.id.fieldWebsiteURLs),
-        data.getStringExtra(BrowserLoginActivity.EXTRA_LANDED_URL));
+    final String landed = data.getStringExtra(BrowserLoginActivity.EXTRA_LANDED_URL);
+    final String field = getMap(R.id.fieldWebsiteURLs);
+    final String elsewhere = BrowserLoginPolicy.landedElsewhere(field, landed)
+        ? getString(R.string.browser_login_other_site, BrowserLoginPolicy.hostOf(landed))
+        : null;
+    final String addresses = BrowserLoginPolicy.withLandedUrl(field, landed, name);
     setMap(R.id.fieldWebsiteURLs, addresses);
     /* The widget too, because this field is on the pane the user is looking at. setMap alone
        leaves the old text on screen, and the next savePaneFields copies it back over the map.
@@ -2936,10 +2956,12 @@ public class HTTrackActivity extends FragmentActivity {
     if (pane_id == LAYOUT_PROJECT_SETUP) {
       setFieldText(R.id.fieldWebsiteURLs, addresses);
     }
+    /* The engine saves its jar at the end of the crawl, and with no -%K it saves it beside the
+       mirror, in shared storage. This names a file in private storage instead, so the session
+       the site rotated during the crawl stays where the bundle put it. We never write it. */
     setMap(R.id.editCookiesFile, cookies.getAbsolutePath());
-    // The exact string, "wv" included: a clearance bound to the browser's agent breaks on any other.
-    setMap(R.id.editBrowserIdentity, agent);
-    // cookie_load() runs only when the engine accepts cookies, so an unticked box drops the file.
+    /* The bundle's cookies reach the jar only when the engine accepts cookies: with the box
+       unticked there is no jar to put them in, and the only sign is a warning Android hides. */
     setMap(R.id.checkAcceptCookies, "1");
     setMap(R.id.editNumberOfConnections,
         BrowserLoginPolicy.sockets(getMap(R.id.editNumberOfConnections)));
@@ -2950,8 +2972,9 @@ public class HTTrackActivity extends FragmentActivity {
         data.getIntExtra(BrowserLoginActivity.EXTRA_HOST_COUNT, 0),
         BrowserLoginPolicy.MAX_SOCKETS);
     // A cookie the engine's jar refuses is not saved, so saying only how many were is a lie.
-    final String message = droppedCookies == 0 ? saved
-        : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies);
+    final String message = (droppedCookies == 0 ? saved
+        : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies))
+        + (elsewhere != null ? "\n\n" + elsewhere : "");
     new AlertDialog.Builder(this).setMessage(message)
         .setPositiveButton(android.R.string.ok, null).show();
   }

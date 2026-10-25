@@ -90,6 +90,42 @@ public class StoragePathsTest {
         "P.txt.4321.tmp", "P.txt.bak.4321.tmp", "P.txt.new")), names);
   }
 
+  /** Deleting a project has to take its bundles too, and a folder goes only once it is empty. */
+  @Test
+  public void savedLoginFilesTakesTheBundlesAndNamesTheFolderLast() throws IOException {
+    final File internal = tmp.newFolder("files-bundles");
+    final File bundles = StoragePaths.loginBundleDir(internal, "P");
+    assertEquals(new File(new File(internal, "logins"), "P"), bundles);
+    assertTrue(bundles.mkdirs());
+    assertTrue(new File(bundles, "a.example.hts").createNewFile());
+    assertTrue(new File(bundles, "b.example.hts").createNewFile());
+    assertTrue(StoragePaths.loginCookiesFile(internal, "P").createNewFile());
+    final java.util.List<File> ours = StoragePaths.savedLoginFiles(internal, "P");
+    assertEquals(4, ours.size());
+    // The folder last, because File.delete() takes an empty one and nothing else.
+    assertEquals(bundles, ours.get(ours.size() - 1));
+    assertTrue(ours.toString(), ours.contains(new File(bundles, "a.example.hts")));
+    assertTrue(ours.toString(), ours.contains(new File(bundles, "b.example.hts")));
+    // Another project's bundles are its own.
+    assertTrue(StoragePaths.savedLoginFiles(internal, "Q").isEmpty());
+  }
+
+  /** The engine's own rules are stricter, but a name may never reach outside the folder. */
+  @Test
+  public void aBundleNameCannotLeaveItsFolder() {
+    final File bundles = StoragePaths.loginBundleDir(internal, "P");
+    assertEquals(new File(bundles, "a.example.hts"),
+        StoragePaths.bundleInDir(bundles, "a.example"));
+    assertNull(StoragePaths.bundleInDir(bundles, "../../a.example"));
+    assertNull(StoragePaths.bundleInDir(bundles, "a/b"));
+    assertNull(StoragePaths.bundleInDir(bundles, ".."));
+    assertNull(StoragePaths.bundleInDir(bundles, ""));
+    assertNull(StoragePaths.bundleInDir(bundles, null));
+    assertNull(StoragePaths.bundleInDir(null, "a.example"));
+    // No name can be built for a project name the path helpers refuse.
+    assertNull(StoragePaths.loginBundleDir(internal, ".."));
+  }
+
   @Test
   public void savedLoginFilesIsEmptyBeforeAnyLoginIsSaved() throws IOException {
     final File internal = tmp.newFolder("files-empty");

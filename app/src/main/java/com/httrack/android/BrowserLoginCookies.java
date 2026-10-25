@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The Netscape cookies.txt the in-app browser login hands to the engine through -%K.
+ * The Netscape records the in-app browser login puts in its {@link BrowserLoginBundle}.
  *
  * WebView gives us a "name=value; name2=value2" header string per host and no attributes, so a
  * line states the host it came from, every subdomain of it, path "/" and a session expiry.
@@ -50,21 +50,14 @@ public final class BrowserLoginCookies {
   static final int MAX_PAIR = 4096;
 
   /**
-   * Bytes we may write. The engine's jar holds 30000 and loads the mirror's own cookies.txt
-   * first, so this leaves room for both.
+   * Bytes we may write. The engine's jar holds 30000 and loads the crawl's own jar first, so
+   * this leaves room for both.
    */
   static final int MAX_BYTES = 20000;
 
-  /* Both lines are spellings cookie_known_comment accepts, so the second names the engine
-     rather than describing us. An unrecognised comment counts as a line a rewrite would lose,
-     and the engine then refuses to save its jar back, which costs us every cookie the site
-     rotated during the crawl. */
-  static final String HEADER = "# Netscape HTTP Cookie File\n"
-      + "# Written by HTTrack Website Copier\n";
-
   /** What {@link #file} produced, for the message that tells the user what was saved. */
   public static final class Result {
-    /** The file text, header included. */
+    /** The records, one per line. */
     public final String text;
 
     public final int cookies;
@@ -142,14 +135,14 @@ public final class BrowserLoginCookies {
   }
 
   /**
-   * Build the file from what each host's cookie header held.
+   * Build the records from what each host's cookie header held.
    *
    * @param cookiesByHost
    *          host to the header {@code CookieManager.getCookie()} returned for it, in visit order
    */
   public static Result file(final Map<String, String> cookiesByHost) {
-    final StringBuilder text = new StringBuilder(HEADER);
-    int size = utf8Length(HEADER);
+    final StringBuilder text = new StringBuilder();
+    int size = 0;
     int cookies = 0;
     int hosts = 0;
     int dropped = 0;

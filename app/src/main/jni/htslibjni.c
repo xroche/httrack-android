@@ -658,6 +658,54 @@ JNICALL jint Java_com_httrack_android_jni_HTTrackLib_getCustomHeaderVerdict(JNIE
   return verdict;
 }
 
+JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getRegistrableDomain(JNIEnv* env,
+                                                                            jclass clazz,
+                                                                            jstring ohost) {
+  const char *host;
+  /* Any host fits, and the engine refuses a domain this buffer cannot hold. */
+  char domain[HTS_URLMAXSIZE];
+  jstring result = NULL;
+
+  UNUSED(clazz);
+  if (ohost == NULL) {
+    throwNPException(env, "null host");
+    return NULL;
+  }
+  host = (*env)->GetStringUTFChars(env, ohost, NULL);
+  if (host == NULL) {
+    return NULL;
+  }
+  if (hts_registrable_domain(host, domain, sizeof(domain))) {
+    result = (*env)->NewStringUTF(env, domain);
+  }
+  (*env)->ReleaseStringUTFChars(env, ohost, host);
+  return result;
+}
+
+JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getBundleNameRefusal(JNIEnv* env,
+                                                                            jclass clazz,
+                                                                            jstring oname) {
+  const char *name;
+  const char *why;
+  jstring result = NULL;
+
+  UNUSED(clazz);
+  if (oname == NULL) {
+    throwNPException(env, "null bundle name");
+    return NULL;
+  }
+  name = (*env)->GetStringUTFChars(env, oname, NULL);
+  if (name == NULL) {
+    return NULL;
+  }
+  why = hts_bundle_name_refusal(name);
+  if (why != NULL) {
+    result = (*env)->NewStringUTF(env, why);
+  }
+  (*env)->ReleaseStringUTFChars(env, oname, name);
+  return result;
+}
+
 JNICALL jboolean Java_com_httrack_android_jni_HTTrackLib_nativeHasFaulted(JNIEnv* env,
                                                                          jclass clazz) {
   UNUSED(env);

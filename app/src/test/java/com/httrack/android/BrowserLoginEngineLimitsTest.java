@@ -4,15 +4,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.Test;
 
 /**
- * The cookie limits against the pinned engine, which owns them. A record passes two gates, and
- * only the tighter one decides whether the cookie is kept: cookie_load reads each field into a
- * buffer, and cookie_add then refuses a pair the jar cannot hold.
+ * The cookie and bundle limits against the pinned engine, which owns them. A record passes two
+ * gates, and only the tighter one decides whether the cookie is kept: cookie_load reads each
+ * field into a buffer, and cookie_add then refuses a pair the jar cannot hold.
  */
 public class BrowserLoginEngineLimitsTest {
   private static String source(final String name) throws IOException {
@@ -36,6 +38,19 @@ public class BrowserLoginEngineLimitsTest {
       throw new IllegalStateException("no " + regex);
     }
     final int value = Integer.parseInt(match.group(1));
+    if (match.find()) {
+      throw new IllegalStateException("more than one " + regex);
+    }
+    return value;
+  }
+
+  /** The one string a regex matched, read the way {@link #only} reads a number. */
+  private static String text(final String source, final String regex) {
+    final Matcher match = Pattern.compile(regex).matcher(source);
+    if (!match.find()) {
+      throw new IllegalStateException("no " + regex);
+    }
+    final String value = match.group(1);
     if (match.find()) {
       throw new IllegalStateException("more than one " + regex);
     }
@@ -99,23 +114,63 @@ public class BrowserLoginEngineLimitsTest {
     assertTrue(longest + " vs " + lineMax, longest < lineMax);
   }
 
+  /** The first line the engine accepts, which is the only one that gets the file read at all. */
+  @Test
+  public void theBundleHeaderIsTheLineTheEngineAccepts() throws IOException {
+    final String bundle = source("htsbundle.c");
+    final String magic = text(bundle, "static const char magic\\[\\] = \"([^\"]*)\"");
+    assertEquals(magic + "1", BrowserLoginBundle.HEADER);
+    // Only version 1 is read, so a header naming another major would stop the whole run.
+    assertTrue("the engine no longer refuses every major but 1",
+        bundle.contains("if (version != 1)"));
+  }
+
+  /** A line the engine will not read stops the run, so every line we write has to fit. */
+  @Test
+  public void theBundleLineCapIsTheEnginesOwn() throws IOException {
+    assertEquals(only(source("htsbundle.c"), "#define BUNDLE_LINE_MAX (\\d+)"),
+        BrowserLoginBundle.MAX_LINE);
+    final int longest = BrowserLoginCookies.MAX_DOMAIN + BrowserLoginCookies.MAX_PAIR
+        + "\tTRUE\t/\tFALSE\t0\t\t".length();
+    assertTrue("a record we may write is longer than a bundle line",
+        longest < BrowserLoginBundle.MAX_LINE);
+  }
+
+  /** A name the engine refuses ABORTS the mirror, so the writer asks it before it writes. */
+  @Test
+  public void theBundleNameCapIsTheEnginesOwn() throws IOException {
+    assertEquals(only(source("htsbundle.h"), "HTS_BUNDLE_NAME_MAX (\\d+)"),
+        BrowserLoginBundle.MAX_NAME);
+  }
+
   /**
-   * Every header line has to be one cookie_known_comment accepts. The engine counts a comment
-   * it does not know as a line a rewrite would lose, and then refuses to save its jar back over
-   * our file, so the crawl silently keeps the stale session instead of the rotated one.
+   * The engine cuts a start URL at the FIRST suffix, which is why ours is appended last and
+   * never twice: a second one leaves a '#' inside the name, and a refused name stops the run.
    */
   @Test
-  public void everyHeaderLineIsACommentTheEngineKnows() throws IOException {
-    // The array initializer alone, so a comment elsewhere in the function cannot pose as it.
-    final String known = TestSources.between(source("htsbauth.c"), "known[] = {", "};");
-    final java.util.Map<String, String> host = new java.util.LinkedHashMap<String, String>();
-    host.put("h.example", "a=1");
-    // What file() emits, not the constant, so an extra comment from anywhere is caught.
-    for (final String line : BrowserLoginCookies.file(host).text.split("\n")) {
-      if (line.isEmpty() || line.charAt(0) != '#') {
-        break;
+  public void theSuffixIsTheEnginesOwnAndTheFirstOneWins() throws IOException {
+    assertEquals(text(source("htsbundle.h"), "#define HTS_BUNDLE_SUFFIX \"([^\"]*)\""),
+        BrowserLoginBundle.SUFFIX);
+    assertTrue("bundle_cut no longer takes the first suffix",
+        source("htsbundle.c").contains("strstr(url, HTS_BUNDLE_SUFFIX)"));
+  }
+
+  /** Every key the writer emits has to be one the reader knows: an unknown key stops the run. */
+  @Test
+  public void everyKeyTheWriterEmitsIsOneTheEngineReads() throws IOException {
+    final String parse = source("htsbundle.c");
+    final String reader = TestSources.balancedBlock(parse,
+        TestSources.indexOf(parse, "static hts_boolean bundle_parse("));
+    final List<String> scope = Arrays.asList("a.example", "b.example");
+    // What text() emits, not the constants, so a key added anywhere in it is caught.
+    for (final String line : BrowserLoginBundle.text("Mozilla/5.0", scope, "").split("\n")) {
+      if (line.charAt(0) == '#') {
+        continue;
       }
-      assertTrue(line + " is not in cookie_known_comment", known.contains('"' + line + '"'));
+      final int space = line.indexOf(' ');
+      final String key = space == -1 ? line : line.substring(0, space);
+      assertTrue(key + " is not a key bundle_parse reads",
+          reader.contains("key_is(line, klen, \"" + key + "\")"));
     }
   }
 

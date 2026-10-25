@@ -252,6 +252,40 @@ final class StoragePaths {
   }
 
   /**
+   * Where PROJECTNAME's login bundles are kept, which the crawl passes as --bundle-dir. Private
+   * storage, for the same reason as {@link #loginCookiesFile}, and one folder per project so
+   * two projects logging into the same site do not share a bundle.
+   *
+   * @param internal
+   *          getFilesDir(), the app's own storage
+   * @param projectName
+   *          the project, which has to be one valid path segment
+   * @return the folder, or null when there is no name we may build a path from
+   */
+  static File loginBundleDir(final File internal, final String projectName) {
+    final File login = loginCookiesFile(internal, projectName);
+    return login == null ? null : new File(login.getParentFile(), projectName);
+  }
+
+  /**
+   * The bundle called NAME in DIR, which the engine reads as NAME.hts.
+   *
+   * @param dir
+   *          a {@link #loginBundleDir}
+   * @param name
+   *          the bundle name, which the engine has already accepted
+   * @return the file, or null when NAME could name anything but a file in DIR
+   */
+  static File bundleInDir(final File dir, final String name) {
+    // The engine's own rules are stricter; this one only keeps the write inside the folder.
+    if (dir == null || name == null || name.length() == 0 || name.indexOf('/') != -1
+        || name.indexOf(File.separatorChar) != -1 || name.contains("..")) {
+      return null;
+    }
+    return new File(dir, name + BrowserLoginBundle.EXTENSION);
+  }
+
+  /**
    * Every file holding PROJECTNAME's saved login: the one the engine reads, plus whatever its
    * own save left beside it.
    *
@@ -259,7 +293,8 @@ final class StoragePaths {
    *          getFilesDir(), the app's own storage
    * @param projectName
    *          the project, which has to be one valid path segment
-   * @return the files to delete, empty when nothing is saved
+   * @return the files to delete, each one before the folder that holds it, empty when nothing
+   *         is saved
    */
   static List<File> savedLoginFiles(final File internal, final String projectName) {
     final File login = loginCookiesFile(internal, projectName);
@@ -272,6 +307,14 @@ final class StoragePaths {
           files.add(file);
         }
       }
+    }
+    final File bundles = loginBundleDir(internal, projectName);
+    final File[] inside = bundles != null ? bundles.listFiles() : null;
+    if (inside != null) {
+      for (final File file : inside) {
+        files.add(file);
+      }
+      files.add(bundles);
     }
     return files;
   }

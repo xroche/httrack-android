@@ -2,6 +2,8 @@ package com.httrack.android;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -79,23 +81,28 @@ final class BrowserLoginPolicy {
   }
 
   /**
-   * The address field with LANDED added on a line of its own. Where the user ended up is what
-   * they opened the browser to reach, and a login usually ends deeper than it began. The
-   * addresses already there are left alone, so the user trims what they do not want.
+   * The address field with LANDED added on a line of its own, naming the bundle it belongs to.
+   * Where the user ended up is what they opened the browser to reach, and a login usually ends
+   * deeper than it began. The addresses already there are left alone, so the user trims what
+   * they do not want.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
    * @param landed
    *          the address the login ended on, which is ignored unless it is an https address
    *          naming a host
+   * @param bundleName
+   *          the bundle the engine must read for that address, or null for none
    * @return the field's new text
    */
-  static String withLandedUrl(final String urlField, final String landed) {
+  static String withLandedUrl(final String urlField, final String landed,
+      final String bundleName) {
     final String current = urlField == null ? "" : urlField.trim();
-    final String address = crawlRoot(landed);
-    if (address == null || !namesTheSameSite(current, hostOf(address))) {
+    final String root = crawlRoot(landed);
+    if (root == null) {
       return current;
     }
+    final String address = BrowserLoginBundle.startUrl(root, bundleName);
     for (final String token : CommandlineTokens.urlTokens(current)) {
       if (secureUrl(token).equals(address)) {
         return current;
@@ -105,13 +112,48 @@ final class BrowserLoginPolicy {
   }
 
   /**
+   * Did the login end on a site the address field does not name? A login can end on an identity
+   * provider, and that address is then a second crawl root with a live session, so the user is
+   * told before the crawl rather than left to read the field. The address is still filled in,
+   * because a field the user has to retype by hand is the worse failure.
+   *
+   * @param urlField
+   *          the field's text as it was before the login
+   * @param landed
+   *          the address the login ended on
+   * @return true when LANDED names a host no address in the field shares a site with
+   */
+  static boolean landedElsewhere(final String urlField, final String landed) {
+    final String root = crawlRoot(landed);
+    return root != null && !namesTheSameSite(urlField == null ? "" : urlField, hostOf(root));
+  }
+
+  /**
+   * Every host the address field names, which are the hosts a crawl will start from.
+   *
+   * @param urlField
+   *          the field's text
+   * @return the hosts, in the field's order, without repeats
+   */
+  static List<String> fieldHosts(final String urlField) {
+    final List<String> found = new ArrayList<String>();
+    for (final String token : CommandlineTokens.urlTokens(urlField)) {
+      final String host = hostOf(secureUrl(token));
+      if (host != null && !found.contains(host)) {
+        found.add(host);
+      }
+    }
+    return found;
+  }
+
+  /**
    * LANDED as an address the crawl may start from, or null when it is none. The address field
-   * is saved into the project's profile and handed to the engine, so a secret must not reach
-   * it: userinfo carries a password, and a query or fragment carries an OAuth code or token.
+   * is saved into the project's profile, which lives in shared storage, so userinfo is refused
+   * outright and the fragment goes.
    *
    * @param landed
    *          the address the login ended on
-   * @return the address without its query or fragment, or null
+   * @return the address without its fragment, or null
    */
   private static String crawlRoot(final String landed) {
     if (hostOf(landed) == null) {
@@ -127,20 +169,11 @@ final class BrowserLoginPolicy {
     if (uri.getUserInfo() != null) {
       return null;
     }
-    /* Cutting the query costs a crawl root that needed one, which is affordable here and not
-       everywhere: onClickBrowserLogin refuses to open without an address, so the field already
-       names a start and this address is an addition to it. WinHTTrack keeps the query for that
-       reason, because its field is usually empty and this would be the only root. */
-    final int query = landed.indexOf('?');
+    /* The query stays, because it can be the page the user asked for, and both front ends now
+       keep it. The fragment goes: a sign-in returns its token there, no server ever reads it,
+       and the bundle's own name takes its place. */
     final int fragment = landed.indexOf('#');
-    int cut = landed.length();
-    if (query != -1) {
-      cut = query;
-    }
-    if (fragment != -1 && fragment < cut) {
-      cut = fragment;
-    }
-    return landed.substring(0, cut);
+    return fragment == -1 ? landed : landed.substring(0, fragment);
   }
 
   /**

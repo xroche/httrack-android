@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.httrack.android.jni.HTTrackLib;
+
 import android.app.ActionBar;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -64,11 +66,14 @@ public class BrowserLoginActivity extends FragmentActivity {
   /** The address to open, which {@link BrowserLoginPolicy#startUrl} has already vetted. */
   static final String EXTRA_URL = "com.httrack.android.loginUrl";
 
-  /** Where to write the cookies.txt the engine will read. */
-  static final String EXTRA_COOKIES_FILE = "com.httrack.android.cookiesFile";
+  /** Where to write the login bundle the engine will read, the crawl's --bundle-dir. */
+  static final String EXTRA_BUNDLE_DIR = "com.httrack.android.bundleDir";
 
-  /** Results: the browser's own User-Agent, and what the file ended up holding. */
-  static final String EXTRA_USER_AGENT = "com.httrack.android.userAgent";
+  /** The hosts the crawl starts from, which are asked for cookies along with the visited ones. */
+  static final String EXTRA_CRAWL_HOSTS = "com.httrack.android.crawlHosts";
+
+  /** Results: the bundle the crawl must name, and what it ended up holding. */
+  static final String EXTRA_BUNDLE_NAME = "com.httrack.android.bundleName";
 
   /** Where the login ended, which is the address the user opened the browser to reach. */
   static final String EXTRA_LANDED_URL = "com.httrack.android.landedUrl";
@@ -80,10 +85,16 @@ public class BrowserLoginActivity extends FragmentActivity {
 
   private WebView web;
 
-  private File cookiesFile;
+  private File bundleDir;
 
   /** Hosts reached, in visit order, so the login's first host leads the file. */
   private final Set<String> hosts = new LinkedHashSet<String>();
+
+  /**
+   * Hosts the crawl will start from. Asked for cookies too, because getCookie answers for any
+   * host, and a crawl host that shares a parent domain with a visited one inherits its cookies.
+   */
+  private final Set<String> crawlHosts = new LinkedHashSet<String>();
 
   private static final String STATE_HOSTS = "hosts";
 
@@ -94,8 +105,13 @@ public class BrowserLoginActivity extends FragmentActivity {
 
     final Bundle extras = getIntent().getExtras();
     final String url = extras != null ? extras.getString(EXTRA_URL) : null;
-    cookiesFile = extras != null ? File.class.cast(extras.get(EXTRA_COOKIES_FILE)) : null;
-    if (url == null || cookiesFile == null) {
+    bundleDir = extras != null ? File.class.cast(extras.get(EXTRA_BUNDLE_DIR)) : null;
+    final List<String> starts =
+        extras != null ? extras.getStringArrayList(EXTRA_CRAWL_HOSTS) : null;
+    if (starts != null) {
+      crawlHosts.addAll(starts);
+    }
+    if (url == null || bundleDir == null) {
       Log.w(getClass().getSimpleName(), "no address to log in to");
       finish();
       return;
@@ -212,7 +228,7 @@ public class BrowserLoginActivity extends FragmentActivity {
   }
 
   /**
-   * Drop the saved session: the browser's cookies and the file the engine would have read.
+   * Drop the saved session: the browser's cookies and every bundle the engine would have read.
    *
    * This signs the user out of every site in this app's browser, not just this project's. That
    * is deliberate. CookieManager has no per-site removal, and nothing enumerates what a
@@ -224,14 +240,17 @@ public class BrowserLoginActivity extends FragmentActivity {
    * WebView data directory, which means a separate process.
    */
   private void forget() {
-    if (cookiesFile == null) {
+    if (bundleDir == null) {
       return;
     }
     CookieManager.getInstance().removeAllCookies(null);
     CookieManager.getInstance().flush();
     hosts.clear();
-    if (cookiesFile.exists() && !cookiesFile.delete()) {
-      Log.w(getClass().getSimpleName(), "could not delete " + cookiesFile);
+    final File[] saved = bundleDir.listFiles();
+    for (int i = 0; saved != null && i < saved.length; i++) {
+      if (!saved[i].delete()) {
+        Log.w(getClass().getSimpleName(), "could not delete " + saved[i]);
+      }
     }
     if (web != null) {
       web.clearCache(true);
@@ -249,8 +268,10 @@ public class BrowserLoginActivity extends FragmentActivity {
   /** "Use this login" */
   public void onClickLoginDone(final View view) {
     CookieManager.getInstance().flush();
+    final Set<String> asked = new LinkedHashSet<String>(hosts);
+    asked.addAll(crawlHosts);
     final Map<String, String> byHost = new LinkedHashMap<String, String>();
-    for (final String host : hosts) {
+    for (final String host : asked) {
       final String header = CookieManager.getInstance()
           .getCookie(BrowserLoginPolicy.SCHEME + "://" + host + "/");
       if (header != null && header.length() != 0) {
@@ -262,20 +283,74 @@ public class BrowserLoginActivity extends FragmentActivity {
       Toast.makeText(this, getString(R.string.browser_login_no_cookies), Toast.LENGTH_LONG).show();
       return;
     }
-    if (!writeOwnerOnly(cookiesFile, result.text)) {
+    // The WebView's own current address, so a redirect chain reports where it stopped.
+    final String landed = web.getUrl();
+    final String name = bundleName(BrowserLoginPolicy.hostOf(landed));
+    final File bundle = StoragePaths.bundleInDir(bundleDir, name);
+    if (bundle == null) {
+      Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
+      return;
+    }
+    final String text = BrowserLoginBundle.text(web.getSettings().getUserAgentString(),
+        scopeDomains(name, byHost.keySet()), result.text);
+    if (!writeOwnerOnly(bundle, text)) {
       Toast.makeText(this, getString(R.string.browser_login_write_failed), Toast.LENGTH_LONG)
           .show();
       return;
     }
     final Intent data = new Intent();
-    data.putExtra(EXTRA_USER_AGENT, web.getSettings().getUserAgentString());
-    // The WebView's own current address, so a redirect chain reports where it stopped.
-    data.putExtra(EXTRA_LANDED_URL, web.getUrl());
+    data.putExtra(EXTRA_BUNDLE_NAME, name);
+    data.putExtra(EXTRA_LANDED_URL, landed);
     data.putExtra(EXTRA_COOKIE_COUNT, result.cookies);
     data.putExtra(EXTRA_HOST_COUNT, result.hosts);
     data.putExtra(EXTRA_DROPPED_COUNT, result.dropped);
     setResult(RESULT_OK, data);
     finish();
+  }
+
+  /**
+   * What to call the bundle for a login that ended on HOST. The whole site shares one bundle,
+   * because two bundles covering one site with different identities abort the mirror.
+   *
+   * @return the name the engine accepts, or null when it refuses every name we can build
+   */
+  private static String bundleName(final String host) {
+    if (host == null || !HTTrackLib.loadLibraries()) {
+      return null;
+    }
+    final String domain = HTTrackLib.getRegistrableDomain(host);
+    final String name = domain != null ? domain : host;
+    if (HTTrackLib.getBundleNameRefusal(name) == null) {
+      return name;
+    }
+    // The same retry WinHTTrack makes: a name the engine reserves is fine one character in.
+    final String prefixed = "_" + name;
+    return HTTrackLib.getBundleNameRefusal(prefixed) == null ? prefixed : null;
+  }
+
+  /**
+   * The scope lines the bundle needs. The engine takes the registrable domain of the start URL
+   * that names the bundle, which covers the usual login of one site, so nothing is written for
+   * that case. A project mirroring two sites with one login needs every domain named, because
+   * one scope line replaces the default rather than adding to it.
+   *
+   * @param name
+   *          the bundle's name, which is already the landed site's domain
+   * @param cookieHosts
+   *          every host that gave a cookie
+   * @return the domains to write, empty to leave the engine its default
+   */
+  private static List<String> scopeDomains(final String name, final Set<String> cookieHosts) {
+    final Set<String> domains = new LinkedHashSet<String>();
+    for (final String host : cookieHosts) {
+      final String domain = HTTrackLib.getRegistrableDomain(host);
+      domains.add(domain != null ? domain : host);
+    }
+    if (domains.size() <= 1) {
+      return new ArrayList<String>();
+    }
+    domains.add(name);
+    return new ArrayList<String>(domains);
   }
 
   /**
