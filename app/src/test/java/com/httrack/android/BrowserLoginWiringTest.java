@@ -102,40 +102,29 @@ public class BrowserLoginWiringTest {
         "public void onClickBrowserLogin(", "public synchronized List<String> buildCommandline()" }) {
       final String body = TestSources.balancedBlock(source, TestSources.indexOf(source, call));
       assertTrue(call, body.contains("getFilesDir()"));
-      /* Every way out of private storage, not just the two mirror helpers: a mutant returning
-         an external path behind a getFilesDir() test passed the earlier version of this. */
-      for (final String shared : new String[] { "getProjectRootFile()", "getTargetFile()",
-          "getExternalStorageDirectory", "getExternalFilesDir", "getExternalCacheDir",
-          "StoragePaths.projectRoot", "Environment." }) {
-        assertFalse(call + " reaches " + shared, body.contains(shared));
-      }
+      /* The path has to come from a StoragePaths helper and nowhere else. A blocklist of
+         external-storage calls was defeated twice, once by a mutant returning an external path
+         behind a getFilesDir() test and once by new File(getFilesDir(), "../../../sdcard"),
+         so this asks what builds the path instead of what it must not mention. Where those
+         helpers put a file is StoragePathsTest's question, over real files. */
+      assertTrue(call, body.contains("StoragePaths."));
+      assertFalse(call + " builds its own path", body.contains("new File("));
     }
   }
 
   /**
-   * The engine looks for a bundle beside the mirror unless it is told otherwise, and a mirror
-   * folder is readable by every app, so the crawl has to name the private folder itself.
+   * Both crawl paths go through buildCommandline, so the argv decision has to be made there.
+   * The job gets the array it builds, and a login left out of that array would make a
+   * backgrounded crawl run logged out. What the decision IS lives in BrowserLoginPolicyTest.
    */
   @Test
   public void theBundleFolderReachesTheArgv() throws IOException {
-    // The raw source, because the option's own spelling is the point of this one.
-    final String source = TestSources.javaSource("HTTrackActivity");
-    final String blanked = TestSources.withoutCommentsAndStrings(source);
-    final int at = source.indexOf('{',
-        TestSources.indexOf(blanked, "public synchronized List<String> buildCommandline()"));
-    final String body = source.substring(at, at + TestSources.balancedBlock(blanked, at).length());
-    assertTrue(body, body.contains("StoragePaths.loginBundleDir("));
-    /* The option and its value as separate tokens, which is the only form the engine's parser
-       reads: it compares argv[na] and then takes the next one. */
-    final int option = body.indexOf("options.add(\"--bundle-dir\")");
-    assertTrue(body, option != -1);
-    assertTrue(body, body.indexOf("options.add(bundles.getAbsolutePath())", option) != -1);
-    /* A bundle's cookies need a jar, and -b0 leaves none, so a saved login wins over a box the
-       user unticked after saving it. Without this the crawl runs logged out in silence. */
-    assertTrue(body, body.contains("options.remove(\"-b0\")"));
-    assertTrue(body, body.contains("BrowserLoginPolicy.BUNDLE_SUFFIX"));
-    /* Both crawl paths go through here: the job gets the array this builds, so a login left out
-       of it would make a backgrounded crawl run logged out. */
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
+    final String body = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public synchronized List<String> buildCommandline()"));
+    assertTrue(body, body.contains("BrowserLoginPolicy.withLogin(mapper.buildCommandline()"));
+    assertTrue(body, body.contains("StoragePaths.loginBundleDir(getFilesDir()"));
     final String job = TestSources.withoutCommentsAndStrings(
         TestSources.javaSource("MirrorJobService"));
     assertTrue(job, job.contains("extras.getStringArray(EXTRA_OPTIONS)"));

@@ -1027,31 +1027,14 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Trunk to mapper's buildCommandline(), plus where this project's browser logins are kept.
-   * With no --bundle-dir the engine looks for a bundle beside the mirror, which every app on the
-   * device can read.
+   * Trunk to mapper's buildCommandline(), plus what a saved login needs. See
+   * {@link BrowserLoginPolicy#withLogin}, which owns that decision.
    *
    * @return the engine options, the bundle folder last
    */
   public synchronized List<String> buildCommandline() {
-    final List<String> options = mapper.buildCommandline();
-    final File bundles = StoragePaths.loginBundleDir(getFilesDir(), mapper.getProjectName());
-    boolean named = false;
-
-    for (final String option : options) {
-      named = named || option.indexOf(BrowserLoginPolicy.BUNDLE_SUFFIX) != -1;
-    }
-    /* A bundle's cookies reach the jar only when the engine accepts cookies, and -b0 leaves no
-       jar to put them in. The crawl would run logged out, and the only sign is a warning Android
-       hides, so a saved login wins over a box the user unticked after saving it. */
-    if (named) {
-      options.remove("-b0");
-    }
-    if (bundles != null && bundles.isDirectory()) {
-      options.add("--bundle-dir");
-      options.add(bundles.getAbsolutePath());
-    }
-    return options;
+    return BrowserLoginPolicy.withLogin(mapper.buildCommandline(),
+        StoragePaths.loginBundleDir(getFilesDir(), mapper.getProjectName()));
   }
 
   /**

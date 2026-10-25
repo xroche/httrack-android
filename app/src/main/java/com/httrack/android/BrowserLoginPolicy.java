@@ -1,5 +1,6 @@
 package com.httrack.android;
 
+import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -192,6 +193,39 @@ final class BrowserLoginPolicy {
       }
     }
     return found;
+  }
+
+  /**
+   * OPTIONS with what a saved login needs, which is the whole argv decision in one place.
+   *
+   * A bundle's cookies reach the jar only when the engine accepts cookies, and -b0 leaves no
+   * jar to put them in. The crawl would then run logged out, and the only sign is a warning
+   * Android hides, so a saved login wins over a box the user unticked after saving it.
+   *
+   * With no --bundle-dir the engine looks for the bundle beside the mirror, which every app on
+   * the device can read.
+   *
+   * @param options
+   *          what the option mapper emitted, start URLs included
+   * @param bundleDir
+   *          where this project's bundles are kept, or null when it has none
+   * @return the options to hand the engine, the bundle folder last
+   */
+  static List<String> withLogin(final List<String> options, final File bundleDir) {
+    final List<String> engine = new ArrayList<String>(options);
+    boolean named = false;
+
+    for (final String option : engine) {
+      named = named || option.indexOf(BUNDLE_SUFFIX) != -1;
+    }
+    if (named) {
+      engine.remove("-b0");
+    }
+    if (bundleDir != null && bundleDir.isDirectory()) {
+      engine.add("--bundle-dir");
+      engine.add(bundleDir.getAbsolutePath());
+    }
+    return engine;
   }
 
   /**

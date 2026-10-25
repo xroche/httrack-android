@@ -100,26 +100,22 @@ public class BrowserLoginEngineLimitsTest {
   }
 
   /**
-   * The engine's paste reader drops every comment line, which is why the records we hand it
-   * carry no Netscape header. A reader that kept comments would read ours as a cookie.
+   * The whole bundle is the engine's to write, and this app leans on two properties of that
+   * call: it is exported, and it refuses rather than keeping a file its own loader rejects.
    */
   @Test
-  public void thePasteReaderDropsEveryCommentLine() throws IOException {
-    final String reader = TestSources.balancedBlock(source("htsbundle.c"),
-        TestSources.indexOf(source("htsbundle.c"), "static void paste_records("));
-    assertTrue(reader, reader.contains("s[0] != '#'"));
-    // Except this one, which marks a cookie rather than a comment, and which we never write.
-    assertTrue(reader, reader.contains("httponly"));
-  }
-
-  /** The whole bundle is the engine's to write, so the entry point has to be exported. */
-  @Test
-  public void theBundleWriterIsAnExportedEngineCall() throws IOException {
+  public void theBundleWriterIsAnExportedEngineCallThatReadsItsOwnOutputBack() throws IOException {
     assertTrue("hts_bundle_from_paste is no longer exported",
         source("httrack-library.h").contains("HTSEXT_API hts_boolean hts_bundle_from_paste("));
-    // It reads the file back through the engine's own loader before keeping it.
     final String paste = source("htsbundle.c");
-    assertTrue(paste, paste.contains("bundle_load_src(opt, &check, &src"));
+    // Inside that function, not anywhere in the file, and the failure has to stop the write.
+    final String body = TestSources.balancedBlock(paste,
+        TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste("));
+    final int read = body.indexOf("bundle_load_src(opt, &check, &src");
+    assertTrue(body, read != -1);
+    assertTrue(body, body.startsWith("if (!", body.lastIndexOf("if (!", read)));
+    assertTrue(body, body.indexOf("PASTE_FAIL", read) != -1);
+    assertTrue(body, body.indexOf("cookie_write_replace", read) > read);
   }
 
   /** Our file has to leave the mirror's own cookies.txt room in the same jar. */

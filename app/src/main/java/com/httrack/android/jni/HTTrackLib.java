@@ -147,7 +147,7 @@ public class HTTrackLib {
    * applies its own caps, and reads the file back through its own loader before keeping it.
    *
    * @param paste
-   *          the cookies as a Netscape cookies.txt text, whose first line must say so
+   *          the cookies as Netscape cookies.txt records, one per line
    * @param folder
    *          where to write, which has to exist
    * @param agent

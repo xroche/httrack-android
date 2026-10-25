@@ -5,12 +5,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /** Which address the login window opens, and what the hand-off changes about the crawl. */
 public class BrowserLoginPolicyTest {
+  @Rule
+  public final TemporaryFolder tmp = new TemporaryFolder();
+
   @Test
   public void aBareHostGainsTheSecureScheme() {
     assertEquals("https://www.example.com", BrowserLoginPolicy.startUrl("www.example.com"));
@@ -199,6 +208,33 @@ public class BrowserLoginPolicyTest {
     // Nothing to warn about when the engine wrote nothing.
     assertFalse(BrowserLoginPolicy.landedElsewhere(field, null));
     assertFalse(BrowserLoginPolicy.landedElsewhere(field, "about:blank"));
+  }
+
+  /**
+   * The whole argv decision, which no grep over the activity could hold: -b0 voids a saved
+   * login in silence, and without --bundle-dir the engine looks for the bundle beside the
+   * mirror, in shared storage.
+   */
+  @Test
+  public void aSavedLoginDecidesTwoThingsAboutTheArgv() throws IOException {
+    final File dir = tmp.newFolder("logins", "P");
+    final List<String> named = Arrays.asList("-b0", "-c2", WRITTEN);
+    final List<String> plain = Arrays.asList("-b0", "-c2", "https://a.example/");
+
+    // A start URL names a bundle, so the unticked cookie box loses.
+    assertEquals(Arrays.asList("-c2", WRITTEN, "--bundle-dir", dir.getAbsolutePath()),
+        BrowserLoginPolicy.withLogin(named, dir));
+    // No bundle named, so the user's own choice stands.
+    assertEquals(Arrays.asList("-b0", "-c2", "https://a.example/", "--bundle-dir",
+        dir.getAbsolutePath()), BrowserLoginPolicy.withLogin(plain, dir));
+    // No folder, so no option: a project that never saved a login has none.
+    assertEquals(Arrays.asList("-c2", WRITTEN), BrowserLoginPolicy.withLogin(named, null));
+    assertEquals(Arrays.asList("-c2", WRITTEN),
+        BrowserLoginPolicy.withLogin(named, new File(dir, "absent")));
+    // Nothing else is touched, and the caller's own list is left alone.
+    final List<String> given = new ArrayList<String>(named);
+    assertEquals(3, BrowserLoginPolicy.withLogin(given, null).size() + 1);
+    assertEquals(named, given);
   }
 
   /** The hosts the crawl starts from, folded into the cookie sweep. */
