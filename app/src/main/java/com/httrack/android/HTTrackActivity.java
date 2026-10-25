@@ -2942,9 +2942,8 @@ public class HTTrackActivity extends FragmentActivity {
   }
 
   /**
-   * Point the crawl at the login the browser window saved, and tell the user what that changed.
-   * Forget takes the names back out of the address field, because a start URL naming a bundle
-   * that is gone stops the crawl at startup rather than running it logged out.
+   * Point the crawl at the login the browser window saved, or drop the bundle names from the
+   * address field when Forget ran.
    */
   private void applyBrowserLogin(final Intent data) {
     final File cookies = getLoginCookiesFile();

@@ -167,10 +167,7 @@ public class BrowserLoginWiringTest {
     }
   }
 
-  /**
-   * getCookie answers for any host, so a crawl host sharing a parent domain with a visited one
-   * still yields that parent's cookies. Asking only the visited hosts leaves those behind.
-   */
+  /** The hosts the crawl starts from have to reach the cookie sweep. */
   @Test
   public void theCrawlsOwnHostsAreAskedForCookies() throws IOException {
     final String caller = TestSources

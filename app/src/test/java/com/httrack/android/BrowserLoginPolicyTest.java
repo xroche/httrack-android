@@ -185,10 +185,7 @@ public class BrowserLoginPolicyTest {
     assertFalse(BrowserLoginPolicy.landedElsewhere(field, "about:blank"));
   }
 
-  /**
-   * The hosts the crawl starts from are asked for cookies too: getCookie answers for any host,
-   * and one that shares a parent domain with a visited host inherits its cookies.
-   */
+  /** The hosts the crawl starts from, folded into the cookie sweep. */
   @Test
   public void theFieldsOwnHostsAreListedForTheCookieSweep() {
     assertEquals(Arrays.asList("a.example", "b.example"),

@@ -306,13 +306,16 @@ public class BrowserLoginActivity extends FragmentActivity {
           .show();
       return;
     }
+    if (!HTTrackLib.loadLibraries()) {
+      Toast.makeText(this, getString(R.string.browser_login_write_failed), Toast.LENGTH_LONG)
+          .show();
+      return;
+    }
     /* The engine writes the file: it owns the bundle format, the name, the scope, the caps and
        the address rules, and it reads the result back through its own loader before keeping it.
        web.getUrl() is the WebView's own address, so a redirect chain reports where it stopped. */
-    final HTTrackLib.LoginBundle bundle = HTTrackLib.loadLibraries()
-        ? HTTrackLib.writeLoginBundle(result.text, bundleDir.getAbsolutePath(),
-            web.getSettings().getUserAgentString(), web.getUrl())
-        : null;
+    final HTTrackLib.LoginBundle bundle = HTTrackLib.writeLoginBundle(result.text,
+        bundleDir.getAbsolutePath(), web.getSettings().getUserAgentString(), web.getUrl());
     if (bundle == null) {
       Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
       return;
