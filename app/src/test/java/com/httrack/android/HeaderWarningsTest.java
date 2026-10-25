@@ -1,6 +1,7 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -122,6 +123,48 @@ public class HeaderWarningsTest {
         Arrays.asList("1:" + HeaderWarnings.REASON_REPLACED,
             "2:" + HeaderWarnings.REASON_REPLACED),
         report("Cookie: a\nCookie: b\nCookie: c", verdicts));
+    // A line between them, so naming only the line just above would name the wrong one.
+    final Fake gapped = new Fake()
+        .on("Host: a\r\nX-A: 1", "Host: b", HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Host: a", "Host: b", HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Host: a\r\nX-A: 1\r\nHost: b", "Host: c",
+            HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Host: a", "Host: c", HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Host: b", "Host: c", HTTrackLib.HEADER_SENT_REPLACES_EARLIER);
+    assertEquals(
+        Arrays.asList("1:" + HeaderWarnings.REASON_REPLACED,
+            "3:" + HeaderWarnings.REASON_REPLACED),
+        report("Host: a\nX-A: 1\nHost: b\nHost: c", gapped));
+  }
+
+  /** A dropped line is still an earlier line, or a later one is judged against the wrong text. */
+  @Test
+  public void aDroppedLineStillCountsAsAnEarlierLine() {
+    final Fake verdicts = new Fake()
+        .on(null, "Connection: close", HTTrackLib.HEADER_DROPPED_FRAMING)
+        .on("Connection: close", "X-A: 1", HTTrackLib.HEADER_SENT);
+    assertEquals(Arrays.asList("1:" + HeaderWarnings.REASON_FRAMING),
+        report("Connection: close\nX-A: 1", verdicts));
+    assertEquals(Arrays.asList("<null> => Connection: close",
+        "Connection: close => X-A: 1"), verdicts.asked);
+  }
+
+  /** A conditional line is reported wherever it sits, not only in a box of its own. */
+  @Test
+  public void aConditionalLineIsReportedInsideALongerBox() {
+    final Fake verdicts = new Fake()
+        .on("X-A: 1", "Range: bytes=0-1", HTTrackLib.HEADER_SENT_UNLESS_ENGINE_OVERRIDES);
+    assertEquals(Arrays.asList("2:" + HeaderWarnings.REASON_CONDITIONAL),
+        report("X-A: 1\nRange: bytes=0-1\nX-B: 2", verdicts));
+  }
+
+  /** Only a tablet Back leaves for good without a tab change to show the warning anyway. */
+  @Test
+  public void onlyATabletBackNeedsTheWarningBeforeLeaving() {
+    assertTrue(HeaderWarnings.warnsBeforeLeaving(true, true));
+    assertFalse(HeaderWarnings.warnsBeforeLeaving(true, false));
+    assertFalse(HeaderWarnings.warnsBeforeLeaving(false, true));
+    assertFalse(HeaderWarnings.warnsBeforeLeaving(false, false));
   }
 
   /** A line of another field is not a loser, however many lines separate them. */

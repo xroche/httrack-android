@@ -12,10 +12,8 @@ import android.widget.TextView;
 import com.httrack.android.jni.HTTrackLib;
 
 /**
- * Which of the user's extra header lines the crawl will not send as typed. The engine says why
- * on stderr, which this app discards, so the header would otherwise go missing with no message.
- * The engine answers the question itself, so nothing here knows what a header name may hold or
- * which names it refuses.
+ * Which of the user's extra header lines the crawl will not send as typed. The engine answers
+ * that itself, so nothing here knows what a header name may hold or which names it refuses.
  */
 final class HeaderWarnings {
   private HeaderWarnings() {
@@ -123,6 +121,16 @@ final class HeaderWarnings {
       }
     }
     return out;
+  }
+
+  /**
+   * Does leaving now need the warning first, rather than a tab change that shows it anyway?
+   *
+   * @param tabletMode whether both panes are on screen
+   * @param tabOpen    whether a tab rather than the menu is showing
+   */
+  static boolean warnsBeforeLeaving(final boolean tabletMode, final boolean tabOpen) {
+    return tabletMode && tabOpen;
   }
 
   /** The string telling the user about REASON. */

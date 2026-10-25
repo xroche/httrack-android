@@ -108,7 +108,10 @@ tasks.withType(Test).configureEach {
             .withPropertyName('layoutXml')
     // Tests read the JNI glue and the pinned engine, so a bump that moves what they
     // assert has to re-run them rather than report UP-TO-DATE.
-    inputs.files(fileTree('src/main/jni') { include '*.c', '*.h', 'httrack/src/*.c', 'httrack/src/*.h' })
+    inputs.files(fileTree('src/main/jni') {
+        include '*.c', '*.h', 'httrack/src/*.c', 'httrack/src/*.h'
+        include 'httrack/*.tsv', 'httrack/html/*.html'
+    })
             .withPathSensitivity(PathSensitivity.RELATIVE)
             .withPropertyName('nativeSources')
 }

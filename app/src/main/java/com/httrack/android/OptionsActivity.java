@@ -577,7 +577,7 @@ public class OptionsActivity extends FragmentActivity implements
     public void handleOnBackPressed() {
       // Back from activity. finish() is overridden above to carry the settings back.
       if (isTabletMode || activityClass == null) {
-        if (isTabletMode && activityClass != null) {
+        if (HeaderWarnings.warnsBeforeLeaving(isTabletMode, activityClass != null)) {
           save();
           /* Nothing else hides the tab on this path, so warn on the way out. */
           HeaderWarnings.warnAboutDropped(getTabView(), new Runnable() {
