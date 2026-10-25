@@ -93,16 +93,83 @@ public class BrowserLoginWiringTest {
     }
   }
 
-  /** The file holds a live session, so it must not land where other apps read the mirrors. */
+  /** The bundle holds a live session, so it must not land where other apps read the mirrors. */
   @Test
-  public void theCookieFileGoesToPrivateStorage() throws IOException {
+  public void theLoginFilesGoToPrivateStorage() throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
+    for (final String call : new String[] { "private File getLoginCookiesFile()",
+        "public void onClickBrowserLogin(", "public synchronized List<String> buildCommandline()" }) {
+      final String body = TestSources.balancedBlock(source, TestSources.indexOf(source, call));
+      assertTrue(call, body.contains("getFilesDir()"));
+      /* The path has to come from a StoragePaths helper and nowhere else. A blocklist of
+         external-storage calls was defeated twice, once by a mutant returning an external path
+         behind a getFilesDir() test and once by new File(getFilesDir(), "../../../sdcard"),
+         so this asks what builds the path instead of what it must not mention. Where those
+         helpers put a file is StoragePathsTest's question, over real files. */
+      assertTrue(call, body.contains("StoragePaths."));
+      assertFalse(call + " builds its own path", body.contains("new File("));
+    }
+  }
+
+  /**
+   * Both crawl paths go through buildCommandline, so the argv decision has to be made there.
+   * The job gets the array it builds, and a login left out of that array would make a
+   * backgrounded crawl run logged out. What the decision IS lives in BrowserLoginPolicyTest.
+   */
+  @Test
+  public void theBundleFolderReachesTheArgv() throws IOException {
     final String source = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String body = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "private File getLoginCookiesFile()"));
-    assertTrue(body.contains("getFilesDir()"));
-    assertFalse(body.contains("getProjectRootFile()"));
-    assertFalse(body.contains("getTargetFile()"));
+        TestSources.indexOf(source, "public synchronized List<String> buildCommandline()"));
+    assertTrue(body, body.contains("BrowserLoginPolicy.withLogin(mapper.buildCommandline()"));
+    assertTrue(body, body.contains("StoragePaths.loginBundleDir(getFilesDir()"));
+    final String job = TestSources.withoutCommentsAndStrings(
+        TestSources.javaSource("MirrorJobService"));
+    assertTrue(job, job.contains("extras.getStringArray(EXTRA_OPTIONS)"));
+  }
+
+  /**
+   * The engine writes the bundle. It names the file, puts an international host into ASCII,
+   * refuses an address carrying a password, applies its own caps and reads the file back through
+   * its own loader, and a name it would refuse stops the whole mirror. None of that may be
+   * rebuilt here.
+   */
+  @Test
+  public void theEngineWritesTheBundle() throws IOException {
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
+    final String done = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    assertTrue(done, done.contains("HTTrackLib.writeLoginBundle(result.text,"));
+    // The lookup needs the libraries, and this window opens before any crawl has loaded them.
+    assertTrue(done, done.contains("HTTrackLib.loadLibraries()"));
+    // Nothing is claimed when the engine refused, because the crawl would then have no login.
+    assertTrue(done, done.contains("bundle == null"));
+    // The count the user reads is the engine's, not ours.
+    assertTrue(done, done.contains("EXTRA_COOKIE_COUNT, bundle.cookies"));
+    // No second writer: the app owns no bundle text, no name and no scope.
+    for (final String owned : new String[] { "HTTrack bundle", "httrack-bundle=",
+        "getRegistrableDomain", "getBundleNameRefusal", "writeOwnerOnly" }) {
+      assertFalse(owned, TestSources.javaSource("BrowserLoginActivity").contains(owned));
+    }
+  }
+
+  /** The hosts the crawl starts from have to reach the cookie sweep. */
+  @Test
+  public void theCrawlsOwnHostsAreAskedForCookies() throws IOException {
+    final String caller = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
+    final String open = TestSources.balancedBlock(caller,
+        TestSources.indexOf(caller, "public void onClickBrowserLogin("));
+    assertTrue(open, open.contains("BrowserLoginPolicy.fieldHosts(field)"));
+    assertTrue(open, open.contains("BrowserLoginActivity.EXTRA_CRAWL_HOSTS"));
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
+    final String done = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    assertTrue(done, done.contains("asked.addAll(crawlHosts)"));
   }
 
   /** The delete flow must wait for a crawl, or the engine recreates the login it just removed. */
@@ -143,50 +210,63 @@ public class BrowserLoginWiringTest {
     assertTrue(forget, forget.contains("StoragePaths.savedLoginFiles("));
   }
 
-  /** The staged name must come from the shared helper, so the delete pattern can match it. */
-  @Test
-  public void theStagedWriteBuildsItsNameFromTheSharedHelper() throws IOException {
-    final String source = TestSources
-        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String body = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "static boolean writeOwnerOnly("));
-    assertTrue(body, body.contains("StoragePaths.stagedLoginFile(file)"));
-    // On the staged file, because calling the helper and then writing elsewhere saves nothing.
-    assertTrue(body, body.contains("FileOutputStream(staged)"));
-    assertTrue(body, body.contains("staged.renameTo(file)"));
-  }
-
   /** Without the landed address the user has to retype where the login took them. */
   @Test
   public void theLandedAddressIsReturnedAndShown() throws IOException {
-    final String source = TestSources
+    final String first = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String done = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "public void onClickLoginDone("));
+    final String done = TestSources.balancedBlock(first,
+        TestSources.indexOf(first, "public void onClickLoginDone("));
     // The WebView's own address, not the one the activity was started with.
-    assertTrue(done, done.contains("EXTRA_LANDED_URL, web.getUrl()"));
+    assertTrue(done, done.contains("web.getUrl()"));
+    assertTrue(done, done.contains("EXTRA_BUNDLE_URL, bundle.url"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,
         TestSources.indexOf(caller, "private void applyBrowserLogin("));
-    assertTrue(apply, apply.contains("BrowserLoginPolicy.withLandedUrl("));
-    assertTrue(apply, apply.contains("setMap(R.id.fieldWebsiteURLs, addresses)"));
+    final String source = TestSources
+        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
+    /* The new name REPLACES any older one, because two bundles covering one site with
+       different cookie values make the engine refuse to start the crawl at all. */
+    assertTrue(apply, apply.contains("withBundleUrl("));
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames(field)"));
+    // And the files follow the names, or the engine still finds two bundles for one site.
+    final String written = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    assertTrue(written,
+        written.contains("dropOtherBundles(BrowserLoginPolicy.bundleNameOf(bundle.url))"));
     /* The widget as well as the map. setMap alone left the old text on screen and the next
        savePaneFields copied it back, so the whole feature was invisible. */
-    assertTrue(apply, apply.contains("setFieldText(R.id.fieldWebsiteURLs, addresses)"));
+    final String setter = TestSources.balancedBlock(caller,
+        TestSources.indexOf(caller, "private void setAddressField("));
+    assertTrue(setter, setter.contains("setMap(R.id.fieldWebsiteURLs, addresses)"));
+    assertTrue(setter, setter.contains("setFieldText(R.id.fieldWebsiteURLs, addresses)"));
+    // Forget takes the names out, or the next crawl stops on a bundle that is not there.
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames("));
   }
 
-  /** -%K is read only when the engine accepts cookies, so the hand-off has to tick the box. */
+  /**
+   * A bundle's cookies reach the jar only when the engine accepts cookies, and with the box
+   * unticked there is no jar to put them in. The crawl then runs logged out, and the only sign
+   * is a warning Android hides, so the hand-off ticks the box itself.
+   *
+   * The -%K file is named for a second reason: the engine saves its jar at the end of the
+   * crawl, and with no file named it saves it beside the mirror, in shared storage.
+   */
   @Test
-  public void theHandOverTurnsCookiesOn() throws IOException {
+  public void theHandOverTurnsCookiesOnAndKeepsTheJarPrivate() throws IOException {
     // The raw source, because the value is the point here and blanking literals would hide it.
     final String source = TestSources.javaSource("HTTrackActivity");
     final String blanked = TestSources.withoutCommentsAndStrings(source);
-    final int at = TestSources.indexOf(blanked, "private void applyBrowserLogin(");
-    final String body = source.substring(at,
-        at + TestSources.balancedBlock(blanked, at).length());
+    /* From the brace, because balancedBlock leaves the outer pair out: slicing the raw source
+       from the declaration instead would cut the same number of bytes off the END, and the
+       refusal below would then pass on a body it never read. */
+    final int at = source.indexOf('{',
+        TestSources.indexOf(blanked, "private void applyBrowserLogin("));
+    final String body = source.substring(at, at + TestSources.balancedBlock(blanked, at).length());
     assertTrue(body, body.contains("setMap(R.id.checkAcceptCookies, \"1\")"));
     assertTrue(body, body.contains("setMap(R.id.editCookiesFile,"));
-    assertTrue(body, body.contains("setMap(R.id.editBrowserIdentity,"));
+    // The browser's identity rides in the bundle, which sends it to that bundle's sites alone.
+    assertFalse(body, body.contains("setMap(R.id.editBrowserIdentity,"));
   }
 }

@@ -1,8 +1,12 @@
 package com.httrack.android;
 
+import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * What the browser login opens, and what it changes about the crawl. A logged-in crawl has to
@@ -78,87 +82,91 @@ final class BrowserLoginPolicy {
     return host.toLowerCase(Locale.ROOT);
   }
 
+  /** What a start URL ends with to name a login bundle, HTS_BUNDLE_SUFFIX in the engine. */
+  static final String BUNDLE_SUFFIX = "#httrack-bundle=";
+
   /**
-   * The address field with LANDED added on a line of its own. Where the user ended up is what
-   * they opened the browser to reach, and a login usually ends deeper than it began. The
-   * addresses already there are left alone, so the user trims what they do not want.
+   * The address field with the login's own start URL added on a line of its own. The engine
+   * built that URL: it cut the fragment, refused a password and named the bundle, so nothing
+   * here inspects it again. The addresses already there are left alone, so the user trims what
+   * they do not want.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
-   * @param landed
-   *          the address the login ended on, which is ignored unless it is an https address
-   *          naming a host
+   * @param bundleUrl
+   *          the start URL the engine wrote, or null when it wrote none
    * @return the field's new text
    */
-  static String withLandedUrl(final String urlField, final String landed) {
+  static String withBundleUrl(final String urlField, final String bundleUrl) {
     final String current = urlField == null ? "" : urlField.trim();
-    final String address = crawlRoot(landed);
-    if (address == null || !namesTheSameSite(current, hostOf(address))) {
+    if (bundleUrl == null || bundleUrl.length() == 0) {
       return current;
     }
     for (final String token : CommandlineTokens.urlTokens(current)) {
-      if (secureUrl(token).equals(address)) {
+      if (token.equals(bundleUrl)) {
         return current;
       }
     }
-    return current.length() == 0 ? address : current + "\n" + address;
+    return current.length() == 0 ? bundleUrl : current + "\n" + bundleUrl;
   }
 
   /**
-   * LANDED as an address the crawl may start from, or null when it is none. The address field
-   * is saved into the project's profile and handed to the engine, so a secret must not reach
-   * it: userinfo carries a password, and a query or fragment carries an OAuth code or token.
+   * The address field with every bundle name dropped, which is what Forget leaves behind. A
+   * start URL naming a bundle that is gone stops the crawl at startup rather than running it
+   * logged out, so the name goes when the file does.
    *
-   * @param landed
-   *          the address the login ended on
-   * @return the address without its query or fragment, or null
+   * @param urlField
+   *          the field's text
+   * @return the text with each "#httrack-bundle=NAME" cut out, the rest byte for byte
    */
-  private static String crawlRoot(final String landed) {
-    if (hostOf(landed) == null) {
-      return null;
-    }
-    final URI uri;
-    try {
-      uri = new URI(landed);
-    } catch (final URISyntaxException e) {
-      return null;
-    }
-    // Dropped rather than stripped: the engine would authenticate with it, which we never meant.
-    if (uri.getUserInfo() != null) {
-      return null;
-    }
-    /* Cutting the query costs a crawl root that needed one, which is affordable here and not
-       everywhere: onClickBrowserLogin refuses to open without an address, so the field already
-       names a start and this address is an addition to it. WinHTTrack keeps the query for that
-       reason, because its field is usually empty and this would be the only root. */
-    final int query = landed.indexOf('?');
-    final int fragment = landed.indexOf('#');
-    int cut = landed.length();
-    if (query != -1) {
-      cut = query;
-    }
-    if (fragment != -1 && fragment < cut) {
-      cut = fragment;
-    }
-    return landed.substring(0, cut);
+  static String withoutBundleNames(final String urlField) {
+    /* The token only, not the rest of the line: the field separates addresses on whitespace,
+       so cutting to the end of the line would eat the address after this one. */
+    return urlField == null ? "" : urlField.replaceAll(Pattern.quote(BUNDLE_SUFFIX) + "\\S*", "");
   }
 
   /**
-   * Whether HOST belongs to a site the address field already names. A login can end on an
-   * identity provider, and adding that would set the crawl copying someone else's site with a
-   * live session. Either direction counts, because a login moves between a site and its
-   * subdomains in both.
+   * The bundle STARTURL names.
+   *
+   * @param startUrl
+   *          a start URL the engine wrote
+   * @return the name, or null when STARTURL names no bundle
+   */
+  static String bundleNameOf(final String startUrl) {
+    final int at = startUrl == null ? -1 : startUrl.indexOf(BUNDLE_SUFFIX);
+    return at == -1 ? null : startUrl.substring(at + BUNDLE_SUFFIX.length());
+  }
+
+  /**
+   * Did the login end on a site the address field did not name? A login can end on an identity
+   * provider, and that address is then a second crawl root with a live session, so the user is
+   * told. The address is still filled in, because a field the user has to retype is worse.
+   *
+   * @param urlFieldBeforeLogin
+   *          the field's text as it was BEFORE the login, because the answer is always false
+   *          once the login's own address has been added to it
+   * @param bundleUrl
+   *          the start URL the engine wrote
+   * @return true when BUNDLEURL names a host no address in the field shares a site with
+   */
+  static boolean landedElsewhere(final String urlFieldBeforeLogin, final String bundleUrl) {
+    final String host = hostOf(bundleUrl);
+
+    return host != null && !namesTheSameSite(
+        urlFieldBeforeLogin == null ? "" : urlFieldBeforeLogin, host);
+  }
+
+  /**
+   * Whether HOST belongs to a site the address field already names. Either direction counts,
+   * because a login moves between a site and its subdomains in both.
    *
    * @param urlField
    *          the field's text
    * @param host
-   *          the landed address's host
+   *          the host the login ended on
    * @return true when the field names that host, a parent of it, or a child of it
    */
   private static boolean namesTheSameSite(final String urlField, final String host) {
-    if (host == null) {
-      return false;
-    }
     for (final String token : CommandlineTokens.urlTokens(urlField)) {
       final String known = hostOf(secureUrl(token));
       if (known != null && (known.equals(host) || known.endsWith("." + host)
@@ -167,6 +175,57 @@ final class BrowserLoginPolicy {
       }
     }
     return false;
+  }
+
+  /**
+   * Every host the address field names, which are the hosts a crawl will start from.
+   *
+   * @param urlField
+   *          the field's text
+   * @return the hosts, in the field's order, without repeats
+   */
+  static List<String> fieldHosts(final String urlField) {
+    final List<String> found = new ArrayList<String>();
+    for (final String token : CommandlineTokens.urlTokens(urlField)) {
+      final String host = hostOf(secureUrl(token));
+      if (host != null && !found.contains(host)) {
+        found.add(host);
+      }
+    }
+    return found;
+  }
+
+  /**
+   * OPTIONS with what a saved login needs, which is the whole argv decision in one place.
+   *
+   * A bundle's cookies reach the jar only when the engine accepts cookies, and -b0 leaves no
+   * jar to put them in. The crawl would then run logged out, and the only sign is a warning
+   * Android hides, so a saved login wins over a box the user unticked after saving it.
+   *
+   * With no --bundle-dir the engine looks for the bundle beside the mirror, which every app on
+   * the device can read.
+   *
+   * @param options
+   *          what the option mapper emitted, start URLs included
+   * @param bundleDir
+   *          where this project's bundles are kept, or null when it has none
+   * @return the options to hand the engine, the bundle folder last
+   */
+  static List<String> withLogin(final List<String> options, final File bundleDir) {
+    final List<String> engine = new ArrayList<String>(options);
+    boolean named = false;
+
+    for (final String option : engine) {
+      named = named || option.indexOf(BUNDLE_SUFFIX) != -1;
+    }
+    if (named) {
+      engine.remove("-b0");
+    }
+    if (bundleDir != null && bundleDir.isDirectory()) {
+      engine.add("--bundle-dir");
+      engine.add(bundleDir.getAbsolutePath());
+    }
+    return engine;
   }
 
   /**

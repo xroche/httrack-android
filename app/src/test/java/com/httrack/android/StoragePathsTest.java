@@ -39,14 +39,11 @@ public class StoragePathsTest {
     assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak.4321.tmp"));
   }
 
-  /** The matcher must take whatever our write stages, or a crash mid-save leaks the session. */
+  /** An upgraded device still holds the staged copy a build before the bundles left behind. */
   @Test
-  public void aDeletedLoginTakesTheStagedWriteACrashLeftBehind() {
+  public void aDeletedLoginTakesTheStagedWriteAnOlderBuildLeftBehind() {
     final File login = StoragePaths.loginCookiesFile(internal, "My Site");
-    // Beside the login, because savedLoginFiles lists that one directory and nothing else.
-    assertEquals(new File(login.getPath() + ".new"), StoragePaths.stagedLoginFile(login));
-    assertTrue(StoragePaths.isLoginSibling(login.getName(),
-        StoragePaths.stagedLoginFile(login).getName()));
+    assertTrue(StoragePaths.isLoginSibling(login.getName(), login.getName() + ".new"));
   }
 
   @Test
@@ -88,6 +85,26 @@ public class StoragePathsTest {
     }
     assertEquals(new java.util.TreeSet<String>(java.util.Arrays.asList("P.txt", "P.txt.bak",
         "P.txt.4321.tmp", "P.txt.bak.4321.tmp", "P.txt.new")), names);
+  }
+
+  /** Deleting a project has to take its bundles too, and a folder goes only once it is empty. */
+  @Test
+  public void savedLoginFilesTakesTheBundlesAndNamesTheFolderLast() throws IOException {
+    final File internal = tmp.newFolder("files-bundles");
+    final File bundles = StoragePaths.loginBundleDir(internal, "P");
+    assertEquals(new File(new File(internal, "logins"), "P"), bundles);
+    assertTrue(bundles.mkdirs());
+    assertTrue(new File(bundles, "a.example.hts").createNewFile());
+    assertTrue(new File(bundles, "b.example.hts").createNewFile());
+    assertTrue(StoragePaths.loginCookiesFile(internal, "P").createNewFile());
+    final java.util.List<File> ours = StoragePaths.savedLoginFiles(internal, "P");
+    assertEquals(4, ours.size());
+    // The folder last, because File.delete() takes an empty one and nothing else.
+    assertEquals(bundles, ours.get(ours.size() - 1));
+    assertTrue(ours.toString(), ours.contains(new File(bundles, "a.example.hts")));
+    assertTrue(ours.toString(), ours.contains(new File(bundles, "b.example.hts")));
+    // Another project's bundles are its own.
+    assertTrue(StoragePaths.savedLoginFiles(internal, "Q").isEmpty());
   }
 
   @Test

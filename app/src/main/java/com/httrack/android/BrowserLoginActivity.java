@@ -23,10 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 package com.httrack.android;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -53,6 +49,8 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.fragment.app.FragmentActivity;
 
+import com.httrack.android.jni.HTTrackLib;
+
 /**
  * The user passes a login form or a CAPTCHA here, and the crawl then reuses this browser's
  * cookies and its exact User-Agent.
@@ -64,28 +62,43 @@ public class BrowserLoginActivity extends FragmentActivity {
   /** The address to open, which {@link BrowserLoginPolicy#startUrl} has already vetted. */
   static final String EXTRA_URL = "com.httrack.android.loginUrl";
 
-  /** Where to write the cookies.txt the engine will read. */
-  static final String EXTRA_COOKIES_FILE = "com.httrack.android.cookiesFile";
+  /** Where to write the login bundle the engine will read, the crawl's --bundle-dir. */
+  static final String EXTRA_BUNDLE_DIR = "com.httrack.android.bundleDir";
 
-  /** Results: the browser's own User-Agent, and what the file ended up holding. */
-  static final String EXTRA_USER_AGENT = "com.httrack.android.userAgent";
+  /** The hosts the crawl starts from, which are asked for cookies along with the visited ones. */
+  static final String EXTRA_CRAWL_HOSTS = "com.httrack.android.crawlHosts";
 
-  /** Where the login ended, which is the address the user opened the browser to reach. */
-  static final String EXTRA_LANDED_URL = "com.httrack.android.landedUrl";
+  /** Result: the start URL the engine wrote, which names the bundle it wrote beside it. */
+  static final String EXTRA_BUNDLE_URL = "com.httrack.android.bundleUrl";
+
+  /** Result: the user pressed Forget, so the caller drops the bundle its addresses name. */
+  static final String EXTRA_FORGOTTEN = "com.httrack.android.forgotten";
   static final String EXTRA_COOKIE_COUNT = "com.httrack.android.cookieCount";
   static final String EXTRA_HOST_COUNT = "com.httrack.android.hostCount";
   static final String EXTRA_DROPPED_COUNT = "com.httrack.android.droppedCount";
 
-  private static final Charset UTF8 = Charset.forName("UTF-8");
-
   private WebView web;
 
-  private File cookiesFile;
+  private File bundleDir;
 
   /** Hosts reached, in visit order, so the login's first host leads the file. */
   private final Set<String> hosts = new LinkedHashSet<String>();
 
+  /**
+   * Hosts the crawl will start from. Asked for cookies too, because getCookie answers for any
+   * host, and a crawl host that shares a parent domain with a visited one inherits its cookies.
+   */
+  private final Set<String> crawlHosts = new LinkedHashSet<String>();
+
+  /** What the engine adds to a bundle's name to find its file. */
+  private static final String BUNDLE_EXTENSION = ".hts";
+
+  /** Did the user press Forget? The caller then drops the bundle names, however the window ends. */
+  private boolean forgotten;
+
   private static final String STATE_HOSTS = "hosts";
+
+  private static final String STATE_FORGOTTEN = "forgotten";
 
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
@@ -94,8 +107,13 @@ public class BrowserLoginActivity extends FragmentActivity {
 
     final Bundle extras = getIntent().getExtras();
     final String url = extras != null ? extras.getString(EXTRA_URL) : null;
-    cookiesFile = extras != null ? File.class.cast(extras.get(EXTRA_COOKIES_FILE)) : null;
-    if (url == null || cookiesFile == null) {
+    bundleDir = extras != null ? File.class.cast(extras.get(EXTRA_BUNDLE_DIR)) : null;
+    final List<String> starts =
+        extras != null ? extras.getStringArrayList(EXTRA_CRAWL_HOSTS) : null;
+    if (starts != null) {
+      crawlHosts.addAll(starts);
+    }
+    if (url == null || bundleDir == null) {
       Log.w(getClass().getSimpleName(), "no address to log in to");
       finish();
       return;
@@ -127,6 +145,7 @@ public class BrowserLoginActivity extends FragmentActivity {
     if (seen != null) {
       hosts.addAll(seen);
     }
+    forgotten = savedInstanceState.getBoolean(STATE_FORGOTTEN, false);
   }
 
   @Override
@@ -136,6 +155,7 @@ public class BrowserLoginActivity extends FragmentActivity {
       web.saveState(out);
     }
     out.putStringArrayList(STATE_HOSTS, new ArrayList<String>(hosts));
+    out.putBoolean(STATE_FORGOTTEN, forgotten);
   }
 
   @Override
@@ -159,7 +179,7 @@ public class BrowserLoginActivity extends FragmentActivity {
       if (web != null && web.canGoBack()) {
         web.goBack();
       } else {
-        setResult(RESULT_CANCELED);
+        reportForgotten();
         finish();
       }
     }
@@ -212,7 +232,7 @@ public class BrowserLoginActivity extends FragmentActivity {
   }
 
   /**
-   * Drop the saved session: the browser's cookies and the file the engine would have read.
+   * Drop the saved session: the browser's cookies and every bundle the engine would have read.
    *
    * This signs the user out of every site in this app's browser, not just this project's. That
    * is deliberate. CookieManager has no per-site removal, and nothing enumerates what a
@@ -224,15 +244,24 @@ public class BrowserLoginActivity extends FragmentActivity {
    * WebView data directory, which means a separate process.
    */
   private void forget() {
-    if (cookiesFile == null) {
+    if (bundleDir == null) {
       return;
     }
     CookieManager.getInstance().removeAllCookies(null);
     CookieManager.getInstance().flush();
     hosts.clear();
-    if (cookiesFile.exists() && !cookiesFile.delete()) {
-      Log.w(getClass().getSimpleName(), "could not delete " + cookiesFile);
+    final File[] saved = bundleDir.listFiles();
+    if (saved != null) {
+      for (final File file : saved) {
+        if (!file.delete()) {
+          Log.w(getClass().getSimpleName(), "could not delete " + file);
+        }
+      }
     }
+    /* A start URL naming a bundle that is gone stops the crawl at startup, by design, so the
+       name has to leave the address field with the file. */
+    forgotten = true;
+    reportForgotten();
     if (web != null) {
       web.clearCache(true);
       web.reload();
@@ -242,15 +271,51 @@ public class BrowserLoginActivity extends FragmentActivity {
 
   /** "Cancel" */
   public void onClickLoginCancel(final View view) {
-    setResult(RESULT_CANCELED);
+    reportForgotten();
     finish();
+  }
+
+  /**
+   * Delete every bundle of this project but KEPT, the one just written. A project keeps one
+   * login: two bundles covering the same site with different cookie values, or with the user
+   * agent of two WebView versions, make the engine refuse to start the crawl at all.
+   *
+   * @param kept
+   *          the name the engine gave the bundle it has just written
+   */
+  private void dropOtherBundles(final String kept) {
+    final File[] saved = bundleDir.listFiles();
+
+    if (kept == null || saved == null) {
+      return;
+    }
+    for (final File file : saved) {
+      if (!file.getName().equals(kept + BUNDLE_EXTENSION)) {
+        if (!file.delete()) {
+          Log.w(getClass().getSimpleName(), "could not delete " + file);
+        }
+      }
+    }
+  }
+
+  /** Tell the caller whether Forget ran, because Cancel would otherwise bury it. */
+  private void reportForgotten() {
+    if (!forgotten) {
+      setResult(RESULT_CANCELED);
+      return;
+    }
+    final Intent data = new Intent();
+    data.putExtra(EXTRA_FORGOTTEN, true);
+    setResult(RESULT_OK, data);
   }
 
   /** "Use this login" */
   public void onClickLoginDone(final View view) {
     CookieManager.getInstance().flush();
+    final Set<String> asked = new LinkedHashSet<String>(hosts);
+    asked.addAll(crawlHosts);
     final Map<String, String> byHost = new LinkedHashMap<String, String>();
-    for (final String host : hosts) {
+    for (final String host : asked) {
       final String header = CookieManager.getInstance()
           .getCookie(BrowserLoginPolicy.SCHEME + "://" + host + "/");
       if (header != null && header.length() != 0) {
@@ -262,54 +327,40 @@ public class BrowserLoginActivity extends FragmentActivity {
       Toast.makeText(this, getString(R.string.browser_login_no_cookies), Toast.LENGTH_LONG).show();
       return;
     }
-    if (!writeOwnerOnly(cookiesFile, result.text)) {
+    if (!bundleDir.isDirectory() && !bundleDir.mkdirs()) {
       Toast.makeText(this, getString(R.string.browser_login_write_failed), Toast.LENGTH_LONG)
           .show();
       return;
     }
+    /* crawlHosts alone can yield cookies before any page has committed, and the address is
+       what the engine names the bundle after. */
+    if (web.getUrl() == null) {
+      Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
+      return;
+    }
+    if (!HTTrackLib.loadLibraries()) {
+      Toast.makeText(this, getString(R.string.browser_login_write_failed), Toast.LENGTH_LONG)
+          .show();
+      return;
+    }
+    /* The engine writes the file: it owns the bundle format, the name, the scope, the caps and
+       the address rules, and it reads the result back through its own loader before keeping it.
+       web.getUrl() is the WebView's own address, so a redirect chain reports where it stopped. */
+    final HTTrackLib.LoginBundle bundle = HTTrackLib.writeLoginBundle(result.text,
+        bundleDir.getAbsolutePath(), web.getSettings().getUserAgentString(), web.getUrl());
+    if (bundle == null) {
+      Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
+      return;
+    }
+    dropOtherBundles(BrowserLoginPolicy.bundleNameOf(bundle.url));
     final Intent data = new Intent();
-    data.putExtra(EXTRA_USER_AGENT, web.getSettings().getUserAgentString());
-    // The WebView's own current address, so a redirect chain reports where it stopped.
-    data.putExtra(EXTRA_LANDED_URL, web.getUrl());
-    data.putExtra(EXTRA_COOKIE_COUNT, result.cookies);
-    data.putExtra(EXTRA_HOST_COUNT, result.hosts);
+    data.putExtra(EXTRA_BUNDLE_URL, bundle.url);
+    // The engine's own counts, because it drops a cookie outside the bundle's scope.
+    data.putExtra(EXTRA_COOKIE_COUNT, bundle.cookies);
+    data.putExtra(EXTRA_HOST_COUNT, bundle.hosts);
+    // Ours, and only the over-long ones, which is what the message the user reads says.
     data.putExtra(EXTRA_DROPPED_COUNT, result.dropped);
     setResult(RESULT_OK, data);
     finish();
-  }
-
-  /**
-   * Write TEXT to FILE, readable by this app alone.
-   *
-   * The file holds a live session, so it stages beside FILE and renames, because a write that
-   * failed halfway would leave the previous login truncated and the crawl with nothing.
-   *
-   * @return true when FILE now holds TEXT
-   */
-  static boolean writeOwnerOnly(final File file, final String text) {
-    final File dir = file.getParentFile();
-    if (dir != null && !dir.isDirectory() && !dir.mkdirs()) {
-      return false;
-    }
-    final File staged = StoragePaths.stagedLoginFile(file);
-    try (final OutputStream out = new FileOutputStream(staged)) {
-      out.write(text.getBytes(UTF8));
-    } catch (final IOException e) {
-      Log.w(BrowserLoginActivity.class.getSimpleName(), "cannot write " + staged, e);
-      staged.delete();
-      return false;
-    }
-    // Before the rename, so the name the engine reads is never briefly world-readable. The
-    // second argument is ownerOnly, so the pair clears everyone then grants the owner back.
-    staged.setReadable(false, false);
-    staged.setWritable(false, false);
-    staged.setReadable(true, true);
-    staged.setWritable(true, true);
-    if (!staged.renameTo(file)) {
-      Log.w(BrowserLoginActivity.class.getSimpleName(), "cannot rename onto " + file);
-      staged.delete();
-      return false;
-    }
-    return true;
   }
 }

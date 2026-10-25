@@ -252,6 +252,22 @@ final class StoragePaths {
   }
 
   /**
+   * Where PROJECTNAME's login bundles are kept, which the crawl passes as --bundle-dir. Private
+   * storage, for the same reason as {@link #loginCookiesFile}, and one folder per project so
+   * two projects logging into the same site do not share a bundle.
+   *
+   * @param internal
+   *          getFilesDir(), the app's own storage
+   * @param projectName
+   *          the project, which has to be one valid path segment
+   * @return the folder, or null when there is no name we may build a path from
+   */
+  static File loginBundleDir(final File internal, final String projectName) {
+    final File login = loginCookiesFile(internal, projectName);
+    return login == null ? null : new File(login.getParentFile(), projectName);
+  }
+
+  /**
    * Every file holding PROJECTNAME's saved login: the one the engine reads, plus whatever its
    * own save left beside it.
    *
@@ -259,7 +275,8 @@ final class StoragePaths {
    *          getFilesDir(), the app's own storage
    * @param projectName
    *          the project, which has to be one valid path segment
-   * @return the files to delete, empty when nothing is saved
+   * @return the files to delete, each one before the folder that holds it, empty when nothing
+   *         is saved
    */
   static List<File> savedLoginFiles(final File internal, final String projectName) {
     final File login = loginCookiesFile(internal, projectName);
@@ -273,33 +290,31 @@ final class StoragePaths {
         }
       }
     }
+    final File bundles = loginBundleDir(internal, projectName);
+    final File[] inside = bundles != null ? bundles.listFiles() : null;
+    if (inside != null) {
+      for (final File file : inside) {
+        files.add(file);
+      }
+      files.add(bundles);
+    }
     return files;
   }
 
-  /** {@link #isLoginSibling} must accept the name {@link #stagedLoginFile} builds. */
+  /** The suffix a build before the login bundles staged its own write through. */
   private static final String STAGED_SUFFIX = ".new";
 
   /**
    * Whether LOGINFILENAME names CANDIDATE, or one of the files a save leaves beside it. The
    * engine leaves its {@code .bak}, its {@code .<pid>.tmp}, and the temporary the {@code .bak}
-   * is staged through. Our own write leaves its staged copy when the app dies before the
-   * rename. Each one can hold a whole jar. No run deletes another's temporary.
+   * is staged through. A build before the login bundles left its own {@code .new} behind when
+   * the app died mid-write, and an upgraded device still holds it. Each one can hold a whole
+   * jar. No run deletes another's temporary.
    */
   static boolean isLoginSibling(final String loginFileName, final String candidate) {
     return candidate != null
         && candidate.matches(Pattern.quote(loginFileName) + "(" + Pattern.quote(STAGED_SUFFIX)
             + "|(\\.bak)?(\\.[0-9]+\\.tmp)?)");
-  }
-
-  /**
-   * Where a login write stages before it renames onto FILE.
-   *
-   * @param file
-   *          the login file being written
-   * @return the name to write first
-   */
-  static File stagedLoginFile(final File file) {
-    return new File(file.getPath() + STAGED_SUFFIX);
   }
 
   /**

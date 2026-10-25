@@ -10,9 +10,9 @@ import java.util.regex.Pattern;
 import org.junit.Test;
 
 /**
- * The cookie limits against the pinned engine, which owns them. A record passes two gates, and
- * only the tighter one decides whether the cookie is kept: cookie_load reads each field into a
- * buffer, and cookie_add then refuses a pair the jar cannot hold.
+ * The cookie and bundle limits against the pinned engine, which owns them. A record passes two
+ * gates, and only the tighter one decides whether the cookie is kept: cookie_load reads each
+ * field into a buffer, and cookie_add then refuses a pair the jar cannot hold.
  */
 public class BrowserLoginEngineLimitsTest {
   private static String source(final String name) throws IOException {
@@ -100,23 +100,22 @@ public class BrowserLoginEngineLimitsTest {
   }
 
   /**
-   * Every header line has to be one cookie_known_comment accepts. The engine counts a comment
-   * it does not know as a line a rewrite would lose, and then refuses to save its jar back over
-   * our file, so the crawl silently keeps the stale session instead of the rotated one.
+   * The whole bundle is the engine's to write, and this app leans on two properties of that
+   * call: it is exported, and it refuses rather than keeping a file its own loader rejects.
    */
   @Test
-  public void everyHeaderLineIsACommentTheEngineKnows() throws IOException {
-    // The array initializer alone, so a comment elsewhere in the function cannot pose as it.
-    final String known = TestSources.between(source("htsbauth.c"), "known[] = {", "};");
-    final java.util.Map<String, String> host = new java.util.LinkedHashMap<String, String>();
-    host.put("h.example", "a=1");
-    // What file() emits, not the constant, so an extra comment from anywhere is caught.
-    for (final String line : BrowserLoginCookies.file(host).text.split("\n")) {
-      if (line.isEmpty() || line.charAt(0) != '#') {
-        break;
-      }
-      assertTrue(line + " is not in cookie_known_comment", known.contains('"' + line + '"'));
-    }
+  public void theBundleWriterIsAnExportedEngineCallThatReadsItsOwnOutputBack() throws IOException {
+    assertTrue("hts_bundle_from_paste is no longer exported",
+        source("httrack-library.h").contains("HTSEXT_API hts_boolean hts_bundle_from_paste("));
+    final String paste = source("htsbundle.c");
+    // Inside that function, not anywhere in the file, and the failure has to stop the write.
+    final String body = TestSources.balancedBlock(paste,
+        TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste("));
+    final int read = body.indexOf("bundle_load_src(opt, &check, &src");
+    assertTrue(body, read != -1);
+    assertTrue(body, body.startsWith("if (!", body.lastIndexOf("if (!", read)));
+    assertTrue(body, body.indexOf("PASTE_FAIL", read) != -1);
+    assertTrue(body, body.indexOf("cookie_write_replace", read) > read);
   }
 
   /** Our file has to leave the mirror's own cookies.txt room in the same jar. */

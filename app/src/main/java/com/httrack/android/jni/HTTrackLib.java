@@ -122,6 +122,43 @@ public class HTTrackLib {
    */
   public static native int getCustomHeaderVerdict(String headers, String line);
 
+  /** What the engine wrote for a browser login. */
+  public static final class LoginBundle {
+    /** The start URL to put in the address field, ending with the bundle's own suffix. */
+    public final String url;
+
+    /** Cookies the engine kept, which are the ones the crawl will send. */
+    public final int cookies;
+
+    /** Hosts those cookies cover, which is not every host the login visited. */
+    public final int hosts;
+
+    public LoginBundle(final String url, final int cookies, final int hosts) {
+      this.url = url;
+      this.cookies = cookies;
+      this.hosts = hosts;
+    }
+  }
+
+  /**
+   * Write a browser login as a login bundle, which the engine owns end to end: it names the
+   * file, puts an international host into ASCII, refuses an address carrying a password, cuts
+   * the fragment a sign-in returns its token in, drops a cookie outside the bundle's scope,
+   * applies its own caps, and reads the file back through its own loader before keeping it.
+   *
+   * @param paste
+   *          the cookies as Netscape cookies.txt records, one per line
+   * @param folder
+   *          where to write, which has to exist
+   * @param agent
+   *          the browser's User-Agent, sent to the bundle's sites alone
+   * @param url
+   *          the address the login ended on
+   * @return what it wrote, or null when the engine refused the login
+   */
+  public static native LoginBundle writeLoginBundle(String paste, String folder, String agent,
+      String url);
+
   /**
    * Has a native fault been recovered in this process ?
    *
