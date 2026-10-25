@@ -97,6 +97,31 @@ public class HTTrackLib {
    */
   public static native String getAcceptPreset(String browser, String kind);
 
+  /** The engine sends this line as the user typed it. */
+  public static final int HEADER_SENT = 0;
+  /** The engine drops a folded line with no line above it to continue. */
+  public static final int HEADER_DROPPED_ORPHAN_FOLD = 1;
+  /** The engine drops a line that is not "Name: value". */
+  public static final int HEADER_DROPPED_MALFORMED = 2;
+  /** The engine drops a line naming a header it frames itself. */
+  public static final int HEADER_DROPPED_FRAMING = 3;
+  /** The engine sends this line and drops the earlier line of the same field. */
+  public static final int HEADER_SENT_REPLACES_EARLIER = 4;
+  /** The engine sends this line, unless an update or a resume writes that field. */
+  public static final int HEADER_SENT_UNLESS_ENGINE_OVERRIDES = 5;
+
+  /**
+   * What the crawl does with one extra header line, so the Browser ID page can say which lines
+   * it will not send. Needs no engine and no root path, so it is safe to ask before a crawl.
+   *
+   * @param headers every earlier line of the box, the dropped ones included, joined with CRLF,
+   *                or null for the first line. Pass ONE earlier line alone to learn whether
+   *                line replaces that one.
+   * @param line    the line to judge, never null
+   * @return one of the HEADER_ constants above, whose values are the engine's own
+   */
+  public static native int getCustomHeaderVerdict(String headers, String line);
+
   /**
    * Has a native fault been recovered in this process ?
    *

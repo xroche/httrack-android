@@ -623,6 +623,41 @@ JNICALL jstring Java_com_httrack_android_jni_HTTrackLib_getAcceptPreset(JNIEnv* 
   return result;
 }
 
+JNICALL jint Java_com_httrack_android_jni_HTTrackLib_getCustomHeaderVerdict(JNIEnv* env,
+                                                                           jclass clazz,
+                                                                           jstring oheaders,
+                                                                           jstring oline) {
+  const char *headers = NULL;
+  const char *line;
+  jint verdict;
+
+  UNUSED(clazz);
+  /* oheaders is null for the first line; the engine takes NULL for that. */
+  if (oline == NULL) {
+    throwNPException(env, "null header line");
+    return -1;
+  }
+  if (oheaders != NULL) {
+    headers = (*env)->GetStringUTFChars(env, oheaders, NULL);
+    if (headers == NULL) {
+      return -1;
+    }
+  }
+  line = (*env)->GetStringUTFChars(env, oline, NULL);
+  if (line == NULL) {
+    if (headers != NULL) {
+      (*env)->ReleaseStringUTFChars(env, oheaders, headers);
+    }
+    return -1;
+  }
+  verdict = (jint) hts_custom_header_verdict(headers, line);
+  (*env)->ReleaseStringUTFChars(env, oline, line);
+  if (headers != NULL) {
+    (*env)->ReleaseStringUTFChars(env, oheaders, headers);
+  }
+  return verdict;
+}
+
 JNICALL jboolean Java_com_httrack_android_jni_HTTrackLib_nativeHasFaulted(JNIEnv* env,
                                                                          jclass clazz) {
   UNUSED(env);

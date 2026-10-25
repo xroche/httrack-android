@@ -39,6 +39,11 @@ public final class CommandlineTokens {
     return out;
   }
 
+  /** LINE as the engine receives it: inner runs of blanks collapsed, both ends trimmed. */
+  public static String normalizeLine(final String line) {
+    return line.replaceAll("\\s+", " ").trim();
+  }
+
   /**
    * Split a line-separated field value into one value per line, dropping the
    * blank ones. Blanks inside a line are collapsed rather than split on, since
@@ -50,7 +55,7 @@ public final class CommandlineTokens {
       return out;
     }
     for (final String line : value.split("\n")) {
-      final String trimmed = line.replaceAll("\\s+", " ").trim();
+      final String trimmed = normalizeLine(line);
       if (trimmed.length() != 0) {
         out.add(trimmed);
       }

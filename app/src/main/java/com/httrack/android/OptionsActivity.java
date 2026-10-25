@@ -242,6 +242,11 @@ public class OptionsActivity extends FragmentActivity implements
   @Fields({ R.id.editBrowserIdentity, R.id.editHtmlFooter,
       R.id.editAcceptLanguage, R.id.editOtherHeaders, R.id.editDefaultReferer })
   public static class BrowserId extends Tab {
+    @Override
+    public void onHide(final View view) {
+      super.onHide(view);
+      HeaderWarnings.warnAboutDropped(view, null);
+    }
   }
 
   /* Its own page rather than a box under Browser ID: twelve rows would bury the five fields
@@ -572,8 +577,16 @@ public class OptionsActivity extends FragmentActivity implements
     public void handleOnBackPressed() {
       // Back from activity. finish() is overridden above to carry the settings back.
       if (isTabletMode || activityClass == null) {
-        if (isTabletMode && activityClass != null) {
+        if (HeaderWarnings.warnsBeforeLeaving(isTabletMode, activityClass != null)) {
           save();
+          /* Nothing else hides the tab on this path, so warn on the way out. */
+          HeaderWarnings.warnAboutDropped(getTabView(), new Runnable() {
+            @Override
+            public void run() {
+              OptionsActivity.this.finish();
+            }
+          });
+          return;
         }
         finish();
       }

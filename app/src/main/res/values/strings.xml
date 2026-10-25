@@ -222,6 +222,12 @@
     <string name="hint_language">en,fr,ja</string>
     <string name="other_headers">Additional HTTP Headers</string>
     <string name="hint_other_headers">X-Magic: 42</string>
+    <string name="other_headers_dropped">The copy will not send some of these extra headers as you typed them.</string>
+    <string name="other_headers_line">Line %1$d: %2$s</string>
+    <string name="other_headers_malformed">the line is not a header</string>
+    <string name="other_headers_framing">HTTrack sets this header itself</string>
+    <string name="other_headers_replaced">a later line sets the same header, and only the last one is sent</string>
+    <string name="other_headers_conditional">an update or a resume can send its own value instead</string>
     <string name="hint_ext_def">doc,docx</string>
     <string name="hint_mime_def">application/msword</string>
     <string name="double_arrow">↔</string>
