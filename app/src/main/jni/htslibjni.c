@@ -680,6 +680,8 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
   jobject bundle = NULL;
 
   UNUSED(clazz);
+  /* No caller passes null today, but this is a public native method and
+     GetStringUTFChars(NULL) is undefined. */
   if (opaste == NULL || ofolder == NULL || oagent == NULL || ourl == NULL) {
     throwNPException(env, "null paste, folder, agent or url");
     return NULL;
