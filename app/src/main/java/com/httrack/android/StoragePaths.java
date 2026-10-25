@@ -268,24 +268,6 @@ final class StoragePaths {
   }
 
   /**
-   * The bundle called NAME in DIR, which the engine reads as NAME.hts.
-   *
-   * @param dir
-   *          a {@link #loginBundleDir}
-   * @param name
-   *          the bundle name, which the engine has already accepted
-   * @return the file, or null when NAME could name anything but a file in DIR
-   */
-  static File bundleInDir(final File dir, final String name) {
-    // The engine's own rules are stricter; this one only keeps the write inside the folder.
-    if (dir == null || name == null || name.length() == 0 || name.indexOf('/') != -1
-        || name.indexOf(File.separatorChar) != -1 || name.contains("..")) {
-      return null;
-    }
-    return new File(dir, name + BrowserLoginBundle.EXTENSION);
-  }
-
-  /**
    * Every file holding PROJECTNAME's saved login: the one the engine reads, plus whatever its
    * own save left beside it.
    *
@@ -319,30 +301,20 @@ final class StoragePaths {
     return files;
   }
 
-  /** {@link #isLoginSibling} must accept the name {@link #stagedLoginFile} builds. */
+  /** The suffix a build before the login bundles staged its own write through. */
   private static final String STAGED_SUFFIX = ".new";
 
   /**
    * Whether LOGINFILENAME names CANDIDATE, or one of the files a save leaves beside it. The
    * engine leaves its {@code .bak}, its {@code .<pid>.tmp}, and the temporary the {@code .bak}
-   * is staged through. Our own write leaves its staged copy when the app dies before the
-   * rename. Each one can hold a whole jar. No run deletes another's temporary.
+   * is staged through. A build before the login bundles left its own {@code .new} behind when
+   * the app died mid-write, and an upgraded device still holds it. Each one can hold a whole
+   * jar. No run deletes another's temporary.
    */
   static boolean isLoginSibling(final String loginFileName, final String candidate) {
     return candidate != null
         && candidate.matches(Pattern.quote(loginFileName) + "(" + Pattern.quote(STAGED_SUFFIX)
             + "|(\\.bak)?(\\.[0-9]+\\.tmp)?)");
-  }
-
-  /**
-   * Where a login write stages before it renames onto FILE.
-   *
-   * @param file
-   *          the login file being written
-   * @return the name to write first
-   */
-  static File stagedLoginFile(final File file) {
-    return new File(file.getPath() + STAGED_SUFFIX);
   }
 
   /**

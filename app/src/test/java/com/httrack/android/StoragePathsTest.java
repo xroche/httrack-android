@@ -39,14 +39,11 @@ public class StoragePathsTest {
     assertTrue(StoragePaths.isLoginSibling("My Site.txt", "My Site.txt.bak.4321.tmp"));
   }
 
-  /** The matcher must take whatever our write stages, or a crash mid-save leaks the session. */
+  /** An upgraded device still holds the staged copy a build before the bundles left behind. */
   @Test
-  public void aDeletedLoginTakesTheStagedWriteACrashLeftBehind() {
+  public void aDeletedLoginTakesTheStagedWriteAnOlderBuildLeftBehind() {
     final File login = StoragePaths.loginCookiesFile(internal, "My Site");
-    // Beside the login, because savedLoginFiles lists that one directory and nothing else.
-    assertEquals(new File(login.getPath() + ".new"), StoragePaths.stagedLoginFile(login));
-    assertTrue(StoragePaths.isLoginSibling(login.getName(),
-        StoragePaths.stagedLoginFile(login).getName()));
+    assertTrue(StoragePaths.isLoginSibling(login.getName(), login.getName() + ".new"));
   }
 
   @Test
@@ -108,22 +105,6 @@ public class StoragePathsTest {
     assertTrue(ours.toString(), ours.contains(new File(bundles, "b.example.hts")));
     // Another project's bundles are its own.
     assertTrue(StoragePaths.savedLoginFiles(internal, "Q").isEmpty());
-  }
-
-  /** The engine's own rules are stricter, but a name may never reach outside the folder. */
-  @Test
-  public void aBundleNameCannotLeaveItsFolder() {
-    final File bundles = StoragePaths.loginBundleDir(internal, "P");
-    assertEquals(new File(bundles, "a.example.hts"),
-        StoragePaths.bundleInDir(bundles, "a.example"));
-    assertNull(StoragePaths.bundleInDir(bundles, "../../a.example"));
-    assertNull(StoragePaths.bundleInDir(bundles, "a/b"));
-    assertNull(StoragePaths.bundleInDir(bundles, ".."));
-    assertNull(StoragePaths.bundleInDir(bundles, ""));
-    assertNull(StoragePaths.bundleInDir(bundles, null));
-    assertNull(StoragePaths.bundleInDir(null, "a.example"));
-    // No name can be built for a project name the path helpers refuse.
-    assertNull(StoragePaths.loginBundleDir(internal, ".."));
   }
 
   @Test

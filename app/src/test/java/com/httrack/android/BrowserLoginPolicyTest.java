@@ -111,46 +111,53 @@ public class BrowserLoginPolicyTest {
     assertEquals("-*signout* -*logout*", BrowserLoginPolicy.rules("-*signout*"));
   }
 
-  /** The name the bundle written for these tests would carry. */
-  private static final String NAME = "a.example";
-
-  private static final String SUFFIX = BrowserLoginBundle.SUFFIX + NAME;
+  /** The start URL the engine hands back, which already names the bundle it wrote. */
+  private static final String WRITTEN = "https://a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example";
 
   /** A login ends deeper than it began, and that page is the one the user came to copy. */
   @Test
-  public void theLandedAddressJoinsTheFieldNamingItsBundle() {
-    assertEquals("https://a.example\nhttps://a.example/members/" + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl("https://a.example", "https://a.example/members/", NAME));
-    // Either direction, because a login moves between a site and its subdomains both ways.
-    assertEquals("https://a.example\nhttps://login.a.example/home" + SUFFIX, BrowserLoginPolicy
-        .withLandedUrl("https://a.example", "https://login.a.example/home", NAME));
-    assertEquals("https://www.a.example\nhttps://a.example/members/" + SUFFIX, BrowserLoginPolicy
-        .withLandedUrl("https://www.a.example", "https://a.example/members/", NAME));
+  public void theEnginesStartUrlJoinsTheField() {
+    assertEquals("https://a.example\n" + WRITTEN,
+        BrowserLoginPolicy.withBundleUrl("https://a.example", WRITTEN));
     // The suffix is what makes the engine read the bundle, so it reaches an empty field too.
-    assertEquals("https://a.example/members/" + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl("", "https://a.example/members/", NAME));
-    assertEquals("https://a.example/members/" + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl(null, "https://a.example/members/", NAME));
-  }
-
-  /** The engine cuts at the FIRST suffix, so a second one would leave a '#' in the name. */
-  @Test
-  public void anAddressNamingABundleIsNotNamedTwice() {
-    final String named = "https://a.example/members/" + SUFFIX;
-    assertEquals("https://a.example\n" + named,
-        BrowserLoginPolicy.withLandedUrl("https://a.example", named, NAME));
-    assertEquals(named, BrowserLoginPolicy.withLandedUrl(named, named, NAME));
+    assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl("", WRITTEN));
+    assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl(null, WRITTEN));
+    // Nothing to add when the engine refused the login.
+    assertEquals("https://a.example", BrowserLoginPolicy.withBundleUrl("https://a.example", null));
+    assertEquals("https://a.example", BrowserLoginPolicy.withBundleUrl("https://a.example", ""));
   }
 
   /** The field is the user's own text, so the answer must not disturb what is already in it. */
   @Test
-  public void aFieldOfSeveralAddressesSurvivesEitherAnswer() {
+  public void aFieldOfSeveralAddressesKeepsItsOrderAndItsOddTokens() {
     final String many = "https://a.example/one\n-foo\nhttps://b.example/two";
-    // Appended last, the rest in order, including a token urlTokens would reject.
-    assertEquals(many + "\nhttps://b.example/deep" + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl(many, "https://b.example/deep", NAME));
-    // Refused: byte for byte what went in.
-    assertEquals(many, BrowserLoginPolicy.withLandedUrl(many, "https://u:p@a.example/x", NAME));
+    assertEquals(many + "\n" + WRITTEN, BrowserLoginPolicy.withBundleUrl(many, WRITTEN));
+  }
+
+  /** A second login on the same page must not leave the same start URL twice. */
+  @Test
+  public void theSameStartUrlIsNotAddedTwice() {
+    assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl(WRITTEN, WRITTEN));
+    assertEquals("https://a.example\n" + WRITTEN,
+        BrowserLoginPolicy.withBundleUrl("https://a.example\n" + WRITTEN, WRITTEN));
+  }
+
+  /**
+   * Forget deletes the bundles, and a start URL naming one that is gone stops the crawl at
+   * startup by design, so the names have to go with the files.
+   */
+  @Test
+  public void forgettingTheLoginTakesEveryBundleNameOutOfTheField() {
+    assertEquals("https://a.example/members/",
+        BrowserLoginPolicy.withoutBundleNames(WRITTEN));
+    // Every line, because a project can name one bundle per site it copies.
+    assertEquals("https://a.example/\nhttps://b.example/",
+        BrowserLoginPolicy.withoutBundleNames("https://a.example/" + BrowserLoginPolicy.BUNDLE_SUFFIX
+            + "a.example\nhttps://b.example/" + BrowserLoginPolicy.BUNDLE_SUFFIX + "b.example"));
+    // The rest of the field is the user's text and comes back byte for byte.
+    final String none = "https://a.example/one\n-foo\nhttps://b.example/two";
+    assertEquals(none, BrowserLoginPolicy.withoutBundleNames(none));
+    assertEquals("", BrowserLoginPolicy.withoutBundleNames(null));
   }
 
   /**
@@ -158,65 +165,24 @@ public class BrowserLoginPolicyTest {
    * session, so the user is told, and it is still filled in rather than left to be retyped.
    */
   @Test
-  public void anAddressOnAnotherSiteIsAddedAndFlagged() {
+  public void anAddressOnAnotherSiteIsFlagged() {
     final String field = "https://a.example";
-    final String idp = "https://accounts.idp.example/signin/oauth";
-    assertEquals(field + "\n" + idp + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl(field, idp, NAME));
+    final String idp = "https://accounts.idp.example/signin/oauth"
+        + BrowserLoginPolicy.BUNDLE_SUFFIX + "idp.example";
     assertTrue(BrowserLoginPolicy.landedElsewhere(field, idp));
     // A suffix that is not a label boundary is another site, whatever it looks like.
-    assertTrue(BrowserLoginPolicy.landedElsewhere(field, "https://nota.example/x"));
+    assertTrue(BrowserLoginPolicy.landedElsewhere(field,
+        "https://nota.example/x" + BrowserLoginPolicy.BUNDLE_SUFFIX + "nota.example"));
     // The usual login, which must not warn.
-    assertFalse(BrowserLoginPolicy.landedElsewhere(field, "https://a.example/members/"));
-    assertFalse(BrowserLoginPolicy.landedElsewhere(field, "https://login.a.example/home"));
-    assertFalse(BrowserLoginPolicy.landedElsewhere("https://www.a.example", "https://a.example/"));
-    // Nothing to warn about when there is no address to add.
-    assertFalse(BrowserLoginPolicy.landedElsewhere(field, "https://u:p@a.example/x"));
+    assertFalse(BrowserLoginPolicy.landedElsewhere(field, WRITTEN));
+    assertFalse(BrowserLoginPolicy.landedElsewhere("https://www.a.example", WRITTEN));
+    assertFalse(BrowserLoginPolicy.landedElsewhere("https://login.a.example", WRITTEN));
+    /* The field BEFORE the login, so a caller that asked after adding the address would get
+       false for every login. The address is in the field here and the answer still stands. */
+    assertTrue(BrowserLoginPolicy.landedElsewhere("https://a.example", idp));
+    // Nothing to warn about when the engine wrote nothing.
+    assertFalse(BrowserLoginPolicy.landedElsewhere(field, null));
     assertFalse(BrowserLoginPolicy.landedElsewhere(field, "about:blank"));
-  }
-
-  /** The address field is saved into the project profile, which lives in shared storage. */
-  @Test
-  public void theQueryStaysAndTheFragmentGoes() {
-    final String field = "https://a.example";
-    // The query can be the page the user asked for, and both front ends keep it.
-    assertEquals(field + "\nhttps://a.example/cb?code=AQAB&state=xyz" + SUFFIX, BrowserLoginPolicy
-        .withLandedUrl(field, "https://a.example/cb?code=AQAB&state=xyz", NAME));
-    // A sign-in returns its token in the fragment, no server ever reads it, and our name goes there.
-    assertEquals(field + "\nhttps://a.example/cb" + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb#access_token=eyJ.P.S", NAME));
-    assertEquals(field + "\nhttps://a.example/cb?a=1" + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb?a=1#b=2", NAME));
-    // A '#' before the '?' ends the address there, because the fragment runs to the end.
-    assertEquals(field + "\nhttps://a.example/cb" + SUFFIX,
-        BrowserLoginPolicy.withLandedUrl(field, "https://a.example/cb#b=2?a=1", NAME));
-  }
-
-  /** Userinfo is dropped rather than stripped: the engine would authenticate with it. */
-  @Test
-  public void noPasswordRidesInOnTheLandedAddress() {
-    final String field = "https://a.example";
-    assertEquals(field,
-        BrowserLoginPolicy.withLandedUrl(field, "https://user:s3cr3t@a.example/home", NAME));
-    assertEquals(field, BrowserLoginPolicy.withLandedUrl(field, "https://:pw@a.example/home", NAME));
-  }
-
-  @Test
-  public void anAddressAlreadyInTheFieldIsNotRepeated() {
-    final String named = "https://a.example/members/" + SUFFIX;
-    assertEquals(named, BrowserLoginPolicy.withLandedUrl(named, "https://a.example/members/", NAME));
-  }
-
-  /** The field is the crawl's own input, so nothing the login reports may be put in unchecked. */
-  @Test
-  public void onlyAnHttpsAddressReachesTheField() {
-    final String field = "https://a.example";
-    assertEquals(field, BrowserLoginPolicy.withLandedUrl(field, null, NAME));
-    // A WebView can end on these, and none of them names a host the crawl may start from.
-    assertEquals(field, BrowserLoginPolicy.withLandedUrl(field, "about:blank", NAME));
-    assertEquals(field, BrowserLoginPolicy.withLandedUrl(field, "file:///etc/passwd", NAME));
-    assertEquals(field, BrowserLoginPolicy.withLandedUrl(field, "http://a.example/", NAME));
-    assertEquals(field, BrowserLoginPolicy.withLandedUrl(field, "", NAME));
   }
 
   /**

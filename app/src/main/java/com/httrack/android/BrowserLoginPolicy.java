@@ -80,52 +80,95 @@ final class BrowserLoginPolicy {
     return host.toLowerCase(Locale.ROOT);
   }
 
+  /** What a start URL ends with to name a login bundle, HTS_BUNDLE_SUFFIX in the engine. */
+  static final String BUNDLE_SUFFIX = "#httrack-bundle=";
+
   /**
-   * The address field with LANDED added on a line of its own, naming the bundle it belongs to.
-   * Where the user ended up is what they opened the browser to reach, and a login usually ends
-   * deeper than it began. The addresses already there are left alone, so the user trims what
+   * The address field with the login's own start URL added on a line of its own. The engine
+   * built that URL: it cut the fragment, refused a password and named the bundle, so nothing
+   * here inspects it again. The addresses already there are left alone, so the user trims what
    * they do not want.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
-   * @param landed
-   *          the address the login ended on, which is ignored unless it is an https address
-   *          naming a host
-   * @param bundleName
-   *          the bundle the engine must read for that address, or null for none
+   * @param bundleUrl
+   *          the start URL the engine wrote, or null when it wrote none
    * @return the field's new text
    */
-  static String withLandedUrl(final String urlField, final String landed,
-      final String bundleName) {
+  static String withBundleUrl(final String urlField, final String bundleUrl) {
     final String current = urlField == null ? "" : urlField.trim();
-    final String root = crawlRoot(landed);
-    if (root == null) {
+    if (bundleUrl == null || bundleUrl.length() == 0) {
       return current;
     }
-    final String address = BrowserLoginBundle.startUrl(root, bundleName);
     for (final String token : CommandlineTokens.urlTokens(current)) {
-      if (secureUrl(token).equals(address)) {
+      if (token.equals(bundleUrl)) {
         return current;
       }
     }
-    return current.length() == 0 ? address : current + "\n" + address;
+    return current.length() == 0 ? bundleUrl : current + "\n" + bundleUrl;
   }
 
   /**
-   * Did the login end on a site the address field does not name? A login can end on an identity
-   * provider, and that address is then a second crawl root with a live session, so the user is
-   * told before the crawl rather than left to read the field. The address is still filled in,
-   * because a field the user has to retype by hand is the worse failure.
+   * The address field with every bundle name dropped, which is what Forget leaves behind. A
+   * start URL naming a bundle that is gone stops the crawl at startup rather than running it
+   * logged out, so the name goes when the file does.
    *
    * @param urlField
-   *          the field's text as it was before the login
-   * @param landed
-   *          the address the login ended on
-   * @return true when LANDED names a host no address in the field shares a site with
+   *          the field's text
+   * @return the text with each "#httrack-bundle=..." cut off
    */
-  static boolean landedElsewhere(final String urlField, final String landed) {
-    final String root = crawlRoot(landed);
-    return root != null && !namesTheSameSite(urlField == null ? "" : urlField, hostOf(root));
+  static String withoutBundleNames(final String urlField) {
+    if (urlField == null) {
+      return "";
+    }
+    final StringBuilder kept = new StringBuilder();
+    for (final String line : urlField.split("\n", -1)) {
+      final int at = line.indexOf(BUNDLE_SUFFIX);
+      if (kept.length() != 0) {
+        kept.append('\n');
+      }
+      kept.append(at == -1 ? line : line.substring(0, at));
+    }
+    return kept.toString();
+  }
+
+  /**
+   * Did the login end on a site the address field did not name? A login can end on an identity
+   * provider, and that address is then a second crawl root with a live session, so the user is
+   * told. The address is still filled in, because a field the user has to retype is worse.
+   *
+   * @param urlFieldBeforeLogin
+   *          the field's text as it was BEFORE the login, because the answer is always false
+   *          once the login's own address has been added to it
+   * @param bundleUrl
+   *          the start URL the engine wrote
+   * @return true when BUNDLEURL names a host no address in the field shares a site with
+   */
+  static boolean landedElsewhere(final String urlFieldBeforeLogin, final String bundleUrl) {
+    final String host = hostOf(bundleUrl);
+    return host != null && !namesTheSameSite(
+        urlFieldBeforeLogin == null ? "" : urlFieldBeforeLogin, host);
+  }
+
+  /**
+   * Whether HOST belongs to a site the address field already names. Either direction counts,
+   * because a login moves between a site and its subdomains in both.
+   *
+   * @param urlField
+   *          the field's text
+   * @param host
+   *          the host the login ended on
+   * @return true when the field names that host, a parent of it, or a child of it
+   */
+  private static boolean namesTheSameSite(final String urlField, final String host) {
+    for (final String token : CommandlineTokens.urlTokens(urlField)) {
+      final String known = hostOf(secureUrl(token));
+      if (known != null && (known.equals(host) || known.endsWith("." + host)
+          || host.endsWith("." + known))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -144,62 +187,6 @@ final class BrowserLoginPolicy {
       }
     }
     return found;
-  }
-
-  /**
-   * LANDED as an address the crawl may start from, or null when it is none. The address field
-   * is saved into the project's profile, which lives in shared storage, so userinfo is refused
-   * outright and the fragment goes.
-   *
-   * @param landed
-   *          the address the login ended on
-   * @return the address without its fragment, or null
-   */
-  private static String crawlRoot(final String landed) {
-    if (hostOf(landed) == null) {
-      return null;
-    }
-    final URI uri;
-    try {
-      uri = new URI(landed);
-    } catch (final URISyntaxException e) {
-      return null;
-    }
-    // Dropped rather than stripped: the engine would authenticate with it, which we never meant.
-    if (uri.getUserInfo() != null) {
-      return null;
-    }
-    /* The query stays, because it can be the page the user asked for, and both front ends now
-       keep it. The fragment goes: a sign-in returns its token there, no server ever reads it,
-       and the bundle's own name takes its place. */
-    final int fragment = landed.indexOf('#');
-    return fragment == -1 ? landed : landed.substring(0, fragment);
-  }
-
-  /**
-   * Whether HOST belongs to a site the address field already names. A login can end on an
-   * identity provider, and adding that would set the crawl copying someone else's site with a
-   * live session. Either direction counts, because a login moves between a site and its
-   * subdomains in both.
-   *
-   * @param urlField
-   *          the field's text
-   * @param host
-   *          the landed address's host
-   * @return true when the field names that host, a parent of it, or a child of it
-   */
-  private static boolean namesTheSameSite(final String urlField, final String host) {
-    if (host == null) {
-      return false;
-    }
-    for (final String token : CommandlineTokens.urlTokens(urlField)) {
-      final String known = hostOf(secureUrl(token));
-      if (known != null && (known.equals(host) || known.endsWith("." + host)
-          || host.endsWith("." + known))) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**

@@ -102,8 +102,13 @@ public class BrowserLoginWiringTest {
         "public void onClickBrowserLogin(", "public synchronized List<String> buildCommandline()" }) {
       final String body = TestSources.balancedBlock(source, TestSources.indexOf(source, call));
       assertTrue(call, body.contains("getFilesDir()"));
-      assertFalse(call, body.contains("getProjectRootFile()"));
-      assertFalse(call, body.contains("getTargetFile()"));
+      /* Every way out of private storage, not just the two mirror helpers: a mutant returning
+         an external path behind a getFilesDir() test passed the earlier version of this. */
+      for (final String shared : new String[] { "getProjectRootFile()", "getTargetFile()",
+          "getExternalStorageDirectory", "getExternalFilesDir", "getExternalCacheDir",
+          "StoragePaths.projectRoot", "Environment." }) {
+        assertFalse(call + " reaches " + shared, body.contains(shared));
+      }
     }
   }
 
@@ -125,9 +130,10 @@ public class BrowserLoginWiringTest {
     final int option = body.indexOf("options.add(\"--bundle-dir\")");
     assertTrue(body, option != -1);
     assertTrue(body, body.indexOf("options.add(bundles.getAbsolutePath())", option) != -1);
-    /* An address naming a bundle that is gone would make the engine refuse to run at all, so
-       every token is mapped before the option goes out. */
-    assertTrue(body, body.contains("BrowserLoginBundle.withoutMissingBundle(options.get(i)"));
+    /* A bundle's cookies need a jar, and -b0 leaves none, so a saved login wins over a box the
+       user unticked after saving it. Without this the crawl runs logged out in silence. */
+    assertTrue(body, body.contains("options.remove(\"-b0\")"));
+    assertTrue(body, body.contains("BrowserLoginPolicy.BUNDLE_SUFFIX"));
     /* Both crawl paths go through here: the job gets the array this builds, so a login left out
        of it would make a backgrounded crawl run logged out. */
     final String job = TestSources.withoutCommentsAndStrings(
@@ -135,19 +141,30 @@ public class BrowserLoginWiringTest {
     assertTrue(job, job.contains("extras.getStringArray(EXTRA_OPTIONS)"));
   }
 
-  /** A name the engine refuses ABORTS the mirror, so only its own verdict may choose one. */
+  /**
+   * The engine writes the bundle. It names the file, puts an international host into ASCII,
+   * refuses an address carrying a password, applies its own caps and reads the file back through
+   * its own loader, and a name it would refuse stops the whole mirror. None of that may be
+   * rebuilt here.
+   */
   @Test
-  public void theBundleNameIsTheEnginesVerdict() throws IOException {
+  public void theEngineWritesTheBundle() throws IOException {
     final String source = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String body = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "private static String bundleName("));
-    assertTrue(body, body.contains("HTTrackLib.getRegistrableDomain(host)"));
-    assertTrue(body, body.contains("HTTrackLib.getBundleNameRefusal(name) == null"));
-    // Nothing is written when the engine refuses every name, because a crawl would then stop.
-    assertTrue(body, body.contains("return null"));
-    // The lookups need the libraries, and this window opens before any crawl has loaded them.
-    assertTrue(body, body.contains("HTTrackLib.loadLibraries()"));
+    final String done = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    assertTrue(done, done.contains("HTTrackLib.writeLoginBundle(result.text,"));
+    // The lookup needs the libraries, and this window opens before any crawl has loaded them.
+    assertTrue(done, done.contains("HTTrackLib.loadLibraries()"));
+    // Nothing is claimed when the engine refused, because the crawl would then have no login.
+    assertTrue(done, done.contains("bundle == null"));
+    // The count the user reads is the engine's, not ours.
+    assertTrue(done, done.contains("EXTRA_COOKIE_COUNT, bundle.cookies"));
+    // No second writer: the app owns no bundle text, no name and no scope.
+    for (final String owned : new String[] { "HTTrack bundle", "httrack-bundle=",
+        "getRegistrableDomain", "getBundleNameRefusal", "writeOwnerOnly" }) {
+      assertFalse(owned, TestSources.javaSource("BrowserLoginActivity").contains(owned));
+    }
   }
 
   /**
@@ -207,19 +224,6 @@ public class BrowserLoginWiringTest {
     assertTrue(forget, forget.contains("StoragePaths.savedLoginFiles("));
   }
 
-  /** The staged name must come from the shared helper, so the delete pattern can match it. */
-  @Test
-  public void theStagedWriteBuildsItsNameFromTheSharedHelper() throws IOException {
-    final String source = TestSources
-        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String body = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "static boolean writeOwnerOnly("));
-    assertTrue(body, body.contains("StoragePaths.stagedLoginFile(file)"));
-    // On the staged file, because calling the helper and then writing elsewhere saves nothing.
-    assertTrue(body, body.contains("FileOutputStream(staged)"));
-    assertTrue(body, body.contains("staged.renameTo(file)"));
-  }
-
   /** Without the landed address the user has to retype where the login took them. */
   @Test
   public void theLandedAddressIsReturnedAndShown() throws IOException {
@@ -228,17 +232,21 @@ public class BrowserLoginWiringTest {
     final String done = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "public void onClickLoginDone("));
     // The WebView's own address, not the one the activity was started with.
-    assertTrue(done, done.contains("landed = web.getUrl()"));
-    assertTrue(done, done.contains("EXTRA_LANDED_URL, landed"));
+    assertTrue(done, done.contains("web.getUrl()"));
+    assertTrue(done, done.contains("EXTRA_BUNDLE_URL, bundle.url"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,
         TestSources.indexOf(caller, "private void applyBrowserLogin("));
-    assertTrue(apply, apply.contains("BrowserLoginPolicy.withLandedUrl("));
-    assertTrue(apply, apply.contains("setMap(R.id.fieldWebsiteURLs, addresses)"));
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withBundleUrl(field, bundleUrl)"));
     /* The widget as well as the map. setMap alone left the old text on screen and the next
        savePaneFields copied it back, so the whole feature was invisible. */
-    assertTrue(apply, apply.contains("setFieldText(R.id.fieldWebsiteURLs, addresses)"));
+    final String setter = TestSources.balancedBlock(caller,
+        TestSources.indexOf(caller, "private void setAddressField("));
+    assertTrue(setter, setter.contains("setMap(R.id.fieldWebsiteURLs, addresses)"));
+    assertTrue(setter, setter.contains("setFieldText(R.id.fieldWebsiteURLs, addresses)"));
+    // Forget takes the names out, or the next crawl stops on a bundle that is not there.
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames("));
   }
 
   /**

@@ -4,8 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,19 +36,6 @@ public class BrowserLoginEngineLimitsTest {
       throw new IllegalStateException("no " + regex);
     }
     final int value = Integer.parseInt(match.group(1));
-    if (match.find()) {
-      throw new IllegalStateException("more than one " + regex);
-    }
-    return value;
-  }
-
-  /** The one string a regex matched, read the way {@link #only} reads a number. */
-  private static String text(final String source, final String regex) {
-    final Matcher match = Pattern.compile(regex).matcher(source);
-    if (!match.find()) {
-      throw new IllegalStateException("no " + regex);
-    }
-    final String value = match.group(1);
     if (match.find()) {
       throw new IllegalStateException("more than one " + regex);
     }
@@ -114,64 +99,27 @@ public class BrowserLoginEngineLimitsTest {
     assertTrue(longest + " vs " + lineMax, longest < lineMax);
   }
 
-  /** The first line the engine accepts, which is the only one that gets the file read at all. */
-  @Test
-  public void theBundleHeaderIsTheLineTheEngineAccepts() throws IOException {
-    final String bundle = source("htsbundle.c");
-    final String magic = text(bundle, "static const char magic\\[\\] = \"([^\"]*)\"");
-    assertEquals(magic + "1", BrowserLoginBundle.HEADER);
-    // Only version 1 is read, so a header naming another major would stop the whole run.
-    assertTrue("the engine no longer refuses every major but 1",
-        bundle.contains("if (version != 1)"));
-  }
-
-  /** A line the engine will not read stops the run, so every line we write has to fit. */
-  @Test
-  public void theBundleLineCapIsTheEnginesOwn() throws IOException {
-    assertEquals(only(source("htsbundle.c"), "#define BUNDLE_LINE_MAX (\\d+)"),
-        BrowserLoginBundle.MAX_LINE);
-    final int longest = BrowserLoginCookies.MAX_DOMAIN + BrowserLoginCookies.MAX_PAIR
-        + "\tTRUE\t/\tFALSE\t0\t\t".length();
-    assertTrue("a record we may write is longer than a bundle line",
-        longest < BrowserLoginBundle.MAX_LINE);
-  }
-
-  /** A name the engine refuses ABORTS the mirror, so the writer asks it before it writes. */
-  @Test
-  public void theBundleNameCapIsTheEnginesOwn() throws IOException {
-    assertEquals(only(source("htsbundle.h"), "HTS_BUNDLE_NAME_MAX (\\d+)"),
-        BrowserLoginBundle.MAX_NAME);
-  }
-
   /**
-   * The engine cuts a start URL at the FIRST suffix, which is why ours is appended last and
-   * never twice: a second one leaves a '#' inside the name, and a refused name stops the run.
+   * The engine's paste reader drops every comment line, which is why the records we hand it
+   * carry no Netscape header. A reader that kept comments would read ours as a cookie.
    */
   @Test
-  public void theSuffixIsTheEnginesOwnAndTheFirstOneWins() throws IOException {
-    assertEquals(text(source("htsbundle.h"), "#define HTS_BUNDLE_SUFFIX \"([^\"]*)\""),
-        BrowserLoginBundle.SUFFIX);
-    assertTrue("bundle_cut no longer takes the first suffix",
-        source("htsbundle.c").contains("strstr(url, HTS_BUNDLE_SUFFIX)"));
+  public void thePasteReaderDropsEveryCommentLine() throws IOException {
+    final String reader = TestSources.balancedBlock(source("htsbundle.c"),
+        TestSources.indexOf(source("htsbundle.c"), "static void paste_records("));
+    assertTrue(reader, reader.contains("s[0] != '#'"));
+    // Except this one, which marks a cookie rather than a comment, and which we never write.
+    assertTrue(reader, reader.contains("httponly"));
   }
 
-  /** Every key the writer emits has to be one the reader knows: an unknown key stops the run. */
+  /** The whole bundle is the engine's to write, so the entry point has to be exported. */
   @Test
-  public void everyKeyTheWriterEmitsIsOneTheEngineReads() throws IOException {
-    final String parse = source("htsbundle.c");
-    final String reader = TestSources.balancedBlock(parse,
-        TestSources.indexOf(parse, "static hts_boolean bundle_parse("));
-    final List<String> scope = Arrays.asList("a.example", "b.example");
-    // What text() emits, not the constants, so a key added anywhere in it is caught.
-    for (final String line : BrowserLoginBundle.text("Mozilla/5.0", scope, "").split("\n")) {
-      if (line.charAt(0) == '#') {
-        continue;
-      }
-      final int space = line.indexOf(' ');
-      final String key = space == -1 ? line : line.substring(0, space);
-      assertTrue(key + " is not a key bundle_parse reads",
-          reader.contains("key_is(line, klen, \"" + key + "\")"));
-    }
+  public void theBundleWriterIsAnExportedEngineCall() throws IOException {
+    assertTrue("hts_bundle_from_paste is no longer exported",
+        source("httrack-library.h").contains("HTSEXT_API hts_boolean hts_bundle_from_paste("));
+    // It reads the file back through the engine's own loader before keeping it.
+    final String paste = source("htsbundle.c");
+    assertTrue(paste, paste.contains("bundle_load_src(opt, &check, &src"));
   }
 
   /** Our file has to leave the mirror's own cookies.txt room in the same jar. */

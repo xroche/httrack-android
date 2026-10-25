@@ -1029,16 +1029,23 @@ public class HTTrackActivity extends FragmentActivity {
   /**
    * Trunk to mapper's buildCommandline(), plus where this project's browser logins are kept.
    * With no --bundle-dir the engine looks for a bundle beside the mirror, which every app on the
-   * device can read. An address naming a bundle that is gone loses the name, because the engine
-   * refuses to run at all rather than run logged out.
+   * device can read.
    *
    * @return the engine options, the bundle folder last
    */
   public synchronized List<String> buildCommandline() {
     final List<String> options = mapper.buildCommandline();
     final File bundles = StoragePaths.loginBundleDir(getFilesDir(), mapper.getProjectName());
-    for (int i = 0; i < options.size(); i++) {
-      options.set(i, BrowserLoginBundle.withoutMissingBundle(options.get(i), bundles));
+    boolean named = false;
+
+    for (final String option : options) {
+      named = named || option.indexOf(BrowserLoginPolicy.BUNDLE_SUFFIX) != -1;
+    }
+    /* A bundle's cookies reach the jar only when the engine accepts cookies, and -b0 leaves no
+       jar to put them in. The crawl would run logged out, and the only sign is a warning Android
+       hides, so a saved login wins over a box the user unticked after saving it. */
+    if (named) {
+      options.remove("-b0");
     }
     if (bundles != null && bundles.isDirectory()) {
       options.add("--bundle-dir");
@@ -2936,32 +2943,29 @@ public class HTTrackActivity extends FragmentActivity {
 
   /**
    * Point the crawl at the login the browser window saved, and tell the user what that changed.
+   * Forget takes the names back out of the address field, because a start URL naming a bundle
+   * that is gone stops the crawl at startup rather than running it logged out.
    */
   private void applyBrowserLogin(final Intent data) {
     final File cookies = getLoginCookiesFile();
-    final String name = data.getStringExtra(BrowserLoginActivity.EXTRA_BUNDLE_NAME);
-    if (cookies == null || name == null || name.length() == 0) {
+    final String bundleUrl = data.getStringExtra(BrowserLoginActivity.EXTRA_BUNDLE_URL);
+
+    if (data.getBooleanExtra(BrowserLoginActivity.EXTRA_FORGOTTEN, false)) {
+      setAddressField(BrowserLoginPolicy.withoutBundleNames(getMap(R.id.fieldWebsiteURLs)));
       return;
     }
-    final String landed = data.getStringExtra(BrowserLoginActivity.EXTRA_LANDED_URL);
-    final String field = getMap(R.id.fieldWebsiteURLs);
-    final String elsewhere = BrowserLoginPolicy.landedElsewhere(field, landed)
-        ? getString(R.string.browser_login_other_site, BrowserLoginPolicy.hostOf(landed))
-        : null;
-    final String addresses = BrowserLoginPolicy.withLandedUrl(field, landed, name);
-    setMap(R.id.fieldWebsiteURLs, addresses);
-    /* The widget too, because this field is on the pane the user is looking at. setMap alone
-       leaves the old text on screen, and the next savePaneFields copies it back over the map.
-       Guarded on the pane, because setFieldText throws when the view is not inflated. */
-    if (pane_id == LAYOUT_PROJECT_SETUP) {
-      setFieldText(R.id.fieldWebsiteURLs, addresses);
+    if (cookies == null || bundleUrl == null || bundleUrl.length() == 0) {
+      return;
     }
+    final String field = getMap(R.id.fieldWebsiteURLs);
+    final String otherSite = BrowserLoginPolicy.landedElsewhere(field, bundleUrl)
+        ? getString(R.string.browser_login_other_site, BrowserLoginPolicy.hostOf(bundleUrl))
+        : null;
+    setAddressField(BrowserLoginPolicy.withBundleUrl(field, bundleUrl));
     /* The engine saves its jar at the end of the crawl, and with no -%K it saves it beside the
-       mirror, in shared storage. This names a file in private storage instead, so the session
-       the site rotated during the crawl stays where the bundle put it. We never write it. */
+       mirror, in shared storage. This names a file in private storage instead, and nothing in
+       the app ever writes it. */
     setMap(R.id.editCookiesFile, cookies.getAbsolutePath());
-    /* The bundle's cookies reach the jar only when the engine accepts cookies: with the box
-       unticked there is no jar to put them in, and the only sign is a warning Android hides. */
     setMap(R.id.checkAcceptCookies, "1");
     setMap(R.id.editNumberOfConnections,
         BrowserLoginPolicy.sockets(getMap(R.id.editNumberOfConnections)));
@@ -2971,13 +2975,27 @@ public class HTTrackActivity extends FragmentActivity {
         data.getIntExtra(BrowserLoginActivity.EXTRA_COOKIE_COUNT, 0),
         data.getIntExtra(BrowserLoginActivity.EXTRA_HOST_COUNT, 0),
         BrowserLoginPolicy.MAX_SOCKETS);
-    // A cookie the engine's jar refuses is not saved, so saying only how many were is a lie.
+    // The engine drops a cookie its jar refuses, so saying only how many it kept is a lie.
     final String message = (droppedCookies == 0 ? saved
         : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies))
-        + (elsewhere != null ? "\n\n" + elsewhere : "");
+        + (otherSite != null ? "\n\n" + otherSite : "");
     new AlertDialog.Builder(this).setMessage(message)
         .setPositiveButton(android.R.string.ok, null).show();
   }
+
+  /**
+   * Put ADDRESSES in the address field, the map and the widget both. setMap alone leaves the old
+   * text on screen, and the next savePaneFields copies it back over the map, which made the
+   * whole feature invisible. The widget is only inflated on its own pane.
+   */
+  private void setAddressField(final String addresses) {
+    setMap(R.id.fieldWebsiteURLs, addresses);
+    if (pane_id == LAYOUT_PROJECT_SETUP) {
+      setFieldText(R.id.fieldWebsiteURLs, addresses);
+    }
+  }
+
+
 
   /** Restore a previously saved map context. **/
   private void loadParcelable(final Parcelable data) {

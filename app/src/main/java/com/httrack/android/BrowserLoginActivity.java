@@ -23,18 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 package com.httrack.android;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.httrack.android.jni.HTTrackLib;
 
 import android.app.ActionBar;
 import android.content.Intent;
@@ -55,6 +49,8 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 import androidx.fragment.app.FragmentActivity;
 
+import com.httrack.android.jni.HTTrackLib;
+
 /**
  * The user passes a login form or a CAPTCHA here, and the crawl then reuses this browser's
  * cookies and its exact User-Agent.
@@ -72,16 +68,14 @@ public class BrowserLoginActivity extends FragmentActivity {
   /** The hosts the crawl starts from, which are asked for cookies along with the visited ones. */
   static final String EXTRA_CRAWL_HOSTS = "com.httrack.android.crawlHosts";
 
-  /** Results: the bundle the crawl must name, and what it ended up holding. */
-  static final String EXTRA_BUNDLE_NAME = "com.httrack.android.bundleName";
+  /** Result: the start URL the engine wrote, which names the bundle it wrote beside it. */
+  static final String EXTRA_BUNDLE_URL = "com.httrack.android.bundleUrl";
 
-  /** Where the login ended, which is the address the user opened the browser to reach. */
-  static final String EXTRA_LANDED_URL = "com.httrack.android.landedUrl";
+  /** Result: the user pressed Forget, so the caller drops the bundle its addresses name. */
+  static final String EXTRA_FORGOTTEN = "com.httrack.android.forgotten";
   static final String EXTRA_COOKIE_COUNT = "com.httrack.android.cookieCount";
   static final String EXTRA_HOST_COUNT = "com.httrack.android.hostCount";
   static final String EXTRA_DROPPED_COUNT = "com.httrack.android.droppedCount";
-
-  private static final Charset UTF8 = Charset.forName("UTF-8");
 
   private WebView web;
 
@@ -96,7 +90,12 @@ public class BrowserLoginActivity extends FragmentActivity {
    */
   private final Set<String> crawlHosts = new LinkedHashSet<String>();
 
+  /** Did the user press Forget? The caller then drops the bundle names, however the window ends. */
+  private boolean forgotten;
+
   private static final String STATE_HOSTS = "hosts";
+
+  private static final String STATE_FORGOTTEN = "forgotten";
 
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
@@ -143,6 +142,7 @@ public class BrowserLoginActivity extends FragmentActivity {
     if (seen != null) {
       hosts.addAll(seen);
     }
+    forgotten = savedInstanceState.getBoolean(STATE_FORGOTTEN, false);
   }
 
   @Override
@@ -152,6 +152,7 @@ public class BrowserLoginActivity extends FragmentActivity {
       web.saveState(out);
     }
     out.putStringArrayList(STATE_HOSTS, new ArrayList<String>(hosts));
+    out.putBoolean(STATE_FORGOTTEN, forgotten);
   }
 
   @Override
@@ -175,7 +176,7 @@ public class BrowserLoginActivity extends FragmentActivity {
       if (web != null && web.canGoBack()) {
         web.goBack();
       } else {
-        setResult(RESULT_CANCELED);
+        reportForgotten();
         finish();
       }
     }
@@ -247,11 +248,17 @@ public class BrowserLoginActivity extends FragmentActivity {
     CookieManager.getInstance().flush();
     hosts.clear();
     final File[] saved = bundleDir.listFiles();
-    for (int i = 0; saved != null && i < saved.length; i++) {
-      if (!saved[i].delete()) {
-        Log.w(getClass().getSimpleName(), "could not delete " + saved[i]);
+    if (saved != null) {
+      for (final File file : saved) {
+        if (!file.delete()) {
+          Log.w(getClass().getSimpleName(), "could not delete " + file);
+        }
       }
     }
+    /* A start URL naming a bundle that is gone stops the crawl at startup, by design, so the
+       name has to leave the address field with the file. */
+    forgotten = true;
+    reportForgotten();
     if (web != null) {
       web.clearCache(true);
       web.reload();
@@ -261,8 +268,19 @@ public class BrowserLoginActivity extends FragmentActivity {
 
   /** "Cancel" */
   public void onClickLoginCancel(final View view) {
-    setResult(RESULT_CANCELED);
+    reportForgotten();
     finish();
+  }
+
+  /** Tell the caller whether Forget ran, because Cancel would otherwise bury it. */
+  private void reportForgotten() {
+    if (!forgotten) {
+      setResult(RESULT_CANCELED);
+      return;
+    }
+    final Intent data = new Intent();
+    data.putExtra(EXTRA_FORGOTTEN, true);
+    setResult(RESULT_OK, data);
   }
 
   /** "Use this login" */
@@ -283,108 +301,29 @@ public class BrowserLoginActivity extends FragmentActivity {
       Toast.makeText(this, getString(R.string.browser_login_no_cookies), Toast.LENGTH_LONG).show();
       return;
     }
-    // The WebView's own current address, so a redirect chain reports where it stopped.
-    final String landed = web.getUrl();
-    final String name = bundleName(BrowserLoginPolicy.hostOf(landed));
-    final File bundle = StoragePaths.bundleInDir(bundleDir, name);
-    if (bundle == null) {
-      Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
-      return;
-    }
-    final String text = BrowserLoginBundle.text(web.getSettings().getUserAgentString(),
-        scopeDomains(name, byHost.keySet()), result.text);
-    if (!writeOwnerOnly(bundle, text)) {
+    if (!bundleDir.isDirectory() && !bundleDir.mkdirs()) {
       Toast.makeText(this, getString(R.string.browser_login_write_failed), Toast.LENGTH_LONG)
           .show();
       return;
     }
+    /* The engine writes the file: it owns the bundle format, the name, the scope, the caps and
+       the address rules, and it reads the result back through its own loader before keeping it.
+       web.getUrl() is the WebView's own address, so a redirect chain reports where it stopped. */
+    final HTTrackLib.LoginBundle bundle = HTTrackLib.loadLibraries()
+        ? HTTrackLib.writeLoginBundle(result.text, bundleDir.getAbsolutePath(),
+            web.getSettings().getUserAgentString(), web.getUrl())
+        : null;
+    if (bundle == null) {
+      Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
+      return;
+    }
     final Intent data = new Intent();
-    data.putExtra(EXTRA_BUNDLE_NAME, name);
-    data.putExtra(EXTRA_LANDED_URL, landed);
-    data.putExtra(EXTRA_COOKIE_COUNT, result.cookies);
+    data.putExtra(EXTRA_BUNDLE_URL, bundle.url);
+    data.putExtra(EXTRA_COOKIE_COUNT, bundle.cookies);
     data.putExtra(EXTRA_HOST_COUNT, result.hosts);
-    data.putExtra(EXTRA_DROPPED_COUNT, result.dropped);
+    // What the engine kept, against what we offered it, so the count the user reads is the truth.
+    data.putExtra(EXTRA_DROPPED_COUNT, result.cookies - bundle.cookies);
     setResult(RESULT_OK, data);
     finish();
-  }
-
-  /**
-   * What to call the bundle for a login that ended on HOST. The whole site shares one bundle,
-   * because two bundles covering one site with different identities abort the mirror.
-   *
-   * @return the name the engine accepts, or null when it refuses every name we can build
-   */
-  private static String bundleName(final String host) {
-    if (host == null || !HTTrackLib.loadLibraries()) {
-      return null;
-    }
-    final String domain = HTTrackLib.getRegistrableDomain(host);
-    final String name = domain != null ? domain : host;
-    if (HTTrackLib.getBundleNameRefusal(name) == null) {
-      return name;
-    }
-    // The same retry WinHTTrack makes: a name the engine reserves is fine one character in.
-    final String prefixed = "_" + name;
-    return HTTrackLib.getBundleNameRefusal(prefixed) == null ? prefixed : null;
-  }
-
-  /**
-   * The scope lines the bundle needs. The engine takes the registrable domain of the start URL
-   * that names the bundle, which covers the usual login of one site, so nothing is written for
-   * that case. A project mirroring two sites with one login needs every domain named, because
-   * one scope line replaces the default rather than adding to it.
-   *
-   * @param name
-   *          the bundle's name, which is already the landed site's domain
-   * @param cookieHosts
-   *          every host that gave a cookie
-   * @return the domains to write, empty to leave the engine its default
-   */
-  private static List<String> scopeDomains(final String name, final Set<String> cookieHosts) {
-    final Set<String> domains = new LinkedHashSet<String>();
-    for (final String host : cookieHosts) {
-      final String domain = HTTrackLib.getRegistrableDomain(host);
-      domains.add(domain != null ? domain : host);
-    }
-    if (domains.size() <= 1) {
-      return new ArrayList<String>();
-    }
-    domains.add(name);
-    return new ArrayList<String>(domains);
-  }
-
-  /**
-   * Write TEXT to FILE, readable by this app alone.
-   *
-   * The file holds a live session, so it stages beside FILE and renames, because a write that
-   * failed halfway would leave the previous login truncated and the crawl with nothing.
-   *
-   * @return true when FILE now holds TEXT
-   */
-  static boolean writeOwnerOnly(final File file, final String text) {
-    final File dir = file.getParentFile();
-    if (dir != null && !dir.isDirectory() && !dir.mkdirs()) {
-      return false;
-    }
-    final File staged = StoragePaths.stagedLoginFile(file);
-    try (final OutputStream out = new FileOutputStream(staged)) {
-      out.write(text.getBytes(UTF8));
-    } catch (final IOException e) {
-      Log.w(BrowserLoginActivity.class.getSimpleName(), "cannot write " + staged, e);
-      staged.delete();
-      return false;
-    }
-    // Before the rename, so the name the engine reads is never briefly world-readable. The
-    // second argument is ownerOnly, so the pair clears everyone then grants the owner back.
-    staged.setReadable(false, false);
-    staged.setWritable(false, false);
-    staged.setReadable(true, true);
-    staged.setWritable(true, true);
-    if (!staged.renameTo(file)) {
-      Log.w(BrowserLoginActivity.class.getSimpleName(), "cannot rename onto " + file);
-      staged.delete();
-      return false;
-    }
-    return true;
   }
 }
