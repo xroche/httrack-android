@@ -42,11 +42,17 @@ public class BrowserLoginEngineLimitsTest {
     return value;
   }
 
+  /** The value the engine gives macro NAME in htsbauth.h, where it owns every cookie cap. */
+  private static int macro(final String name) throws IOException {
+    return only(source("htsbauth.h"), name + " (\\d+)");
+  }
+
   /** A buffer of SIZE bytes holds SIZE-1, because cookie_load_field refuses len >= dst_size. */
   @Test
   public void theDomainLimitIsTheLoadersBuffer() throws IOException {
-    assertEquals(only(parseBlock(source("htsbauth.c")), "char domain\\[(\\d+)\\]") - 1,
-        BrowserLoginCookies.MAX_DOMAIN);
+    assertEquals(macro("COOKIE_MAX_DOMAIN") - 1, BrowserLoginCookies.MAX_DOMAIN);
+    assertTrue("the loader no longer sizes its domain buffer from the cap",
+        parseBlock(source("htsbauth.c")).contains("char domain[COOKIE_MAX_DOMAIN]"));
   }
 
   /**
@@ -84,7 +90,9 @@ public class BrowserLoginEngineLimitsTest {
    */
   @Test
   public void theCapsKeepEveryLineUnderTheEnginesLineMax() throws IOException {
-    final int lineMax = only(parseBlock(source("htsbauth.c")), "line_max = (\\d+)");
+    final int lineMax = macro("COOKIE_MAX_LINE");
+    assertTrue("the loader no longer takes its line cap from the macro",
+        parseBlock(source("htsbauth.c")).contains("line_max = COOKIE_MAX_LINE"));
     final int fixedFields = "\tTRUE\t/\tFALSE\t0\t".length() + "\t".length();
     final int longest = BrowserLoginCookies.MAX_DOMAIN + BrowserLoginCookies.MAX_PAIR
         + fixedFields;
@@ -114,7 +122,9 @@ public class BrowserLoginEngineLimitsTest {
   /** Our file has to leave the mirror's own cookies.txt room in the same jar. */
   @Test
   public void theByteBudgetFitsInsideTheJar() throws IOException {
-    final int jar = only(source("htscore.c"), "cookie.max_len = (\\d+)");
+    final int jar = macro("COOKIE_MAX_JAR");
+    assertTrue("httpmirror no longer takes the jar size from the macro",
+        source("htscore.c").contains("cookie.max_len = COOKIE_MAX_JAR"));
     assertTrue(jar + " vs " + BrowserLoginCookies.MAX_BYTES,
         BrowserLoginCookies.MAX_BYTES < jar);
   }

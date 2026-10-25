@@ -245,7 +245,7 @@ public class OptionsActivity extends FragmentActivity implements
     @Override
     public void onHide(final View view) {
       super.onHide(view);
-      HeaderWarnings.warnAboutDropped(view);
+      HeaderWarnings.warnAboutDropped(view, null);
     }
   }
 
@@ -579,6 +579,14 @@ public class OptionsActivity extends FragmentActivity implements
       if (isTabletMode || activityClass == null) {
         if (isTabletMode && activityClass != null) {
           save();
+          /* Nothing else hides the tab on this path, so warn on the way out. */
+          HeaderWarnings.warnAboutDropped(getTabView(), new Runnable() {
+            @Override
+            public void run() {
+              OptionsActivity.this.finish();
+            }
+          });
+          return;
         }
         finish();
       }

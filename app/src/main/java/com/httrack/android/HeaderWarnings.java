@@ -1,132 +1,181 @@
 package com.httrack.android;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.view.View;
 import android.widget.TextView;
 
+import com.httrack.android.jni.HTTrackLib;
+
 /**
- * Which of the user's extra header lines the crawl will throw away. The engine refuses a few
- * header shapes and says why on stderr, which this app discards, so a header the user set is
- * silently never sent.
- *
- * The lists below are the engine's, and {@code HeaderWarningsTest} reads them back out of the
- * pinned engine source, so a bump that changes them turns red here rather than going quiet.
+ * Which of the user's extra header lines the crawl will not send as typed. The engine says why
+ * on stderr, which this app discards, so the header would otherwise go missing with no message.
+ * The engine answers the question itself, so nothing here knows what a header name may hold or
+ * which names it refuses.
  */
 final class HeaderWarnings {
   private HeaderWarnings() {
   }
 
-  /** Refused outright, because they frame the message or act per hop. */
-  static final List<String> FRAMING = Arrays.asList("Content-Length", "Transfer-Encoding",
-      "Connection", "Keep-Alive", "TE", "Upgrade", "Expect");
+  /** The line is not a header. */
+  static final int REASON_MALFORMED = 1;
+  /** HTTrack writes this header itself. */
+  static final int REASON_FRAMING = 2;
+  /** A later line sets the same header, and only the last one is sent. */
+  static final int REASON_REPLACED = 3;
+  /** An update or a resume can write this header instead. */
+  static final int REASON_CONDITIONAL = 4;
 
-  /** Carried once, so a later line of the same name replaces an earlier one. */
-  static final List<String> SINGLE = Arrays.asList("Host", "Cookie", "Authorization");
+  /** Where the engine's verdict on a header line comes from. */
+  interface Verdicts {
+    /**
+     * @param headers the earlier lines joined with CRLF, or null for the first line
+     * @param line    the line to judge
+     * @return one of the HTTrackLib.HEADER_ constants
+     */
+    int of(String headers, String line);
+  }
 
-  /** The characters RFC 7230 allows in a field name, besides letters and digits. */
-  private static final String TOKEN_PUNCTUATION = "!#$%&'*+-.^_`|~";
+  /** One line the dialog reports, and why. */
+  static final class Dropped {
+    /** Which line of the box the user should look at, counting from 1. */
+    final int line;
+    /** One of the REASON_ constants. */
+    final int reason;
+
+    Dropped(final int line, final int reason) {
+      this.line = line;
+      this.reason = reason;
+    }
+  }
+
+  /** The engine's own verdict, asked through the native library. */
+  private static final Verdicts ENGINE = new Verdicts() {
+    @Override
+    public int of(final String headers, final String line) {
+      return HTTrackLib.getCustomHeaderVerdict(headers, line);
+    }
+  };
 
   /**
-   * Why the crawl will drop each line of FIELD, one message per dropped header.
+   * Which lines of FIELD the crawl will not send as typed, in the order the user reads them.
    *
-   * @param field
-   *          the Other-headers field's text
-   * @return the messages, empty when every line would be sent
+   * @param field    the Other-headers field's text
+   * @param verdicts where to ask what the engine does with a line
+   * @return one entry per line worth reporting, empty when every line goes out as typed
    */
-  static List<String> refused(final String field) {
-    final List<String> out = new ArrayList<String>();
-    final Set<String> seen = new LinkedHashSet<String>();
-    int number = 0;
-    for (final String line : CommandlineTokens.lineTokens(field)) {
-      number++;
-      final String name = fieldName(line);
-      final String why = reason(name, seen);
-      if (why != null) {
-        out.add("Line " + number + ": " + why);
+  static List<Dropped> dropped(final String field, final Verdicts verdicts) {
+    final List<Dropped> out = new ArrayList<Dropped>();
+    final List<String> lines = new ArrayList<String>();
+    final List<Integer> numbers = new ArrayList<Integer>();
+    if (field == null) {
+      return out;
+    }
+    /* The engine never sees a blank line, but the user counts it. */
+    final String physical[] = field.split("\n");
+    for (int i = 0; i < physical.length; i++) {
+      final String line = CommandlineTokens.normalizeLine(physical[i]);
+      if (line.length() != 0) {
+        lines.add(line);
+        numbers.add(i + 1);
       }
-      /* Recorded even when refused, because the engine hands a refused line to the request
-         too, so it is what a later line of the same name replaces. */
-      if (name != null) {
-        seen.add(name.toLowerCase(Locale.ROOT));
+    }
+    final int reasons[] = new int[lines.size()];
+    final StringBuilder earlier = new StringBuilder();
+    for (int j = 0; j < lines.size(); j++) {
+      final String before = j == 0 ? null : earlier.toString();
+      switch (verdicts.of(before, lines.get(j))) {
+      case HTTrackLib.HEADER_DROPPED_ORPHAN_FOLD:
+      case HTTrackLib.HEADER_DROPPED_MALFORMED:
+        reasons[j] = REASON_MALFORMED;
+        break;
+      case HTTrackLib.HEADER_DROPPED_FRAMING:
+        reasons[j] = REASON_FRAMING;
+        break;
+      case HTTrackLib.HEADER_SENT_UNLESS_ENGINE_OVERRIDES:
+        reasons[j] = REASON_CONDITIONAL;
+        break;
+      case HTTrackLib.HEADER_SENT_REPLACES_EARLIER:
+        /* This line wins, so ask which earlier lines it beats: one line alone as
+           the earlier text answers for that line only. */
+        for (int i = 0; i < j; i++) {
+          if (verdicts.of(lines.get(i), lines.get(j))
+              == HTTrackLib.HEADER_SENT_REPLACES_EARLIER) {
+            reasons[i] = REASON_REPLACED;
+          }
+        }
+        break;
+      default:
+        break;
+      }
+      if (earlier.length() != 0) {
+        earlier.append("\r\n");
+      }
+      earlier.append(lines.get(j));
+    }
+    for (int j = 0; j < reasons.length; j++) {
+      if (reasons[j] != 0) {
+        out.add(new Dropped(numbers.get(j), reasons[j]));
       }
     }
     return out;
   }
 
-  /** Why a line naming NAME is dropped, given the names already seen, or null when it is sent. */
-  private static String reason(final String name, final Set<String> seen) {
-    if (name == null) {
-      return "the line is not a header";
+  /** The string telling the user about REASON. */
+  private static int messageFor(final int reason) {
+    switch (reason) {
+    case REASON_FRAMING:
+      return R.string.other_headers_framing;
+    case REASON_REPLACED:
+      return R.string.other_headers_replaced;
+    case REASON_CONDITIONAL:
+      return R.string.other_headers_conditional;
+    default:
+      return R.string.other_headers_malformed;
     }
-    if (contains(FRAMING, name)) {
-      return "HTTrack sets this header itself";
-    }
-    if (contains(SINGLE, name) && seen.contains(name.toLowerCase(Locale.ROOT))) {
-      return "an earlier line already set this header";
-    }
-    return null;
-  }
-
-  /** LINE's field name, or null unless a valid name is followed by a colon. */
-  private static String fieldName(final String line) {
-    final int colon = line.indexOf(':');
-    if (colon < 1) {
-      return null;
-    }
-    for (int i = 0; i < colon; i++) {
-      final char c = line.charAt(i);
-      if (!Character.isLetterOrDigit(c) && TOKEN_PUNCTUATION.indexOf(c) == -1) {
-        return null;
-      }
-      // Letters outside ASCII are not token characters, whatever isLetterOrDigit says.
-      if (c > 0x7f) {
-        return null;
-      }
-    }
-    return line.substring(0, colon);
-  }
-
-  /** Is NAME one of NAMES, compared the way a header name compares? */
-  private static boolean contains(final List<String> names, final String name) {
-    for (final String known : names) {
-      if (known.equalsIgnoreCase(name)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**
-   * Tell the user which extra headers the crawl will not send, and say nothing when the field
-   * is empty or every line would go.
+   * Tell the user which extra headers the crawl will not send as typed, then run AFTER. Says
+   * nothing when every line goes out, or when the native library did not load.
    *
-   * @param view
-   *          the tab holding the field
+   * @param view  the tab holding the field
+   * @param after what to do once the user has read the message, or null for nothing
    */
-  static void warnAboutDropped(final View view) {
+  static void warnAboutDropped(final View view, final Runnable after) {
     final TextView field = TextView.class.cast(view.findViewById(R.id.editOtherHeaders));
-    if (field == null) {
-      return;
-    }
-    final List<String> dropped = refused(field.getText().toString());
+    final List<Dropped> dropped = field != null && HTTrackLib.loadLibraries()
+        ? dropped(field.getText().toString(), ENGINE)
+        : new ArrayList<Dropped>();
     if (dropped.isEmpty()) {
+      if (after != null) {
+        after.run();
+      }
       return;
     }
     final Context context = field.getContext();
     final StringBuilder message = new StringBuilder(
         context.getString(R.string.other_headers_dropped));
-    for (final String line : dropped) {
-      message.append("\n\n").append(line);
+    for (final Dropped line : dropped) {
+      message.append("\n\n").append(
+          context.getString(R.string.other_headers_line, line.line,
+                            context.getString(messageFor(line.reason))));
     }
-    new AlertDialog.Builder(context).setMessage(message.toString())
-        .setPositiveButton(android.R.string.ok, null).show();
+    final AlertDialog.Builder builder = new AlertDialog.Builder(context)
+        .setMessage(message.toString())
+        .setPositiveButton(android.R.string.ok, null);
+    if (after != null) {
+      builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+        @Override
+        public void onDismiss(final DialogInterface dialog) {
+          after.run();
+        }
+      });
+    }
+    builder.show();
   }
 }

@@ -6,97 +6,157 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.Test;
 
-/** Which extra headers the user is told the crawl will not send. */
+import com.httrack.android.jni.HTTrackLib;
+
+/** Which extra headers the user is told the crawl will not send as typed. */
 public class HeaderWarningsTest {
-  /** The names in an engine array like {@code static const char *const refused[] = {...}}. */
-  private static List<String> engineList(final String name) throws IOException {
-    final String source = TestSources.read(TestSources.engineFile("src/htslib.c"));
-    final Matcher array = Pattern.compile(
-        "const char \\*const " + name + "\\[\\]\\s*=\\s*\\{([^}]*)\\}").matcher(source);
-    assertTrue("no engine array named " + name, array.find());
-    final List<String> out = new ArrayList<String>();
-    final Matcher quoted = Pattern.compile("\"([^\"]+)\"").matcher(array.group(1));
-    while (quoted.find()) {
-      out.add(quoted.group(1));
+  /** Answers canned verdicts and records what it was asked, so a wrong question fails too. */
+  private static class Fake implements HeaderWarnings.Verdicts {
+    private final Map<String, Integer> answers = new HashMap<String, Integer>();
+    final List<String> asked = new ArrayList<String>();
+
+    /** Answer VERDICT for LINE asked with HEADERS before it, null meaning the first line. */
+    Fake on(final String headers, final String line, final int verdict) {
+      answers.put(key(headers, line), Integer.valueOf(verdict));
+      return this;
     }
-    assertTrue("the engine array " + name + " did not parse", out.size() > 1);
+
+    private static String key(final String headers, final String line) {
+      return (headers == null ? "<null>" : headers) + " => " + line;
+    }
+
+    @Override
+    public int of(final String headers, final String line) {
+      final String k = key(headers, line);
+      asked.add(k);
+      final Integer verdict = answers.get(k);
+      return verdict == null ? HTTrackLib.HEADER_SENT : verdict.intValue();
+    }
+  }
+
+  /** "line:reason" per reported line, so one assertion reads as the dialog does. */
+  private static List<String> report(final String field, final Fake verdicts) {
+    final List<String> out = new ArrayList<String>();
+    for (final HeaderWarnings.Dropped dropped : HeaderWarnings.dropped(field, verdicts)) {
+      out.add(dropped.line + ":" + dropped.reason);
+    }
     return out;
   }
 
-  /** Our copy has to be the engine's, or the dialog promises what the crawl does not do. */
+  /** The Java copy of the verdict codes is ABI, so the engine's own values decide it. */
   @Test
-  public void theRefusedNamesAreTheEnginesOwn() throws IOException {
-    assertEquals(engineList("refused"), HeaderWarnings.FRAMING);
+  public void theVerdictCodesAreTheEnginesOwn() throws IOException {
+    final String source = TestSources.read(TestSources.engineFile("src/httrack-library.h"));
+    final Matcher value = Pattern.compile("HTS_HEADER_([A-Z_]+)\\s*=\\s*(\\d+)").matcher(source);
+    final Map<String, Integer> engine = new HashMap<String, Integer>();
+    while (value.find()) {
+      engine.put(value.group(1), Integer.valueOf(value.group(2)));
+    }
+    assertEquals("the engine enum did not parse", 6, engine.size());
+    assertEquals(engine.get("SENT").intValue(), HTTrackLib.HEADER_SENT);
+    assertEquals(engine.get("DROPPED_ORPHAN_FOLD").intValue(),
+        HTTrackLib.HEADER_DROPPED_ORPHAN_FOLD);
+    assertEquals(engine.get("DROPPED_MALFORMED").intValue(),
+        HTTrackLib.HEADER_DROPPED_MALFORMED);
+    assertEquals(engine.get("DROPPED_FRAMING").intValue(), HTTrackLib.HEADER_DROPPED_FRAMING);
+    assertEquals(engine.get("SENT_REPLACES_EARLIER").intValue(),
+        HTTrackLib.HEADER_SENT_REPLACES_EARLIER);
+    assertEquals(engine.get("SENT_UNLESS_ENGINE_OVERRIDES").intValue(),
+        HTTrackLib.HEADER_SENT_UNLESS_ENGINE_OVERRIDES);
   }
 
   @Test
-  public void theSingleFieldNamesAreTheEnginesOwn() throws IOException {
-    assertEquals(engineList("single"), HeaderWarnings.SINGLE);
+  public void nothingIsReportedWhenEveryLineGoesOutAsTyped() {
+    assertTrue(report("X-A: 1\nX-B: 2", new Fake()).isEmpty());
+    assertTrue(report("", new Fake()).isEmpty());
+    assertTrue(report(null, new Fake()).isEmpty());
   }
 
+  /** Each verdict the engine can give reaches the user as its own reason. */
   @Test
-  public void aFramingHeaderIsReportedWithItsLineNumber() {
-    assertEquals(Arrays.asList("Line 2: HTTrack sets this header itself"),
-        HeaderWarnings.refused("X-A: 1\nConnection: close\nX-B: 2"));
+  public void eachDroppingVerdictBecomesItsOwnReason() {
+    assertEquals(Arrays.asList("1:" + HeaderWarnings.REASON_MALFORMED),
+        report("no colon here",
+            new Fake().on(null, "no colon here", HTTrackLib.HEADER_DROPPED_MALFORMED)));
+    assertEquals(Arrays.asList("1:" + HeaderWarnings.REASON_MALFORMED),
+        report(" folded",
+            new Fake().on(null, "folded", HTTrackLib.HEADER_DROPPED_ORPHAN_FOLD)));
+    assertEquals(Arrays.asList("1:" + HeaderWarnings.REASON_FRAMING),
+        report("Connection: close",
+            new Fake().on(null, "Connection: close", HTTrackLib.HEADER_DROPPED_FRAMING)));
+    assertEquals(Arrays.asList("1:" + HeaderWarnings.REASON_CONDITIONAL),
+        report("Range: bytes=0-1",
+            new Fake().on(null, "Range: bytes=0-1",
+                HTTrackLib.HEADER_SENT_UNLESS_ENGINE_OVERRIDES)));
   }
 
-  /** A header name is case-insensitive, so the warning cannot depend on how it was typed. */
+  /**
+   * The engine keeps the LAST line of a single-valued field, so the EARLIER one is the line
+   * the user loses. Reporting the line the engine keeps would send them to delete the wrong one.
+   */
   @Test
-  public void theNameIsMatchedWhateverItsCase() {
-    assertEquals(1, HeaderWarnings.refused("content-LENGTH: 10").size());
-    assertEquals(1, HeaderWarnings.refused("tE: trailers").size());
+  public void aReplacementReportsTheEarlierLine() {
+    final Fake verdicts = new Fake()
+        .on("Host: a", "Host: b", HTTrackLib.HEADER_SENT_REPLACES_EARLIER);
+    assertEquals(Arrays.asList("1:" + HeaderWarnings.REASON_REPLACED),
+        report("Host: a\nHost: b", verdicts));
   }
 
+  /** Every loser is named, because the engine drops all but the last of them. */
   @Test
-  public void nothingIsReportedWhenEveryLineWouldBeSent() {
-    assertTrue(HeaderWarnings.refused("X-A: 1\nX-B: 2").isEmpty());
-    assertTrue(HeaderWarnings.refused("").isEmpty());
-    assertTrue(HeaderWarnings.refused(null).isEmpty());
-    // A single-field name is fine until a second line repeats it.
-    assertTrue(HeaderWarnings.refused("Host: a.example").isEmpty());
+  public void everyEarlierLineOfTheSameFieldIsNamed() {
+    final Fake verdicts = new Fake()
+        .on("Cookie: a", "Cookie: b", HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Cookie: a\r\nCookie: b", "Cookie: c", HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Cookie: a", "Cookie: c", HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Cookie: b", "Cookie: c", HTTrackLib.HEADER_SENT_REPLACES_EARLIER);
+    assertEquals(
+        Arrays.asList("1:" + HeaderWarnings.REASON_REPLACED,
+            "2:" + HeaderWarnings.REASON_REPLACED),
+        report("Cookie: a\nCookie: b\nCookie: c", verdicts));
   }
 
-  /** The engine keeps the LAST of these, so the user has to learn the earlier one is gone. */
+  /** A line of another field is not a loser, however many lines separate them. */
   @Test
-  public void aRepeatedSingleFieldNamesTheLineThatLoses() {
-    assertEquals(Arrays.asList("Line 2: an earlier line already set this header"),
-        HeaderWarnings.refused("Host: a.example\nHost: b.example"));
-    assertEquals(Arrays.asList("Line 3: an earlier line already set this header"),
-        HeaderWarnings.refused("Cookie: a=1\nX-A: 1\ncookie: b=2"));
-    // Not a single-field name, so a repeat is legitimate and goes out twice.
-    assertTrue(HeaderWarnings.refused("X-A: 1\nX-A: 2").isEmpty());
+  public void anUnrelatedLineIsNotReported() {
+    final Fake verdicts = new Fake()
+        .on("Host: a\r\nX-A: 1", "Host: b", HTTrackLib.HEADER_SENT_REPLACES_EARLIER)
+        .on("Host: a", "Host: b", HTTrackLib.HEADER_SENT_REPLACES_EARLIER);
+    assertEquals(Arrays.asList("1:" + HeaderWarnings.REASON_REPLACED),
+        report("Host: a\nX-A: 1\nHost: b", verdicts));
   }
 
+  /** "Line N" has to be the line the user can count, so a blank line still takes a number. */
   @Test
-  public void aLineThatNamesNoHeaderIsReported() {
-    final String why = "the line is not a header";
-    assertEquals(Arrays.asList("Line 1: " + why), HeaderWarnings.refused("no colon here"));
-    assertEquals(Arrays.asList("Line 1: " + why), HeaderWarnings.refused(": empty name"));
-    // A space is not a token character, and RFC 7230 allows no space before the colon.
-    assertEquals(Arrays.asList("Line 1: " + why), HeaderWarnings.refused("X A: 1"));
-    assertEquals(Arrays.asList("Line 1: " + why), HeaderWarnings.refused("X-é: 1"));
-    // These punctuation marks ARE token characters, so the line is a header.
-    assertTrue(HeaderWarnings.refused("X-a!#$%&'*+-.^_`|~9: 1").isEmpty());
+  public void theNumberIsTheLineTheUserSees() {
+    final Fake verdicts = new Fake()
+        .on("X-A: 1", "Connection: close", HTTrackLib.HEADER_DROPPED_FRAMING);
+    assertEquals(Arrays.asList("4:" + HeaderWarnings.REASON_FRAMING),
+        report("X-A: 1\n\n   \nConnection: close", verdicts));
   }
 
-  /** Blank lines never reach the engine, so they must not shift the numbering either. */
+  /** The engine is asked the way its own contract says: NULL first, then the earlier lines. */
   @Test
-  public void blankLinesAreNotCounted() {
-    assertEquals(Arrays.asList("Line 2: HTTrack sets this header itself"),
-        HeaderWarnings.refused("X-A: 1\n\n   \nConnection: close"));
+  public void theEarlierLinesAreAskedAboutAsTheEngineWantsThem() {
+    final Fake verdicts = new Fake();
+    report("X-A: 1\nX-B: 2\nX-C: 3", verdicts);
+    assertEquals(Arrays.asList("<null> => X-A: 1", "X-A: 1 => X-B: 2",
+        "X-A: 1\r\nX-B: 2 => X-C: 3"), verdicts.asked);
   }
 
-  /** Every dropped line is named, or the user fixes one and walks into the next. */
+  /** A line is normalised before the engine sees it, because that is what reaches -%X. */
   @Test
-  public void everyDroppedLineIsNamed() {
-    assertEquals(Arrays.asList("Line 1: HTTrack sets this header itself",
-        "Line 3: HTTrack sets this header itself"),
-        HeaderWarnings.refused("TE: trailers\nX-A: 1\nUpgrade: h2c"));
+  public void theLineAskedAboutIsTheOneTheEngineGets() {
+    final Fake verdicts = new Fake();
+    report("  X-A:   1  ", verdicts);
+    assertEquals(Arrays.asList("<null> => X-A: 1"), verdicts.asked);
   }
 }

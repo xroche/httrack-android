@@ -20,8 +20,9 @@ import org.junit.Test;
 public class NativeFaultLatchTest {
   /** Entry points that may skip the latch: three table lookups, and the load hook that runs
    *  once before any of this. */
+  /** Entry points that read their arguments and no engine state, so a fault cannot reach them. */
   private static final Set<String> UNGUARDED = new TreeSet<String>(Arrays.asList(
-      "getAcceptPreset", "getFeatures", "getVersion", "initStatic"));
+      "getAcceptPreset", "getCustomHeaderVerdict", "getFeatures", "getVersion", "initStatic"));
 
   private static final Pattern ENTRY_POINT = Pattern.compile(
       "(?m)^(?:JNICALL\\s+\\w+\\s+)?Java_com_httrack_android_jni_HTTrackLib_(\\w+)\\s*\\(");
