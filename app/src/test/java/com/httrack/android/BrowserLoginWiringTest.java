@@ -227,7 +227,7 @@ public class BrowserLoginWiringTest {
     // And that address is the one the window was opened with, kept for the write.
     final String create = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void onCreate("));
-    assertTrue(create, create.contains("crawlUrl = url"));
+    assertTrue(create, create.contains("crawlUrl = BrowserLoginPolicy.withoutUserInfo(url)"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,

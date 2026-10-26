@@ -136,21 +136,72 @@ public class BrowserLoginPolicyTest {
     assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl("http://a.example/members/", WRITTEN));
     // A second login names that address once, rather than again.
     assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl(WRITTEN, WRITTEN));
+    /* The same address twice is named once. Two names for one site would leave the engine with
+       two bundles whose cookie values clash, and it then refuses to start the crawl. */
+    assertEquals(WRITTEN + " https://a.example/members/",
+        BrowserLoginPolicy.withBundleUrl("https://a.example/members/ https://a.example/members/",
+            WRITTEN));
   }
 
   /** The other addresses are the user's own text, and only one of them gains the name. */
   @Test
   public void everyOtherAddressIsLeftExactlyAsItWas() {
-    assertEquals("https://b.example/one\n" + WRITTEN + "\nhttps://c.example/two",
+    /* The login opens the field's FIRST address, so that is the token the engine was given
+       and the one that gets named. The others are not touched. */
+    final String first = "https://b.example/one" + BrowserLoginPolicy.BUNDLE_SUFFIX + "b.example";
+    assertEquals(first + "\nhttps://a.example/members/\nhttps://c.example/two",
         BrowserLoginPolicy.withBundleUrl(
-            "https://b.example/one\nhttps://a.example/members/\nhttps://c.example/two", WRITTEN));
+            "https://b.example/one\nhttps://a.example/members/\nhttps://c.example/two", first));
     // Any whitespace separates addresses, and the user's own spacing survives.
-    assertEquals("https://b.example/one \t" + WRITTEN,
-        BrowserLoginPolicy.withBundleUrl("https://b.example/one \thttps://a.example/members/",
+    assertEquals(WRITTEN + " \thttps://b.example/one",
+        BrowserLoginPolicy.withBundleUrl("https://a.example/members/ \thttps://b.example/one",
             WRITTEN));
     // A token that is not an address is not touched, even one urlTokens would refuse.
     assertEquals("-foo " + WRITTEN,
         BrowserLoginPolicy.withBundleUrl("-foo https://a.example/members/", WRITTEN));
+    // The name lands on the FIRST address, which is the one the login window opened.
+    assertEquals(WRITTEN + "\nhttps://a.example/other",
+        BrowserLoginPolicy.withBundleUrl("https://a.example/members/\nhttps://a.example/other",
+            WRITTEN));
+  }
+
+  /** The engine refuses an address holding a password, so the login hands it none. */
+  @Test
+  public void theAddressGivenToTheEngineCarriesNoPassword() {
+    assertEquals("https://a.example/x",
+        BrowserLoginPolicy.withoutUserInfo("https://user:pass@a.example/x"));
+    assertEquals("https://a.example/x", BrowserLoginPolicy.withoutUserInfo("https://user@a.example/x"));
+    // The LAST '@' of the authority ends it, and one later in the path is not userinfo.
+    assertEquals("https://a.example/x",
+        BrowserLoginPolicy.withoutUserInfo("https://u:p@w@a.example/x"));
+    assertEquals("https://a.example/u@x", BrowserLoginPolicy.withoutUserInfo("https://a.example/u@x"));
+    assertEquals("https://a.example/x?to=u@h",
+        BrowserLoginPolicy.withoutUserInfo("https://a.example/x?to=u@h"));
+    // Nothing to cut.
+    assertEquals("https://a.example/", BrowserLoginPolicy.withoutUserInfo("https://a.example/"));
+    assertEquals("https://a.example", BrowserLoginPolicy.withoutUserInfo("https://a.example"));
+    assertNull(BrowserLoginPolicy.withoutUserInfo(null));
+  }
+
+  /**
+   * The engine's own address need not equal the field's. It cuts a fragment, trims a trailing
+   * host dot and puts an international host into ASCII, so matching its text appended a second
+   * root for every address holding a fragment. The token is matched by identity instead.
+   */
+  @Test
+  public void theEnginesOwnRewritingOfTheAddressStillNamesOneToken() {
+    // The engine cut the fragment, so its address does not equal the token the field holds.
+    assertEquals(WRITTEN,
+        BrowserLoginPolicy.withBundleUrl("https://a.example/members/#section2", WRITTEN));
+    assertEquals(WRITTEN,
+        BrowserLoginPolicy.withBundleUrl("https://a.example/members/?q=1#f", WRITTEN));
+    // The engine trims a trailing host dot, and lowercases the name but not the address.
+    assertEquals(WRITTEN,
+        BrowserLoginPolicy.withBundleUrl("https://a.example./members/", WRITTEN));
+    assertEquals(WRITTEN,
+        BrowserLoginPolicy.withBundleUrl("https://A.Example/MEMBERS/", WRITTEN));
+    // A different page of the same site is still the token the login was opened for.
+    assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl("https://a.example/", WRITTEN));
   }
 
   /**
@@ -159,8 +210,9 @@ public class BrowserLoginPolicyTest {
    */
   @Test
   public void aNameWithNoAddressToSitOnGetsItsOwnLine() {
-    assertEquals("https://b.example/" + "\n" + WRITTEN,
-        BrowserLoginPolicy.withBundleUrl("https://b.example/", WRITTEN));
+    // Only tokens that name no host at all, because any address would take the name instead.
+    assertEquals("-foo *.gif\n" + WRITTEN,
+        BrowserLoginPolicy.withBundleUrl("-foo *.gif", WRITTEN));
     assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl("", WRITTEN));
     assertEquals(WRITTEN, BrowserLoginPolicy.withBundleUrl(null, WRITTEN));
   }

@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -37,11 +38,24 @@ final class BrowserLoginPolicy {
    * @return the first address we may open, or null when the field holds none
    */
   static String startUrl(final String urlField) {
+    final String token = openedToken(urlField);
+
+    return token == null ? null : secureUrl(token);
+  }
+
+  /**
+   * The field's own text for the address {@link #startUrl} opens. The login names that token
+   * afterwards, so both have to pick the same one.
+   *
+   * @param urlField
+   *          the field's text
+   * @return the token, exactly as the field holds it, or null when the field names no address
+   */
+  private static String openedToken(final String urlField) {
     // urlTokens also drops what a tampered profile puts in that field, such as an engine option.
     for (final String token : CommandlineTokens.urlTokens(urlField)) {
-      final String url = secureUrl(token);
-      if (hostOf(url) != null) {
-        return url;
+      if (hostOf(secureUrl(token)) != null) {
+        return token;
       }
     }
     return null;
@@ -85,47 +99,70 @@ final class BrowserLoginPolicy {
   /** What a start URL ends with to name a login bundle, HTS_BUNDLE_SUFFIX in the engine. */
   static final String BUNDLE_SUFFIX = "#httrack-bundle=";
 
+  /** One address, or one run of the whitespace between two. */
+  private static final Pattern FIELD_PARTS = Pattern.compile("\\S+|\\s+");
+
+  /**
+   * URL without the user name and password it may carry. The engine refuses a paste whose
+   * address holds either, and the crawl still authenticates from the field's own copy.
+   *
+   * @param url
+   *          an https address
+   * @return the address with any userinfo cut out
+   */
+  static String withoutUserInfo(final String url) {
+    final int host = url == null ? -1 : url.indexOf("://");
+    final int at = host == -1 ? -1 : url.lastIndexOf('@', endOfAuthority(url, host + 3));
+
+    return at == -1 || at < host ? url : url.substring(0, host + 3) + url.substring(at + 1);
+  }
+
+  /** Where URL's authority ends, counting from FROM. */
+  private static int endOfAuthority(final String url, final int from) {
+    for (int i = from; i < url.length(); i++) {
+      final char c = url.charAt(i);
+
+      if (c == '/' || c == '?' || c == '#' || c == '\\') {
+        return i;
+      }
+    }
+    return url.length();
+  }
+
   /**
    * The address field with the bundle's name on the address the login was opened for, which is
-   * the one the crawl starts from. The engine built BUNDLEURL from that same address, so this
-   * names that one token and adds no second crawl root.
+   * the one the crawl starts from. That one token is named, so the field gains no second crawl
+   * root.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
    * @param bundleUrl
    *          the start URL the engine wrote, or null when it wrote none
-   * @return the field's new text, with the user's own spacing kept
+   * @return the field's new text, with the user's own spacing and other addresses kept
    */
   static String withBundleUrl(final String urlField, final String bundleUrl) {
     final String current = urlField == null ? "" : urlField.trim();
-    final int at = bundleUrl == null ? -1 : bundleUrl.indexOf(BUNDLE_SUFFIX);
 
-    if (at == -1) {
+    if (bundleUrl == null || bundleUrl.indexOf(BUNDLE_SUFFIX) == -1) {
       return current;
     }
-    final String base = bundleUrl.substring(0, at);
+    /* The token is matched by identity, not against the address the engine handed back: the
+       engine cuts a fragment, trims a trailing host dot and puts an international host into
+       ASCII, so its address need not equal the one the field holds. */
+    final String opened = openedToken(current);
+    final Matcher parts = FIELD_PARTS.matcher(current);
     final StringBuilder kept = new StringBuilder();
     boolean named = false;
-    int i = 0;
 
-    while (i < current.length()) {
-      final int token = i;
+    // Each match is one address or one run of the whitespace between two, so spacing survives.
+    while (parts.find()) {
+      final String part = parts.group();
 
-      while (i < current.length() && !Character.isWhitespace(current.charAt(i))) {
-        i++;
-      }
-      final String address = current.substring(token, i);
-
-      // The named form too, so a second login on one project still names one address.
-      if (!named && (address.equals(bundleUrl) || secureUrl(address).equals(base))) {
+      if (!named && part.equals(opened)) {
         kept.append(bundleUrl);
         named = true;
       } else {
-        kept.append(address);
-      }
-      while (i < current.length() && Character.isWhitespace(current.charAt(i))) {
-        kept.append(current.charAt(i));
-        i++;
+        kept.append(part);
       }
     }
     if (named) {

@@ -122,7 +122,9 @@ public class BrowserLoginActivity extends FragmentActivity {
       return;
     }
 
-    crawlUrl = url;
+    /* Without the credentials it may carry: the engine refuses such an address, and the crawl
+       still authenticates from the field's own copy. */
+    crawlUrl = BrowserLoginPolicy.withoutUserInfo(url);
     web = WebView.class.cast(findViewById(R.id.webLogin));
     final WebSettings settings = web.getSettings();
     // A login form usually needs scripts, and often its storage too.
@@ -343,9 +345,8 @@ public class BrowserLoginActivity extends FragmentActivity {
     }
     /* The engine writes the file: it owns the bundle format, the name, the scope, the caps and
        the address rules, and it reads the result back through its own loader before keeping it.
-       It is given the address this window was opened for, NOT the one the login ended on. That
-       address is what the crawl starts from, so the bundle is named and scoped for the site
-       being copied, and a login that ends on an identity provider adds no second crawl root. */
+       crawlUrl rather than web.getUrl(), because the crawl starts from the address this window
+       was opened for. See BrowserLoginPolicy#withBundleUrl. */
     final HTTrackLib.LoginBundle bundle = HTTrackLib.writeLoginBundle(result.text,
         bundleDir.getAbsolutePath(), web.getSettings().getUserAgentString(), crawlUrl);
     if (bundle == null) {
