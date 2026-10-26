@@ -86,28 +86,53 @@ final class BrowserLoginPolicy {
   static final String BUNDLE_SUFFIX = "#httrack-bundle=";
 
   /**
-   * The address field with the login's own start URL added on a line of its own. The engine
-   * built that URL: it cut the fragment, refused a password and named the bundle, so nothing
-   * here inspects it again. The addresses already there are left alone, so the user trims what
-   * they do not want.
+   * The address field with the bundle's name on the address the login was opened for, which is
+   * the one the crawl starts from. The engine built BUNDLEURL from that same address, so this
+   * names that one token and adds no second crawl root.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
    * @param bundleUrl
    *          the start URL the engine wrote, or null when it wrote none
-   * @return the field's new text
+   * @return the field's new text, with the user's own spacing kept
    */
   static String withBundleUrl(final String urlField, final String bundleUrl) {
     final String current = urlField == null ? "" : urlField.trim();
-    if (bundleUrl == null || bundleUrl.length() == 0) {
+    final int at = bundleUrl == null ? -1 : bundleUrl.indexOf(BUNDLE_SUFFIX);
+
+    if (at == -1) {
       return current;
     }
-    for (final String token : CommandlineTokens.urlTokens(current)) {
-      if (token.equals(bundleUrl)) {
-        return current;
+    final String base = bundleUrl.substring(0, at);
+    final StringBuilder kept = new StringBuilder();
+    boolean named = false;
+    int i = 0;
+
+    while (i < current.length()) {
+      final int token = i;
+
+      while (i < current.length() && !Character.isWhitespace(current.charAt(i))) {
+        i++;
+      }
+      final String address = current.substring(token, i);
+
+      // The named form too, so a second login on one project still names one address.
+      if (!named && (address.equals(bundleUrl) || secureUrl(address).equals(base))) {
+        kept.append(bundleUrl);
+        named = true;
+      } else {
+        kept.append(address);
+      }
+      while (i < current.length() && Character.isWhitespace(current.charAt(i))) {
+        kept.append(current.charAt(i));
+        i++;
       }
     }
-    return current.length() == 0 ? bundleUrl : current + "\n" + bundleUrl;
+    if (named) {
+      return kept.toString();
+    }
+    // The field no longer holds the address the login opened, so the name needs its own line.
+    return kept.length() == 0 ? bundleUrl : kept + "\n" + bundleUrl;
   }
 
   /**
@@ -135,46 +160,6 @@ final class BrowserLoginPolicy {
   static String bundleNameOf(final String startUrl) {
     final int at = startUrl == null ? -1 : startUrl.indexOf(BUNDLE_SUFFIX);
     return at == -1 ? null : startUrl.substring(at + BUNDLE_SUFFIX.length());
-  }
-
-  /**
-   * Did the login end on a site the address field did not name? A login can end on an identity
-   * provider, and that address is then a second crawl root with a live session, so the user is
-   * told. The address is still filled in, because a field the user has to retype is worse.
-   *
-   * @param urlFieldBeforeLogin
-   *          the field's text as it was BEFORE the login, because the answer is always false
-   *          once the login's own address has been added to it
-   * @param bundleUrl
-   *          the start URL the engine wrote
-   * @return true when BUNDLEURL names a host no address in the field shares a site with
-   */
-  static boolean landedElsewhere(final String urlFieldBeforeLogin, final String bundleUrl) {
-    final String host = hostOf(bundleUrl);
-
-    return host != null && !namesTheSameSite(
-        urlFieldBeforeLogin == null ? "" : urlFieldBeforeLogin, host);
-  }
-
-  /**
-   * Whether HOST belongs to a site the address field already names. Either direction counts,
-   * because a login moves between a site and its subdomains in both.
-   *
-   * @param urlField
-   *          the field's text
-   * @param host
-   *          the host the login ended on
-   * @return true when the field names that host, a parent of it, or a child of it
-   */
-  private static boolean namesTheSameSite(final String urlField, final String host) {
-    for (final String token : CommandlineTokens.urlTokens(urlField)) {
-      final String known = hostOf(secureUrl(token));
-      if (known != null && (known.equals(host) || known.endsWith("." + host)
-          || host.endsWith("." + known))) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**

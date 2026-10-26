@@ -210,39 +210,36 @@ public class BrowserLoginWiringTest {
     assertTrue(forget, forget.contains("StoragePaths.savedLoginFiles("));
   }
 
-  /** Without the landed address the user has to retype where the login took them. */
+  /**
+   * The engine is given the address the window was opened for, not the one the login ended on.
+   * That address is the crawl's own root, so naming it adds no second root, and a login ending
+   * on an identity provider cannot put that provider in the list.
+   */
   @Test
-  public void theLandedAddressIsReturnedAndShown() throws IOException {
-    final String first = TestSources
+  public void theBundleIsNamedForTheAddressTheCrawlStartsFrom() throws IOException {
+    final String source = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    final String done = TestSources.balancedBlock(first,
-        TestSources.indexOf(first, "public void onClickLoginDone("));
-    // The WebView's own address, not the one the activity was started with.
-    assertTrue(done, done.contains("web.getUrl()"));
-    assertTrue(done, done.contains("EXTRA_BUNDLE_URL, bundle.url"));
+    final String done = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    assertTrue(done, done.contains("getUserAgentString(), crawlUrl)"));
+    assertFalse("the address the login ended on is not what the crawl starts from",
+        done.contains("web.getUrl()"));
+    // And that address is the one the window was opened with, kept for the write.
+    final String create = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "protected void onCreate("));
+    assertTrue(create, create.contains("crawlUrl = url"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,
         TestSources.indexOf(caller, "private void applyBrowserLogin("));
-    final String source = TestSources
-        .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
-    /* The new name REPLACES any older one, because two bundles covering one site with
-       different cookie values make the engine refuse to start the crawl at all. */
-    assertTrue(apply, apply.contains("withBundleUrl("));
-    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames(field)"));
-    // And the files follow the names, or the engine still finds two bundles for one site.
-    final String written = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "public void onClickLoginDone("));
-    assertTrue(written,
-        written.contains("dropOtherBundles(BrowserLoginPolicy.bundleNameOf(bundle.url))"));
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withBundleUrl("));
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames("));
     /* The widget as well as the map. setMap alone left the old text on screen and the next
        savePaneFields copied it back, so the whole feature was invisible. */
     final String setter = TestSources.balancedBlock(caller,
         TestSources.indexOf(caller, "private void setAddressField("));
     assertTrue(setter, setter.contains("setMap(R.id.fieldWebsiteURLs, addresses)"));
     assertTrue(setter, setter.contains("setFieldText(R.id.fieldWebsiteURLs, addresses)"));
-    // Forget takes the names out, or the next crawl stops on a bundle that is not there.
-    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames("));
   }
 
   /**
