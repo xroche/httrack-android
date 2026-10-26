@@ -2939,11 +2939,13 @@ public class HTTrackActivity extends FragmentActivity {
     if (cookies == null || bundleUrl == null || bundleUrl.length() == 0) {
       return;
     }
-    /* The name goes on the address the login was opened for, and any older name comes off
-       first: two bundles covering one site with different cookie values make the engine refuse
-       to start the crawl at all. */
-    setAddressField(BrowserLoginPolicy.withBundleUrl(
-        BrowserLoginPolicy.withoutBundleNames(getMap(R.id.fieldWebsiteURLs)), bundleUrl));
+    /* Older names come off first, because two bundles covering one site with different cookie
+       values make the engine refuse to start the crawl at all. The token to name is then read
+       from that same stripped text, so it is always a token the field still holds. */
+    final String stripped = BrowserLoginPolicy.withoutBundleNames(getMap(R.id.fieldWebsiteURLs));
+
+    setAddressField(BrowserLoginPolicy.withBundleUrl(stripped, bundleUrl,
+        BrowserLoginPolicy.openedToken(stripped)));
     /* The engine saves its jar at the end of the crawl, and with no -%K it saves it beside the
        mirror, in shared storage. This names a file in private storage instead, and nothing in
        the app ever writes it. */

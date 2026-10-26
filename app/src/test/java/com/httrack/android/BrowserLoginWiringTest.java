@@ -232,8 +232,20 @@ public class BrowserLoginWiringTest {
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,
         TestSources.indexOf(caller, "private void applyBrowserLogin("));
-    assertTrue(apply, apply.contains("BrowserLoginPolicy.withBundleUrl("));
-    assertTrue(apply, apply.contains("BrowserLoginPolicy.withoutBundleNames("));
+    /* The assignment, not the call: Forget's own branch calls withoutBundleNames on the same
+       map entry, so any assertion naming that call alone is satisfied without the apply path
+       stripping anything. */
+    assertTrue(apply,
+        apply.contains("final String stripped = BrowserLoginPolicy.withoutBundleNames("));
+    assertTrue(apply, apply.contains("withBundleUrl(stripped, bundleUrl,"));
+    // The token is read from the stripped text, or it names a token the field no longer holds.
+    assertTrue(apply, apply.contains("BrowserLoginPolicy.openedToken(stripped)"));
+    /* And the files follow the names. Two bundles covering one site with different cookie
+       values make the engine refuse to start the crawl at all. */
+    final String written = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "public void onClickLoginDone("));
+    assertTrue(written,
+        written.contains("dropOtherBundles(BrowserLoginPolicy.bundleNameOf(bundle.url))"));
     /* The widget as well as the map. setMap alone left the old text on screen and the next
        savePaneFields copied it back, so the whole feature was invisible. */
     final String setter = TestSources.balancedBlock(caller,

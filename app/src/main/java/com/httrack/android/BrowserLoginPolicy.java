@@ -44,14 +44,15 @@ final class BrowserLoginPolicy {
   }
 
   /**
-   * The field's own text for the address {@link #startUrl} opens. The login names that token
-   * afterwards, so both have to pick the same one.
+   * The field's own text for the address {@link #startUrl} opens, which is the token the login
+   * names afterwards. Dropping a bundle name cannot change which token this picks, because a
+   * token that names no host without its name names none with it either.
    *
    * @param urlField
    *          the field's text
    * @return the token, exactly as the field holds it, or null when the field names no address
    */
-  private static String openedToken(final String urlField) {
+  static String openedToken(final String urlField) {
     // urlTokens also drops what a tampered profile puts in that field, such as an engine option.
     for (final String token : CommandlineTokens.urlTokens(urlField)) {
       if (hostOf(secureUrl(token)) != null) {
@@ -140,16 +141,13 @@ final class BrowserLoginPolicy {
    *          the start URL the engine wrote, or null when it wrote none
    * @return the field's new text, with the user's own spacing and other addresses kept
    */
-  static String withBundleUrl(final String urlField, final String bundleUrl) {
+  static String withBundleUrl(final String urlField, final String bundleUrl,
+      final String openedToken) {
     final String current = urlField == null ? "" : urlField.trim();
 
     if (bundleUrl == null || bundleUrl.indexOf(BUNDLE_SUFFIX) == -1) {
       return current;
     }
-    /* The token is matched by identity, not against the address the engine handed back: the
-       engine cuts a fragment, trims a trailing host dot and puts an international host into
-       ASCII, so its address need not equal the one the field holds. */
-    final String opened = openedToken(current);
     final Matcher parts = FIELD_PARTS.matcher(current);
     final StringBuilder kept = new StringBuilder();
     boolean named = false;
@@ -158,8 +156,9 @@ final class BrowserLoginPolicy {
     while (parts.find()) {
       final String part = parts.group();
 
-      if (!named && part.equals(opened)) {
-        kept.append(bundleUrl);
+      if (!named && part.equals(openedToken)) {
+        // The engine was handed no credentials, and the crawl needs the ones the user typed.
+        kept.append(withUserInfoOf(bundleUrl, part));
         named = true;
       } else {
         kept.append(part);
@@ -170,6 +169,27 @@ final class BrowserLoginPolicy {
     }
     // The field no longer holds the address the login opened, so the name needs its own line.
     return kept.length() == 0 ? bundleUrl : kept + "\n" + bundleUrl;
+  }
+
+  /**
+   * URL carrying the user name and password of TYPED, which the engine was not given.
+   *
+   * @param url
+   *          the address the engine wrote, which holds no userinfo
+   * @param typed
+   *          the field's own token, which may hold some
+   * @return URL with that userinfo put back after its scheme
+   */
+  private static String withUserInfoOf(final String url, final String typed) {
+    final int host = typed.indexOf("://");
+    final int at = host == -1 ? -1 : typed.lastIndexOf('@', endOfAuthority(typed, host + 3));
+    final int scheme = url.indexOf("://");
+
+    if (at == -1 || at < host || scheme == -1) {
+      return url;
+    }
+    return url.substring(0, scheme + 3) + typed.substring(host + 3, at + 1)
+        + url.substring(scheme + 3);
   }
 
   /**
