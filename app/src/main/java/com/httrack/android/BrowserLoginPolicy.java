@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -37,11 +38,25 @@ final class BrowserLoginPolicy {
    * @return the first address we may open, or null when the field holds none
    */
   static String startUrl(final String urlField) {
+    final String token = openedToken(urlField);
+
+    return token == null ? null : secureUrl(token);
+  }
+
+  /**
+   * The field's own text for the address {@link #startUrl} opens, which is the token the login
+   * names afterwards. Dropping a bundle name cannot change which token this picks, because a
+   * token that names no host without its name names none with it either.
+   *
+   * @param urlField
+   *          the field's text
+   * @return the token, exactly as the field holds it, or null when the field names no address
+   */
+  static String openedToken(final String urlField) {
     // urlTokens also drops what a tampered profile puts in that field, such as an engine option.
     for (final String token : CommandlineTokens.urlTokens(urlField)) {
-      final String url = secureUrl(token);
-      if (hostOf(url) != null) {
-        return url;
+      if (hostOf(secureUrl(token)) != null) {
+        return token;
       }
     }
     return null;
@@ -85,29 +100,96 @@ final class BrowserLoginPolicy {
   /** What a start URL ends with to name a login bundle, HTS_BUNDLE_SUFFIX in the engine. */
   static final String BUNDLE_SUFFIX = "#httrack-bundle=";
 
+  /** One address, or one run of the whitespace between two. */
+  private static final Pattern FIELD_PARTS = Pattern.compile("\\S+|\\s+");
+
   /**
-   * The address field with the login's own start URL added on a line of its own. The engine
-   * built that URL: it cut the fragment, refused a password and named the bundle, so nothing
-   * here inspects it again. The addresses already there are left alone, so the user trims what
-   * they do not want.
+   * URL without the user name and password it may carry. The engine refuses a paste whose
+   * address holds either, and the crawl still authenticates from the field's own copy.
+   *
+   * @param url
+   *          an https address
+   * @return the address with any userinfo cut out
+   */
+  static String withoutUserInfo(final String url) {
+    final int host = url == null ? -1 : url.indexOf("://");
+    final int at = host == -1 ? -1 : url.lastIndexOf('@', endOfAuthority(url, host + 3));
+
+    return at == -1 || at < host ? url : url.substring(0, host + 3) + url.substring(at + 1);
+  }
+
+  /** Where URL's authority ends, counting from FROM. */
+  private static int endOfAuthority(final String url, final int from) {
+    for (int i = from; i < url.length(); i++) {
+      final char c = url.charAt(i);
+
+      if (c == '/' || c == '?' || c == '#' || c == '\\') {
+        return i;
+      }
+    }
+    return url.length();
+  }
+
+  /**
+   * The address field with the bundle's name on the address the login was opened for, which is
+   * the one the crawl starts from. That one token is named, so the field gains no second crawl
+   * root.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
    * @param bundleUrl
    *          the start URL the engine wrote, or null when it wrote none
-   * @return the field's new text
+   * @return the field's new text, with the user's own spacing and other addresses kept
    */
-  static String withBundleUrl(final String urlField, final String bundleUrl) {
+  static String withBundleUrl(final String urlField, final String bundleUrl,
+      final String openedToken) {
     final String current = urlField == null ? "" : urlField.trim();
-    if (bundleUrl == null || bundleUrl.length() == 0) {
+
+    if (bundleUrl == null || bundleUrl.indexOf(BUNDLE_SUFFIX) == -1) {
       return current;
     }
-    for (final String token : CommandlineTokens.urlTokens(current)) {
-      if (token.equals(bundleUrl)) {
-        return current;
+    final Matcher parts = FIELD_PARTS.matcher(current);
+    final StringBuilder kept = new StringBuilder();
+    boolean named = false;
+
+    // Each match is one address or one run of the whitespace between two, so spacing survives.
+    while (parts.find()) {
+      final String part = parts.group();
+
+      if (!named && part.equals(openedToken)) {
+        // The engine was handed no credentials, and the crawl needs the ones the user typed.
+        kept.append(withUserInfoOf(bundleUrl, part));
+        named = true;
+      } else {
+        kept.append(part);
       }
     }
-    return current.length() == 0 ? bundleUrl : current + "\n" + bundleUrl;
+    if (named) {
+      return kept.toString();
+    }
+    // The field no longer holds the address the login opened, so the name needs its own line.
+    return kept.length() == 0 ? bundleUrl : kept + "\n" + bundleUrl;
+  }
+
+  /**
+   * URL carrying the user name and password of TYPED, which the engine was not given.
+   *
+   * @param url
+   *          the address the engine wrote, which holds no userinfo
+   * @param typed
+   *          the field's own token, which may hold some
+   * @return URL with that userinfo put back after its scheme
+   */
+  private static String withUserInfoOf(final String url, final String typed) {
+    final int host = typed.indexOf("://");
+    final int at = host == -1 ? -1 : typed.lastIndexOf('@', endOfAuthority(typed, host + 3));
+    final int scheme = url.indexOf("://");
+
+    if (at == -1 || at < host || scheme == -1) {
+      return url;
+    }
+    return url.substring(0, scheme + 3) + typed.substring(host + 3, at + 1)
+        + url.substring(scheme + 3);
   }
 
   /**
@@ -135,46 +217,6 @@ final class BrowserLoginPolicy {
   static String bundleNameOf(final String startUrl) {
     final int at = startUrl == null ? -1 : startUrl.indexOf(BUNDLE_SUFFIX);
     return at == -1 ? null : startUrl.substring(at + BUNDLE_SUFFIX.length());
-  }
-
-  /**
-   * Did the login end on a site the address field did not name? A login can end on an identity
-   * provider, and that address is then a second crawl root with a live session, so the user is
-   * told. The address is still filled in, because a field the user has to retype is worse.
-   *
-   * @param urlFieldBeforeLogin
-   *          the field's text as it was BEFORE the login, because the answer is always false
-   *          once the login's own address has been added to it
-   * @param bundleUrl
-   *          the start URL the engine wrote
-   * @return true when BUNDLEURL names a host no address in the field shares a site with
-   */
-  static boolean landedElsewhere(final String urlFieldBeforeLogin, final String bundleUrl) {
-    final String host = hostOf(bundleUrl);
-
-    return host != null && !namesTheSameSite(
-        urlFieldBeforeLogin == null ? "" : urlFieldBeforeLogin, host);
-  }
-
-  /**
-   * Whether HOST belongs to a site the address field already names. Either direction counts,
-   * because a login moves between a site and its subdomains in both.
-   *
-   * @param urlField
-   *          the field's text
-   * @param host
-   *          the host the login ended on
-   * @return true when the field names that host, a parent of it, or a child of it
-   */
-  private static boolean namesTheSameSite(final String urlField, final String host) {
-    for (final String token : CommandlineTokens.urlTokens(urlField)) {
-      final String known = hostOf(secureUrl(token));
-      if (known != null && (known.equals(host) || known.endsWith("." + host)
-          || host.endsWith("." + known))) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /**

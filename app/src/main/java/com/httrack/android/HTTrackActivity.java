@@ -2939,14 +2939,13 @@ public class HTTrackActivity extends FragmentActivity {
     if (cookies == null || bundleUrl == null || bundleUrl.length() == 0) {
       return;
     }
-    final String field = getMap(R.id.fieldWebsiteURLs);
-    final String otherSite = BrowserLoginPolicy.landedElsewhere(field, bundleUrl)
-        ? getString(R.string.browser_login_other_site, BrowserLoginPolicy.hostOf(bundleUrl))
-        : null;
-    /* The new login's name replaces any older one, because two bundles covering one site with
-       different cookie values make the engine refuse to start the crawl at all. */
-    setAddressField(BrowserLoginPolicy.withBundleUrl(
-        BrowserLoginPolicy.withoutBundleNames(field), bundleUrl));
+    /* Older names come off first, because two bundles covering one site with different cookie
+       values make the engine refuse to start the crawl at all. The token to name is then read
+       from that same stripped text, so it is always a token the field still holds. */
+    final String stripped = BrowserLoginPolicy.withoutBundleNames(getMap(R.id.fieldWebsiteURLs));
+
+    setAddressField(BrowserLoginPolicy.withBundleUrl(stripped, bundleUrl,
+        BrowserLoginPolicy.openedToken(stripped)));
     /* The engine saves its jar at the end of the crawl, and with no -%K it saves it beside the
        mirror, in shared storage. This names a file in private storage instead, and nothing in
        the app ever writes it. */
@@ -2961,9 +2960,8 @@ public class HTTrackActivity extends FragmentActivity {
         data.getIntExtra(BrowserLoginActivity.EXTRA_HOST_COUNT, 0),
         BrowserLoginPolicy.MAX_SOCKETS);
     // The engine drops a cookie its jar refuses, so saying only how many it kept is a lie.
-    final String message = (droppedCookies == 0 ? saved
-        : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies))
-        + (otherSite != null ? "\n\n" + otherSite : "");
+    final String message = droppedCookies == 0 ? saved
+        : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies);
     new AlertDialog.Builder(this).setMessage(message)
         .setPositiveButton(android.R.string.ok, null).show();
   }
