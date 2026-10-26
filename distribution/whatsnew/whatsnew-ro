@@ -1,6 +1,6 @@
 HTTrack 3.50.5: copiați un site care cere un cont.
 
-• Nou: conectați-vă cu un browser înainte de copiere. Copierea folosește acea sesiune și trimite site-ului identitatea browserului
+• Nou: conectați-vă cu un browser înainte de copiere. Copierea folosește acea sesiune și trimite site-ului identitatea browserului dumneavoastră
 • Nou: o casetă pentru anteturile Accept, cu un rând pentru fiecare fel de link
 • Pagina Identitate browser arată ce anteturi suplimentare nu trimite copierea
-• Un dosar de copie cu virgulă în nume funcționează acum
+• Imaginile, fonturile și videoclipurile recente (webp, avif, svg, woff2, mp4, webm) vin acum și de pe alt site

@@ -3,4 +3,4 @@ HTTrack 3.50.5: kopiera en webbplats som kräver ett konto.
 • Nytt: logga in med en webbläsare före kopieringen. Kopian använder den inloggningen och skickar webbplatsen din webbläsares identitet
 • Nytt: en ruta för Accept-huvuden, med en rad per länktyp
 • Sidan Webbläsaridentitet visar vilka extra huvuden kopian inte skickar
-• En spegelmapp med komma i namnet fungerar nu
+• Nyare bilder, typsnitt och video (webp, avif, svg, woff2, mp4, webm) hämtas nu även från en annan webbplats

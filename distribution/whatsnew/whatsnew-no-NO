@@ -3,4 +3,4 @@ HTTrack 3.50.5: kopier et nettsted som krever en konto.
 • Nytt: logg inn med en nettleser før kopieringen. Kopien bruker den innloggingen og sender nettstedet nettleserens identitet
 • Nytt: et felt for Accept-hoder, med én linje per lenketype
 • Siden Nettleseridentitet viser hvilke ekstra hoder kopien ikke sender
-• En speilmappe med komma i navnet virker nå
+• Nyere bilder, skrifter og video (webp, avif, svg, woff2, mp4, webm) hentes nå også fra et annet nettsted

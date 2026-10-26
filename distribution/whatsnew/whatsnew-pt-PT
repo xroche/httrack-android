@@ -3,4 +3,4 @@ HTTrack 3.50.5: copie um sítio que pede uma conta.
 • Novo: inicie sessão com um navegador antes da cópia. A cópia reutiliza essa sessão e envia ao sítio a identidade do seu navegador
 • Novo: uma caixa de cabeçalhos Accept, com uma linha por tipo de ligação
 • A página Identidade do navegador indica que cabeçalhos extra a cópia não enviará
-• Uma pasta de cópia com vírgula no nome agora funciona
+• Imagens, tipos de letra e vídeos recentes (webp, avif, svg, woff2, mp4, webm) agora vêm também de outro sítio

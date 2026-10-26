@@ -1,6 +1,6 @@
 HTTrack 3.50.5: hesap isteyen bir siteyi kopyalayın.
 
 • Yeni: kopyalamadan önce bir tarayıcıda oturum açın. Kopyalama bu oturumu kullanır ve siteye tarayıcınızın kimliğini gönderir
-• Yeni: bağlantı türü başına bir satırla Accept başlıkları kutusu
+• Yeni: her bağlantı türü için bir satır içeren Accept başlıkları kutusu
 • Tarayıcı Kimliği sayfası, kopyalamanın göndermeyeceği ek başlıkları belirtir
-• Adında virgül olan yansı klasörü artık çalışıyor
+• Yeni biçimdeki resimler, yazı tipleri ve videolar (webp, avif, svg, mp4, webm) artık başka bir siteden de geliyor

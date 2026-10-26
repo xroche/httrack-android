@@ -3,4 +3,4 @@ HTTrack 3.50.5: skopiuj witrynę, która wymaga konta.
 • Nowość: zaloguj się w przeglądarce przed kopiowaniem. Kopia użyje tej sesji i wyśle witrynie tożsamość Twojej przeglądarki
 • Nowość: pole nagłówków Accept, po jednym wierszu na rodzaj odnośnika
 • Strona Tożsamość przeglądarki podaje, których dodatkowych nagłówków kopia nie wyśle
-• Folder kopii z przecinkiem w nazwie już działa
+• Nowsze obrazy, czcionki i wideo (webp, avif, svg, woff2, mp4, webm) są teraz pobierane także z innej witryny

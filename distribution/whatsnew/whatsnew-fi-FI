@@ -3,4 +3,4 @@ HTTrack 3.50.5: kopioi sivusto, joka vaatii tilin.
 • Uutta: kirjaudu selaimella sisään ennen kopiointia. Kopiointi käyttää tätä istuntoa ja lähettää sivustolle selaimesi tunnisteen
 • Uutta: Accept-otsakkeiden kenttä, yksi rivi jokaiselle linkkityypille
 • Selaintunniste-sivu kertoo, mitä lisäotsakkeita kopiointi ei lähetä
-• Peilikansio, jonka nimessä on pilkku, toimii nyt
+• Uudemmat kuvat, kirjasimet ja videot (webp, avif, svg, woff2, mp4, webm) haetaan nyt myös toiselta sivustolta

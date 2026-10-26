@@ -1,6 +1,6 @@
 HTTrack 3.50.5: Kopieren Sie eine Website, die ein Konto verlangt.
 
-• Neu: Melden Sie sich vor der Kopie mit einem Browser an. Die Kopie verwendet diese Sitzung weiter und sendet der Website die Identität Ihres Browsers
+• Neu: Melden Sie sich vor der Kopie mit einem Browser an. Die Kopie nutzt diese Sitzung und sendet der Website die Identität Ihres Browsers
 • Neu: ein Feld für Accept-Header, mit einer Zeile pro Linkart
 • Die Seite Browser-Identität nennt die zusätzlichen Header, die die Kopie nicht sendet
-• Ein Spiegelordner mit einem Komma im Namen funktioniert jetzt
+• Neuere Bilder, Schriften und Videos (webp, avif, svg, mp4, webm) kommen jetzt auch von einer anderen Website mit

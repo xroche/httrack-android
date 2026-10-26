@@ -3,4 +3,4 @@ HTTrack 3.50.5 : copiez un site qui demande un compte.
 • Nouveau : connectez-vous avec un navigateur avant la copie. La copie réutilise cette session et envoie au site l'identité de votre navigateur
 • Nouveau : une zone d'en-têtes Accept, avec une ligne par type de lien
 • La page Identité du navigateur indique quels en-têtes supplémentaires la copie n'enverra pas
-• Un dossier de miroir dont le nom contient une virgule fonctionne maintenant
+• Les images, polices et vidéos récentes (webp, avif, svg, mp4, webm) sont aussi récupérées sur un autre site

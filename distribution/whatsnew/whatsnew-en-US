@@ -3,4 +3,4 @@ HTTrack 3.50.5: copy a site that needs an account.
 • New: log in with a browser before the copy. The copy reuses that session, and sends the site your browser's own identity
 • New: an Accept headers box, with one row per kind of link
 • The Browser ID page says which extra headers the copy will not send
-• A mirror folder whose name holds a comma now works
+• Newer pictures, fonts and video (webp, avif, svg, woff2, mp4, webm) now come along from another site too

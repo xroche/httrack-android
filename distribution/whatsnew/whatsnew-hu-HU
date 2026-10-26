@@ -1,6 +1,6 @@
 HTTrack 3.50.5: fiókot kérő webhely másolása.
 
 • Újdonság: a másolás előtt jelentkezzen be egy böngészőben. A másolás ezt a munkamenetet használja, és a böngésző azonosítóját küldi a webhelynek
-• Újdonság: Accept fejléc mező, linkfajtánként egy sorral
+• Újdonság: Accept fejléc mező, hivatkozástípusonként egy sorral
 • A Böngészőazonosító lap megmutatja, mely további fejléceket nem küldi el a másolás
-• A vesszőt tartalmazó nevű tükörmappa most már működik
+• Az újabb képek, betűtípusok és videók (webp, avif, svg, woff2, mp4, webm) most már más webhelyről is megérkeznek

@@ -3,4 +3,4 @@ HTTrack 3.50.5: skopírujte web, ktorý vyžaduje účet.
 • Novinka: pred kopírovaním sa prihláste v prehliadači. Kópia použije toto prihlásenie a odošle webu totožnosť vášho prehliadača
 • Novinka: pole hlavičiek Accept, jeden riadok na druh odkazu
 • Stránka Totožnosť prehliadača uvádza, ktoré ďalšie hlavičky kópia neodošle
-• Priečinok kópie s čiarkou v názve už funguje
+• Novšie obrázky, fonty a videá (webp, avif, svg, woff2, mp4, webm) sa teraz stahujú aj z iného webu

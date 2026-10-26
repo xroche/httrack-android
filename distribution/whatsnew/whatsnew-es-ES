@@ -1,6 +1,6 @@
-HTTrack 3.50.5: copia un sitio que pide una cuenta.
+HTTrack 3.50.5: copie un sitio que pide una cuenta.
 
-• Nuevo: inicia sesión con un navegador antes de la copia. La copia reutiliza esa sesión y envía al sitio la identidad de tu navegador
+• Nuevo: inicie sesión con un navegador antes de la copia. La copia reutiliza esa sesión y envía al sitio la identidad de su navegador
 • Nuevo: un cuadro de encabezados Accept, con una fila por tipo de enlace
 • La página Identidad del navegador indica qué encabezados adicionales no enviará la copia
-• Una carpeta de copia cuyo nombre tiene una coma ya funciona
+• Las imágenes, tipografías y vídeos recientes (webp, avif, svg, woff2, mp4, webm) también se descargan de otro sitio
