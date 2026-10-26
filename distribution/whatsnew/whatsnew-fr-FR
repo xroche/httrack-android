@@ -1,5 +1,6 @@
-HTTrack 3.50.5 : corrections pour une copie que vous arrêtez.
+HTTrack 3.50.5 : copiez un site qui demande un compte.
 
-• Arrêter une copie pendant qu'HTTrack vérifie un type de fichier laisse le lien vers la vraie page, sans gêner un autre téléchargement
-• Une copie arrêtée laisse moins de fichiers et de dossiers inutiles dans votre miroir
-• Une écriture en échec supprime son fichier partiel, et la copie suivante nettoie le reste
+• Nouveau : connectez-vous avec un navigateur avant la copie. La copie réutilise cette session et envoie au site l'identité de votre navigateur
+• Nouveau : une zone d'en-têtes Accept, avec une ligne par type de lien
+• La page Identité du navigateur indique quels en-têtes supplémentaires la copie n'enverra pas
+• Un dossier de miroir dont le nom contient une virgule fonctionne maintenant

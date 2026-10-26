@@ -1,5 +1,6 @@
-HTTrack 3.50.5: correcciones para una copia que detiene.
+HTTrack 3.50.5: copia un sitio que pide una cuenta.
 
-• Si detiene una copia mientras HTTrack comprueba un tipo de archivo, el enlace sigue apuntando a la página real y no molesta a otra descarga
-• Una copia detenida deja menos archivos y carpetas sobrantes en su copia
-• Una escritura fallida borra su archivo parcial, y la copia siguiente limpia el resto
+• Nuevo: inicia sesión con un navegador antes de la copia. La copia reutiliza esa sesión y envía al sitio la identidad de tu navegador
+• Nuevo: un cuadro de encabezados Accept, con una fila por tipo de enlace
+• La página Identidad del navegador indica qué encabezados adicionales no enviará la copia
+• Una carpeta de copia cuyo nombre tiene una coma ya funciona

@@ -1,5 +1,6 @@
-HTTrack 3.50.5: Korrekturen für eine Kopie, die Sie anhalten.
+HTTrack 3.50.5: Kopieren Sie eine Website, die ein Konto verlangt.
 
-• Wenn Sie anhalten, während HTTrack einen Dateityp prüft, zeigt der Link weiterhin auf die echte Seite und stört keinen anderen Download
-• Eine angehaltene Kopie lässt weniger überflüssige Dateien und Ordner im Spiegel zurück
-• Ein fehlgeschlagener Schreibvorgang löscht seine Teildatei, die nächste Kopie räumt den Rest auf
+• Neu: Melden Sie sich vor der Kopie mit einem Browser an. Die Kopie verwendet diese Sitzung weiter und sendet der Website die Identität Ihres Browsers
+• Neu: ein Feld für Accept-Header, mit einer Zeile pro Linkart
+• Die Seite Browser-Identität nennt die zusätzlichen Header, die die Kopie nicht sendet
+• Ein Spiegelordner mit einem Komma im Namen funktioniert jetzt

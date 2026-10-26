@@ -1,5 +1,6 @@
-HTTrack 3.50.5: corecții pentru o copiere pe care o opriți.
+HTTrack 3.50.5: copiați un site care cere un cont.
 
-• Dacă opriți în timp ce HTTrack verifică un tip de fișier, linkul arată tot spre pagina reală și nu deranjează altă descărcare
-• O copiere oprită lasă mai puține fișiere și foldere de prisos în copie
-• O scriere eșuată șterge fișierul parțial, iar copierea următoare curăță restul
+• Nou: conectați-vă cu un browser înainte de copiere. Copierea folosește acea sesiune și trimite site-ului identitatea browserului
+• Nou: o casetă pentru anteturile Accept, cu un rând pentru fiecare fel de link
+• Pagina Identitate browser arată ce anteturi suplimentare nu trimite copierea
+• Un dosar de copie cu virgulă în nume funcționează acum

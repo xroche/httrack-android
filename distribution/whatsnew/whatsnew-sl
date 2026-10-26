@@ -1,5 +1,6 @@
-HTTrack 3.50.5: popravki za kopiranje, ki ga ustavite.
+HTTrack 3.50.5: kopirajte spletišče, ki zahteva račun.
 
-• Če ustavite, medtem ko HTTrack preverja vrsto datoteke, povezava še vedno kaže na pravo stran in ne moti drugega prenosa
-• Ustavljeno kopiranje pusti v vaši kopiji manj nepotrebnih datotek in map
-• Neuspelo pisanje izbriše delno datoteko, naslednje kopiranje pospravi ostanek
+• Novo: pred kopiranjem se prijavite v brskalniku. Kopija uporabi to prijavo in spletišču pošlje identiteto vašega brskalnika
+• Novo: polje za glave Accept, z eno vrstico za vsako vrsto povezave
+• Stran Identiteta brskalnika navaja, katerih dodatnih glav kopija ne pošlje
+• Mapa kopije z vejico v imenu zdaj deluje

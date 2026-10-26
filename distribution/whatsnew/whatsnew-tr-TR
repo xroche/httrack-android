@@ -1,5 +1,6 @@
-HTTrack 3.50.5: durdurduğunuz bir kopyalama için düzeltmeler.
+HTTrack 3.50.5: hesap isteyen bir siteyi kopyalayın.
 
-• HTTrack bir dosya türünü denetlerken durdurursanız, bağlantı gerçek sayfayı göstermeye devam eder ve başka bir indirmeyi bozmaz
-• Durdurulan bir kopyalama kopyanızda daha az gereksiz dosya ve klasör bırakır
-• Başarısız bir yazma yarım dosyayı siler, sonraki kopyalama kalanı temizler
+• Yeni: kopyalamadan önce bir tarayıcıda oturum açın. Kopyalama bu oturumu kullanır ve siteye tarayıcınızın kimliğini gönderir
+• Yeni: bağlantı türü başına bir satırla Accept başlıkları kutusu
+• Tarayıcı Kimliği sayfası, kopyalamanın göndermeyeceği ek başlıkları belirtir
+• Adında virgül olan yansı klasörü artık çalışıyor
