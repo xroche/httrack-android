@@ -1,5 +1,6 @@
-HTTrack 3.50.5: correcties voor een kopie die u stopt.
+HTTrack 3.50.5: kopieer een site die een account vraagt.
 
-• Stopt u terwijl HTTrack een bestandstype controleert, dan blijft de link naar de echte pagina wijzen en stoort hij geen andere download
-• Een gestopte kopie laat minder overgebleven bestanden en mappen achter in uw kopie
-• Een mislukte schrijfactie wist het halve bestand, en de volgende kopie ruimt de rest op
+• Nieuw: meld u met een browser aan vóór het kopiëren. De kopie hergebruikt die sessie en stuurt de site de identiteit van uw browser
+• Nieuw: een vak voor Accept-headers, met een regel per soort link
+• De pagina Browseridentiteit vermeldt welke extra headers de kopie niet verstuurt
+• Nieuwere afbeeldingen, lettertypen en video (webp, avif, svg, mp4, webm) komen nu ook van een andere site mee

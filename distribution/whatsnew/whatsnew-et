@@ -1,5 +1,6 @@
-HTTrack 3.50.5: parandused peatatud kopeerimisele.
+HTTrack 3.50.5: kopeeri sait, mis nõuab kontot.
 
-• Kui peatate kopeerimise ajal, mil HTTrack kontrollib failitüüpi, osutab link endiselt päris lehele ega sega teist allalaadimist
-• Peatatud kopeerimine jätab teie koopiasse vähem ülejäänud faile ja kaustu
-• Ebaõnnestunud kirjutamine kustutab oma pooliku faili ja järgmine kopeerimine koristab ülejäänu
+• Uus: logi enne kopeerimist brauseris sisse. Koopia kasutab seda sessiooni ja saadab saidile sinu brauseri identiteedi
+• Uus: Accept-päiste väli, iga lingiliigi kohta üks rida
+• Brauseri identiteedi leht näitab, milliseid lisapäiseid koopia ei saada
+• Uuemad pildid, fondid ja videod (webp, avif, svg, woff2, mp4, webm) tulevad nüüd kaasa ka teiselt saidilt

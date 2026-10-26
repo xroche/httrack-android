@@ -1,5 +1,6 @@
-HTTrack 3.50.5: ispravci za kopiranje koje zaustavite.
+HTTrack 3.50.5: kopirajte web-mjesto koje traži račun.
 
-• Ako zaustavite dok HTTrack provjerava vrstu datoteke, veza i dalje pokazuje na pravu stranicu i ne smeta drugom preuzimanju
-• Zaustavljeno kopiranje ostavlja manje nepotrebnih datoteka i mapa u vašoj kopiji
-• Neuspjeli zapis briše svoju nepotpunu datoteku, a sljedeće kopiranje počisti ostatak
+• Novo: prijavite se u pregledniku prije kopiranja. Kopija koristi tu prijavu i web-mjestu šalje identitet vašeg preglednika
+• Novo: polje za Accept zaglavlja, s jednim redom za svaku vrstu veze
+• Stranica Identitet preglednika navodi koja dodatna zaglavlja kopija ne šalje
+• Novije slike, fontovi i videozapisi (webp, avif, svg, woff2, mp4, webm) sada se preuzimaju i s drugog web-mjesta

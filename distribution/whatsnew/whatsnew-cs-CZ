@@ -1,5 +1,6 @@
-HTTrack 3.50.5: opravy pro kopírování, které zastavíte.
+HTTrack 3.50.5: zkopírujte web, který vyžaduje účet.
 
-• Když zastavíte, zatímco HTTrack zjišťuje typ souboru, odkaz stále míří na skutečnou stránku a neruší jiné stahování
-• Zastavené kopírování nechává ve vaší kopii méně zbytečných souborů a složek
-• Neúspěšný zápis smaže svůj dílčí soubor a další kopírování uklidí zbytek
+• Novinka: před kopírováním se přihlaste v prohlížeči. Kopie využije toto přihlášení a odešle webu totožnost vašeho prohlížeče
+• Novinka: pole hlaviček Accept, jeden řádek pro každý druh odkazu
+• Stránka Totožnost prohlížeče uvádí, které další hlavičky kopie neodešle
+• Novější obrázky, fonty a videa (webp, avif, svg, woff2, mp4, webm) se nyní stahují i z jiného webu

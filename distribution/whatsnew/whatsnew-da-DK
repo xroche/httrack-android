@@ -1,5 +1,6 @@
-HTTrack 3.50.5: rettelser til en kopiering, du stopper.
+HTTrack 3.50.5: kopier et websted, der kræver en konto.
 
-• Stopper du, mens HTTrack tjekker en filtype, peger linket stadig på den rigtige side og forstyrrer ikke en anden hentning
-• En stoppet kopiering efterlader færre overskydende filer og mapper i din kopi
-• En mislykket skrivning sletter sin halve fil, og næste kopiering rydder resten op
+• Nyt: log ind med en browser før kopieringen. Kopien bruger det login og sender webstedet din browsers identitet
+• Nyt: et felt til Accept-headere, med en linje pr. type link
+• Siden Browseridentitet viser, hvilke ekstra headere kopien ikke sender
+• Nyere billeder, skrifter og video (webp, avif, svg, woff2, mp4, webm) hentes nu også fra et andet websted

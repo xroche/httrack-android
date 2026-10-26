@@ -1,5 +1,6 @@
-HTTrack 3.50.5: korjauksia pysäytettyyn kopiointiin.
+HTTrack 3.50.5: kopioi sivusto, joka vaatii tilin.
 
-• Jos pysäytät kopioinnin kun HTTrack tarkistaa tiedostotyyppiä, linkki osoittaa edelleen oikeaan sivuun eikä häiritse toista latausta
-• Pysäytetty kopiointi jättää vähemmän turhia tiedostoja ja kansioita kopioosi
-• Epäonnistunut kirjoitus poistaa osittaisen tiedoston, ja seuraava kopiointi siivoaa loput
+• Uutta: kirjaudu selaimella sisään ennen kopiointia. Kopiointi käyttää tätä istuntoa ja lähettää sivustolle selaimesi tunnisteen
+• Uutta: Accept-otsakkeiden kenttä, yksi rivi jokaiselle linkkityypille
+• Selaintunniste-sivu kertoo, mitä lisäotsakkeita kopiointi ei lähetä
+• Uudemmat kuvat, kirjasimet ja videot (webp, avif, svg, woff2, mp4, webm) haetaan nyt myös toiselta sivustolta

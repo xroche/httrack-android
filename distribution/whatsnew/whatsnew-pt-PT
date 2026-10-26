@@ -1,5 +1,6 @@
-HTTrack 3.50.5: correções para uma cópia que para.
+HTTrack 3.50.5: copie um sítio que pede uma conta.
 
-• Se parar uma cópia enquanto o HTTrack verifica um tipo de ficheiro, a ligação continua a apontar para a página real e não atrapalha outra transferência
-• Uma cópia parada deixa menos ficheiros e pastas a mais na sua cópia
-• Uma escrita falhada apaga o ficheiro parcial, e a cópia seguinte limpa o resto
+• Novo: inicie sessão com um navegador antes da cópia. A cópia reutiliza essa sessão e envia ao sítio a identidade do seu navegador
+• Novo: uma caixa de cabeçalhos Accept, com uma linha por tipo de ligação
+• A página Identidade do navegador indica que cabeçalhos extra a cópia não enviará
+• Imagens, tipos de letra e vídeos recentes (webp, avif, svg, woff2, mp4, webm) agora vêm também de outro sítio

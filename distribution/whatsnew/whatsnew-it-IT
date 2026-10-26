@@ -1,5 +1,6 @@
-HTTrack 3.50.5: correzioni per una copia che fermi.
+HTTrack 3.50.5: copia un sito che richiede un account.
 
-• Se fermi una copia mentre HTTrack controlla un tipo di file, il collegamento punta ancora alla pagina vera e non disturba un altro download
-• Una copia fermata lascia meno file e cartelle inutili nel tuo mirror
-• Una scrittura fallita elimina il file parziale, e la copia successiva pulisce il resto
+• Novità: accedi con un browser prima della copia. La copia riusa quella sessione e invia al sito l'identità del tuo browser
+• Novità: un riquadro per le intestazioni Accept, con una riga per tipo di collegamento
+• La pagina Identità del browser indica quali intestazioni aggiuntive la copia non invierà
+• Immagini, caratteri e video recenti (webp, avif, svg, woff2, mp4, webm) vengono scaricati anche da un altro sito
