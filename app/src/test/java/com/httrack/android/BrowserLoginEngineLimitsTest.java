@@ -108,12 +108,15 @@ public class BrowserLoginEngineLimitsTest {
     assertTrue("hts_bundle_from_paste is no longer exported",
         source("httrack-library.h").contains("HTSEXT_API hts_boolean hts_bundle_from_paste("));
     final String paste = source("htsbundle.c");
-    // Inside that function, not anywhere in the file, and the failure has to stop the write.
-    final String body = TestSources.balancedBlock(paste,
+    final String wrapper = TestSources.balancedBlock(paste,
         TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste("));
-    final int read = body.indexOf("bundle_load_src(opt, &check, &src");
+    assertTrue(wrapper, wrapper.contains("return hts_bundle_from_paste_flags("));
+    // Inside the function our call reaches, not anywhere in the file, and the failure has to
+    // stop the write.
+    final String body = TestSources.balancedBlock(paste,
+        TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste_flags("));
+    final int read = body.indexOf("if (!bundle_load_src(opt, &check, &src");
     assertTrue(body, read != -1);
-    assertTrue(body, body.startsWith("if (!", body.lastIndexOf("if (!", read)));
     assertTrue(body, body.indexOf("PASTE_FAIL", read) != -1);
     assertTrue(body, body.indexOf("cookie_write_replace", read) > read);
   }
