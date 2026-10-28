@@ -1933,6 +1933,16 @@ public class OptionsMapper {
     }
   }
 
+  /** The serialization key of a field id, or the id itself for a field no key covers. */
+  private static String fieldName(final int id) {
+    for (final Pair<Integer, String> field : fieldsSerializer) {
+      if (field.first == id) {
+        return field.second;
+      }
+    }
+    return String.valueOf(id);
+  }
+
   /*
    * Build fieldsNameToId
    */
@@ -2098,9 +2108,8 @@ public class OptionsMapper {
       dirty = previous != value
           && !nonNullString(previous).equals(nonNullString(value));
       if (dirty) {
-        Log.d(getClass().getSimpleName(), "map set dirty: "
-            + OptionsMapper.fieldsNameToId.get(key) + "=" + value + " (was "
-            + previous + ")");
+        // A value can hold a credential, and a newline in it forges a log line.
+        Log.d(getClass().getSimpleName(), "map set dirty: " + fieldName(key));
       }
     }
     map.put(key, value);
@@ -2472,8 +2481,7 @@ public class OptionsMapper {
         }
         final OptionMapper map = fieldsNameToMapper.get(key);
         if (map == null) {
-          Log.v(getClass().getSimpleName(), "option not mapped: " + key + "="
-              + value);
+          Log.v(getClass().getSimpleName(), "option not mapped: " + key);
         } else {
           map.emit(args, value);
         }
