@@ -105,20 +105,24 @@ public class BrowserLoginEngineLimitsTest {
    */
   @Test
   public void theBundleWriterIsAnExportedEngineCallThatReadsItsOwnOutputBack() throws IOException {
+    assertTrue("the JNI calls the flags entry point now, so this test reads the wrong function",
+        TestSources.read(TestSources.mainFile("jni/htslibjni.c")).contains(
+            "hts_bundle_from_paste(paste, folder, agent, url"));
     assertTrue("hts_bundle_from_paste is no longer exported",
         source("httrack-library.h").contains("HTSEXT_API hts_boolean hts_bundle_from_paste("));
     final String paste = source("htsbundle.c");
     final String wrapper = TestSources.balancedBlock(paste,
         TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste("));
     assertTrue(wrapper, wrapper.contains("return hts_bundle_from_paste_flags("));
-    // Inside the function our call reaches, not anywhere in the file, and the failure has to
-    // stop the write.
     final String body = TestSources.balancedBlock(paste,
         TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste_flags("));
-    final int read = body.indexOf("if (!bundle_load_src(opt, &check, &src");
-    assertTrue(body, read != -1);
-    assertTrue(body, body.indexOf("PASTE_FAIL", read) != -1);
-    assertTrue(body, body.indexOf("cookie_write_replace", read) > read);
+    // Failing has to be the guard's whole statement, or a bundle the read-back rejected still
+    // reaches the folder.
+    final int read = TestSources.indexOf(body, "!bundle_load_src(");
+    final int ends = body.indexOf(';', read);
+    final String guard = body.substring(read, ends + 1).replaceAll("\\s+", " ");
+    assertTrue(guard, guard.matches("!bundle_load_src\\(.*\\)\\) PASTE_FAIL\\(.*;"));
+    assertTrue(body, body.indexOf("cookie_write_replace") > ends);
   }
 
   /** Our file has to leave the mirror's own cookies.txt room in the same jar. */
