@@ -1,4 +1,4 @@
-HTTrack 3.50.5: copy a site that needs an account.
+HTTrack 3.51.0: copy a site that needs an account.
 
 • New: log in with a browser before the copy. The copy reuses that session, and sends the site your browser's own identity
 • New: an Accept headers box, with one row per kind of link

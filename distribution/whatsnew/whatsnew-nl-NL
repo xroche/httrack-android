@@ -1,4 +1,4 @@
-HTTrack 3.50.5: kopieer een site die een account vraagt.
+HTTrack 3.51.0: kopieer een site die een account vraagt.
 
 • Nieuw: meld u met een browser aan vóór het kopiëren. De kopie hergebruikt die sessie en stuurt de site de identiteit van uw browser
 • Nieuw: een vak voor Accept-headers, met een regel per soort link
