@@ -2108,7 +2108,7 @@ public class OptionsMapper {
       dirty = previous != value
           && !nonNullString(previous).equals(nonNullString(value));
       if (dirty) {
-        // The name alone: a value can hold a credential, and a newline in it forges a log line.
+        // A value can hold a credential, and a newline in it forges a log line.
         Log.d(getClass().getSimpleName(), "map set dirty: " + fieldName(key));
       }
     }
