@@ -1,4 +1,4 @@
-HTTrack 3.50.5 : copiez un site qui demande un compte.
+HTTrack 3.51.0 : copiez un site qui demande un compte.
 
 • Nouveau : connectez-vous avec un navigateur avant la copie. La copie réutilise cette session et envoie au site l'identité de votre navigateur
 • Nouveau : une zone d'en-têtes Accept, avec une ligne par type de lien
