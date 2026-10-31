@@ -3,6 +3,7 @@ package com.httrack.android;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -21,7 +22,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class FileChooserActivity extends Activity implements
-    View.OnClickListener {
+    View.OnClickListener, DirScanner.Sink {
   // Borderless buttons ?
   protected static final boolean borderless = android.os.Build.VERSION.SDK_INT >= 11;
 
@@ -32,6 +33,19 @@ public class FileChooserActivity extends Activity implements
 
   // Handler to execute code in UI thread
   private final Handler handlerUI = new Handler();
+
+  /** Reads the directories to offer, off the UI thread. */
+  private final DirScanner scanner = new DirScanner(new Executor() {
+    @Override
+    public void execute(final Runnable command) {
+      new Thread(command).start();
+    }
+  }, new Executor() {
+    @Override
+    public void execute(final Runnable command) {
+      handlerUI.post(command);
+    }
+  });
 
   /*
    * Convert dp (Density-independent Pixels) to px (pixel)
@@ -51,84 +65,76 @@ public class FileChooserActivity extends Activity implements
   }
 
   /*
-   * Create all tabs for main options menu.
+   * Ask for the current directory's listing. onListing draws it once it arrives.
    */
   private void refreshDir() {
+    scanner.scan(projectRootFile, defaultRootFile, this);
+  }
+
+  /** Draws the listing as one button per entry: create all tabs for main options menu. */
+  @Override
+  public void onListing(final DirScanner.Listing listing) {
+    if (isDestroyed()) {
+      return;
+    }
+
     // Clear list
     files.clear();
 
-    // Find parent
-    final File parent = projectRootFile != null && projectRootFile.exists() ? projectRootFile.getParentFile() : null;
-    if (parent != null && projectRootFile != null && !parent.getAbsolutePath().equals(projectRootFile.getAbsolutePath())) {
-      files.add(new Pair<String, File>(getString(R.string.ellipsis), parent));
-      Log.d("httrack", "found parent of " + projectRootFile.getAbsolutePath() + ": " + parent.getAbsolutePath());
-    } else {
-      files.add(new Pair<String, File>(getString(R.string.ellipsis), new File("/")));
-      Log.d("httrack", "could not find found parent of " + projectRootFile.getAbsolutePath() + ", using /");
+    // Up one level, then the sub-directories
+    files.add(new Pair<String, File>(getString(R.string.ellipsis), listing.parent));
+    for (final File dir : listing.subdirectories) {
+      files.add(new Pair<String, File>(dir.getName(), dir));
     }
 
-    // List directory
-    final File[] list = projectRootFile != null && projectRootFile.exists() ? projectRootFile
-        .listFiles() : defaultRootFile.listFiles();
-    if (list != null) {
-      for (final File file : list) {
-        if (file.isDirectory() && !file.isHidden() /* && file.canWrite() */) {
-          files.add(new Pair<String, File>(file.getName(), file));
-        }
+    // Create tabs
+    final LinearLayout scroll = LinearLayout.class
+        .cast(findViewById(R.id.layout));
+    scroll.removeAllViews();
+
+    // Add all buttons linking to options
+    for (int i = 0; i < files.size(); i++) {
+      // Add separator
+      if (borderless && i != 0) {
+        final View line = new View(this, null, R.style.DividerLineHorizontal);
+
+        // FIXME TODO: why in hell isn't my shiny style NOT working ?
+        final LinearLayout.MarginLayoutParams layout = new LinearLayout.MarginLayoutParams(
+            LayoutParams.FILL_PARENT, dpToPx(1));
+        layout.bottomMargin = dpToPx(8);
+        layout.topMargin = dpToPx(8);
+        line.setLayoutParams(layout);
+        line.setBackgroundColor(getResources().getColor(R.color.black));
+
+        // Add line
+        scroll.addView(line);
       }
 
-    }
+      // Next tab class
+      final Pair<String, File> entry = files.get(i);
+      final String title = entry.first;
 
-    if (files != null) {
-      // Create tabs
-      final LinearLayout scroll = LinearLayout.class
-          .cast(findViewById(R.id.layout));
-      scroll.removeAllViews();
-
-      // Add all buttons linking to options
-      for (int i = 0; i < files.size(); i++) {
-        // Add separator
-        if (borderless && i != 0) {
-          final View line = new View(this, null, R.style.DividerLineHorizontal);
-
-          // FIXME TODO: why in hell isn't my shiny style NOT working ?
-          final LinearLayout.MarginLayoutParams layout = new LinearLayout.MarginLayoutParams(
-              LayoutParams.FILL_PARENT, dpToPx(1));
-          layout.bottomMargin = dpToPx(8);
-          layout.topMargin = dpToPx(8);
-          line.setLayoutParams(layout);
-          line.setBackgroundColor(getResources().getColor(R.color.black));
-
-          // Add line
-          scroll.addView(line);
-        }
-
-        // Next tab class
-        final Pair<String, File> entry = files.get(i);
-        final String title = entry.first;
-
-        // Create a flat button ; see
-        // <http://developer.android.com/guide/topics/ui/controls/button.html#Borderless>
-        // Added in API level 11
-        final Button button = borderless ? new Button(this, null,
-            android.R.attr.borderlessButtonStyle) : new Button(this);
-        if (borderless) {
-          // Left-aligned text
-          button.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
-        }
-
-        // Title
-        button.setText(title);
-
-        // Set listener
-        button.setOnClickListener(this);
-
-        // Set tag to our index
-        button.setTag(i);
-
-        // And finally add button
-        scroll.addView(button);
+      // Create a flat button ; see
+      // <http://developer.android.com/guide/topics/ui/controls/button.html#Borderless>
+      // Added in API level 11
+      final Button button = borderless ? new Button(this, null,
+          android.R.attr.borderlessButtonStyle) : new Button(this);
+      if (borderless) {
+        // Left-aligned text
+        button.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
       }
+
+      // Title
+      button.setText(title);
+
+      // Set listener
+      button.setOnClickListener(this);
+
+      // Set tag to our index
+      button.setTag(i);
+
+      // And finally add button
+      scroll.addView(button);
     }
   }
 
