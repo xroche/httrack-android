@@ -289,9 +289,8 @@ def search_reports(token, issue_name, start, end, tz, limit, version_code=None):
 
     The issue carries sample report names, but only the names, and they are not a
     resource path any GET accepts. errorReports:search filtered on the issue id is the
-    route that works. One cluster holds the reports of every build that hit it, so a
-    version filter has to be repeated here, or the printed sample comes from whichever
-    build the API picked.
+    route that works. A cluster holds several builds, so the filter must repeat the
+    version, or the printed sample can come from any of them.
     """
     issue_id = issue_name.rsplit("/", 1)[-1]
     terms = [f"errorIssueId = {issue_id}"]
