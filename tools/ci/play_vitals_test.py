@@ -216,6 +216,20 @@ class SearchParams(unittest.TestCase):
         self.assertEqual(seen["params"]["filter"], ["errorIssueId = abc123"])
         self.assertEqual(seen["params"]["pageSize"], ["1"])
 
+    def test_a_version_filter_reaches_the_report_search(self):
+        seen = self.captured_params(
+            lambda: pv.search_reports(
+                "t",
+                "apps/com.httrack.android/abc123",
+                datetime.date(2026, 10, 2),
+                datetime.date(2026, 10, 30),
+                "UTC",
+                1,
+                version_code=107,
+            )
+        )
+        self.assertEqual(seen["params"]["filter"], ["errorIssueId = abc123 AND versionCode = 107"])
+
     def test_the_issue_id_is_taken_from_the_last_path_segment(self):
         seen = self.captured_params(
             lambda: pv.search_reports(
@@ -361,7 +375,7 @@ class Parser(unittest.TestCase):
 class Issues(unittest.TestCase):
     """cmd_issues must ask the API for as many reports as it was told to read."""
 
-    def run_issues(self, wanted, traces):
+    def run_issues(self, wanted, traces, version_code=None):
         pool = [dict(FULL_REPORT, reportText=f"trace-{i}") for i in range(wanted + 2)]
         asked = {}
 
@@ -375,7 +389,12 @@ class Issues(unittest.TestCase):
             return {"errorReports": pool[: int(params["pageSize"][0])]}
 
         args = argparse.Namespace(
-            kind="crash", days=28, limit=15, reports=wanted, traces=traces, version_code=None
+            kind="crash",
+            days=28,
+            limit=15,
+            reports=wanted,
+            traces=traces,
+            version_code=version_code,
         )
         out = io.StringIO()
         with mock.patch("play_vitals.call", side_effect=fake_call):
@@ -386,6 +405,16 @@ class Issues(unittest.TestCase):
     def test_the_report_search_asks_for_the_number_of_reports_requested(self):
         _, asked = self.run_issues(wanted=3, traces=1)
         self.assertEqual(asked["reports"]["pageSize"], ["3"])
+
+    def test_one_version_restricts_the_reports_as_well_as_the_clusters(self):
+        _, asked = self.run_issues(wanted=3, traces=1, version_code=107)
+        self.assertIn("versionCode = 107", asked["issues"]["filter"][0])
+        self.assertIn("versionCode = 107", asked["reports"]["filter"][0])
+
+    def test_without_one_neither_search_names_a_version(self):
+        _, asked = self.run_issues(wanted=3, traces=1)
+        self.assertNotIn("versionCode", asked["issues"]["filter"][0])
+        self.assertNotIn("versionCode", asked["reports"]["filter"][0])
 
     def test_the_cluster_search_never_asks_for_more_than_one_sample(self):
         for wanted in (1, 3, 25):

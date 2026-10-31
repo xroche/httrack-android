@@ -237,7 +237,13 @@ def cmd_issues(token, args):
             print(f"    {issue.get('cause')}")
             print(f"    id {issue.get('name')}")
             reports = search_reports(
-                token, issue.get("name", ""), start, end, tz, limit=args.reports
+                token,
+                issue.get("name", ""),
+                start,
+                end,
+                tz,
+                limit=args.reports,
+                version_code=args.version_code,
             )
             for line in report_lines(reports, traces=args.traces):
                 print(line)
@@ -278,18 +284,22 @@ def report_lines(reports, traces):
     return lines
 
 
-def search_reports(token, issue_name, start, end, tz, limit):
+def search_reports(token, issue_name, start, end, tz, limit, version_code=None):
     """Returns the reports behind one cluster, each with its device and versions.
 
     The issue carries sample report names, but only the names, and they are not a
     resource path any GET accepts. errorReports:search filtered on the issue id is the
-    route that works.
+    route that works. A cluster holds several builds, so the filter must repeat the
+    version, or the printed sample can come from any of them.
     """
     issue_id = issue_name.rsplit("/", 1)[-1]
+    terms = [f"errorIssueId = {issue_id}"]
+    if version_code:
+        terms.append(f"versionCode = {version_code}")
     params = flatten(
         {
             "interval": {"startTime": datetime_at(start, tz), "endTime": datetime_at(end, tz)},
-            "filter": f"errorIssueId = {issue_id}",
+            "filter": " AND ".join(terms),
             "pageSize": limit,
         }
     )
