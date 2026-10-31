@@ -22,7 +22,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class FileChooserActivity extends Activity implements
-    View.OnClickListener, DirScanner.Sink {
+    View.OnClickListener {
   // Borderless buttons ?
   protected static final boolean borderless = android.os.Build.VERSION.SDK_INT >= 11;
 
@@ -34,7 +34,7 @@ public class FileChooserActivity extends Activity implements
   // Handler to execute code in UI thread
   private final Handler handlerUI = new Handler();
 
-  /** Reads the directories to offer, off the UI thread. */
+  /** Lists the directories to offer on a worker thread, then draws them through handlerUI. */
   private final DirScanner scanner = new DirScanner(new Executor() {
     @Override
     public void execute(final Runnable command) {
@@ -65,15 +65,19 @@ public class FileChooserActivity extends Activity implements
   }
 
   /*
-   * Ask for the current directory's listing. onListing draws it once it arrives.
+   * Ask for the current directory's listing. showDir draws it once it arrives.
    */
   private void refreshDir() {
-    scanner.scan(projectRootFile, defaultRootFile, this);
+    scanner.scan(projectRootFile, defaultRootFile, new DirScanner.Sink() {
+      @Override
+      public void onListing(final DirScanner.Listing listing) {
+        showDir(listing);
+      }
+    });
   }
 
-  /** Draws the listing as one button per entry: create all tabs for main options menu. */
-  @Override
-  public void onListing(final DirScanner.Listing listing) {
+  /** Draws the listing as one button per entry. */
+  private void showDir(final DirScanner.Listing listing) {
     if (isDestroyed()) {
       return;
     }

@@ -21,6 +21,13 @@ public class DirScannerTest {
   @Rule
   public final TemporaryFolder tmp = new TemporaryFolder();
 
+  private static final Executor DIRECT = new Executor() {
+    @Override
+    public void execute(final Runnable command) {
+      command.run();
+    }
+  };
+
   /** Queues what it is handed, standing in for the worker thread and for the looper. */
   private static final class Deferred implements Executor {
     private final List<Runnable> queued = new ArrayList<Runnable>();
@@ -39,18 +46,29 @@ public class DirScannerTest {
     }
   }
 
-  /** Counts the scans that really list, which a superseded one must not do. */
-  private static final class CountingScanner extends DirScanner {
-    final AtomicInteger scans = new AtomicInteger();
+  /** A directory whose listing the test controls: it counts the calls and can fix what they give. */
+  private static final class CountedDir extends File {
+    private static final long serialVersionUID = 1L;
 
-    CountingScanner(final Executor worker, final Executor ui) {
-      super(worker, ui);
+    final AtomicInteger listings = new AtomicInteger();
+
+    private final File[] contents;
+
+    /** Lists the real directory, and counts. */
+    CountedDir(final File dir) {
+      this(dir, null);
+    }
+
+    /** Lists exactly these, in this order. */
+    CountedDir(final File dir, final File[] contents) {
+      super(dir.getPath());
+      this.contents = contents;
     }
 
     @Override
-    Listing list(final File dir, final File fallback) {
-      scans.incrementAndGet();
-      return super.list(dir, fallback);
+    public File[] listFiles() {
+      listings.incrementAndGet();
+      return contents != null ? contents : super.listFiles();
     }
   }
 
@@ -63,21 +81,26 @@ public class DirScannerTest {
     }
   }
 
+  /** Scans with no thread and no looper, and returns what the sink was handed. */
+  private static DirScanner.Listing listed(final File dir, final File fallback) {
+    final Recorder recorder = new Recorder();
+    new DirScanner(DIRECT, DIRECT).scan(dir, fallback, recorder);
+    return recorder.listings.get(0);
+  }
+
   private static List<String> names(final List<File> files) {
     final List<String> names = new ArrayList<String>();
     for (final File file : files) {
       names.add(file.getName());
     }
-    Collections.sort(names);
     return names;
   }
 
-  private static final Executor DIRECT = new Executor() {
-    @Override
-    public void execute(final Runnable command) {
-      command.run();
-    }
-  };
+  private static List<String> sortedNames(final List<File> files) {
+    final List<String> names = names(files);
+    Collections.sort(names);
+    return names;
+  }
 
   private File folder(final String name, final String... children) throws Exception {
     final File dir = tmp.newFolder(name);
@@ -92,36 +115,45 @@ public class DirScannerTest {
     final File dir = folder("base", "sub", ".hidden");
     assertTrue(new File(dir, "page.html").createNewFile());
 
-    final DirScanner.Listing listing = new DirScanner(DIRECT, DIRECT).list(dir, tmp.getRoot());
-    assertEquals(Arrays.asList("sub"), names(listing.subdirectories));
+    final DirScanner.Listing listing = listed(dir, tmp.getRoot());
+    assertEquals(Arrays.asList("sub"), sortedNames(listing.subdirectories));
     assertEquals(dir.getParentFile().getAbsolutePath(), listing.parent.getAbsolutePath());
   }
 
+  /** listFiles() answers in no particular order, and the chooser offers that order unchanged. */
   @Test
-  public void theRootLeadsBackToItself() throws Exception {
-    final DirScanner.Listing listing = new DirScanner(DIRECT, DIRECT)
-        .list(new File("/"), tmp.getRoot());
-    assertEquals("/", listing.parent.getAbsolutePath());
+  public void keepsTheOrderTheFilesystemGave() throws Exception {
+    final File dir = folder("base", "a", "b", "c");
+    final File[] reversed = { new File(dir, "c"), new File(dir, "b"), new File(dir, "a") };
+
+    final DirScanner.Listing listing = listed(new CountedDir(dir, reversed), tmp.getRoot());
+    assertEquals(Arrays.asList("c", "b", "a"), names(listing.subdirectories));
+  }
+
+  /** Nothing above the directory means the root, both at "/" and for a directory that is gone. */
+  @Test
+  public void theParentEntryFallsBackToTheRoot() throws Exception {
+    final File gone = tmp.newFolder("gone");
+    assertTrue(gone.delete());
+
+    assertEquals("/", listed(new File("/"), tmp.getRoot()).parent.getAbsolutePath());
+    assertEquals("/", listed(gone, tmp.getRoot()).parent.getAbsolutePath());
   }
 
   @Test
-  public void aDirectoryThatIsGoneFallsBackToTheDefault() throws Exception {
+  public void aDirectoryThatIsGoneIsListedFromTheFallback() throws Exception {
     final File fallback = folder("default", "websites");
     final File gone = tmp.newFolder("gone");
     assertTrue(gone.delete());
 
-    final DirScanner.Listing listing = new DirScanner(DIRECT, DIRECT).list(gone, fallback);
-    assertEquals(Arrays.asList("websites"), names(listing.subdirectories));
-    // Not the fallback's parent: a path that no longer exists says nothing about where it sat.
-    assertEquals("/", listing.parent.getAbsolutePath());
+    assertEquals(Arrays.asList("websites"), sortedNames(listed(gone, fallback).subdirectories));
   }
 
   /** listFiles() answers null on anything but a directory, and that is not an empty listing. */
   @Test
   public void aPlainFileOffersNothing() throws Exception {
     final File file = tmp.newFile("note.txt");
-    final DirScanner.Listing listing = new DirScanner(DIRECT, DIRECT).list(file, tmp.getRoot());
-    assertTrue(listing.subdirectories.isEmpty());
+    assertTrue(listed(file, tmp.getRoot()).subdirectories.isEmpty());
   }
 
   /** The listing reads a directory created after scan() returned, so it cannot have run inline. */
@@ -138,7 +170,7 @@ public class DirScannerTest {
     worker.runAll();
     ui.runAll();
 
-    assertEquals(Arrays.asList("late"), names(recorder.listings.get(0).subdirectories));
+    assertEquals(Arrays.asList("late"), sortedNames(recorder.listings.get(0).subdirectories));
   }
 
   /** A listing finished before the next tap must not draw over the directory that tap opened. */
@@ -158,17 +190,17 @@ public class DirScannerTest {
     ui.runAll();
 
     assertEquals(1, recorder.listings.size());
-    assertEquals(Arrays.asList("in-second"), names(recorder.listings.get(0).subdirectories));
+    assertEquals(Arrays.asList("in-second"), sortedNames(recorder.listings.get(0).subdirectories));
   }
 
-  /** A scan still queued when the next tap arrives must not list at all. */
+  /** A scan still queued when the next tap arrives must not read the filesystem at all. */
   @Test
   public void aQueuedScanIsNeverRunOnceAnotherIsAsked() throws Exception {
     final Deferred worker = new Deferred();
     final Deferred ui = new Deferred();
     final Recorder recorder = new Recorder();
-    final CountingScanner scanner = new CountingScanner(worker, ui);
-    final File first = folder("first", "in-first");
+    final DirScanner scanner = new DirScanner(worker, ui);
+    final CountedDir first = new CountedDir(folder("first", "in-first"));
     final File second = folder("second", "in-second");
 
     scanner.scan(first, first, recorder);
@@ -176,13 +208,18 @@ public class DirScannerTest {
     worker.runAll();
     ui.runAll();
 
-    assertEquals(1, scanner.scans.get());
-    assertEquals(Arrays.asList("in-second"), names(recorder.listings.get(0).subdirectories));
+    assertEquals(0, first.listings.get());
+    assertEquals(Arrays.asList("in-second"), sortedNames(recorder.listings.get(0).subdirectories));
   }
 
+  /** The activity owns no listing of its own, and never draws one into a destroyed window. */
   @Test
-  public void theChooserNeverListsOnItsOwn() throws Exception {
+  public void theChooserOnlyDrawsWhatTheScannerHandsIt() throws Exception {
+    final String source = TestSources.javaSource("FileChooserActivity");
     assertFalse("listing belongs to DirScanner, which runs off the UI thread",
-        TestSources.javaSource("FileChooserActivity").contains("listFiles("));
+        source.contains("listFiles(") || source.contains(".list()"));
+    assertTrue("a listing can land after onDestroy, and the views are gone by then",
+        TestSources.between(source, "private void showDir", "files.clear()")
+            .contains("isDestroyed()"));
   }
 }

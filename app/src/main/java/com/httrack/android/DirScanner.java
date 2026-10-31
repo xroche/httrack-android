@@ -7,12 +7,14 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Lists directories for the file chooser away from the UI thread. Listing one and stating each of
- * its entries blows past the ANR budget on a large or slow directory, and the newest scan is the
- * only one worth drawing, because a slower one started earlier would otherwise draw over it.
+ * Lists directories for the file chooser off the UI thread. A stat() per entry blows past the ANR
+ * budget on a large or slow directory. Only the newest scan is drawn, because a slower one started
+ * earlier would otherwise draw over it.
  */
-class DirScanner {
-  /** What one scan found. */
+final class DirScanner {
+  private static final File ROOT = new File("/");
+
+  /** Holds what one scan found. */
   static final class Listing {
     /** Where the "up one level" entry leads, the filesystem root when there is nothing above. */
     final File parent;
@@ -35,7 +37,7 @@ class DirScanner {
   private final Executor ui;
 
   /** Counts the scans asked for, so a scan can tell whether it is still the newest. */
-  private final AtomicInteger asked = new AtomicInteger();
+  private final AtomicInteger newest = new AtomicInteger();
 
   DirScanner(final Executor worker, final Executor ui) {
     this.worker = worker;
@@ -45,23 +47,23 @@ class DirScanner {
   /**
    * Scan a directory and hand the result to a sink.
    *
-   * @param dir the directory to list, as the chooser currently has it
-   * @param fallback listed instead when dir is gone
-   * @param sink called on the UI executor, and never for a scan a later one has superseded
+   * @param dir the directory to list, as the chooser currently has it, never null
+   * @param fallback listed instead when dir is gone, never null
+   * @param sink called on the UI executor, unless a later scan has superseded this one
    */
   void scan(final File dir, final File fallback, final Sink sink) {
-    final int ticket = asked.incrementAndGet();
+    final int ticket = newest.incrementAndGet();
     worker.execute(new Runnable() {
       @Override
       public void run() {
-        if (ticket != asked.get()) {
+        if (ticket != newest.get()) {
           return;
         }
         final Listing listing = list(dir, fallback);
         ui.execute(new Runnable() {
           @Override
           public void run() {
-            if (ticket == asked.get()) {
+            if (ticket == newest.get()) {
               sink.onListing(listing);
             }
           }
@@ -71,27 +73,29 @@ class DirScanner {
   }
 
   /**
-   * Read the parent and the visible sub-directories of a directory.
+   * Read the parent and the visible sub-directories of a directory. Private, so that the UI thread
+   * can reach a listing only through scan().
    *
-   * @param dir the directory to list, which may be null or gone
-   * @param fallback listed instead when dir is gone, which leaves the parent at the root
+   * @param dir the directory to list, which may be gone
+   * @param fallback listed instead when dir is gone, which leaves the parent at the root, because
+   *        a path that no longer exists says nothing about where it sat
    * @return what the chooser must show
    */
-  Listing list(final File dir, final File fallback) {
-    final boolean usable = dir != null && dir.exists();
-    return new Listing(parentOf(usable ? dir : null), subdirectoriesOf(usable ? dir : fallback));
+  private static Listing list(final File dir, final File fallback) {
+    final boolean usable = dir.exists();
+    return new Listing(usable ? parentOf(dir) : ROOT, subdirectoriesOf(usable ? dir : fallback));
   }
 
   /** Returns the directory above dir, or the filesystem root when there is nothing above it. */
   private static File parentOf(final File dir) {
-    final File parent = dir != null ? dir.getParentFile() : null;
-    return parent != null ? parent : new File("/");
+    final File parent = dir.getParentFile();
+    return parent != null ? parent : ROOT;
   }
 
   /** Returns the sub-directories of dir the chooser offers, which excludes the hidden ones. */
   private static List<File> subdirectoriesOf(final File dir) {
     final List<File> dirs = new ArrayList<File>();
-    final File[] list = dir != null ? dir.listFiles() : null;
+    final File[] list = dir.listFiles();
     if (list != null) {
       for (final File file : list) {
         if (file.isDirectory() && !file.isHidden()) {
