@@ -78,20 +78,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsconcat.c httrack/src/htsmodules.c 						\
 	httrack/src/htscharset.c httrack/src/punycode.c 						\
 	httrack/src/htsencoding.c httrack/src/md5.c								\
-	httrack/src/htssniff.c httrack/src/htsselftest.c						\
-	httrack/src/htsselftest_util.c					\
-	httrack/src/htsback_selftest.c httrack/src/htscache_selftest.c	\
-	httrack/src/htsbundle_selftest.c					\
-	httrack/src/htscharset_selftest.c httrack/src/htscmdline_selftest.c	\
-	httrack/src/htscookie_selftest.c	\
-	httrack/src/htsdns_selftest.c httrack/src/htsfilters_selftest.c	\
-	httrack/src/htsheader_selftest.c httrack/src/htsio_selftest.c	\
-	httrack/src/htslib_selftest.c httrack/src/htslines_selftest.c	\
-	httrack/src/htsmime_selftest.c	\
-	httrack/src/htsname_selftest.c httrack/src/htsnet_selftest.c	\
-	httrack/src/htsopt_selftest.c httrack/src/htsparse_selftest.c	\
-	httrack/src/htstools_selftest.c	\
-	httrack/src/htswarc_selftest.c httrack/src/htswizard_selftest.c	\
+	httrack/src/htssniff.c						\
 	httrack/src/htscodec.c httrack/src/htsproxy.c							\
 	httrack/src/htsdate.c httrack/src/htsurlport.c httrack/src/htswarc.c							\
 	httrack/src/htsescape.c										\
@@ -99,9 +86,8 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htssitemap.c httrack/src/htssinglefile.c					\
 	httrack/src/htschanges.c httrack/src/htscmdline.c						\
 	httrack/src/htslines.c													\
-	httrack/src/htsfetch.c httrack/src/htsfetch_selftest.c			\
+	httrack/src/htsfetch.c						\
 	httrack/src/htspsl.c httrack/src/htspsl_data.c					\
-	httrack/src/htspsl_selftest.c									\
 	httrack/src/htscrashtest.c												\
 	httrack/src/minizip/ioapi.c												\
 	httrack/src/minizip/mztools.c httrack/src/minizip/unzip.c				\
@@ -127,6 +113,10 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC 					\
 	-Wno-nested-externs														\
 	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6 -DHTS_INTERNAL_BUILD			\
 	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG
+# The self-tests are 40% of libhttrack's code and nothing here reaches -#test.
+# They also leave LOCAL_SRC_FILES above, because htsselftest_int.h refuses to
+# compile under this macro.
+LOCAL_CFLAGS += -DHTS_NO_SELFTEST
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
 
