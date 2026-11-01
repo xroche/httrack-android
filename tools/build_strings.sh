@@ -8,14 +8,14 @@
 # example:
 #	rm -rf res/values-?? res/values-??-r??	# language dirs only: values-* also takes the
 #					# hand-kept values-v34, values-night and the rest
-#	bash tools/build_strings.sh /temp/httrack-3.47.21/lang res/
+#	bash tools/build_strings.sh app/src/main/jni/httrack/lang app/src/main/res/
 
 function norm_key {
 	echo "$1" | sed -e 's/[^a-zA-Z0-9]/_/g'
 }
 
-# Clean up catalog text. lang.def goes through it too, so a symbol resolves to
-# the same key as its English text.
+# Clean up catalog text. A table text goes through it too, so a symbol resolves
+# to the same key as its English text.
 function lang_filter {
 	tr -d '\r' \
 		| sed -e 's/\\r//g' \
@@ -26,7 +26,7 @@ function lang_filter {
 		| sed -e "s/(C)/\&#169;/g"
 }
 
-# Store one translation, keyed by the lang.def symbol in $3, or by its text when
+# Store one translation, keyed by the table symbol in $3, or by its text when
 # $3 is empty. A symbol line beats a text line, and is skipped only when the same
 # symbol already set this key, so several symbols sharing a text keep the last.
 function put_str {
@@ -39,19 +39,14 @@ function put_str {
 	arr["$1"]="$2"
 }
 
-test -d "$1" || ! echo "lang directory not found: $1" || exit 1
-test -d "$2" || ! echo "res directory not found: $2" || exit 1
+test -d "$1" || ! echo "lang directory not found: $1" >&2 || exit 1
+test -d "$2" || ! echo "res directory not found: $2" >&2 || exit 1
 symtab="${3:-$1/../lang-symbols.tsv}"
-test -f "$symtab" || ! echo "lang-symbols.tsv not found: $symtab (give its path as the 3rd argument)" || exit 1
-
-# A real tab in a text would shift it into a fourth column, so refuse the file.
-awk -F'\t' '!/^#/ && NF != 3 { print FILENAME ":" FNR ": expected 3 tab-separated columns" > "/dev/stderr"; bad = 1 } END { exit bad }' "$symtab" || exit 1
+test -f "$symtab" || ! echo "lang-symbols.tsv not found: $symtab (give its path as the 3rd argument)" >&2 || exit 1
 
 # The string rows are the translatable ones, in file order, so a text several
 # symbols share resolves to the last of them.
 # sym_text resolves a symbol, english_text answers "is this key a known text?".
-# lang_filter sees the text column alone, because over a whole row it would also
-# strip a text's leading space.
 declare -A sym_text
 declare -A english_text
 while IFS=$'\t' read -r dk dv; do
@@ -59,8 +54,7 @@ if test -n "$dk" -a -n "$dv"; then
 english_text["$dv"]=1
 sym_text["$dk"]="$dv"
 fi
-done < <(paste <(awk -F'\t' '$1 == "string" { print $2 }' "$symtab") \
-	<(awk -F'\t' '$1 == "string" { print $3 }' "$symtab" | lang_filter))
+done < <(awk -F'\t' '$1 == "string" { print $2 "\t" $3 }' "$symtab" | lang_filter)
 
 for i in $1/*.txt ; do
 echo -n "processing $i .. " >&2

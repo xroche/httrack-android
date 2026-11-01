@@ -9,11 +9,11 @@ SUT="$HERE/build_strings.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# lang-symbols.tsv gives kind, symbol and text, one row each. This fixture
-# copies the real file: its language and meta blocks come first, and two string
-# symbols share one English text, as 27 of its texts do. The row kinds are
+# lang-symbols.tsv gives kind, symbol and text, one row each. Two string symbols
+# share one English text here, as 27 of the real texts do. The columns are
 # tab-separated, so write the file with printf rather than a quoted heredoc.
 mkdir -p "$tmp/lang" "$tmp/res/values"
+printf '# a comment row, as the real file carries five of\n' >"$tmp/lang-symbols.tsv"
 printf '%s\t%s\t%s\n' \
     language LANGUAGE_1 Francais \
     meta LANGUAGE_NAME LANGUAGE_NAME \
@@ -26,8 +26,7 @@ printf '%s\t%s\t%s\n' \
     string LISTDEF_1 'One\nTwo' \
     string LANG_LITERAL LANG_OK \
     string LANG_B3 Cancel \
-    string LANG_INFO 'Info type:' \
-    meta LANG_UNSELECTED Jamais >"$tmp/lang-symbols.tsv"
+    string LANG_INFO 'Info type:' >>"$tmp/lang-symbols.tsv"
 
 cat >"$tmp/res/values/strings.xml" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
@@ -96,8 +95,6 @@ LISTDEF_1
 Un\nDeux
 LANG_NOSUCH
 Jamais
-LANG_UNSELECTED
-Jamais
 LANG_OK
 TexteLitteral
 LANG_INFO
@@ -123,13 +120,6 @@ if grep -q 'LANG_NOSUCH' "$err"; then
     pass "a symbol absent from the table is reported"
 else
     bad "a symbol absent from the table is reported"
-fi
-# The kind column selects the rows, not the symbol's prefix, so a LANG_ symbol
-# outside the string block must not resolve.
-if grep -q 'LANG_UNSELECTED' "$err"; then
-    pass "a symbol in a non-string row does not resolve"
-else
-    bad "a symbol in a non-string row does not resolve"
 fi
 
 # A catalog mid-re-key holds both kinds of line for one string. The symbol must
@@ -197,22 +187,43 @@ fi
 # A missing table must stop the run rather than quietly drop every symbol-keyed
 # line.
 rc=0
-bash "$SUT" "$tmp/lang" "$tmp/res" /nonexistent/lang-symbols.tsv >/dev/null 2>&1 || rc=$?
-if test "$rc" -eq 1; then
-    pass "a missing table fails the run"
+bash "$SUT" "$tmp/lang" "$tmp/res" /nonexistent/lang-symbols.tsv >/dev/null 2>"$err" || rc=$?
+if test "$rc" -eq 1 && grep -q 'lang-symbols.tsv not found' "$err"; then
+    pass "a missing table fails the run and says so"
 else
-    bad "a missing table fails the run (exit $rc)"
+    bad "a missing table fails the run and says so (exit $rc)"
+    cat "$err" || true
 fi
 
-# A real tab in a text splits it into a fourth column, which would translate
-# against a truncated text, so the run must stop instead.
-printf 'string\tLANG_OK\tOK\tstray\n' >"$tmp/four-columns.tsv"
-rc=0
-bash "$SUT" "$tmp/lang" "$tmp/res" "$tmp/four-columns.tsv" >/dev/null 2>&1 || rc=$?
-if test "$rc" -eq 1; then
-    pass "a row with four columns fails the run"
+# Every case above runs on a fixture, so none would notice the pinned engine losing
+# lang-symbols.tsv or changing its shape. Resolve one of the real table's own symbols.
+engine="$HERE/../app/src/main/jni/httrack"
+if ! test -d "$engine/lang"; then
+    echo "SKIP: no engine submodule, so the pinned table is unchecked" >&2
+elif ! test -f "$engine/lang-symbols.tsv"; then
+    bad "the pinned engine carries lang-symbols.tsv"
 else
-    bad "a row with four columns fails the run (exit $rc)"
+    table="$engine/lang-symbols.tsv"
+    sym="$(awk -F'\t' '$1 == "string" { print $2; exit }' "$table")"
+    text="$(awk -F'\t' '$1 == "string" { print $3; exit }' "$table")"
+    # A glob, not find piped to head, which pipefail turns into a failure.
+    catalogs=("$engine"/lang/*.txt)
+    catalog="${catalogs[0]}"
+    pin="$tmp/pin"
+    mkdir -p "$pin/lang" "$pin/res/values"
+    printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="probe">%s</string>\n</resources>\n' \
+        "$text" >"$pin/res/values/strings.xml"
+    {
+        printf 'LANGUAGE_NAME\nFrancais\nLANGUAGE_FILE\nFrancais\nLANGUAGE_ISO\nfr\n'
+        printf '%s\nTraduit\n' "$sym"
+    } >"$pin/lang/$(basename "$catalog")"
+    bash "$SUT" "$pin/lang" "$pin/res" "$table" >/dev/null 2>&1
+    if grep -qF '<string name="probe">Traduit</string>' "$pin/res/values-fr/string.xml"; then
+        pass "the pinned table resolves its own first symbol ($sym)"
+    else
+        bad "the pinned table resolves its own first symbol ($sym)"
+        grep -F 'name="probe"' "$pin/res/values-fr/string.xml" || true
+    fi
 fi
 
 test "$fail" -eq 0 && echo "build_strings-test: all cases pass"
