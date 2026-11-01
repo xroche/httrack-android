@@ -3,19 +3,19 @@
 
 # Convert httrack lang/*;txt files into android xml resources
 
-# usage: $0 path-to/lang path-to/res [path-to/lang.def]
-# lang.def defaults to the one next to the lang directory
+# usage: $0 path-to/lang path-to/res [path-to/lang-symbols.tsv]
+# lang-symbols.tsv defaults to the one next to the lang directory
 # example:
 #	rm -rf res/values-?? res/values-??-r??	# language dirs only: values-* also takes the
 #					# hand-kept values-v34, values-night and the rest
-#	bash tools/build_strings.sh /temp/httrack-3.47.21/lang res/
+#	bash tools/build_strings.sh app/src/main/jni/httrack/lang app/src/main/res/
 
 function norm_key {
 	echo "$1" | sed -e 's/[^a-zA-Z0-9]/_/g'
 }
 
-# Clean up catalog text. lang.def goes through it too, so a symbol resolves to
-# the same key as its English text.
+# Clean up catalog text. A table text goes through it too, so a symbol resolves
+# to the same key as its English text.
 function lang_filter {
 	tr -d '\r' \
 		| sed -e 's/\\r//g' \
@@ -26,7 +26,7 @@ function lang_filter {
 		| sed -e "s/(C)/\&#169;/g"
 }
 
-# Store one translation, keyed by the lang.def symbol in $3, or by its text when
+# Store one translation, keyed by the table symbol in $3, or by its text when
 # $3 is empty. A symbol line beats a text line, and is skipped only when the same
 # symbol already set this key, so several symbols sharing a text keep the last.
 function put_str {
@@ -39,23 +39,22 @@ function put_str {
 	arr["$1"]="$2"
 }
 
-test -d "$1" || ! echo "lang directory not found: $1" || exit 1
-test -d "$2" || ! echo "res directory not found: $2" || exit 1
-langdef="${3:-$1/../lang.def}"
-test -f "$langdef" || ! echo "lang.def not found: $langdef (give its path as the 3rd argument)" || exit 1
+test -d "$1" || ! echo "lang directory not found: $1" >&2 || exit 1
+test -d "$2" || ! echo "res directory not found: $2" >&2 || exit 1
+symtab="${3:-$1/../lang-symbols.tsv}"
+test -f "$symtab" || ! echo "lang-symbols.tsv not found: $symtab (give its path as the 3rd argument)" >&2 || exit 1
 
-# lang.def pairs each string's LANG_ symbol with its English text, symbol first.
+# The string rows are the translatable ones, in file order, so a text several
+# symbols share resolves to the last of them.
 # sym_text resolves a symbol, english_text answers "is this key a known text?".
 declare -A sym_text
 declare -A english_text
-while IFS= read -r dk && IFS= read -r dv; do
+while IFS=$'\t' read -r dk dv; do
 if test -n "$dk" -a -n "$dv"; then
 english_text["$dv"]=1
-case "$dk" in
-LANG_*|LISTDEF_*) sym_text["$dk"]="$dv" ;;
-esac
+sym_text["$dk"]="$dv"
 fi
-done < <(lang_filter < "$langdef")
+done < <(awk -F'\t' '$1 == "string" { print $2 "\t" $3 }' "$symtab" | lang_filter)
 
 for i in $1/*.txt ; do
 echo -n "processing $i .. " >&2
@@ -86,7 +85,7 @@ LANG_*|LISTDEF_*)
 if test -z "${english_text[$rk]}"; then
 if test -z "${sym_text[$rk]}"; then
 # No resource is keyed by a bare symbol, so drop the line rather than store it.
-echo "warning: $i: no lang.def entry for key $rk, line skipped" >&2
+echo "warning: $i: no string row for symbol $rk, line skipped" >&2
 continue
 fi
 symbol="$rk"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Exercise build_strings.sh on catalogs keyed by a lang.def symbol instead of by
-# English text. No shipped catalog uses one yet, so this is the only cover.
+# Exercise build_strings.sh on catalogs keyed by a symbol instead of by English
+# text. No shipped catalog uses one yet, so this is the only cover.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -9,36 +9,24 @@ SUT="$HERE/build_strings.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# lang.def pairs a symbol with its English text, symbol first. This fixture
-# copies the real file, including its LANGUAGE_ header rows and two symbols
-# sharing one English text, as 27 of its texts do.
+# lang-symbols.tsv gives kind, symbol and text, one row each. Two string symbols
+# share one English text here, as 27 of the real texts do. The columns are
+# tab-separated, so write the file with printf rather than a quoted heredoc.
 mkdir -p "$tmp/lang" "$tmp/res/values"
-cat >"$tmp/lang.def" <<'DEF'
-Francais
-LANGUAGE_1
-LANGUAGE_NAME
-LANGUAGE_NAME
-LANGUAGE_FILE
-LANGUAGE_FILE
-LANGUAGE_ISO
-LANGUAGE_ISO
-LANG_OK
-OK
-LANG_CANCEL
-Cancel
-LANG_B3
-Cancel
-LANG_START
-Start
-LISTDEF_1
-One\nTwo
-LANG_LITERAL
-LANG_OK
-LANG_B3
-Cancel
-LANG_INFO
-Info type:
-DEF
+printf '# a comment row, as the real file carries five of\n' >"$tmp/lang-symbols.tsv"
+printf '%s\t%s\t%s\n' \
+    language LANGUAGE_1 Francais \
+    meta LANGUAGE_NAME LANGUAGE_NAME \
+    meta LANGUAGE_FILE LANGUAGE_FILE \
+    meta LANGUAGE_ISO LANGUAGE_ISO \
+    string LANG_OK OK \
+    string LANG_CANCEL Cancel \
+    string LANG_B3 Cancel \
+    string LANG_START Start \
+    string LISTDEF_1 'One\nTwo' \
+    string LANG_LITERAL LANG_OK \
+    string LANG_B3 Cancel \
+    string LANG_INFO 'Info type:' >>"$tmp/lang-symbols.tsv"
 
 cat >"$tmp/res/values/strings.xml" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
@@ -122,16 +110,16 @@ has "a LISTDEF_ symbol splits on \\n, second line" two Deux
 # fragment filled, because a fragment belongs to the symbol that carried it.
 has "a split fragment keeps its symbol's claim" one Un
 missing "a string no catalog line carries stays empty" start Start
-# lang.def gives "LANG_OK" as a string's own English text, so a line keyed that
+# The table gives "LANG_OK" as a string's own English text, so a line keyed that
 # way is text, not the symbol of the same name.
-has "a key lang.def knows as text is not read as a symbol" literal TexteLitteral
-# lang.def spells this text with a trailing colon and strings.xml does not, so
-# the resolved key matches only when lang.def goes through lang_filter as well.
-has "lang.def text is cleaned up like a catalog key" info "Type info"
+has "a key the table knows as text is not read as a symbol" literal TexteLitteral
+# The table spells this text with a trailing colon and strings.xml does not, so
+# the resolved key matches only when the text column goes through lang_filter too.
+has "table text is cleaned up like a catalog key" info "Type info"
 if grep -q 'LANG_NOSUCH' "$err"; then
-    pass "a symbol absent from lang.def is reported"
+    pass "a symbol absent from the table is reported"
 else
-    bad "a symbol absent from lang.def is reported"
+    bad "a symbol absent from the table is reported"
 fi
 
 # A catalog mid-re-key holds both kinds of line for one string. The symbol must
@@ -196,14 +184,46 @@ else
     diff "$tmp/text-keyed.xml" "$out" || true
 fi
 
-# The symbol-to-text table comes from lang.def, so a missing one must stop the
-# run rather than quietly drop every symbol-keyed line.
+# A missing table must stop the run rather than quietly drop every symbol-keyed
+# line.
 rc=0
-bash "$SUT" "$tmp/lang" "$tmp/res" /nonexistent/lang.def >/dev/null 2>&1 || rc=$?
-if test "$rc" -eq 1; then
-    pass "a missing lang.def fails the run"
+bash "$SUT" "$tmp/lang" "$tmp/res" /nonexistent/lang-symbols.tsv >/dev/null 2>"$err" || rc=$?
+if test "$rc" -eq 1 && grep -q 'lang-symbols.tsv not found' "$err"; then
+    pass "a missing table fails the run and says so"
 else
-    bad "a missing lang.def fails the run (exit $rc)"
+    bad "a missing table fails the run and says so (exit $rc)"
+    cat "$err" || true
+fi
+
+# Every case above runs on a fixture, so none would notice the pinned engine losing
+# lang-symbols.tsv or changing its shape. Resolve one of the real table's own symbols.
+engine="$HERE/../app/src/main/jni/httrack"
+if ! test -d "$engine/lang"; then
+    echo "SKIP: no engine submodule, so the pinned table is unchecked" >&2
+elif ! test -f "$engine/lang-symbols.tsv"; then
+    bad "the pinned engine carries lang-symbols.tsv"
+else
+    table="$engine/lang-symbols.tsv"
+    sym="$(awk -F'\t' '$1 == "string" { print $2; exit }' "$table")"
+    text="$(awk -F'\t' '$1 == "string" { print $3; exit }' "$table")"
+    # A glob, not find piped to head, which pipefail turns into a failure.
+    catalogs=("$engine"/lang/*.txt)
+    catalog="${catalogs[0]}"
+    pin="$tmp/pin"
+    mkdir -p "$pin/lang" "$pin/res/values"
+    printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <string name="probe">%s</string>\n</resources>\n' \
+        "$text" >"$pin/res/values/strings.xml"
+    {
+        printf 'LANGUAGE_NAME\nFrancais\nLANGUAGE_FILE\nFrancais\nLANGUAGE_ISO\nfr\n'
+        printf '%s\nTraduit\n' "$sym"
+    } >"$pin/lang/$(basename "$catalog")"
+    bash "$SUT" "$pin/lang" "$pin/res" "$table" >/dev/null 2>&1
+    if grep -qF '<string name="probe">Traduit</string>' "$pin/res/values-fr/string.xml"; then
+        pass "the pinned table resolves its own first symbol ($sym)"
+    else
+        bad "the pinned table resolves its own first symbol ($sym)"
+        grep -F 'name="probe"' "$pin/res/values-fr/string.xml" || true
+    fi
 fi
 
 test "$fail" -eq 0 && echo "build_strings-test: all cases pass"
