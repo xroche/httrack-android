@@ -113,9 +113,8 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC 					\
 	-Wno-nested-externs														\
 	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6 -DHTS_INTERNAL_BUILD			\
 	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG
-# The self-tests are 40% of libhttrack's code and nothing here reaches -#test.
-# They also leave LOCAL_SRC_FILES above, because htsselftest_int.h refuses to
-# compile under this macro.
+# The app never asks the engine for a self-test. The sources are gone from
+# LOCAL_SRC_FILES above too, because htsselftest_int.h #errors under this macro.
 LOCAL_CFLAGS += -DHTS_NO_SELFTEST
 LOCAL_CPPFLAGS += -pthread
 include $(BUILD_SHARED_LIBRARY)
