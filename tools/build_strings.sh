@@ -3,8 +3,8 @@
 
 # Convert httrack lang/*;txt files into android xml resources
 
-# usage: $0 path-to/lang path-to/res [path-to/lang.def]
-# lang.def defaults to the one next to the lang directory
+# usage: $0 path-to/lang path-to/res [path-to/lang-symbols.tsv]
+# lang-symbols.tsv defaults to the one next to the lang directory
 # example:
 #	rm -rf res/values-?? res/values-??-r??	# language dirs only: values-* also takes the
 #					# hand-kept values-v34, values-night and the rest
@@ -41,21 +41,26 @@ function put_str {
 
 test -d "$1" || ! echo "lang directory not found: $1" || exit 1
 test -d "$2" || ! echo "res directory not found: $2" || exit 1
-langdef="${3:-$1/../lang.def}"
-test -f "$langdef" || ! echo "lang.def not found: $langdef (give its path as the 3rd argument)" || exit 1
+symtab="${3:-$1/../lang-symbols.tsv}"
+test -f "$symtab" || ! echo "lang-symbols.tsv not found: $symtab (give its path as the 3rd argument)" || exit 1
 
-# lang.def pairs each string's LANG_ symbol with its English text, symbol first.
+# A real tab in a text would shift it into a fourth column, so refuse the file.
+awk -F'\t' '!/^#/ && NF != 3 { print FILENAME ":" FNR ": expected 3 tab-separated columns" > "/dev/stderr"; bad = 1 } END { exit bad }' "$symtab" || exit 1
+
+# The string rows are the translatable ones, in file order, so a text several
+# symbols share resolves to the last of them.
 # sym_text resolves a symbol, english_text answers "is this key a known text?".
+# lang_filter sees the text column alone, because over a whole row it would also
+# strip a text's leading space.
 declare -A sym_text
 declare -A english_text
-while IFS= read -r dk && IFS= read -r dv; do
+while IFS=$'\t' read -r dk dv; do
 if test -n "$dk" -a -n "$dv"; then
 english_text["$dv"]=1
-case "$dk" in
-LANG_*|LISTDEF_*) sym_text["$dk"]="$dv" ;;
-esac
+sym_text["$dk"]="$dv"
 fi
-done < <(lang_filter < "$langdef")
+done < <(paste <(awk -F'\t' '$1 == "string" { print $2 }' "$symtab") \
+	<(awk -F'\t' '$1 == "string" { print $3 }' "$symtab" | lang_filter))
 
 for i in $1/*.txt ; do
 echo -n "processing $i .. " >&2
@@ -86,7 +91,7 @@ LANG_*|LISTDEF_*)
 if test -z "${english_text[$rk]}"; then
 if test -z "${sym_text[$rk]}"; then
 # No resource is keyed by a bare symbol, so drop the line rather than store it.
-echo "warning: $i: no lang.def entry for key $rk, line skipped" >&2
+echo "warning: $i: no string row for symbol $rk, line skipped" >&2
 continue
 fi
 symbol="$rk"

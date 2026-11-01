@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Exercise build_strings.sh on catalogs keyed by a lang.def symbol instead of by
-# English text. No shipped catalog uses one yet, so this is the only cover.
+# Exercise build_strings.sh on catalogs keyed by a symbol instead of by English
+# text. No shipped catalog uses one yet, so this is the only cover.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -9,36 +9,25 @@ SUT="$HERE/build_strings.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# lang.def pairs a symbol with its English text, symbol first. This fixture
-# copies the real file, including its LANGUAGE_ header rows and two symbols
-# sharing one English text, as 27 of its texts do.
+# lang-symbols.tsv gives kind, symbol and text, one row each. This fixture
+# copies the real file: its language and meta blocks come first, and two string
+# symbols share one English text, as 27 of its texts do. The row kinds are
+# tab-separated, so write the file with printf rather than a quoted heredoc.
 mkdir -p "$tmp/lang" "$tmp/res/values"
-cat >"$tmp/lang.def" <<'DEF'
-Francais
-LANGUAGE_1
-LANGUAGE_NAME
-LANGUAGE_NAME
-LANGUAGE_FILE
-LANGUAGE_FILE
-LANGUAGE_ISO
-LANGUAGE_ISO
-LANG_OK
-OK
-LANG_CANCEL
-Cancel
-LANG_B3
-Cancel
-LANG_START
-Start
-LISTDEF_1
-One\nTwo
-LANG_LITERAL
-LANG_OK
-LANG_B3
-Cancel
-LANG_INFO
-Info type:
-DEF
+printf '%s\t%s\t%s\n' \
+    language LANGUAGE_1 Francais \
+    meta LANGUAGE_NAME LANGUAGE_NAME \
+    meta LANGUAGE_FILE LANGUAGE_FILE \
+    meta LANGUAGE_ISO LANGUAGE_ISO \
+    string LANG_OK OK \
+    string LANG_CANCEL Cancel \
+    string LANG_B3 Cancel \
+    string LANG_START Start \
+    string LISTDEF_1 'One\nTwo' \
+    string LANG_LITERAL LANG_OK \
+    string LANG_B3 Cancel \
+    string LANG_INFO 'Info type:' \
+    meta LANG_UNSELECTED Jamais >"$tmp/lang-symbols.tsv"
 
 cat >"$tmp/res/values/strings.xml" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
@@ -107,6 +96,8 @@ LISTDEF_1
 Un\nDeux
 LANG_NOSUCH
 Jamais
+LANG_UNSELECTED
+Jamais
 LANG_OK
 TexteLitteral
 LANG_INFO
@@ -122,16 +113,23 @@ has "a LISTDEF_ symbol splits on \\n, second line" two Deux
 # fragment filled, because a fragment belongs to the symbol that carried it.
 has "a split fragment keeps its symbol's claim" one Un
 missing "a string no catalog line carries stays empty" start Start
-# lang.def gives "LANG_OK" as a string's own English text, so a line keyed that
+# The table gives "LANG_OK" as a string's own English text, so a line keyed that
 # way is text, not the symbol of the same name.
-has "a key lang.def knows as text is not read as a symbol" literal TexteLitteral
-# lang.def spells this text with a trailing colon and strings.xml does not, so
-# the resolved key matches only when lang.def goes through lang_filter as well.
-has "lang.def text is cleaned up like a catalog key" info "Type info"
+has "a key the table knows as text is not read as a symbol" literal TexteLitteral
+# The table spells this text with a trailing colon and strings.xml does not, so
+# the resolved key matches only when the text column goes through lang_filter too.
+has "table text is cleaned up like a catalog key" info "Type info"
 if grep -q 'LANG_NOSUCH' "$err"; then
-    pass "a symbol absent from lang.def is reported"
+    pass "a symbol absent from the table is reported"
 else
-    bad "a symbol absent from lang.def is reported"
+    bad "a symbol absent from the table is reported"
+fi
+# The kind column selects the rows, not the symbol's prefix, so a LANG_ symbol
+# outside the string block must not resolve.
+if grep -q 'LANG_UNSELECTED' "$err"; then
+    pass "a symbol in a non-string row does not resolve"
+else
+    bad "a symbol in a non-string row does not resolve"
 fi
 
 # A catalog mid-re-key holds both kinds of line for one string. The symbol must
@@ -196,14 +194,25 @@ else
     diff "$tmp/text-keyed.xml" "$out" || true
 fi
 
-# The symbol-to-text table comes from lang.def, so a missing one must stop the
-# run rather than quietly drop every symbol-keyed line.
+# A missing table must stop the run rather than quietly drop every symbol-keyed
+# line.
 rc=0
-bash "$SUT" "$tmp/lang" "$tmp/res" /nonexistent/lang.def >/dev/null 2>&1 || rc=$?
+bash "$SUT" "$tmp/lang" "$tmp/res" /nonexistent/lang-symbols.tsv >/dev/null 2>&1 || rc=$?
 if test "$rc" -eq 1; then
-    pass "a missing lang.def fails the run"
+    pass "a missing table fails the run"
 else
-    bad "a missing lang.def fails the run (exit $rc)"
+    bad "a missing table fails the run (exit $rc)"
+fi
+
+# A real tab in a text splits it into a fourth column, which would translate
+# against a truncated text, so the run must stop instead.
+printf 'string\tLANG_OK\tOK\tstray\n' >"$tmp/four-columns.tsv"
+rc=0
+bash "$SUT" "$tmp/lang" "$tmp/res" "$tmp/four-columns.tsv" >/dev/null 2>&1 || rc=$?
+if test "$rc" -eq 1; then
+    pass "a row with four columns fails the run"
+else
+    bad "a row with four columns fails the run (exit $rc)"
 fi
 
 test "$fail" -eq 0 && echo "build_strings-test: all cases pass"
