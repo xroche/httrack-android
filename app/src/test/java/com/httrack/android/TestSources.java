@@ -57,6 +57,12 @@ final class TestSources {
     return new File(dir("src/main/res"), name);
   }
 
+  /** Android.mk, free of CRLF and line continuations, so a wrapped list matches in one line. */
+  static String flattenedMakefile() throws IOException {
+    return read(new File(dir("src/main/jni"), "Android.mk")).replace("\r", "")
+        .replaceAll("\\\\\n\\s*", " ");
+  }
+
   static String read(final File file) throws IOException {
     return new String(Files.readAllBytes(file.toPath()), "UTF-8");
   }

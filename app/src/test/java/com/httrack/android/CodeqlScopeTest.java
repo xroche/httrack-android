@@ -19,7 +19,6 @@ import org.junit.Test;
  */
 public class CodeqlScopeTest {
   private static final String WORKFLOW = ".github/workflows/codeql.yml";
-  private static final String ANDROID_MK = "app/src/main/jni/Android.mk";
   private static final String UNTRACED = "Build the engine, untraced";
   private static final String TRACED = "Recompile the JNI glue, traced";
   private static final String INIT = "github/codeql-action/init";
@@ -37,7 +36,7 @@ public class CodeqlScopeTest {
 
   /** Every source the htslibjni module builds, "+=" included, so an appended one is not missed. */
   private static Set<String> glueSources() throws IOException {
-    final String mk = flattened(ANDROID_MK);
+    final String mk = TestSources.flattenedMakefile();
     final Matcher module = Pattern.compile("LOCAL_MODULE\\s*:=\\s*htslibjni\\b").matcher(mk);
     assertTrue("Android.mk must still define the htslibjni module", module.find());
     final String body = mk.substring(module.end()).split("include \\$\\(BUILD")[0];
