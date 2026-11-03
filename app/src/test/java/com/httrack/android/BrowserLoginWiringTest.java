@@ -211,23 +211,23 @@ public class BrowserLoginWiringTest {
   }
 
   /**
-   * The engine is given the address the window was opened for, not the one the login ended on.
-   * That address is the crawl's own root, so naming it adds no second root, and a login ending
-   * on an identity provider cannot put that provider in the list.
+   * The engine is offered the address the login landed on, and the window keeps trying until
+   * one is accepted. BrowserLoginPolicyTest owns which addresses those are.
    */
   @Test
-  public void theBundleIsNamedForTheAddressTheCrawlStartsFrom() throws IOException {
+  public void theBundleIsNamedForTheAddressTheLoginLandedOn() throws IOException {
     final String source = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
     final String done = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "public void onClickLoginDone("));
-    assertTrue(done, done.contains("getUserAgentString(), crawlUrl)"));
-    assertFalse("the address the login ended on is not what the crawl starts from",
-        done.contains("web.getUrl()"));
-    // And that address is the one the window was opened with, kept for the write.
+    assertTrue(done, done.contains("BrowserLoginPolicy.addressesToTry(web.getUrl(), openedUrl)"));
+    // The loop's own address, or every attempt would name the one the window was opened for.
+    assertTrue(done, done.contains("getUserAgentString(), url);"));
+    // The loop stops at the first address the engine accepts, rather than at the last.
+    assertTrue(done, done.contains("if (bundle != null) {\n        break;"));
     final String create = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void onCreate("));
-    assertTrue(create, create.contains("crawlUrl = BrowserLoginPolicy.withoutUserInfo(url)"));
+    assertTrue(create, create.contains("openedUrl = BrowserLoginPolicy.withoutUserInfo(url)"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,

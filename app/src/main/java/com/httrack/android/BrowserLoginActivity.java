@@ -81,8 +81,8 @@ public class BrowserLoginActivity extends FragmentActivity {
 
   private File bundleDir;
 
-  /** The address this window was opened for, which is the one the crawl will start from. */
-  private String crawlUrl;
+  /** The address this window was opened for, which the crawl falls back to. */
+  private String openedUrl;
 
   /** Hosts reached, in visit order, so the login's first host leads the file. */
   private final Set<String> hosts = new LinkedHashSet<String>();
@@ -124,7 +124,7 @@ public class BrowserLoginActivity extends FragmentActivity {
 
     /* Without the credentials it may carry: the engine refuses such an address, and the crawl
        still authenticates from the field's own copy. */
-    crawlUrl = BrowserLoginPolicy.withoutUserInfo(url);
+    openedUrl = BrowserLoginPolicy.withoutUserInfo(url);
     web = WebView.class.cast(findViewById(R.id.webLogin));
     final WebSettings settings = web.getSettings();
     // A login form usually needs scripts, and often its storage too.
@@ -343,12 +343,16 @@ public class BrowserLoginActivity extends FragmentActivity {
           .show();
       return;
     }
-    /* The engine writes the file: it owns the bundle format, the name, the scope, the caps and
-       the address rules, and it reads the result back through its own loader before keeping it.
-       crawlUrl rather than web.getUrl(), because the crawl starts from the address this window
-       was opened for. See BrowserLoginPolicy#withBundleUrl. */
-    final HTTrackLib.LoginBundle bundle = HTTrackLib.writeLoginBundle(result.text,
-        bundleDir.getAbsolutePath(), web.getSettings().getUserAgentString(), crawlUrl);
+    /* The engine decides what it writes, so it gets every address the policy offers and keeps
+       trying until one is accepted. */
+    HTTrackLib.LoginBundle bundle = null;
+    for (final String url : BrowserLoginPolicy.addressesToTry(web.getUrl(), openedUrl)) {
+      bundle = HTTrackLib.writeLoginBundle(result.text, bundleDir.getAbsolutePath(),
+          web.getSettings().getUserAgentString(), url);
+      if (bundle != null) {
+        break;
+      }
+    }
     if (bundle == null) {
       Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
       return;
