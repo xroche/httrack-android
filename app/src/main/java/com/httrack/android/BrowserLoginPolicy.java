@@ -211,7 +211,7 @@ final class BrowserLoginPolicy {
     final int host = typed.indexOf("://");
     final int at = host == -1 ? -1 : typed.lastIndexOf('@', endOfAuthority(typed, host + 3));
     final int scheme = url.indexOf("://");
-    final String reached = bareHost(hostOf(url));
+    final String reached = hostOf(url);
     final boolean sameHost =
         reached != null && reached.equals(bareHost(hostOf(secureUrl(typed))));
 
@@ -222,7 +222,7 @@ final class BrowserLoginPolicy {
         + url.substring(scheme + 3);
   }
 
-  /** HOST without the trailing dots the engine trims, so both sides of a match agree. */
+  /** HOST without the trailing dots, which the engine cuts and the field's own token keeps. */
   private static String bareHost(final String host) {
     return host == null ? null : host.replaceAll("\\.+$", "");
   }
