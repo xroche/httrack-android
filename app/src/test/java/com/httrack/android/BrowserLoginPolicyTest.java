@@ -120,10 +120,10 @@ public class BrowserLoginPolicyTest {
     assertEquals("-*signout* -*logout*", BrowserLoginPolicy.rules("-*signout*"));
   }
 
-  /** The start URL the engine hands back, built on the address the login landed on. */
+  /** The engine hands this back for a login that landed on a host the field never named. */
   private static final String WRITTEN = "https://forum.a.example/" + BrowserLoginPolicy.BUNDLE_SUFFIX + "forum.a.example";
 
-  /** The same, for a login that stayed on the host it was opened for. */
+  /** The engine hands this back when the login stayed on the host the field named. */
   private static final String SAME_HOST = "https://a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example";
 
   /** withBundleUrl as the activity calls it, names stripped first and the token read from that. */
@@ -135,9 +135,8 @@ public class BrowserLoginPolicyTest {
   }
 
   /**
-   * The login stops on the page the user wants copied, so its address replaces the one the
-   * window was opened for. Keeping both gave the crawl a root nobody asked for, and keeping
-   * only the opened one dropped the page the login was for.
+   * Keeping both gave the crawl a root nobody asked for, and keeping the opened one alone
+   * dropped the page the login was for.
    */
   @Test
   public void theLandedAddressReplacesTheOneTheLoginWasOpenedFor() {
@@ -149,6 +148,8 @@ public class BrowserLoginPolicyTest {
     assertEquals(WRITTEN, named(WRITTEN, WRITTEN));
     // A login that goes nowhere names the address it opened, and the field keeps that one.
     assertEquals(SAME_HOST, named("https://a.example/members/", SAME_HOST));
+    // A bare token on the host the login stayed on, which is where the userinfo merge runs.
+    assertEquals(SAME_HOST, named("a.example/members/", SAME_HOST));
   }
 
   /** The other addresses are the user's own text, and only one of them is replaced. */
@@ -170,16 +171,19 @@ public class BrowserLoginPolicyTest {
         named("https://a.example/ https://a.example/", WRITTEN));
   }
 
-  /**
-   * The engine is handed no credentials, so the address it returns has none. The crawl needs
-   * the ones the user typed, and the field's own token is what the crawl reads, so they go back.
-   */
+  /** The engine is handed no credentials, so the crawl needs the ones the user typed. */
   @Test
   public void theTypedCredentialsSurviveALoginOnTheirOwnHost() {
-    assertEquals("https://user:pw@a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX
-        + "a.example", named("https://user:pw@a.example/", SAME_HOST));
+    final String merged = "https://user:pw@a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX
+        + "a.example";
+
+    assertEquals(merged, named("https://user:pw@a.example/", SAME_HOST));
     assertEquals("https://user@a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX
         + "a.example", named("https://user@a.example/", SAME_HOST));
+    // The engine trims a trailing host dot, so the two sides still name the same host.
+    assertEquals(merged, named("https://user:pw@a.example./", SAME_HOST));
+    // The window raised the token to https, and the field still holds the http one.
+    assertEquals(merged, named("http://user:pw@a.example/", SAME_HOST));
     // Nothing is invented where the user typed none.
     assertEquals(SAME_HOST, named("https://a.example/", SAME_HOST));
     // An '@' in the path is not userinfo, so nothing moves.
@@ -188,14 +192,48 @@ public class BrowserLoginPolicyTest {
             "https://a.example/u@x" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example"));
   }
 
-  /**
-   * A password typed for one site does not follow the login to the next host. The login can
-   * end on a sign-on provider, and that provider has no business being sent these.
-   */
+  /** A login can end on a sign-on provider, which has no business being sent these. */
   @Test
   public void theTypedCredentialsDoNotTravelToAnotherHost() {
     assertEquals(WRITTEN, named("https://user:pw@a.example/", WRITTEN));
     assertEquals(WRITTEN, named("https://user@a.example/", WRITTEN));
+    // Nor back up to the apex from a subdomain the user typed them for.
+    assertEquals(SAME_HOST, named("https://user:pw@forum.a.example/", SAME_HOST));
+    // No https address means no host to match, so there is nothing to merge them onto.
+    final String cleartext = "http://a.example/x" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example";
+    assertEquals(cleartext, named("https://user:pw@a.example/", cleartext));
+  }
+
+  /**
+   * The landed address leads, because that is the page to copy. The opened one follows, so a
+   * landed address the engine refuses still leaves a login to save.
+   */
+  @Test
+  public void theLandedAddressIsOfferedBeforeTheOpenedOne() {
+    final String opened = "https://a.example/members/";
+
+    assertEquals(Arrays.asList("https://forum.a.example/x", opened),
+        BrowserLoginPolicy.bundleUrls("https://forum.a.example/x", opened));
+    // One address, offered once.
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls(opened, opened));
+    // The engine refuses an address holding credentials, so they go before it sees one.
+    assertEquals(Arrays.asList("https://a.example/x", opened),
+        BrowserLoginPolicy.bundleUrls("https://user:pw@a.example/x", opened));
+  }
+
+  /** An address the window cannot have landed on is not offered, so the opened one stands. */
+  @Test
+  public void onlyAnHttpsAddressNamingAHostIsOffered() {
+    final String opened = "https://a.example/members/";
+
+    // getUrl answers for no page until one commits.
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls(null, opened));
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("about:blank", opened));
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("data:text/html,x", opened));
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("http://a.example/x", opened));
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("https:///x", opened));
+    // Nothing to offer stops the write, which is what the window reports as a refusal.
+    assertTrue(BrowserLoginPolicy.bundleUrls(null, null).isEmpty());
   }
 
   /** A field of nothing but whitespace holds no address, so the name takes the whole field. */

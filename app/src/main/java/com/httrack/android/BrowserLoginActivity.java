@@ -315,20 +315,6 @@ public class BrowserLoginActivity extends FragmentActivity {
     setResult(RESULT_OK, data);
   }
 
-  /**
-   * The address the crawl will start from, which is where the login landed. Passing a form is
-   * only the way in, and the page the user stops on is the one they want copied, so that
-   * address replaces the one this window was opened for. See BrowserLoginPolicy#withBundleUrl.
-   *
-   * @return the landed address without its credentials, or the opened one while no page has
-   *         committed and getUrl therefore answers for none
-   */
-  private String crawlUrl() {
-    final String landed = BrowserLoginPolicy.withoutUserInfo(web.getUrl());
-
-    return BrowserLoginPolicy.hostOf(landed) == null ? openedUrl : landed;
-  }
-
   /** "Use this login" */
   public void onClickLoginDone(final View view) {
     CookieManager.getInstance().flush();
@@ -358,9 +344,16 @@ public class BrowserLoginActivity extends FragmentActivity {
       return;
     }
     /* The engine writes the file: it owns the bundle format, the name, the scope, the caps and
-       the address rules, and it reads the result back through its own loader before keeping it. */
-    final HTTrackLib.LoginBundle bundle = HTTrackLib.writeLoginBundle(result.text,
-        bundleDir.getAbsolutePath(), web.getSettings().getUserAgentString(), crawlUrl());
+       the address rules, and it reads the result back through its own loader before keeping it.
+       Every address the policy offers, because the engine refuses some a WebView can reach. */
+    HTTrackLib.LoginBundle bundle = null;
+    for (final String url : BrowserLoginPolicy.bundleUrls(web.getUrl(), openedUrl)) {
+      bundle = HTTrackLib.writeLoginBundle(result.text, bundleDir.getAbsolutePath(),
+          web.getSettings().getUserAgentString(), url);
+      if (bundle != null) {
+        break;
+      }
+    }
     if (bundle == null) {
       Toast.makeText(this, getString(R.string.browser_login_no_bundle), Toast.LENGTH_LONG).show();
       return;

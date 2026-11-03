@@ -211,9 +211,8 @@ public class BrowserLoginWiringTest {
   }
 
   /**
-   * The engine is given the address the login landed on, because that is the page the user
-   * wants copied. It replaces the address the window was opened for, so the list keeps one
-   * crawl root.
+   * The engine is offered the address the login landed on, and the window keeps trying until
+   * one is accepted. BrowserLoginPolicyTest owns which addresses those are.
    */
   @Test
   public void theBundleIsNamedForTheAddressTheLoginLandedOn() throws IOException {
@@ -221,12 +220,9 @@ public class BrowserLoginWiringTest {
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
     final String done = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "public void onClickLoginDone("));
-    assertTrue(done, done.contains("getUserAgentString(), crawlUrl())"));
-    final String landed = TestSources.balancedBlock(source,
-        TestSources.indexOf(source, "private String crawlUrl("));
-    assertTrue(landed, landed.contains("withoutUserInfo(web.getUrl())"));
-    // getUrl answers for no page until one commits, which the opened address covers.
-    assertTrue(landed, landed.contains("hostOf(landed) == null ? openedUrl : landed"));
+    assertTrue(done, done.contains("BrowserLoginPolicy.bundleUrls(web.getUrl(), openedUrl)"));
+    // The first address the engine accepts, because it refuses some a WebView can reach.
+    assertTrue(done, done.contains("if (bundle != null)"));
     final String create = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void onCreate("));
     assertTrue(create, create.contains("openedUrl = BrowserLoginPolicy.withoutUserInfo(url)"));

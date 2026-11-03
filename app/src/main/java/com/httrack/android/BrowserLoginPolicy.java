@@ -45,8 +45,7 @@ final class BrowserLoginPolicy {
 
   /**
    * The field's own text for the address {@link #startUrl} opens, which is the token the login
-   * replaces afterwards. Dropping a bundle name cannot change which token this picks, because
-   * a token that names no host without its name names none with it either.
+   * replaces afterwards.
    *
    * @param urlField
    *          the field's text
@@ -97,6 +96,31 @@ final class BrowserLoginPolicy {
     return host.toLowerCase(Locale.ROOT);
   }
 
+  /**
+   * The addresses to offer the engine for this login, best first. The login stops on the page
+   * the user wants copied, so that address leads. The engine refuses an address it cannot
+   * name, such as a sign-on callback carrying a long token. The opened address then still
+   * saves the login.
+   *
+   * @param landedUrl
+   *          the login window's own address, or null while no page has committed
+   * @param openedUrl
+   *          the address the window was opened for, which carries no credentials
+   * @return the addresses to try in order, without repeats
+   */
+  static List<String> bundleUrls(final String landedUrl, final String openedUrl) {
+    final List<String> urls = new ArrayList<String>();
+    final String landed = withoutUserInfo(landedUrl);
+
+    if (hostOf(landed) != null) {
+      urls.add(landed);
+    }
+    if (openedUrl != null && !urls.contains(openedUrl)) {
+      urls.add(openedUrl);
+    }
+    return urls;
+  }
+
   /** What a start URL ends with to name a login bundle, HTS_BUNDLE_SUFFIX in the engine. */
   static final String BUNDLE_SUFFIX = "#httrack-bundle=";
 
@@ -132,9 +156,8 @@ final class BrowserLoginPolicy {
 
   /**
    * The address field with the login's own address in place of the one the window was opened
-   * for. The login stops on the page the user wants copied, so that address is the crawl's
-   * root and the one it was opened for is only the way in. It is replaced rather than kept, so
-   * the field gains no second crawl root.
+   * for. The login stops on the page the user wants copied, so that page becomes the crawl's
+   * root. One token is replaced, so the field gains no second crawl root.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
@@ -174,9 +197,9 @@ final class BrowserLoginPolicy {
   }
 
   /**
-   * URL carrying the user name and password of TYPED, which the engine was not given. Only
-   * where both name the same host, because a password typed for one site must not be sent to
-   * the next one the login happened to end on.
+   * URL carrying the user name and password of TYPED, which the engine was not given. The
+   * merge happens only when both name the same host, because a password typed for one site
+   * must not follow the login to another host.
    *
    * @param url
    *          the address the engine wrote, which holds no userinfo
@@ -188,14 +211,20 @@ final class BrowserLoginPolicy {
     final int host = typed.indexOf("://");
     final int at = host == -1 ? -1 : typed.lastIndexOf('@', endOfAuthority(typed, host + 3));
     final int scheme = url.indexOf("://");
-    final String reached = hostOf(url);
+    final String reached = bareHost(hostOf(url));
+    final boolean sameHost =
+        reached != null && reached.equals(bareHost(hostOf(secureUrl(typed))));
 
-    if (at == -1 || at < host || scheme == -1 || reached == null
-        || !reached.equals(hostOf(secureUrl(typed)))) {
+    if (at == -1 || at < host || scheme == -1 || !sameHost) {
       return url;
     }
     return url.substring(0, scheme + 3) + typed.substring(host + 3, at + 1)
         + url.substring(scheme + 3);
+  }
+
+  /** HOST without the trailing dots the engine trims, so both sides of a match agree. */
+  private static String bareHost(final String host) {
+    return host == null ? null : host.replaceAll("\\.+$", "");
   }
 
   /**
