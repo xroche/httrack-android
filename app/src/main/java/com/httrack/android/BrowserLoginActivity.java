@@ -343,11 +343,10 @@ public class BrowserLoginActivity extends FragmentActivity {
           .show();
       return;
     }
-    /* The engine writes the file: it owns the bundle format, the name, the scope, the caps and
-       the address rules, and it reads the result back through its own loader before keeping it.
-       Every address the policy offers, because the engine refuses some a WebView can reach. */
+    /* The engine decides what it writes, so it gets every address the policy offers and keeps
+       trying until one is accepted. */
     HTTrackLib.LoginBundle bundle = null;
-    for (final String url : BrowserLoginPolicy.bundleUrls(web.getUrl(), openedUrl)) {
+    for (final String url : BrowserLoginPolicy.addressesToTry(web.getUrl(), openedUrl)) {
       bundle = HTTrackLib.writeLoginBundle(result.text, bundleDir.getAbsolutePath(),
           web.getSettings().getUserAgentString(), url);
       if (bundle != null) {

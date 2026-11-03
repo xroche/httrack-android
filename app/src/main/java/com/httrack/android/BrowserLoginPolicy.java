@@ -99,8 +99,8 @@ final class BrowserLoginPolicy {
   /**
    * The addresses to offer the engine for this login, best first. The login stops on the page
    * the user wants copied, so that address leads. The engine refuses an address it cannot
-   * name, such as a sign-on callback carrying a long token. The opened address then still
-   * saves the login.
+   * name, such as a sign-on callback carrying a long token, and the login is then saved under
+   * the opened address instead. Nothing is screened here that only the engine can judge.
    *
    * @param landedUrl
    *          the login window's own address, or null while no page has committed
@@ -108,14 +108,14 @@ final class BrowserLoginPolicy {
    *          the address the window was opened for, which carries no credentials
    * @return the addresses to try in order, without repeats
    */
-  static List<String> bundleUrls(final String landedUrl, final String openedUrl) {
+  static List<String> addressesToTry(final String landedUrl, final String openedUrl) {
     final List<String> urls = new ArrayList<String>();
     final String landed = withoutUserInfo(landedUrl);
 
     if (hostOf(landed) != null) {
       urls.add(landed);
     }
-    if (openedUrl != null && !urls.contains(openedUrl)) {
+    if (hostOf(openedUrl) != null && !urls.contains(openedUrl)) {
       urls.add(openedUrl);
     }
     return urls;
@@ -213,7 +213,7 @@ final class BrowserLoginPolicy {
     final int scheme = url.indexOf("://");
     final String reached = hostOf(url);
     final boolean sameHost =
-        reached != null && reached.equals(bareHost(hostOf(secureUrl(typed))));
+        reached != null && reached.equals(withoutTrailingDots(hostOf(secureUrl(typed))));
 
     if (at == -1 || at < host || scheme == -1 || !sameHost) {
       return url;
@@ -222,8 +222,8 @@ final class BrowserLoginPolicy {
         + url.substring(scheme + 3);
   }
 
-  /** HOST without the trailing dots, which the engine cuts and the field's own token keeps. */
-  private static String bareHost(final String host) {
+  /** HOST loses the trailing dots the engine also cuts, so a match compares like with like. */
+  private static String withoutTrailingDots(final String host) {
     return host == null ? null : host.replaceAll("\\.+$", "");
   }
 

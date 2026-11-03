@@ -220,9 +220,11 @@ public class BrowserLoginWiringTest {
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
     final String done = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "public void onClickLoginDone("));
-    assertTrue(done, done.contains("BrowserLoginPolicy.bundleUrls(web.getUrl(), openedUrl)"));
-    // The first address the engine accepts, because it refuses some a WebView can reach.
-    assertTrue(done, done.contains("if (bundle != null)"));
+    assertTrue(done, done.contains("BrowserLoginPolicy.addressesToTry(web.getUrl(), openedUrl)"));
+    // The loop's own address, or every attempt would name the one the window was opened for.
+    assertTrue(done, done.contains("getUserAgentString(), url);"));
+    // The loop stops at the first address the engine accepts, rather than at the last.
+    assertTrue(done, done.contains("if (bundle != null) {\n        break;"));
     final String create = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void onCreate("));
     assertTrue(create, create.contains("openedUrl = BrowserLoginPolicy.withoutUserInfo(url)"));

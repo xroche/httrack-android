@@ -148,7 +148,7 @@ public class BrowserLoginPolicyTest {
     assertEquals(WRITTEN, named(WRITTEN, WRITTEN));
     // A login that goes nowhere names the address it opened, and the field keeps that one.
     assertEquals(SAME_HOST, named("https://a.example/members/", SAME_HOST));
-    // A bare token on the host the login stayed on, which is where the userinfo merge runs.
+    // A bare token on the host the login stayed on still reaches the userinfo merge.
     assertEquals(SAME_HOST, named("a.example/members/", SAME_HOST));
   }
 
@@ -192,7 +192,7 @@ public class BrowserLoginPolicyTest {
             "https://a.example/u@x" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example"));
   }
 
-  /** A login can end on a sign-on provider, which has no business being sent these. */
+  /** A login can end on a sign-on provider that must not receive typed credentials. */
   @Test
   public void theTypedCredentialsDoNotTravelToAnotherHost() {
     assertEquals(WRITTEN, named("https://user:pw@a.example/", WRITTEN));
@@ -213,12 +213,16 @@ public class BrowserLoginPolicyTest {
     final String opened = "https://a.example/members/";
 
     assertEquals(Arrays.asList("https://forum.a.example/x", opened),
-        BrowserLoginPolicy.bundleUrls("https://forum.a.example/x", opened));
+        BrowserLoginPolicy.addressesToTry("https://forum.a.example/x", opened));
     // One address, offered once.
-    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls(opened, opened));
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.addressesToTry(opened, opened));
     // The engine refuses an address holding credentials, so they go before it sees one.
     assertEquals(Arrays.asList("https://a.example/x", opened),
-        BrowserLoginPolicy.bundleUrls("https://user:pw@a.example/x", opened));
+        BrowserLoginPolicy.addressesToTry("https://user:pw@a.example/x", opened));
+    /* Only the engine can judge an IPv6 literal, a public suffix or the length cap, which it
+       works out from the name. A screen here would answer differently from the engine. */
+    assertEquals(Arrays.asList("https://[::1]/x", opened),
+        BrowserLoginPolicy.addressesToTry("https://[::1]/x", opened));
   }
 
   /** An address the window cannot have landed on is not offered, so the opened one stands. */
@@ -226,14 +230,18 @@ public class BrowserLoginPolicyTest {
   public void onlyAnHttpsAddressNamingAHostIsOffered() {
     final String opened = "https://a.example/members/";
 
+    // The positive control, because every other row here expects the opened address alone.
+    assertEquals(Arrays.asList("https://a.example/x", opened),
+        BrowserLoginPolicy.addressesToTry("https://a.example/x", opened));
     // getUrl answers for no page until one commits.
-    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls(null, opened));
-    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("about:blank", opened));
-    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("data:text/html,x", opened));
-    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("http://a.example/x", opened));
-    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.bundleUrls("https:///x", opened));
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.addressesToTry(null, opened));
+    assertEquals(Arrays.asList(opened), BrowserLoginPolicy.addressesToTry("about:blank", opened));
+    assertEquals(Arrays.asList(opened),
+        BrowserLoginPolicy.addressesToTry("data:text/html,x", opened));
+    assertEquals(Arrays.asList(opened),
+        BrowserLoginPolicy.addressesToTry("http://a.example/x", opened));
     // Nothing to offer stops the write, which is what the window reports as a refusal.
-    assertTrue(BrowserLoginPolicy.bundleUrls(null, null).isEmpty());
+    assertTrue(BrowserLoginPolicy.addressesToTry(null, null).isEmpty());
   }
 
   /** A field of nothing but whitespace holds no address, so the name takes the whole field. */
