@@ -105,17 +105,15 @@ public class BrowserLoginEngineLimitsTest {
    */
   @Test
   public void theBundleWriterIsAnExportedEngineCallThatReadsItsOwnOutputBack() throws IOException {
-    assertTrue("the JNI calls the flags entry point now, so this test reads the wrong function",
+    assertTrue("the JNI calls another entry point now, so this test reads the wrong function",
         TestSources.read(TestSources.mainFile("jni/htslibjni.c")).contains(
-            "hts_bundle_from_paste(paste, folder, agent, url"));
-    assertTrue("hts_bundle_from_paste is no longer exported",
-        source("httrack-library.h").contains("HTSEXT_API hts_boolean hts_bundle_from_paste("));
+            "hts_bundle_from_paste_hosts(paste, folder, agent, url"));
+    assertTrue("hts_bundle_from_paste_hosts is no longer exported",
+        source("httrack-library.h").contains(
+            "HTSEXT_API hts_boolean hts_bundle_from_paste_hosts("));
     final String paste = source("htsbundle.c");
-    final String wrapper = TestSources.balancedBlock(paste,
-        TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste("));
-    assertTrue(wrapper, wrapper.contains("return hts_bundle_from_paste_flags("));
     final String body = TestSources.balancedBlock(paste,
-        TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste_flags("));
+        TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste_hosts("));
     // Failing has to be the guard's whole statement, or a bundle the read-back rejected still
     // reaches the folder.
     final int read = TestSources.indexOf(body, "!bundle_load_src(");

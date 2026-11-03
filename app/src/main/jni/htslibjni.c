@@ -660,15 +660,16 @@ JNICALL jint Java_com_httrack_android_jni_HTTrackLib_getCustomHeaderVerdict(JNIE
 
 /* A new HTTrackLib.LoginBundle, or NULL with the exception pending. Looked up
  * here rather than cached, because one login writes one bundle. */
-static jobject newLoginBundle(JNIEnv* env, jstring url, jint cookies, jint hosts) {
+static jobject newLoginBundle(JNIEnv* env, jstring url, jint cookies, jint hosts,
+                              jint dropped) {
   jclass cls = (*env)->FindClass(env,
                                  "com/httrack/android/jni/HTTrackLib$LoginBundle");
   jmethodID cons = cls != NULL
-    ? (*env)->GetMethodID(env, cls, "<init>", "(Ljava/lang/String;II)V")
+    ? (*env)->GetMethodID(env, cls, "<init>", "(Ljava/lang/String;III)V")
     : NULL;
 
   return cons != NULL
-    ? (*env)->NewObject(env, cls, cons, url, cookies, hosts)
+    ? (*env)->NewObject(env, cls, cons, url, cookies, hosts, dropped)
     : NULL;
 }
 
@@ -696,8 +697,13 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
                                                                         jstring opaste,
                                                                         jstring ofolder,
                                                                         jstring oagent,
-                                                                        jstring ourl) {
+                                                                        jstring ourl,
+                                                                        jstring ohosts) {
   const char *paste, *folder, *agent, *url;
+  /* NULL is a value here, not a mistake: it asks the engine for the address's
+     own cookies alone, as the bundle writer did before the hosts list. */
+  const char* hosts = NULL;
+  hts_boolean got_hosts;
   jobject bundle = NULL;
 
   UNUSED(clazz);
@@ -716,22 +722,33 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
   folder = (*env)->GetStringUTFChars(env, ofolder, NULL);
   agent = (*env)->GetStringUTFChars(env, oagent, NULL);
   url = (*env)->GetStringUTFChars(env, ourl, NULL);
-  if (paste != NULL && folder != NULL && agent != NULL && url != NULL) {
+  if (ohosts != NULL) {
+    hosts = (*env)->GetStringUTFChars(env, ohosts, NULL);
+  }
+  got_hosts = ohosts == NULL || hosts != NULL;
+  if (paste != NULL && folder != NULL && agent != NULL && url != NULL && got_hosts) {
     hts_paste_result result;
 
     memset(&result, 0, sizeof(result));
     result.size = sizeof(result);
-    if (hts_bundle_from_paste(paste, folder, agent, url, HTS_FALSE, &result)) {
+    /* The hosts keep their cookies through a scope line each, and none of them
+       becomes a start URL. */
+    if (hts_bundle_from_paste_hosts(paste, folder, agent, url, hosts, 0u,
+                                    &result)) {
       jstring written = (*env)->NewStringUTF(env, result.url);
 
       if (written != NULL) {
         bundle = newLoginBundle(env, written, (jint) result.cookies,
-                                countBundleHosts(result.hosts));
+                                countBundleHosts(result.hosts),
+                                (jint) result.dropped);
       }
     } else {
       /* The reason is unlocalized English, so the user gets our own message. */
       debug("the engine refused the login: %s", result.error);
     }
+  }
+  if (hosts != NULL) {
+    (*env)->ReleaseStringUTFChars(env, ohosts, hosts);
   }
   if (url != NULL) {
     (*env)->ReleaseStringUTFChars(env, ourl, url);

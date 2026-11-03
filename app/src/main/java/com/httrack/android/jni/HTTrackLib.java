@@ -133,10 +133,15 @@ public class HTTrackLib {
     /** Hosts those cookies cover, which is not every host the login visited. */
     public final int hosts;
 
-    public LoginBundle(final String url, final int cookies, final int hosts) {
+    /** Cookies of the named hosts the engine had no room for, so the crawl will not send them. */
+    public final int dropped;
+
+    public LoginBundle(final String url, final int cookies, final int hosts,
+        final int dropped) {
       this.url = url;
       this.cookies = cookies;
       this.hosts = hosts;
+      this.dropped = dropped;
     }
   }
 
@@ -154,10 +159,13 @@ public class HTTrackLib {
    *          the browser's User-Agent, sent to the bundle's sites alone
    * @param url
    *          the address the login ended on
+   * @param hosts
+   *          the hosts whose cookies to keep besides the address's own, comma-separated, or
+   *          null to keep the address's own alone
    * @return what it wrote, or null when the engine refused the login
    */
   public static native LoginBundle writeLoginBundle(String paste, String folder, String agent,
-      String url);
+      String url, String hosts);
 
   /**
    * Has a native fault been recovered in this process ?
