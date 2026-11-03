@@ -226,6 +226,10 @@ public class BrowserLoginPolicyTest {
     // A host the cookie query answered for with an empty name carries nothing to keep.
     assertNull(BrowserLoginPolicy.keptHosts(Arrays.asList("", null)));
     assertEquals("a.example", BrowserLoginPolicy.keptHosts(Arrays.asList("", "a.example")));
+    // Last, where skipping it is the difference between a clean list and a stray comma.
+    assertEquals("a.example", BrowserLoginPolicy.keptHosts(Arrays.asList("a.example", "")));
+    assertEquals("a.example,b.example",
+        BrowserLoginPolicy.keptHosts(Arrays.asList("a.example", null, "b.example")));
   }
 
   /**
