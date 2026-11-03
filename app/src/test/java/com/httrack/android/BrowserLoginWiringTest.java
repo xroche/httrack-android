@@ -218,7 +218,10 @@ public class BrowserLoginWiringTest {
   public void theJniCallKeepsTheNamedHostsCookies() throws IOException {
     final String source = TestSources.jniSource("htslibjni.c");
 
-    assertTrue(source, source.contains("hts_bundle_from_paste_hosts(paste, folder, agent, url"));
+    /* The whole argument list: calling the hosts entry point with a NULL hosts keeps the
+       older behaviour, and reads as the fix while doing nothing. */
+    assertTrue(source,
+        source.contains("hts_bundle_from_paste_hosts(paste, folder, agent, url, hosts, 0u,"));
     // The older entry point takes no hosts, so a login through a second site lost them.
     assertFalse("the entry point without a hosts list keeps no intermediate cookies",
         source.contains("hts_bundle_from_paste(paste,"));
