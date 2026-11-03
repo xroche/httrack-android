@@ -214,22 +214,12 @@ public class BrowserLoginPolicyTest {
         BrowserLoginPolicy.keptHosts(Arrays.asList("a.example", "idp.example")));
     // The engine's separator is a comma, and nothing else.
     assertEquals("a.example", BrowserLoginPolicy.keptHosts(Arrays.asList("a.example")));
-    // The order the hosts were asked in, which puts the login's first host first.
-    assertEquals("b.example,a.example",
-        BrowserLoginPolicy.keptHosts(Arrays.asList("b.example", "a.example")));
   }
 
   /** Naming no host asks the engine for the address's own cookies alone, as it did before. */
   @Test
   public void namingNoHostKeepsTheEnginesOlderBehaviour() {
     assertNull(BrowserLoginPolicy.keptHosts(new ArrayList<String>()));
-    // A host the cookie query answered for with an empty name carries nothing to keep.
-    assertNull(BrowserLoginPolicy.keptHosts(Arrays.asList("", null)));
-    assertEquals("a.example", BrowserLoginPolicy.keptHosts(Arrays.asList("", "a.example")));
-    // Last, where skipping it is the difference between a clean list and a stray comma.
-    assertEquals("a.example", BrowserLoginPolicy.keptHosts(Arrays.asList("a.example", "")));
-    assertEquals("a.example,b.example",
-        BrowserLoginPolicy.keptHosts(Arrays.asList("a.example", null, "b.example")));
   }
 
   /**

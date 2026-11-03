@@ -133,15 +133,10 @@ public class HTTrackLib {
     /** Hosts those cookies cover, which is not every host the login visited. */
     public final int hosts;
 
-    /** Cookies of the named hosts the engine had no room for, so the crawl will not send them. */
-    public final int dropped;
-
-    public LoginBundle(final String url, final int cookies, final int hosts,
-        final int dropped) {
+    public LoginBundle(final String url, final int cookies, final int hosts) {
       this.url = url;
       this.cookies = cookies;
       this.hosts = hosts;
-      this.dropped = dropped;
     }
   }
 

@@ -1,6 +1,7 @@
 package com.httrack.android;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -105,9 +106,15 @@ public class BrowserLoginEngineLimitsTest {
    */
   @Test
   public void theBundleWriterIsAnExportedEngineCallThatReadsItsOwnOutputBack() throws IOException {
-    assertTrue("the JNI calls another entry point now, so this test reads the wrong function",
-        TestSources.read(TestSources.mainFile("jni/htslibjni.c")).contains(
-            "hts_bundle_from_paste_hosts(paste, folder, agent, url"));
+    /* Comments and spacing stripped, so reflowing the call cannot fail this. The argument
+       list is pinned whole, because the same call with a NULL hosts keeps the older
+       behaviour and reads as the fix. */
+    final String jni = TestSources.withoutCommentsAndStrings(
+        TestSources.read(TestSources.mainFile("jni/htslibjni.c"))).replaceAll("\\s+", " ");
+    assertTrue(jni, jni.contains(
+        "hts_bundle_from_paste_hosts(paste, folder, agent, url, hosts, 0u, &result)"));
+    assertFalse("the entry point without a hosts list keeps no intermediate cookies",
+        jni.contains("hts_bundle_from_paste(paste,"));
     assertTrue("hts_bundle_from_paste_hosts is no longer exported",
         source("httrack-library.h").contains(
             "HTSEXT_API hts_boolean hts_bundle_from_paste_hosts("));

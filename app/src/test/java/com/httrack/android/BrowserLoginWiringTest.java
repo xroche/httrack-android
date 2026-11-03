@@ -211,41 +211,6 @@ public class BrowserLoginWiringTest {
   }
 
   /**
-   * The JNI call keeps the cookies of the named hosts, which the older entry point could
-   * not, and carries back the count the engine had no room for.
-   */
-  @Test
-  public void theJniCallKeepsTheNamedHostsCookies() throws IOException {
-    final String source = TestSources.jniSource("htslibjni.c");
-
-    /* The whole argument list: calling the hosts entry point with a NULL hosts keeps the
-       older behaviour, and reads as the fix while doing nothing. */
-    assertTrue(source,
-        source.contains("hts_bundle_from_paste_hosts(paste, folder, agent, url, hosts, 0u,"));
-    // The older entry point takes no hosts, so a login through a second site lost them.
-    assertFalse("the entry point without a hosts list keeps no intermediate cookies",
-        source.contains("hts_bundle_from_paste(paste,"));
-    assertTrue(source, source.contains("(jint) result.dropped"));
-  }
-
-  /**
-   * The two drop counts are never summed. One is a cookie too long to send, the other a jar
-   * with no room, and the user can act on the second alone.
-   */
-  @Test
-  public void theTwoDropCountsAreReportedApart() throws IOException {
-    final String apply = TestSources.balancedBlock(
-        TestSources.withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity")),
-        TestSources.indexOf(TestSources.withoutCommentsAndStrings(
-            TestSources.javaSource("HTTrackActivity")), "private void applyBrowserLogin("));
-
-    assertTrue(apply, apply.contains("R.string.browser_login_dropped, droppedCookies"));
-    assertTrue(apply, apply.contains("R.string.browser_login_no_room, noRoomCookies"));
-    assertFalse("the two causes are different, so one count cannot stand for both",
-        apply.contains("droppedCookies + noRoomCookies"));
-  }
-
-  /**
    * The engine is offered the address the login landed on, and the window keeps trying until
    * one is accepted. BrowserLoginPolicyTest owns which addresses those are.
    */
@@ -266,8 +231,6 @@ public class BrowserLoginWiringTest {
     /* The hosts that answered, not the hosts asked: a host with no cookie carries nothing
        to keep, and naming it would widen the bundle's scope for nothing. */
     assertTrue(done, done.contains("BrowserLoginPolicy.keptHosts(byHost.keySet())"));
-    // The engine's own count of what it had no room for, which the dialog reads.
-    assertTrue(done, done.contains("EXTRA_NO_ROOM_COUNT, bundle.dropped"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,

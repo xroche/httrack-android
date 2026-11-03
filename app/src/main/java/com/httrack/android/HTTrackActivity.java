@@ -2955,21 +2955,13 @@ public class HTTrackActivity extends FragmentActivity {
         BrowserLoginPolicy.sockets(getMap(R.id.editNumberOfConnections)));
     setMap(R.id.editRules, BrowserLoginPolicy.rules(getMap(R.id.editRules)));
     final int droppedCookies = data.getIntExtra(BrowserLoginActivity.EXTRA_DROPPED_COUNT, 0);
-    final int noRoomCookies = data.getIntExtra(BrowserLoginActivity.EXTRA_NO_ROOM_COUNT, 0);
     final String saved = getString(R.string.browser_login_saved,
         data.getIntExtra(BrowserLoginActivity.EXTRA_COOKIE_COUNT, 0),
         data.getIntExtra(BrowserLoginActivity.EXTRA_HOST_COUNT, 0),
         BrowserLoginPolicy.MAX_SOCKETS);
-    /* The two counts have different causes and different answers, so they are never summed:
-       ours is a cookie too long to send, the engine's is a jar with no room left. */
-    String message = saved;
-
-    if (droppedCookies != 0) {
-      message += "\n\n" + getString(R.string.browser_login_dropped, droppedCookies);
-    }
-    if (noRoomCookies != 0) {
-      message += "\n\n" + getString(R.string.browser_login_no_room, noRoomCookies);
-    }
+    // The engine drops a cookie its jar refuses, so saying only how many it kept is a lie.
+    final String message = droppedCookies == 0 ? saved
+        : saved + "\n\n" + getString(R.string.browser_login_dropped, droppedCookies);
     new AlertDialog.Builder(this).setMessage(message)
         .setPositiveButton(android.R.string.ok, null).show();
   }

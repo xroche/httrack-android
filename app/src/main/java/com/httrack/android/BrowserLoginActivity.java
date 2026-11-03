@@ -76,7 +76,6 @@ public class BrowserLoginActivity extends FragmentActivity {
   static final String EXTRA_COOKIE_COUNT = "com.httrack.android.cookieCount";
   static final String EXTRA_HOST_COUNT = "com.httrack.android.hostCount";
   static final String EXTRA_DROPPED_COUNT = "com.httrack.android.droppedCount";
-  static final String EXTRA_NO_ROOM_COUNT = "com.httrack.android.noRoomCount";
 
   private WebView web;
 
@@ -367,8 +366,6 @@ public class BrowserLoginActivity extends FragmentActivity {
     data.putExtra(EXTRA_HOST_COUNT, bundle.hosts);
     // Ours, and only the over-long ones, which is what the message the user reads says.
     data.putExtra(EXTRA_DROPPED_COUNT, result.dropped);
-    // The engine's, which are the ones its jar had no room for.
-    data.putExtra(EXTRA_NO_ROOM_COUNT, bundle.dropped);
     setResult(RESULT_OK, data);
     finish();
   }

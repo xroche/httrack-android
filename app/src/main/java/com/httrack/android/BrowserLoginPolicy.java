@@ -98,22 +98,17 @@ final class BrowserLoginPolicy {
   }
 
   /**
-   * The hosts whose cookies the login keeps, as the engine's comma-separated list. A host
-   * gets a scope line for its registrable domain and never becomes a crawl root, so the
-   * crawl can authenticate on a site the login passed through without copying it.
+   * Joins HOSTS into the comma-separated list the engine keeps cookies for.
    *
    * @param hosts
    *          the hosts that answered with a cookie, in the order they were asked
-   * @return the list, or null when no host answered, which keeps the engine's older
-   *         behaviour of taking the address's own cookies alone
+   * @return the list, or null for none, which leaves the address's own cookies alone
    */
   static String keptHosts(final Collection<String> hosts) {
     final StringBuilder list = new StringBuilder();
 
     for (final String host : hosts) {
-      if (host != null && host.length() != 0) {
-        list.append(list.length() == 0 ? "" : ",").append(host);
-      }
+      list.append(list.length() == 0 ? "" : ",").append(host);
     }
     return list.length() == 0 ? null : list.toString();
   }
