@@ -45,8 +45,8 @@ final class BrowserLoginPolicy {
 
   /**
    * The field's own text for the address {@link #startUrl} opens, which is the token the login
-   * names afterwards. Dropping a bundle name cannot change which token this picks, because a
-   * token that names no host without its name names none with it either.
+   * replaces afterwards. Dropping a bundle name cannot change which token this picks, because
+   * a token that names no host without its name names none with it either.
    *
    * @param urlField
    *          the field's text
@@ -131,14 +131,17 @@ final class BrowserLoginPolicy {
   }
 
   /**
-   * The address field with the bundle's name on the address the login was opened for, which is
-   * the one the crawl starts from. That one token is named, so the field gains no second crawl
-   * root.
+   * The address field with the login's own address in place of the one the window was opened
+   * for. The login stops on the page the user wants copied, so that address is the crawl's
+   * root and the one it was opened for is only the way in. It is replaced rather than kept, so
+   * the field gains no second crawl root.
    *
    * @param urlField
    *          the field's text, one or more whitespace-separated addresses
    * @param bundleUrl
    *          the start URL the engine wrote, or null when it wrote none
+   * @param openedToken
+   *          the token the login was opened for, which {@link #openedToken} picked
    * @return the field's new text, with the user's own spacing and other addresses kept
    */
   static String withBundleUrl(final String urlField, final String bundleUrl,
@@ -157,7 +160,6 @@ final class BrowserLoginPolicy {
       final String part = parts.group();
 
       if (!named && part.equals(openedToken)) {
-        // The engine was handed no credentials, and the crawl needs the ones the user typed.
         kept.append(withUserInfoOf(bundleUrl, part));
         named = true;
       } else {
@@ -167,12 +169,14 @@ final class BrowserLoginPolicy {
     if (named) {
       return kept.toString();
     }
-    // The field no longer holds the address the login opened, so the name needs its own line.
+    // The field no longer holds the address the login opened, so the new one needs its own line.
     return kept.length() == 0 ? bundleUrl : kept + "\n" + bundleUrl;
   }
 
   /**
-   * URL carrying the user name and password of TYPED, which the engine was not given.
+   * URL carrying the user name and password of TYPED, which the engine was not given. Only
+   * where both name the same host, because a password typed for one site must not be sent to
+   * the next one the login happened to end on.
    *
    * @param url
    *          the address the engine wrote, which holds no userinfo
@@ -184,8 +188,10 @@ final class BrowserLoginPolicy {
     final int host = typed.indexOf("://");
     final int at = host == -1 ? -1 : typed.lastIndexOf('@', endOfAuthority(typed, host + 3));
     final int scheme = url.indexOf("://");
+    final String reached = hostOf(url);
 
-    if (at == -1 || at < host || scheme == -1) {
+    if (at == -1 || at < host || scheme == -1 || reached == null
+        || !reached.equals(hostOf(secureUrl(typed)))) {
       return url;
     }
     return url.substring(0, scheme + 3) + typed.substring(host + 3, at + 1)

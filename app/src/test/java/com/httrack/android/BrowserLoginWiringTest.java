@@ -211,23 +211,25 @@ public class BrowserLoginWiringTest {
   }
 
   /**
-   * The engine is given the address the window was opened for, not the one the login ended on.
-   * That address is the crawl's own root, so naming it adds no second root, and a login ending
-   * on an identity provider cannot put that provider in the list.
+   * The engine is given the address the login landed on, because that is the page the user
+   * wants copied. It replaces the address the window was opened for, so the list keeps one
+   * crawl root.
    */
   @Test
-  public void theBundleIsNamedForTheAddressTheCrawlStartsFrom() throws IOException {
+  public void theBundleIsNamedForTheAddressTheLoginLandedOn() throws IOException {
     final String source = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("BrowserLoginActivity"));
     final String done = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "public void onClickLoginDone("));
-    assertTrue(done, done.contains("getUserAgentString(), crawlUrl)"));
-    assertFalse("the address the login ended on is not what the crawl starts from",
-        done.contains("web.getUrl()"));
-    // And that address is the one the window was opened with, kept for the write.
+    assertTrue(done, done.contains("getUserAgentString(), crawlUrl())"));
+    final String landed = TestSources.balancedBlock(source,
+        TestSources.indexOf(source, "private String crawlUrl("));
+    assertTrue(landed, landed.contains("withoutUserInfo(web.getUrl())"));
+    // getUrl answers for no page until one commits, which the opened address covers.
+    assertTrue(landed, landed.contains("hostOf(landed) == null ? openedUrl : landed"));
     final String create = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void onCreate("));
-    assertTrue(create, create.contains("crawlUrl = BrowserLoginPolicy.withoutUserInfo(url)"));
+    assertTrue(create, create.contains("openedUrl = BrowserLoginPolicy.withoutUserInfo(url)"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,

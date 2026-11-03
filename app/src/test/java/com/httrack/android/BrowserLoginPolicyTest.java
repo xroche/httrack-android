@@ -120,8 +120,11 @@ public class BrowserLoginPolicyTest {
     assertEquals("-*signout* -*logout*", BrowserLoginPolicy.rules("-*signout*"));
   }
 
-  /** The start URL the engine hands back, which already names the bundle it wrote. */
-  private static final String WRITTEN = "https://a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example";
+  /** The start URL the engine hands back, built on the address the login landed on. */
+  private static final String WRITTEN = "https://forum.a.example/" + BrowserLoginPolicy.BUNDLE_SUFFIX + "forum.a.example";
+
+  /** The same, for a login that stayed on the host it was opened for. */
+  private static final String SAME_HOST = "https://a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example";
 
   /** withBundleUrl as the activity calls it, names stripped first and the token read from that. */
   private static String named(final String field, final String bundleUrl) {
@@ -132,45 +135,39 @@ public class BrowserLoginPolicyTest {
   }
 
   /**
-   * The name lands on the address the login was opened for, so the field keeps one crawl root.
-   * Appending the address the login ENDED on gave the crawl a second root, which is the bug
-   * this replaces.
+   * The login stops on the page the user wants copied, so its address replaces the one the
+   * window was opened for. Keeping both gave the crawl a root nobody asked for, and keeping
+   * only the opened one dropped the page the login was for.
    */
   @Test
-  public void theNameLandsOnTheAddressTheLoginWasOpenedFor() {
-    assertEquals(WRITTEN, named("https://a.example/members/", WRITTEN));
+  public void theLandedAddressReplacesTheOneTheLoginWasOpenedFor() {
+    assertEquals(WRITTEN, named("https://a.example/", WRITTEN));
     // The raising startUrl applied before opening the window, so the typed form matches too.
-    assertEquals(WRITTEN, named("a.example/members/", WRITTEN));
-    assertEquals(WRITTEN, named("http://a.example/members/", WRITTEN));
-    // A second login names that address once, rather than again.
+    assertEquals(WRITTEN, named("a.example/", WRITTEN));
+    assertEquals(WRITTEN, named("http://a.example/", WRITTEN));
+    // A second login replaces the first one's address, rather than adding to it.
     assertEquals(WRITTEN, named(WRITTEN, WRITTEN));
-    /* The same address twice is named once. Two names for one site would leave the engine with
-       two bundles whose cookie values clash, and it then refuses to start the crawl. */
-    assertEquals(WRITTEN + " https://a.example/members/",
-        named("https://a.example/members/ https://a.example/members/",
-            WRITTEN));
+    // A login that goes nowhere names the address it opened, and the field keeps that one.
+    assertEquals(SAME_HOST, named("https://a.example/members/", SAME_HOST));
   }
 
-  /** The other addresses are the user's own text, and only one of them gains the name. */
+  /** The other addresses are the user's own text, and only one of them is replaced. */
   @Test
   public void everyOtherAddressIsLeftExactlyAsItWas() {
     /* The login opens the field's FIRST address, so that is the token the engine was given
-       and the one that gets named. The others are not touched. */
-    final String first = "https://b.example/one" + BrowserLoginPolicy.BUNDLE_SUFFIX + "b.example";
-    assertEquals(first + "\nhttps://a.example/members/\nhttps://c.example/two",
-        named(
-            "https://b.example/one\nhttps://a.example/members/\nhttps://c.example/two", first));
+       and the one that is replaced. The others are not touched. */
+    assertEquals(WRITTEN + "\nhttps://b.example/one\nhttps://c.example/two",
+        named("https://a.example/\nhttps://b.example/one\nhttps://c.example/two", WRITTEN));
     // Any whitespace separates addresses, and the user's own spacing survives.
     assertEquals(WRITTEN + " \thttps://b.example/one",
-        named("https://a.example/members/ \thttps://b.example/one",
-            WRITTEN));
+        named("https://a.example/ \thttps://b.example/one", WRITTEN));
     // A token that is not an address is not touched, even one urlTokens would refuse.
-    assertEquals("-foo " + WRITTEN,
-        named("-foo https://a.example/members/", WRITTEN));
-    // The name lands on the FIRST address, which is the one the login window opened.
-    assertEquals(WRITTEN + "\nhttps://a.example/other",
-        named("https://a.example/members/\nhttps://a.example/other",
-            WRITTEN));
+    assertEquals("-foo " + WRITTEN, named("-foo https://a.example/", WRITTEN));
+    /* The same address typed twice is replaced once. Two names for one site would leave the
+       engine with two bundles whose cookie values clash, and it then refuses to start the
+       crawl. */
+    assertEquals(WRITTEN + " https://a.example/",
+        named("https://a.example/ https://a.example/", WRITTEN));
   }
 
   /**
@@ -178,17 +175,27 @@ public class BrowserLoginPolicyTest {
    * the ones the user typed, and the field's own token is what the crawl reads, so they go back.
    */
   @Test
-  public void theTypedCredentialsSurviveTheNaming() {
+  public void theTypedCredentialsSurviveALoginOnTheirOwnHost() {
     assertEquals("https://user:pw@a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX
-        + "a.example", named("https://user:pw@a.example/members/", WRITTEN));
+        + "a.example", named("https://user:pw@a.example/", SAME_HOST));
     assertEquals("https://user@a.example/members/" + BrowserLoginPolicy.BUNDLE_SUFFIX
-        + "a.example", named("https://user@a.example/members/", WRITTEN));
+        + "a.example", named("https://user@a.example/", SAME_HOST));
     // Nothing is invented where the user typed none.
-    assertEquals(WRITTEN, named("https://a.example/members/", WRITTEN));
+    assertEquals(SAME_HOST, named("https://a.example/", SAME_HOST));
     // An '@' in the path is not userinfo, so nothing moves.
     assertEquals("https://a.example/u@x" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example",
         named("https://a.example/u@x",
             "https://a.example/u@x" + BrowserLoginPolicy.BUNDLE_SUFFIX + "a.example"));
+  }
+
+  /**
+   * A password typed for one site does not follow the login to the next host. The login can
+   * end on a sign-on provider, and that provider has no business being sent these.
+   */
+  @Test
+  public void theTypedCredentialsDoNotTravelToAnotherHost() {
+    assertEquals(WRITTEN, named("https://user:pw@a.example/", WRITTEN));
+    assertEquals(WRITTEN, named("https://user@a.example/", WRITTEN));
   }
 
   /** A field of nothing but whitespace holds no address, so the name takes the whole field. */
@@ -275,7 +282,7 @@ public class BrowserLoginPolicyTest {
   @Test
   public void forgettingTheLoginTakesEveryBundleNameOutOfTheField() {
     assertEquals("https://a.example/members/",
-        BrowserLoginPolicy.withoutBundleNames(WRITTEN));
+        BrowserLoginPolicy.withoutBundleNames(SAME_HOST));
     // Every line, because a project can name one bundle per site it copies.
     assertEquals("https://a.example/\nhttps://b.example/",
         BrowserLoginPolicy.withoutBundleNames("https://a.example/" + BrowserLoginPolicy.BUNDLE_SUFFIX
@@ -297,7 +304,7 @@ public class BrowserLoginPolicyTest {
   /** The name is what the file is called, so the login can delete the bundles it replaces. */
   @Test
   public void theStartUrlSaysWhichBundleItNames() {
-    assertEquals("a.example", BrowserLoginPolicy.bundleNameOf(WRITTEN));
+    assertEquals("a.example", BrowserLoginPolicy.bundleNameOf(SAME_HOST));
     assertNull(BrowserLoginPolicy.bundleNameOf("https://a.example/"));
     assertNull(BrowserLoginPolicy.bundleNameOf(null));
   }
