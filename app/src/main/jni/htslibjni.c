@@ -696,8 +696,13 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
                                                                         jstring opaste,
                                                                         jstring ofolder,
                                                                         jstring oagent,
-                                                                        jstring ourl) {
+                                                                        jstring ourl,
+                                                                        jstring ohosts) {
   const char *paste, *folder, *agent, *url;
+  /* NULL is a value, not a mistake. It asks for the address's own cookies
+     alone. */
+  const char* hosts = NULL;
+  int got_hosts;
   jobject bundle = NULL;
 
   UNUSED(clazz);
@@ -716,12 +721,18 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
   folder = (*env)->GetStringUTFChars(env, ofolder, NULL);
   agent = (*env)->GetStringUTFChars(env, oagent, NULL);
   url = (*env)->GetStringUTFChars(env, ourl, NULL);
-  if (paste != NULL && folder != NULL && agent != NULL && url != NULL) {
+  if (ohosts != NULL) {
+    hosts = (*env)->GetStringUTFChars(env, ohosts, NULL);
+  }
+  got_hosts = ohosts == NULL || hosts != NULL;
+  if (paste != NULL && folder != NULL && agent != NULL && url != NULL && got_hosts) {
     hts_paste_result result;
 
     memset(&result, 0, sizeof(result));
     result.size = sizeof(result);
-    if (hts_bundle_from_paste(paste, folder, agent, url, HTS_FALSE, &result)) {
+    /* 0u: no HTS_PASTE_* flag. */
+    if (hts_bundle_from_paste_hosts(paste, folder, agent, url, hosts, 0u,
+                                    &result)) {
       jstring written = (*env)->NewStringUTF(env, result.url);
 
       if (written != NULL) {
@@ -732,6 +743,9 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
       /* The reason is unlocalized English, so the user gets our own message. */
       debug("the engine refused the login: %s", result.error);
     }
+  }
+  if (hosts != NULL) {
+    (*env)->ReleaseStringUTFChars(env, ohosts, hosts);
   }
   if (url != NULL) {
     (*env)->ReleaseStringUTFChars(env, ourl, url);

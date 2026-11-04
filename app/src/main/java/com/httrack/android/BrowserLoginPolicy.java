@@ -4,6 +4,7 @@ import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -94,6 +95,22 @@ final class BrowserLoginPolicy {
       return null;
     }
     return host.toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Joins HOSTS into the comma-separated list the engine keeps cookies for.
+   *
+   * @param hosts
+   *          the hosts that answered with a cookie, in the order they were asked
+   * @return the list, or null for none, which leaves the address's own cookies alone
+   */
+  static String keptHosts(final Collection<String> hosts) {
+    final StringBuilder list = new StringBuilder();
+
+    for (final String host : hosts) {
+      list.append(list.length() == 0 ? "" : ",").append(host);
+    }
+    return list.length() == 0 ? null : list.toString();
   }
 
   /**

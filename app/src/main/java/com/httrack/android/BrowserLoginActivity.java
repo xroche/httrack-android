@@ -348,7 +348,8 @@ public class BrowserLoginActivity extends FragmentActivity {
     HTTrackLib.LoginBundle bundle = null;
     for (final String url : BrowserLoginPolicy.addressesToTry(web.getUrl(), openedUrl)) {
       bundle = HTTrackLib.writeLoginBundle(result.text, bundleDir.getAbsolutePath(),
-          web.getSettings().getUserAgentString(), url);
+          web.getSettings().getUserAgentString(), url,
+          BrowserLoginPolicy.keptHosts(byHost.keySet()));
       if (bundle != null) {
         break;
       }

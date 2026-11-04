@@ -205,6 +205,24 @@ public class BrowserLoginPolicyTest {
   }
 
   /**
+   * The login keeps the cookies of every host that answered with one, so a crawl can
+   * authenticate on a site the login passed through.
+   */
+  @Test
+  public void everyHostThatAnsweredWithACookieIsNamed() {
+    assertEquals("a.example,idp.example",
+        BrowserLoginPolicy.keptHosts(Arrays.asList("a.example", "idp.example")));
+    // The engine's separator is a comma, and nothing else.
+    assertEquals("a.example", BrowserLoginPolicy.keptHosts(Arrays.asList("a.example")));
+  }
+
+  /** Naming no host asks the engine for the address's own cookies alone, as it did before. */
+  @Test
+  public void namingNoHostKeepsTheEnginesOlderBehaviour() {
+    assertNull(BrowserLoginPolicy.keptHosts(new ArrayList<String>()));
+  }
+
+  /**
    * The landed address leads, because that is the page to copy. The opened one follows, so a
    * landed address the engine refuses still leaves a login to save.
    */

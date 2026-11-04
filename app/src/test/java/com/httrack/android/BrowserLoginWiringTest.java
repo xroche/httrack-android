@@ -222,12 +222,15 @@ public class BrowserLoginWiringTest {
         TestSources.indexOf(source, "public void onClickLoginDone("));
     assertTrue(done, done.contains("BrowserLoginPolicy.addressesToTry(web.getUrl(), openedUrl)"));
     // The loop's own address, or every attempt would name the one the window was opened for.
-    assertTrue(done, done.contains("getUserAgentString(), url);"));
+    assertTrue(done, done.contains("getUserAgentString(), url,"));
     // The loop stops at the first address the engine accepts, rather than at the last.
     assertTrue(done, done.contains("if (bundle != null) {\n        break;"));
     final String create = TestSources.balancedBlock(source,
         TestSources.indexOf(source, "protected void onCreate("));
     assertTrue(create, create.contains("openedUrl = BrowserLoginPolicy.withoutUserInfo(url)"));
+    /* The hosts that answered, not the hosts asked: a host with no cookie carries nothing
+       to keep, and naming it would widen the bundle's scope for nothing. */
+    assertTrue(done, done.contains("BrowserLoginPolicy.keptHosts(byHost.keySet())"));
     final String caller = TestSources
         .withoutCommentsAndStrings(TestSources.javaSource("HTTrackActivity"));
     final String apply = TestSources.balancedBlock(caller,

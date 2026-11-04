@@ -154,10 +154,13 @@ public class HTTrackLib {
    *          the browser's User-Agent, sent to the bundle's sites alone
    * @param url
    *          the address the login ended on
+   * @param hosts
+   *          the hosts whose cookies to keep besides the address's own, comma-separated, or
+   *          null to keep the address's own alone
    * @return what it wrote, or null when the engine refused the login
    */
   public static native LoginBundle writeLoginBundle(String paste, String folder, String agent,
-      String url);
+      String url, String hosts);
 
   /**
    * Has a native fault been recovered in this process ?
