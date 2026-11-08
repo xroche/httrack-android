@@ -74,6 +74,7 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htstools.c httrack/src/htswizard.c httrack/src/htsalias.c 	\
 	httrack/src/htsthread.c httrack/src/htsindex.c httrack/src/htsbauth.c 	\
 	httrack/src/htsbundle.c									\
+	httrack/src/htsbase.c									\
 	httrack/src/htsmd5.c httrack/src/htszlib.c httrack/src/htswrap.c 		\
 	httrack/src/htsconcat.c httrack/src/htsmodules.c 						\
 	httrack/src/htscharset.c httrack/src/punycode.c 						\
@@ -113,6 +114,8 @@ LOCAL_CFLAGS += -O3 -g3 -funwind-tables -fPIC 					\
 	-Wno-nested-externs														\
 	-D_REENTRANT -DPIC -DANDROID -D_ANDROID -DHAVE_CONFIG_H -DINET6 -DHTS_INTERNAL_BUILD			\
 	-DLIBHTTRACK_EXPORTS -DZLIB_CONST -DHTS_INTHASH_USES_MD5 -DLIBICONV_PLUG
+# HTS_INTERNAL_BYTECODE shows the engine-only half of the headers to the library.
+LOCAL_CFLAGS += -DHTS_INTERNAL_BYTECODE
 # The app never asks the engine for a self-test. The sources are gone from
 # LOCAL_SRC_FILES above too, because htsselftest_int.h #errors under this macro.
 LOCAL_CFLAGS += -DHTS_NO_SELFTEST
