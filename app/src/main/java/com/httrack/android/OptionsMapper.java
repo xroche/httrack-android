@@ -1736,9 +1736,12 @@ public class OptionsMapper {
        * as a URL, which turns -r1.5 into an exclusion filter. */
       /* Over the cap the engine refuses the command line or misreads the
        * value, and no layout bounds these fields. */
+      /* A rate the engine refuses is clamped, because dropping it would leave
+       * the crawl with no rate limit at all. */
       if (fraction ? OptionValues.isDecimal(value) : OptionValues.isAtMost(
           value, max)) {
-        commandline.add("-" + option + value);
+        commandline.add(
+            "-" + option + (fraction ? OptionValues.clampRate(value) : value));
       } else {
         refused(commandline, value);
       }
