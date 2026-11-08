@@ -141,6 +141,51 @@ public class NumericOptionValueTest {
     }
   }
 
+  /** The float option's own bounds, which the pinned engine enforces. */
+  private static final String MIN_RATE = "0.000001";
+
+  private static final String MAX_RATE =
+      "340282346638528859811704183484516925440";
+
+  /* The engine panics on a rate between zero and the floor, and on one above a
+     float, where it used to cast whatever it read. */
+  @Test
+  public void aRateTheEngineWouldPanicOnIsClampedToTheBound() {
+    final OptionMapper mapper = new SimpleOption(FLOAT_OPTION, true);
+    for (final String value : new String[] { "0.0000001", "0.0000000001",
+        "0.00000099" }) {
+      assertEquals("-" + FLOAT_OPTION + MIN_RATE, emit(mapper, value).get(0));
+    }
+    assertEquals("-" + FLOAT_OPTION + MAX_RATE,
+        emit(mapper, "99999999999999999999999999999999999999999").get(0));
+  }
+
+  /** A zero means no limit and the engine still takes it. */
+  @Test
+  public void aRateTheEngineTakesIsSentUnchanged() {
+    final OptionMapper mapper = new SimpleOption(FLOAT_OPTION, true);
+    for (final String value : new String[] { "0", "0.0", MIN_RATE, "0.5", "5.0",
+        "100" }) {
+      assertEquals("-" + FLOAT_OPTION + value, emit(mapper, value).get(0));
+    }
+  }
+
+  /* The bounds live in the engine, so read them back: a moved floor must fail
+     here rather than ship a rate the engine panics on. */
+  @Test
+  public void theClampedBoundsAreTheOnesTheEngineChecks() throws IOException {
+    final String main = TestSources
+        .read(TestSources.engineFile("src/htscoremain.c"));
+    final String gate = TestSources.balancedBlock(main,
+        TestSources.indexOf(main, "case 'c': {"));
+    assertTrue("the engine no longer bounds -" + FLOAT_OPTION + " at 1e-6",
+        gate.contains("v >= 1e-6f"));
+    assertTrue("the engine no longer bounds -" + FLOAT_OPTION + " at FLT_MAX",
+        gate.contains("v <= FLT_MAX"));
+    assertEquals(1e-6, Double.parseDouble(MIN_RATE), 0.0);
+    assertEquals(Float.MAX_VALUE, Double.parseDouble(MAX_RATE), 0.0);
+  }
+
   @Test
   public void isPositiveRejectsWhatIsDigitsAccepts() {
     assertTrue(OptionValues.isDigits("0"));

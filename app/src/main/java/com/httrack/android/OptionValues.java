@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 package com.httrack.android;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Pattern;
 
@@ -101,6 +102,29 @@ public final class OptionValues {
     } catch (final NumberFormatException nfe) {
       return false;
     }
+  }
+
+  /** Lowest non-zero rate the engine takes for -%c, and the highest. */
+  private static final String MIN_RATE = "0.000001";
+
+  private static final String MAX_RATE = new BigDecimal(Float.MAX_VALUE)
+      .toPlainString();
+
+  /**
+   * The rate brought inside the range the engine accepts. The engine panics on
+   * a rate between zero and 0.000001 or above a float, and a zero means no
+   * limit, so it stays.
+   *
+   * @param value
+   *          A value isDecimal accepted
+   * @return the value, or the nearest rate the engine takes
+   */
+  public static String clampRate(final String value) {
+    final double rate = Double.parseDouble(value);
+    if (rate > 0 && rate < Double.parseDouble(MIN_RATE)) {
+      return MIN_RATE;
+    }
+    return rate > Float.MAX_VALUE ? MAX_RATE : value;
   }
 
   /**
