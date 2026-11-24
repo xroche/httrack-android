@@ -1,6 +1,6 @@
-HTTrack 3.51.0: copie un sitio que pide una cuenta.
+HTTrack 3.51.0: la copia sigue su inicio de sesión en el navegador.
 
-• Nuevo: inicie sesión con un navegador antes de la copia. La copia reutiliza esa sesión y envía al sitio la identidad de su navegador
-• Nuevo: un cuadro de encabezados Accept, con una fila por tipo de enlace
-• La página Identidad del navegador indica qué encabezados adicionales no enviará la copia
-• Las imágenes, tipografías y vídeos recientes (webp, avif, svg, woff2, mp4, webm) también se descargan de otro sitio
+• Empieza donde terminó el inicio de sesión y guarda cookies de los otros sitios por los que pasó
+• La lectura de una carpeta ya no bloquea el selector de archivos
+• Un nombre y una contraseña escritos en una dirección https ya no se envían en claro
+• El http simple ya no puede cambiar una cookie con Secure

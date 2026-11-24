@@ -1,6 +1,6 @@
-HTTrack 3.51.0: kopier et websted, der kræver en konto.
+HTTrack 3.51.0: kopien følger dit login i browseren.
 
-• Nyt: log ind med en browser før kopieringen. Kopien bruger det login og sender webstedet din browsers identitet
-• Nyt: et felt til Accept-headere, med en linje pr. type link
-• Siden Browseridentitet viser, hvilke ekstra headere kopien ikke sender
-• Nyere billeder, skrifter og video (webp, avif, svg, woff2, mp4, webm) hentes nu også fra et andet websted
+• Den starter, hvor loginet sluttede, og beholder cookies fra de andre websteder, den gik igennem
+• Læsningen af en mappe blokerer ikke længere filvælgeren
+• Navn og adgangskode skrevet i en https-adresse sendes ikke længere i klartekst
+• Almindelig http kan ikke længere ændre en cookie med Secure

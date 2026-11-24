@@ -1,6 +1,6 @@
-HTTrack 3.51.0: kopeeri sait, mis nõuab kontot.
+HTTrack 3.51.0: koopia järgib sinu sisselogimist brauseris.
 
-• Uus: logi enne kopeerimist brauseris sisse. Koopia kasutab seda sessiooni ja saadab saidile sinu brauseri identiteedi
-• Uus: Accept-päiste väli, iga lingiliigi kohta üks rida
-• Brauseri identiteedi leht näitab, milliseid lisapäiseid koopia ei saada
-• Uuemad pildid, fondid ja videod (webp, avif, svg, woff2, mp4, webm) tulevad nüüd kaasa ka teiselt saidilt
+• See algab sealt, kus sisselogimine lõppes, ja hoiab küpsiseid teistelt saitidelt, mille kaudu see läks
+• Kausta lugemine ei blokeeri enam failivalijat
+• https-aadressi kirjutatud nime ja parooli ei saadeta enam avatud kujul
+• Lihtne http ei saa enam muuta Secure märgisega küpsist

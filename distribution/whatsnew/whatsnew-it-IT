@@ -1,6 +1,6 @@
-HTTrack 3.51.0: copia un sito che richiede un account.
+HTTrack 3.51.0: la copia segue il tuo accesso nel browser.
 
-• Novità: accedi con un browser prima della copia. La copia riusa quella sessione e invia al sito l'identità del tuo browser
-• Novità: un riquadro per le intestazioni Accept, con una riga per tipo di collegamento
-• La pagina Identità del browser indica quali intestazioni aggiuntive la copia non invierà
-• Immagini, caratteri e video recenti (webp, avif, svg, woff2, mp4, webm) vengono scaricati anche da un altro sito
+• Parte da dove l'accesso è terminato e conserva cookie degli altri siti che ha attraversato
+• La lettura di una cartella non blocca più il selettore di file
+• Un nome e una password scritti in un indirizzo https non viaggiano più in chiaro
+• Il semplice http non può più cambiare un cookie con Secure

@@ -1,6 +1,6 @@
-HTTrack 3.51.0: skopírujte web, ktorý vyžaduje účet.
+HTTrack 3.51.0: kópia nadväzuje na vaše prihlásenie v prehliadači.
 
-• Novinka: pred kopírovaním sa prihláste v prehliadači. Kópia použije toto prihlásenie a odošle webu totožnosť vášho prehliadača
-• Novinka: pole hlavičiek Accept, jeden riadok na druh odkazu
-• Stránka Totožnosť prehliadača uvádza, ktoré ďalšie hlavičky kópia neodošle
-• Novšie obrázky, fonty a videá (webp, avif, svg, woff2, mp4, webm) sa teraz stahujú aj z iného webu
+• Začína tam, kde prihlásenie skončilo, a uchová cookies z ďalších webov, cez ktoré prešla
+• Čítanie zložky už neblokuje výber súborov
+• Meno a heslo zapísané v adrese https sa už neposielajú v otvorenej podobe
+• Obyčajné http už nemôže zmeniť cookie s príznakom Secure

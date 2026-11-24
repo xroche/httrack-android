@@ -1,0 +1,6 @@
+HTTrack 3.51.0: the copy follows your browser login.
+
+• It starts where the login ended, and keeps cookies from the other sites it went through
+• Reading a folder no longer blocks the file chooser
+• A name and password written in an https address no longer travel in the clear
+• Plain http can no longer change a cookie marked Secure

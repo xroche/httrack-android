@@ -1,6 +1,6 @@
-HTTrack 3.51.0: Kopieren Sie eine Website, die ein Konto verlangt.
+HTTrack 3.51.0: Die Kopie folgt Ihrer Anmeldung im Browser.
 
-• Neu: Melden Sie sich vor der Kopie mit einem Browser an. Die Kopie nutzt diese Sitzung und sendet der Website die Identität Ihres Browsers
-• Neu: ein Feld für Accept-Header, mit einer Zeile pro Linkart
-• Die Seite Browser-Identität nennt die zusätzlichen Header, die die Kopie nicht sendet
-• Neuere Bilder, Schriften und Videos (webp, avif, svg, mp4, webm) kommen jetzt auch von einer anderen Website mit
+• Sie beginnt dort, wo die Anmeldung endete, und behält Cookies der anderen Websites, die sie durchlief
+• Das Lesen eines Ordners blockiert die Dateiauswahl nicht mehr
+• Name und Passwort in einer https-Adresse werden nicht mehr im Klartext gesendet
+• Einfaches http kann einen Cookie mit Secure nicht mehr ändern
