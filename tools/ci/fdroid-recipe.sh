@@ -81,9 +81,13 @@ def rejected(rel):
     return False
 
 deletes = [line.strip() for line in sys.stdin if line.strip()]
-tracked = subprocess.run(
+listing = subprocess.run(
     ["git", "-C", ROOT, "ls-files", "--recurse-submodules"],
-    capture_output=True, text=True, check=True).stdout.splitlines()
+    capture_output=True, text=True)
+if listing.returncode:
+    print(listing.stderr.strip(), file=sys.stderr)
+    sys.exit(1)
+tracked = listing.stdout.splitlines()
 
 used, offenders = set(), []
 for rel in tracked:
