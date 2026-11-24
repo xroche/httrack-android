@@ -1,7 +1,6 @@
-HTTrack 3.51.0: kopija se nadaljuje tam, kjer se je prijava končala.
+HTTrack 3.51.0: kopija sledi vaši prijavi v brskalniku.
 
-• Začne na strani, na kateri se je prijava končala, in ohrani vsak piškotek, ki ga je prijava zbrala
-• Odpiranje velike mape ne blokira več izbirnika datotek
-• Kopija ne razkrije več imena in gesla, zapisanih v naslovu
+• Začne tam, kjer se je prijava končala, in ohrani piškotke z drugih spletišč, skozi katera je šla
+• Branje mape ne blokira več izbirnika datotek
+• Ime in geslo, zapisana v naslovu https, se ne pošiljata več v odprti obliki
 • Navadni http ne more več spremeniti piškotka z oznako Secure
-• Stran, shranjena v UTF-16, ohrani svoje besedilo in povezave

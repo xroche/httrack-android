@@ -1,7 +1,6 @@
 HTTrack 3.51.0: koopia järgib sinu sisselogimist brauseris.
 
-• See algab lehelt, kus sisselogimine lõppes, ja hoiab iga küpsise, mille sisselogimine kogus
-• Suure kausta avamine ei blokeeri enam failivalijat
-• Koopia ei lase enam välja aadressi kirjutatud nime ja parooli
+• See algab sealt, kus sisselogimine lõppes, ja hoiab küpsiseid teistelt saitidelt, mille kaudu see läks
+• Kausta lugemine ei blokeeri enam failivalijat
+• https-aadressi kirjutatud nime ja parooli ei saadeta enam avatud kujul
 • Lihtne http ei saa enam muuta Secure märgisega küpsist
-• UTF-16-s salvestatud leht säilitab oma teksti ja lingid

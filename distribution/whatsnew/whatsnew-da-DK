@@ -1,7 +1,6 @@
 HTTrack 3.51.0: kopien følger dit login i browseren.
 
-• Den starter på den side, loginet sluttede på, og beholder hver cookie, loginet samlede
-• At åbne en stor mappe blokerer ikke længere filvælgeren
-• Kopien lækker ikke længere navn og adgangskode skrevet i en adresse
+• Den starter, hvor loginet sluttede, og beholder cookies fra de andre websteder, den gik igennem
+• Læsningen af en mappe blokerer ikke længere filvælgeren
+• Navn og adgangskode skrevet i en https-adresse sendes ikke længere i klartekst
 • Almindelig http kan ikke længere ændre en cookie med Secure
-• En side gemt som UTF-16 beholder sin tekst og sine links

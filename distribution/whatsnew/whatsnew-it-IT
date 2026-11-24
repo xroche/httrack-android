@@ -1,7 +1,6 @@
 HTTrack 3.51.0: la copia segue il tuo accesso nel browser.
 
-• Parte dalla pagina su cui l'accesso è terminato e conserva ogni cookie raccolto dall'accesso
-• Aprire una cartella grande non blocca più il selettore di file
-• La copia non lascia più sfuggire un nome e una password scritti in un indirizzo
+• Parte da dove l'accesso è terminato e conserva cookie degli altri siti che ha attraversato
+• La lettura di una cartella non blocca più il selettore di file
+• Un nome e una password scritti in un indirizzo https non viaggiano più in chiaro
 • Il semplice http non può più cambiare un cookie con Secure
-• Una pagina salvata in UTF-16 conserva il testo e i collegamenti

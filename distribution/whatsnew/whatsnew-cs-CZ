@@ -1,7 +1,6 @@
 HTTrack 3.51.0: kopie navazuje na vaše přihlášení v prohlížeči.
 
-• Začne na stránce, na které přihlášení skončilo, a uchová každou cookie, kterou přihlášení získalo
-• Otevření velké složky už neblokuje výběr souborů
-• Kopie už neprozradí jméno a heslo zapsané v adrese
+• Začne tam, kde přihlášení skončilo, a uchová cookies z dalších webů, přes které prošlo
+• Čtení složky už neblokuje výběr souborů
+• Jméno a heslo zapsané v adrese https se už neposílají v otevřené podobě
 • Obyčejné http už nemůže změnit cookie s příznakem Secure
-• Stránka uložená v UTF-16 si zachová text i odkazy

@@ -1,7 +1,6 @@
 HTTrack 3.51.0: copierea urmează conectarea din browser.
 
-• Începe de la pagina pe care s-a încheiat conectarea și păstrează fiecare cookie strâns la conectare
-• Deschiderea unui folder mare nu mai blochează selectorul de fișiere
-• Copierea nu mai scapă un nume și o parolă scrise într-o adresă
-• Http-ul simplu nu mai poate schimba un cookie cu Secure
-• O pagină salvată în UTF-16 își păstrează textul și linkurile
+• Începe de unde s-a încheiat conectarea și păstrează cookie-uri de pe celelalte site-uri prin care a trecut
+• Citirea unui folder nu mai blochează selectorul de fișiere
+• Un nume și o parolă scrise într-o adresă https nu mai circulă în clar
+• Simplul http nu mai poate schimba un cookie cu Secure

@@ -1,7 +1,6 @@
 HTTrack 3.51.0: de kopie volgt uw aanmelding in de browser.
 
-• Ze begint op de pagina waar de aanmelding eindigde en bewaart elke cookie die de aanmelding heeft opgehaald
-• Een grote map openen blokkeert de bestandskiezer niet meer
-• De kopie laat een naam en wachtwoord in een adres niet meer uitlekken
+• Ze begint waar de aanmelding eindigde en bewaart cookies van de andere sites die ze doorliep
+• Het lezen van een map blokkeert de bestandskiezer niet meer
+• Een naam en wachtwoord in een https-adres gaan niet meer onversleuteld mee
 • Gewone http kan een cookie met Secure niet meer wijzigen
-• Een pagina die als UTF-16 is opgeslagen houdt haar tekst en haar links

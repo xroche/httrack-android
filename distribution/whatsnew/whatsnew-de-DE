@@ -1,7 +1,6 @@
 HTTrack 3.51.0: Die Kopie folgt Ihrer Anmeldung im Browser.
 
-• Sie beginnt auf der Seite, auf der die Anmeldung endete, und behält jeden Cookie, den die Anmeldung gesammelt hat
-• Das Öffnen eines großen Ordners blockiert die Dateiauswahl nicht mehr
-• Die Kopie gibt einen Namen und ein Passwort in einer Adresse nicht mehr preis
+• Sie beginnt dort, wo die Anmeldung endete, und behält Cookies der anderen Websites, die sie durchlief
+• Das Lesen eines Ordners blockiert die Dateiauswahl nicht mehr
+• Name und Passwort in einer https-Adresse werden nicht mehr im Klartext gesendet
 • Einfaches http kann einen Cookie mit Secure nicht mehr ändern
-• Eine als UTF-16 gespeicherte Seite behält ihren Text und ihre Links

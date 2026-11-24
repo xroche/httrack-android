@@ -1,7 +1,6 @@
-HTTrack 3.51.0: a másolás ott folytatja, ahol a bejelentkezés véget ért.
+HTTrack 3.51.0: a másolás követi a böngészőben végzett bejelentkezést.
 
-• Azon a lapon indul, amelyen a bejelentkezés véget ért, és megtartja a bejelentkezés során gyűjtött összes cookie-t
-• Egy nagy mappa megnyitása már nem blokkolja a fájlválasztót
-• A másolás már nem szivárogtatja ki a címbe írt nevet és jelszót
+• Ott indul, ahol a bejelentkezés véget ért, és megtartja a többi webhely cookie-jait, amelyeken áthaladt
+• Egy mappa beolvasása már nem blokkolja a fájlválasztót
+• A https címbe írt nevet és jelszót már nem küldi nyílt szövegben
 • A sima http már nem módosíthat Secure jelzésű cookie-t
-• Az UTF-16 kódolású lap megtartja a szövegét és a hivatkozásait

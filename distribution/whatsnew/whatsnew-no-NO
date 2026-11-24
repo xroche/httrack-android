@@ -1,7 +1,6 @@
 HTTrack 3.51.0: kopien følger innloggingen din i nettleseren.
 
-• Den starter på siden der innloggingen sluttet, og beholder hver cookie innloggingen samlet
-• Å åpne en stor mappe blokkerer ikke lenger filvelgeren
-• Kopien lekker ikke lenger navn og passord skrevet i en adresse
+• Den starter der innloggingen sluttet, og beholder cookier fra de andre nettstedene den gikk gjennom
+• Lesingen av en mappe blokkerer ikke lenger filvelgeren
+• Navn og passord skrevet i en https-adresse sendes ikke lenger i klartekst
 • Vanlig http kan ikke lenger endre en cookie med Secure
-• En side lagret som UTF-16 beholder teksten og lenkene sine

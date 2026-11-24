@@ -1,7 +1,6 @@
-HTTrack 3.51.0: kopiointi jatkaa siitä, mihin kirjautuminen päättyi.
+HTTrack 3.51.0: kopiointi seuraa selaimessa tehtyä kirjautumista.
 
-• Se alkaa sivulta, jolle kirjautuminen päättyi, ja säilyttää jokaisen kirjautumisen keräämän evästeen
-• Suuren kansion avaaminen ei enää jumita tiedostonvalitsinta
-• Kopiointi ei enää paljasta osoitteeseen kirjoitettua nimeä ja salasanaa
+• Se alkaa siitä, mihin kirjautuminen päättyi, ja säilyttää evästeitä muilta sivustoilta, joiden kautta se kulki
+• Kansion lukeminen ei enää jumita tiedostonvalitsinta
+• https-osoitteeseen kirjoitettua nimeä ja salasanaa ei enää lähetetä selkokielisenä
 • Pelkkä http ei voi enää muuttaa Secure-evästettä
-• UTF-16-muodossa tallennettu sivu säilyttää tekstinsä ja linkkinsä

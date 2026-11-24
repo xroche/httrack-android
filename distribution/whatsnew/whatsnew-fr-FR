@@ -1,7 +1,6 @@
 HTTrack 3.51.0 : la copie suit votre connexion dans le navigateur.
 
-• Elle part de la page où la connexion s'est arrêtée et garde chaque cookie que la connexion a recueilli
-• Ouvrir un gros dossier ne bloque plus le sélecteur de fichiers
-• La copie ne laisse plus fuir un nom et un mot de passe écrits dans une adresse
+• Elle part de là où la connexion s'est arrêtée et garde des cookies des autres sites qu'elle a traversés
+• La lecture d'un dossier ne bloque plus le sélecteur de fichiers
+• Un nom et un mot de passe écrits dans une adresse https ne circulent plus en clair
 • Le http simple ne peut plus modifier un cookie marqué Secure
-• Une page enregistrée en UTF-16 garde son texte et ses liens

@@ -1,7 +1,6 @@
 HTTrack 3.51.0: kopia podąża za logowaniem w przeglądarce.
 
-• Zaczyna na stronie, na której zakończyło się logowanie, i zachowuje każdy plik cookie zebrany przy logowaniu
-• Otwarcie dużego folderu już nie blokuje wyboru plików
-• Kopia już nie ujawnia nazwy i hasła wpisanych w adresie
+• Zaczyna tam, gdzie zakończyło się logowanie, i zachowuje pliki cookie z innych witryn, przez które przeszła
+• Czytanie folderu już nie blokuje wyboru plików
+• Nazwa i hasło wpisane w adresie https nie są już wysyłane jawnym tekstem
 • Zwykłe http już nie może zmienić pliku cookie z Secure
-• Strona zapisana w UTF-16 zachowuje swój tekst i odnośniki

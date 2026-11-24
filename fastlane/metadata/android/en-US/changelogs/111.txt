@@ -1,7 +1,6 @@
 HTTrack 3.51.0: the copy follows your browser login.
 
-• It starts on the page the login ended on, and keeps every cookie the login collected
-• Opening a large folder no longer blocks the file chooser
-• The copy no longer leaks a name and password written in an address
+• It starts where the login ended, and keeps cookies from the other sites it went through
+• Reading a folder no longer blocks the file chooser
+• A name and password written in an https address no longer travel in the clear
 • Plain http can no longer change a cookie marked Secure
-• A page stored as UTF-16 keeps its text and its links

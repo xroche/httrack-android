@@ -1,7 +1,6 @@
-HTTrack 3.51.0: kopyalama, tarayıcıda oturum açmanın bıraktığı yerden sürer.
+HTTrack 3.51.0: kopyalama, tarayıcıda açılan oturumu izler.
 
-• Oturum açmanın bittiği sayfadan başlar ve oturum açmada toplanan her çerezi saklar
-• Büyük bir klasörü açmak artık dosya seçiciyi kilitlemiyor
-• Kopyalama, bir adrese yazılan adı ve şifreyi artık sızdırmıyor
+• Oturum açmanın bittiği yerden başlar ve geçtiği diğer sitelerden çerezleri saklar
+• Bir klasörün okunması artık dosya seçiciyi kilitlemiyor
+• https adresine yazılan ad ve şifre artık açık metin olarak gönderilmiyor
 • Düz http artık Secure işaretli bir çerezi değiştiremiyor
-• UTF-16 olarak kaydedilen bir sayfa metnini ve bağlantılarını koruyor

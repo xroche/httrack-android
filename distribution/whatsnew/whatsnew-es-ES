@@ -1,7 +1,6 @@
 HTTrack 3.51.0: la copia sigue su inicio de sesión en el navegador.
 
-• Empieza en la página donde terminó el inicio de sesión y guarda cada cookie que este recogió
-• Abrir una carpeta grande ya no bloquea el selector de archivos
-• La copia ya no filtra un nombre y una contraseña escritos en una dirección
+• Empieza donde terminó el inicio de sesión y guarda cookies de los otros sitios por los que pasó
+• La lectura de una carpeta ya no bloquea el selector de archivos
+• Un nombre y una contraseña escritos en una dirección https ya no se envían en claro
 • El http simple ya no puede cambiar una cookie con Secure
-• Una página guardada en UTF-16 conserva su texto y sus enlaces
