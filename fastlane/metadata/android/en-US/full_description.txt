@@ -1,0 +1,13 @@
+HTTrack copies a website to your device so you can read it with no network. It follows the links from the page you give it and downloads the HTML, the images, the style sheets and the scripts. Then it rewrites the links, so the copy browses like the original site.
+
+The app drives the same engine as the desktop versions of HTTrack, so a crawl takes the same settings:
+
+* how deep to follow links
+* which files to accept and which to refuse
+* how many connections to open at once
+* bandwidth and time limits
+* whether to obey the robots rules of the site
+
+A copy is written to public storage, so a browser or a file manager can open it afterwards. The app also serves a copy over a local address, which is how a real browser reads it.
+
+HTTrack is free software under the GNU General Public License, version 3 or later.

@@ -1,0 +1,46 @@
+# Submitted to fdroiddata as metadata/com.httrack.android.yml. F-Droid builds from its
+# own copy, so this one is here for review and for the `fdroid` CI job to mirror.
+#
+# The native work sits in `build:` rather than `prebuild:` because fdroidserver scans
+# the source between the two and rejects a static library, and OpenSSL is built here.
+Categories:
+  - Internet
+License: GPL-3.0-or-later
+AuthorName: Xavier Roche
+WebSite: https://www.httrack.com/
+SourceCode: https://github.com/xroche/httrack-android
+IssueTracker: https://github.com/xroche/httrack/issues
+Changelog: https://github.com/xroche/httrack-android/releases
+
+RepoType: git
+Repo: https://github.com/xroche/httrack-android.git
+
+Builds:
+  - versionName: 3.51.0.110
+    versionCode: 110
+    commit: v3.51.0.110
+    subdir: app
+    submodules: true    # the engine, coffeecatch, and coucal nested inside the engine
+    # The buildserver ships no compiler, no perl and no wget. OpenSSL needs perl and
+    # make, and libiconv's ./configure needs a host compiler.
+    sudo:
+      - apt-get update
+      - apt-get install -y build-essential perl wget
+    gradle:
+      - yes
+    ndk: 27.3.13750724
+    # Test fixtures in the engine submodule. None of them reaches the APK.
+    scandelete:
+      - app/src/main/jni/httrack/fuzz/corpus
+      - app/src/main/jni/httrack/tests/fixtures
+      - app/src/main/jni/httrack/tools/parser-corpus
+    # bionic has no iconv and the NDK exposes no OpenSSL, so both are built from
+    # source. Each script checks the sha256 of what it downloads.
+    build:
+      - ../tools/ci/vendor-libiconv.sh
+      - ANDROID_NDK_ROOT=$$NDK$$ OUT=/tmp/openssl-android ../tools/ci/fetch-openssl-statics.sh
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9]
+CurrentVersion: 3.51.0.110
+CurrentVersionCode: 110
