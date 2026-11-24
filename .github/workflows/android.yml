@@ -120,6 +120,66 @@ jobs:
           path: app/build/reports/lint-results-*.*
           if-no-files-found: warn
 
+  # Runs tools/fdroid/com.httrack.android.yml by hand, so a build that only our
+  # toolchain image makes possible cannot reach master unnoticed. Debian is the
+  # faithful part, because the F-Droid buildserver also ships no compiler, no perl
+  # and no wget.
+  fdroid:
+    name: F-Droid recipe (bare Debian)
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: /opt/android-sdk
+      CMDLINE_TOOLS: commandlinetools-linux-13114758_latest.zip
+    steps:
+      # This step installs what the buildserver has and a bare Debian lacks. It leaves
+      # out build-essential, perl and wget, because the recipe's own sudo: list is what
+      # must supply them.
+      - name: Bootstrap Debian
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates curl git unzip default-jdk-headless python3-yaml
+          # The workspace belongs to the runner user and this container is root, so git
+          # refuses to read the clone until the path is declared safe.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive          # MUST be recursive: coucal is nested in httrack
+      - run: tools/ci/fdroid-recipe-test.sh
+      - name: The recipe names the NDK app/build.gradle pins
+        run: tools/ci/fdroid-recipe.sh check-ndk
+      # fdroidserver scans a fresh clone before it builds and rejects a binary it finds,
+      # so an engine bump that adds one needs a scandelete path.
+      - name: Nothing the F-Droid scanner rejects
+        run: tools/ci/fdroid-recipe.sh scan
+      - name: Install the SDK and the NDK through sdkmanager
+        run: |
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -fsSL -o /tmp/tools.zip "https://dl.google.com/android/repository/$CMDLINE_TOOLS"
+          unzip -q /tmp/tools.zip -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdk" --licenses >/dev/null
+          "$sdk" "platforms;android-36" "build-tools;36.0.0" \
+            "ndk;$(tools/ci/fdroid-recipe.sh ndk)"
+      - name: "sudo: from the recipe"
+        run: tools/ci/fdroid-recipe.sh run-sudo
+      - name: "build: from the recipe"
+        run: tools/ci/fdroid-recipe.sh run-build
+      # fdroidserver runs gradle from the recipe's subdir and reads the APK below it.
+      - name: assembleRelease, from the recipe's subdir
+        run: |
+          cd "$(tools/ci/fdroid-recipe.sh subdir)"
+          ../gradlew --no-daemon assembleRelease
+          ls -l build/outputs/apk/release/*.apk
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fdroid-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
   # play-promote.yml only runs by hand against the live Play API; this is its only guard.
   play-tools:
     name: play tooling

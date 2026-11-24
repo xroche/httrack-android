@@ -1,0 +1,50 @@
+# fdroiddata holds this recipe as metadata/com.httrack.android.yml. This copy is what
+# the `fdroid` CI job runs, so the job cannot go green on a recipe F-Droid cannot build.
+#
+# The native work sits in `build:` and not `prebuild:`, because fdroidserver scans the
+# source between the two and rejects a static library.
+Categories:
+  - Internet
+License: GPL-3.0-or-later
+AuthorName: Xavier Roche
+WebSite: https://www.httrack.com/
+SourceCode: https://github.com/xroche/httrack-android
+IssueTracker: https://github.com/xroche/httrack/issues
+
+RepoType: git
+Repo: https://github.com/xroche/httrack-android.git
+
+# fdroiddata's bot maintains the version fields below from our git tags, so they name
+# the release we submit and no later one.
+Builds:
+  - versionName: 3.51.0.110
+    versionCode: 110
+    commit: v3.51.0.110
+    subdir: app
+    submodules: true    # the engine, coffeecatch, and coucal nested inside the engine
+    # The buildserver ships no compiler, no perl and no wget. OpenSSL needs perl and
+    # make, and libiconv's ./configure needs a host compiler.
+    sudo:
+      - apt-get update
+      - apt-get install -y build-essential perl wget
+    gradle:
+      - yes
+    ndk: 27.3.13750724
+    # These engine-submodule test fixtures never reach the APK.
+    scandelete:
+      - app/src/main/jni/httrack/fuzz/corpus
+      - app/src/main/jni/httrack/tests/fixtures
+      - app/src/main/jni/httrack/tools/parser-corpus
+      # coucal, nested inside the engine, ships extensionless fuzz seeds of raw bytes,
+      # which the scanner reads as binaries.
+      - app/src/main/jni/httrack/src/coucal/fuzz/corpus
+    # bionic has no iconv and the NDK exposes no OpenSSL, so both are built from
+    # source. Each script checks the sha256 of what it downloads.
+    build:
+      - ../tools/ci/vendor-libiconv.sh
+      - ANDROID_NDK_ROOT=$$NDK$$ OUT=/tmp/openssl-android ../tools/ci/fetch-openssl-statics.sh
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9]
+CurrentVersion: 3.51.0.110
+CurrentVersionCode: 110
