@@ -141,6 +141,9 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             ca-certificates curl git unzip default-jdk-headless python3-yaml
+          # The workspace belongs to the runner user and this container is root, so git
+          # refuses to read the clone until the path is declared safe.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/checkout@v7
         with:
           submodules: recursive          # MUST be recursive: coucal is nested in httrack
