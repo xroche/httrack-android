@@ -1,6 +1,7 @@
-HTTrack 3.51.0: kopirajte web-mjesto koje traži račun.
+HTTrack 3.51.0: kopija nastavlja tamo gdje je prijava završila.
 
-• Novo: prijavite se u pregledniku prije kopiranja. Kopija koristi tu prijavu i web-mjestu šalje identitet vašeg preglednika
-• Novo: polje za Accept zaglavlja, s jednim redom za svaku vrstu veze
-• Stranica Identitet preglednika navodi koja dodatna zaglavlja kopija ne šalje
-• Novije slike, fontovi i videozapisi (webp, avif, svg, woff2, mp4, webm) sada se preuzimaju i s drugog web-mjesta
+• Počinje na stranici na kojoj je prijava završila i zadržava svaki kolačić koji je prijava prikupila
+• Otvaranje velike mape više ne blokira odabir datoteka
+• Kopija više ne otkriva ime i lozinku upisane u adresu
+• Obični http više ne može promijeniti kolačić s oznakom Secure
+• Stranica spremljena u UTF-16 zadržava svoj tekst i veze

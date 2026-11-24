@@ -1,6 +1,7 @@
-HTTrack 3.51.0 : copiez un site qui demande un compte.
+HTTrack 3.51.0 : la copie suit votre connexion dans le navigateur.
 
-• Nouveau : connectez-vous avec un navigateur avant la copie. La copie réutilise cette session et envoie au site l'identité de votre navigateur
-• Nouveau : une zone d'en-têtes Accept, avec une ligne par type de lien
-• La page Identité du navigateur indique quels en-têtes supplémentaires la copie n'enverra pas
-• Les images, polices et vidéos récentes (webp, avif, svg, mp4, webm) sont aussi récupérées sur un autre site
+• Elle part de la page où la connexion s'est arrêtée et garde chaque cookie que la connexion a recueilli
+• Ouvrir un gros dossier ne bloque plus le sélecteur de fichiers
+• La copie ne laisse plus fuir un nom et un mot de passe écrits dans une adresse
+• Le http simple ne peut plus modifier un cookie marqué Secure
+• Une page enregistrée en UTF-16 garde son texte et ses liens

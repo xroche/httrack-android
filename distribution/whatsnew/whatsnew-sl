@@ -1,6 +1,7 @@
-HTTrack 3.51.0: kopirajte spletišče, ki zahteva račun.
+HTTrack 3.51.0: kopija se nadaljuje tam, kjer se je prijava končala.
 
-• Novo: pred kopiranjem se prijavite v brskalniku. Kopija uporabi to prijavo in spletišču pošlje identiteto vašega brskalnika
-• Novo: polje za glave Accept, z eno vrstico za vsako vrsto povezave
-• Stran Identiteta brskalnika navaja, katerih dodatnih glav kopija ne pošlje
-• Novejše slike, pisave in videoposnetki (webp, avif, svg, mp4, webm) se zdaj prenesejo tudi z drugega spletišča
+• Začne na strani, na kateri se je prijava končala, in ohrani vsak piškotek, ki ga je prijava zbrala
+• Odpiranje velike mape ne blokira več izbirnika datotek
+• Kopija ne razkrije več imena in gesla, zapisanih v naslovu
+• Navadni http ne more več spremeniti piškotka z oznako Secure
+• Stran, shranjena v UTF-16, ohrani svoje besedilo in povezave

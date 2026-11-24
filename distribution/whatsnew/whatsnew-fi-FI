@@ -1,6 +1,7 @@
-HTTrack 3.51.0: kopioi sivusto, joka vaatii tilin.
+HTTrack 3.51.0: kopiointi jatkaa siitä, mihin kirjautuminen päättyi.
 
-• Uutta: kirjaudu selaimella sisään ennen kopiointia. Kopiointi käyttää tätä istuntoa ja lähettää sivustolle selaimesi tunnisteen
-• Uutta: Accept-otsakkeiden kenttä, yksi rivi jokaiselle linkkityypille
-• Selaintunniste-sivu kertoo, mitä lisäotsakkeita kopiointi ei lähetä
-• Uudemmat kuvat, kirjasimet ja videot (webp, avif, svg, woff2, mp4, webm) haetaan nyt myös toiselta sivustolta
+• Se alkaa sivulta, jolle kirjautuminen päättyi, ja säilyttää jokaisen kirjautumisen keräämän evästeen
+• Suuren kansion avaaminen ei enää jumita tiedostonvalitsinta
+• Kopiointi ei enää paljasta osoitteeseen kirjoitettua nimeä ja salasanaa
+• Pelkkä http ei voi enää muuttaa Secure-evästettä
+• UTF-16-muodossa tallennettu sivu säilyttää tekstinsä ja linkkinsä
