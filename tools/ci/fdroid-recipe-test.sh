@@ -42,7 +42,7 @@ Builds:
     sudo:
       - true
     build:
-      - echo ndk is $$NDK$$ > /dev/null
+      - echo $$NDK$$ > ndk-seen.txt
 YAML
 git -C "$tree" init -q
 git -C "$tree" add -A
@@ -52,7 +52,12 @@ export ROOT="$tree" RECIPE="$tree/tools/fdroid/recipe.yml"
 # no extension are both fine, and so is a binary one under a scandelete path.
 check "control: the recipe matches build.gradle" 0 bash "$SCRIPT" check-ndk
 check "control: nothing the scanner rejects" 0 bash "$SCRIPT" scan
+# An asserted value, because a build list that runs proves nothing about $$NDK$$:
+# the substitution was once broken while this case still passed.
+export ANDROID_HOME="$work/sdk"
 check "control: the build list runs" 0 bash "$SCRIPT" run-build
+check "control: \$\$NDK\$\$ became the NDK path" 0 \
+    grep -qxF "$work/sdk/ndk/27.3.13750724" "$tree/app/ndk-seen.txt"
 
 sed -i 's/ndk: 27.3.13750724/ndk: 26.1.10909125/' "$RECIPE"
 check "a stale ndk in the recipe" 1 bash "$SCRIPT" check-ndk

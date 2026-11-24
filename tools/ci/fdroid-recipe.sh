@@ -113,8 +113,10 @@ print("nothing the scanner rejects, and every scandelete path earns its place")
 
 # $$NDK$$ is fdroidserver's own substitution, so the commands run as F-Droid runs them.
 run_list() {
-    local cmds
-    cmds="$(field "$1" | sed "s|\$\$NDK\$\$|${ANDROID_HOME:-}/ndk/$(field ndk)|g")"
+    local cmds ndk
+    ndk="${ANDROID_HOME:-}/ndk/$(field ndk)"
+    cmds="$(field "$1")"
+    cmds="${cmds//\$\$NDK\$\$/$ndk}"
     [ -n "$cmds" ] || return 0
     cd "$2"
     while IFS= read -r cmd; do
