@@ -44,7 +44,7 @@ abi_to_target() {
 
 work="$(mktemp -d)"
 cd "$work"
-wget -q "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
+wget -q --tries=3 --timeout=30 --retry-connrefused "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
 echo "${OPENSSL_SHA256}  openssl-${OPENSSL_VERSION}.tar.gz" | sha256sum -c -
 tar xf "openssl-${OPENSSL_VERSION}.tar.gz"
 src="$work/openssl-${OPENSSL_VERSION}"

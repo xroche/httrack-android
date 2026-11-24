@@ -120,38 +120,37 @@ jobs:
           path: app/build/reports/lint-results-*.*
           if-no-files-found: warn
 
-  # Runs tools/fdroid/com.httrack.android.yml by hand, so a change that only the toolchain
-  # image makes possible cannot reach master unnoticed. Debian is the faithful part: the
-  # buildserver ships no compiler, no perl and no wget, so a gap in the recipe fails here too.
+  # Runs tools/fdroid/com.httrack.android.yml by hand, so a build that only our
+  # toolchain image makes possible cannot reach master unnoticed. Debian is the
+  # faithful part, because the F-Droid buildserver also ships no compiler, no perl
+  # and no wget.
   fdroid:
     name: F-Droid recipe (bare Debian)
     runs-on: ubuntu-24.04
     container: debian:trixie
+    timeout-minutes: 45
     env:
       ANDROID_HOME: /opt/android-sdk
       CMDLINE_TOOLS: commandlinetools-linux-13114758_latest.zip
     steps:
-      # What the buildserver has and a bare Debian lacks. Not build-essential, perl or
-      # wget, because proving the recipe's own sudo: list complete is the point.
+      # This step installs what the buildserver has and a bare Debian lacks. It leaves
+      # out build-essential, perl and wget, because the recipe's own sudo: list is what
+      # must supply them.
       - name: Bootstrap Debian
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates curl git unzip default-jdk-headless
+            ca-certificates curl git unzip default-jdk-headless python3-yaml
       - uses: actions/checkout@v7
         with:
           submodules: recursive          # MUST be recursive: coucal is nested in httrack
-      - name: The recipe names what master builds
-        run: |
-          vc=$(sed -n 's/^ *versionCode \([0-9]*\).*/\1/p' app/build.gradle)
-          vn=$(sed -n 's/^ *versionName "\(.*\)".*/\1/p' app/build.gradle)
-          ndk=$(sed -n 's/^ *ndkVersion "\(.*\)".*/\1/p' app/build.gradle)
-          for want in "  - versionName: $vn" "    versionCode: $vc" "    commit: v$vn" \
-            "    ndk: $ndk" "CurrentVersion: $vn" "CurrentVersionCode: $vc"; do
-            grep -qxF "$want" tools/fdroid/com.httrack.android.yml \
-              || { echo "the F-Droid recipe is missing: $want"; exit 1; }
-          done
-          echo "NDK=$ndk" >> "$GITHUB_ENV"
+      - run: tools/ci/fdroid-recipe-test.sh
+      - name: The recipe names the NDK app/build.gradle pins
+        run: tools/ci/fdroid-recipe.sh check-ndk
+      # fdroidserver scans a fresh clone before it builds and rejects a binary it finds,
+      # so an engine bump that adds one needs a scandelete path.
+      - name: Nothing the F-Droid scanner rejects
+        run: tools/ci/fdroid-recipe.sh scan
       - name: Install the SDK and the NDK through sdkmanager
         run: |
           mkdir -p "$ANDROID_HOME/cmdline-tools"
@@ -160,23 +159,18 @@ jobs:
           mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
           sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdk" --licenses >/dev/null
-          "$sdk" "platforms;android-36" "build-tools;36.0.0" "ndk;$NDK"
-      # The recipe's sudo: list. Keep it identical to tools/fdroid/com.httrack.android.yml.
+          "$sdk" "platforms;android-36" "build-tools;36.0.0" \
+            "ndk;$(tools/ci/fdroid-recipe.sh ndk)"
       - name: "sudo: from the recipe"
-        run: apt-get install -y build-essential perl wget
-      # The recipe's build: commands, run from subdir: app, as fdroidserver runs them.
+        run: tools/ci/fdroid-recipe.sh run-sudo
       - name: "build: from the recipe"
-        working-directory: app
+        run: tools/ci/fdroid-recipe.sh run-build
+      # fdroidserver runs gradle from the recipe's subdir and reads the APK below it.
+      - name: assembleRelease, from the recipe's subdir
         run: |
-          ../tools/ci/vendor-libiconv.sh
-          ANDROID_NDK_ROOT="$ANDROID_HOME/ndk/$NDK" OUT=/tmp/openssl-android \
-            ../tools/ci/fetch-openssl-statics.sh
-      # fdroidserver runs gradle from subdir: app and reads the APK below it.
-      - name: assembleRelease, from app/
-        working-directory: app
-        run: ../gradlew --no-daemon assembleRelease
-      - name: The APK is where fdroidserver looks for it
-        run: ls -l app/build/outputs/apk/release/*.apk
+          cd "$(tools/ci/fdroid-recipe.sh subdir)"
+          ../gradlew --no-daemon assembleRelease
+          ls -l build/outputs/apk/release/*.apk
       - uses: actions/upload-artifact@v7
         with:
           name: fdroid-apk
@@ -196,6 +190,7 @@ jobs:
       - run: python3 tools/ci/play_track_admin_test.py
       - run: python3 tools/ci/play_reviews_test.py
       - run: python3 tools/ci/play_vitals_test.py
+      - run: tools/ci/fdroid-recipe-test.sh
       # No job builds an .aab, so the alignment script's bundle branch has no other cover.
       - run: tools/ci/check-so-alignment-test.sh
 
