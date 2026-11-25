@@ -15,6 +15,13 @@
 
 LOCAL_PATH := $(call my-dir)
 
+# ndk-build compiles with absolute paths, so __FILE__ and the debug info bake
+# this checkout's location into every library, which breaks a reproducible build.
+# The second map is needed because ndk-build compiles from app/, above LOCAL_PATH,
+# so DW_AT_comp_dir lands in the build-id and survives the strip.
+RB_PREFIX_MAP := -ffile-prefix-map=$(LOCAL_PATH)=jni
+RB_PREFIX_MAP += -ffile-prefix-map=$(abspath $(LOCAL_PATH)/../../..)=.
+
 # <https://github.com/langresser/libiconv-1.15-android/blob/master/Android.mk>
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libiconv
@@ -41,6 +48,7 @@ LOCAL_C_INCLUDES += \
   $(LOCAL_PATH)/libiconv-1.17/libcharset/include \
   $(LOCAL_PATH)/libiconv-1.17/srclib
 LOCAL_EXPORT_C_INCLUDES       := $(LOCAL_PATH)/libiconv-1.17/include
+LOCAL_CFLAGS += $(RB_PREFIX_MAP)
 include $(BUILD_SHARED_LIBRARY)
 
 # TODO FIXME: INVESTIGATE THIS
@@ -120,6 +128,7 @@ LOCAL_CFLAGS += -DHTS_INTERNAL_BYTECODE
 # LOCAL_SRC_FILES above too, because htsselftest_int.h #errors under this macro.
 LOCAL_CFLAGS += -DHTS_NO_SELFTEST
 LOCAL_CPPFLAGS += -pthread
+LOCAL_CFLAGS += $(RB_PREFIX_MAP)
 include $(BUILD_SHARED_LIBRARY)
 
 # NOTE: the old `libhtsjava` module (httrack/src/htsjava.c) was dropped — the
@@ -140,4 +149,5 @@ LOCAL_SHARED_LIBRARIES := libhttrack
 LOCAL_LDLIBS := -llog
 LOCAL_CFLAGS := -O3 -g -funwind-tables -DHAVE_CONFIG_H -DHTS_INTERNAL_BUILD \
 	-W -Wall -Wextra -Werror -Wno-unused-parameter
+LOCAL_CFLAGS += $(RB_PREFIX_MAP)
 include $(BUILD_SHARED_LIBRARY)

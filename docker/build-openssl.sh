@@ -25,6 +25,15 @@ if [ "$OPENSSL_VERSION" != "$DEFAULT_VERSION" ] && [ "$OPENSSL_SHA256" = "$DEFAU
   exit 1
 fi
 MIN_API="${MIN_API:-21}"
+# Constant on purpose: OpenSSL compiles the prefix in as string literals, so
+# deriving it from $OUT would make the libraries depend on where they were built.
+SSL_PREFIX=/openssl-android
+# OpenSSL stamps a build date into cversion.o, and its mkbuildinf.pl reads
+# SOURCE_DATE_EPOCH. Forced, not defaulted: F-Droid runs this script and may export
+# its own epoch, which would bake a date we never build with. 1787616000 is
+# 2026-08-25 UTC, the release date of the OpenSSL version pinned above.
+SOURCE_DATE_EPOCH=1787616000
+export SOURCE_DATE_EPOCH
 OUT="${OUT:-/opt/openssl-android}"
 ABIS="${ABIS:-arm64-v8a x86_64}"
 
@@ -43,6 +52,8 @@ abi_to_target() {
 }
 
 work="$(mktemp -d)"
+# The DESTDIR stage doubles what this holds, so do not leave it behind.
+trap 'rm -rf "$work"' EXIT
 cd "$work"
 wget -q --tries=3 --timeout=30 --retry-connrefused "https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
 echo "${OPENSSL_SHA256}  openssl-${OPENSSL_VERSION}.tar.gz" | sha256sum -c -
@@ -66,9 +77,12 @@ for abi in $ABIS; do
     ./Configure "$target" "-D__ANDROID_API__=${MIN_API}" "${harden[@]}" \
         -DOPENSSL_TLS_SECURITY_LEVEL=1 \
         no-shared no-tests no-ui-console no-engine no-comp no-dso no-legacy \
-        --prefix="$OUT/$abi" --libdir=lib
+        --prefix="$SSL_PREFIX" --libdir=lib
     make -j"$(nproc)" build_libs
-    make install_dev
+    # DESTDIR moves the install without changing the baked prefix.
+    make install_dev DESTDIR="$builddir/stage"
+    mkdir -p "$OUT/$abi"
+    cp -a "$builddir/stage$SSL_PREFIX/." "$OUT/$abi/"
   )
 done
 
