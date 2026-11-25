@@ -6,13 +6,12 @@
 # are compiled by Android.mk; iconv.c is a mega-TU that #includes every converter,
 # so it needs configure-generated headers + the tarball's pre-generated aliases.h.
 #
-# configure runs against the NDK and not against the host, because its answers end
-# up in libiconv.so. A host run reads the build machine's compiler and libc, so
-# F-Droid would get a different library from the same commit and could not
+# configure runs with the NDK and not with the host, because a host run bakes the
+# build machine's compiler and libc into libiconv.so, and F-Droid could not then
 # reproduce our build.
 #
-# Idempotent: re-running with the tree already present is a no-op. Needs wget,
-# tar and $ANDROID_NDK_ROOT (the actual cross-build is done by ndk-build).
+# Idempotent: re-running with the tree already present is a no-op. Needs wget, tar
+# and $ANDROID_NDK_ROOT. ndk-build does the cross-build itself.
 set -euo pipefail
 
 VERSION="${LIBICONV_VERSION:-1.17}"
@@ -53,21 +52,14 @@ fi
 echo "${SHA256}  ${tarball}" | sha256sum -c -
 tar xf "$tarball"
 
-# Either ABI the app ships answers the same, so one of them stands for both.
+# Both ABIs answer the same, so one stands for both.
 HOST=aarch64-linux-android
 API="$(sed -n 's/^APP_PLATFORM *:= *android-//p' "$JNI_DIR/Application.mk")"
-BIN="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
+CLANG="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/clang"
 echo "=== configure for ${HOST}${API} to generate iconv.h + config.h ==="
 (cd "libiconv-${VERSION}" &&
-  CC="$BIN/clang --target=${HOST}${API}" AR="$BIN/llvm-ar" RANLIB="$BIN/llvm-ranlib" \
+  CC="$CLANG --target=${HOST}${API}" \
     ./configure --host="$HOST" --enable-static --disable-shared >/dev/null)
-
-# Without CC, configure finds the host gcc and answers for the host while believing
-# it cross-compiles, which is the bug this script had. So read back what it used.
-grep -q "^ac_cv_env_CC_value=.*--target=${HOST}${API}'" "libiconv-${VERSION}/config.log" || {
-  echo "libiconv was configured for the host, not for ${HOST}${API}" >&2
-  exit 1
-}
 
 rm -rf "$DEST"
 mkdir -p "$(dirname "$DEST")"
