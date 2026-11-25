@@ -31,8 +31,8 @@ Builds:
     subdir: app
     # the engine, coffeecatch, and coucal nested inside the engine
     submodules: true
-    # The buildserver ships no compiler, no perl and no wget. OpenSSL needs perl and
-    # make, and libiconv's ./configure needs a host compiler.
+    # The buildserver ships no make, no perl and no wget, and OpenSSL's build needs
+    # all three.
     sudo:
       - apt-get update
       - apt-get install -y build-essential perl wget
@@ -47,9 +47,9 @@ Builds:
       # which the scanner reads as binaries.
       - app/src/main/jni/httrack/src/coucal/fuzz/corpus
     # bionic has no iconv and the NDK exposes no OpenSSL, so both are built from
-    # source. Each script checks the sha256 of what it downloads.
+    # source with the NDK compiler. Each script checks the sha256 of what it downloads.
     build:
-      - ../tools/ci/vendor-libiconv.sh
+      - ANDROID_NDK_ROOT=$$NDK$$ ../tools/ci/vendor-libiconv.sh
       - ANDROID_NDK_ROOT=$$NDK$$ OUT=/tmp/openssl-android ../tools/ci/fetch-openssl-statics.sh
     ndk: 27.3.13750724
 

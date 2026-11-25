@@ -59,6 +59,8 @@ jobs:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: OUT=/tmp/openssl-android bash docker/build-openssl.sh
       - name: Vendor libiconv
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: tools/ci/vendor-libiconv.sh
       - name: Stage OpenSSL statics into prebuild/
         run: OPENSSL_ANDROID_ROOT=/tmp/openssl-android tools/ci/fetch-openssl-statics.sh
