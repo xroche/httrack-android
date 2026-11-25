@@ -1,0 +1,5 @@
+Each directory here holds the headers libiconv's configure generates, for the
+version it is named after. vendor-libiconv.sh installs them into the tarball it
+unpacks rather than running configure on the build machine, which is what lets
+F-Droid reproduce our libiconv.so. Rewrite a set with
+`vendor-libiconv.sh --regen-headers`, never by hand.

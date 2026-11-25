@@ -31,8 +31,8 @@ Builds:
     subdir: app
     # the engine, coffeecatch, and coucal nested inside the engine
     submodules: true
-    # The buildserver ships no compiler, no perl and no wget. OpenSSL needs perl and
-    # make, and libiconv's ./configure needs a host compiler.
+    # The buildserver ships no compiler, no perl and no wget, and OpenSSL's build
+    # needs all three.
     sudo:
       - apt-get update
       - apt-get install -y build-essential perl wget
