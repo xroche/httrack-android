@@ -7,7 +7,7 @@
 # so it needs configure-generated headers + the tarball's pre-generated aliases.h.
 #
 # configure runs against the NDK and not against the host, because its answers end
-# up in libiconv.so: a host run reads the build machine's compiler and libc, so
+# up in libiconv.so. A host run reads the build machine's compiler and libc, so
 # F-Droid would get a different library from the same commit and could not
 # reproduce our build.
 #
@@ -62,9 +62,8 @@ echo "=== configure for ${HOST}${API} to generate iconv.h + config.h ==="
   CC="$BIN/clang --target=${HOST}${API}" AR="$BIN/llvm-ar" RANLIB="$BIN/llvm-ranlib" \
     ./configure --host="$HOST" --enable-static --disable-shared >/dev/null)
 
-# Drop CC and configure finds the host gcc, then answers for the host while it
-# believes it cross-compiles, which is the bug this script had. So read back the
-# compiler it used.
+# Without CC, configure finds the host gcc and answers for the host while believing
+# it cross-compiles, which is the bug this script had. So read back what it used.
 grep -q "^ac_cv_env_CC_value=.*--target=${HOST}${API}'" "libiconv-${VERSION}/config.log" || {
   echo "libiconv was configured for the host, not for ${HOST}${API}" >&2
   exit 1
