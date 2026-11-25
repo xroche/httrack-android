@@ -34,9 +34,9 @@ ENV ANDROID_SDK_ROOT=/opt/android-sdk \
 RUN apt-get update && apt-get install -y --no-install-recommends \
       wget unzip git make perl file ca-certificates build-essential && \
     rm -rf /var/lib/apt/lists/*
-# build-essential: needed by tools/ci/vendor-libiconv.sh (host ./configure) and
-# by OpenSSL's build. wget (not curl): curl's threaded resolver fails on some
-# Docker/kernel combos ("getaddrinfo() thread failed to start").
+# build-essential: OpenSSL's build needs it. wget (not curl): curl's threaded
+# resolver fails on some Docker/kernel combos ("getaddrinfo() thread failed to
+# start").
 
 # --- Android SDK command-line tools ---
 RUN mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools" && cd /tmp && \
