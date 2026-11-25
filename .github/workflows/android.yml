@@ -71,6 +71,7 @@ jobs:
       # and assemble are required checks, and it guards the gate below it.
       - run: tools/ci/check-branch-protection-test.sh
       - run: tools/ci/check-reproducible-test.sh
+      - run: python3 tools/ci/compare-apks-test.py
       # This runs here too: the string generator has no other check.
       - run: tools/build_strings-test.sh
       - name: Check arm64 branch protection
@@ -187,6 +188,33 @@ jobs:
           name: fdroid-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+  # F-Droid signs with their own key unless they can reproduce our APK, and their
+  # buildserver is neither our image nor a bare runner. These two jobs share only the
+  # sources, so comparing what they built is the closest test we can run ourselves.
+  apk-parity:
+    name: both builds give one APK
+    needs: [assemble, fdroid]
+    runs-on: ubuntu-24.04
+    steps:
+      # Checkout first, because it cleans the workspace and would drop the artifacts.
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: apk
+          path: image
+      - uses: actions/download-artifact@v7
+        with:
+          name: fdroid-apk
+          path: debian
+      - name: Compare the unsigned release APKs
+        run: |
+          a="$(find image -name '*release*.apk')"
+          b="$(find debian -name '*release*.apk')"
+          [ -f "$a" ] && [ -f "$b" ] || { echo "no release APK in $a / $b"; exit 1; }
+          # The dex and the profiles AGP derives from it differ until #282 is settled.
+          tools/ci/compare-apks.py "$a" "$b" \
+            classes.dex assets/dexopt/baseline.prof assets/dexopt/baseline.profm
 
   # play-promote.yml only runs by hand against the live Play API; this is its only guard.
   play-tools:
