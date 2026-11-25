@@ -75,10 +75,11 @@ jobs:
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: tools/ci/check-branch-protection.sh app/src/main/libs
-      # A library that carries its build path cannot be reproduced elsewhere, which
-      # is what the F-Droid reproducible build needs.
+      # F-Droid signs with its own key unless it can reproduce our APK byte for byte.
+      # obj/local, not libs: libs is stripped, and stripping hides the comp_dir half
+      # that still reaches the shipped file through the build-id.
       - name: Check nothing embeds the build path
-        run: tools/ci/check-reproducible.sh app/src/main/libs /tmp/openssl-android
+        run: tools/ci/check-reproducible.sh app/src/main/obj/local /tmp/openssl-android
       - uses: actions/upload-artifact@v7
         if: always()                     # a failed check is when the libraries are worth reading
         with:
