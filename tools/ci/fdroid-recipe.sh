@@ -10,7 +10,7 @@ ROOT="${ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 RECIPE="${RECIPE:-$ROOT/tools/fdroid/com.httrack.android.yml}"
 
 usage() {
-    echo "usage: $0 {ndk|subdir|check-ndk|scan|run-sudo|run-build}" >&2
+    echo "usage: $0 {ndk|subdir|check-ndk|check-commit|scan|run-sudo|run-build}" >&2
     exit 2
 }
 
@@ -27,6 +27,29 @@ print("\n".join(value) if isinstance(value, list) else value)
 # What app/build.gradle says, so the recipe can be checked against it.
 gradle_field() {
     sed -n "s/^ *$1 \"\(.*\)\".*/\1/p" "$ROOT/app/build.gradle"
+}
+
+# The commit is the one field a release round must retype, and F-Droid builds whatever
+# it names, so hold it against the version fields beside it.
+check_commit() {
+    local commit want_code want_name gradle
+    commit="$(field commit)"
+    if [ "${#commit}" -ne 40 ] || [ -n "${commit//[0-9a-f]/}" ]; then
+        echo "the recipe's commit is not a full 40-character hash: $commit" >&2
+        exit 1
+    fi
+    if ! gradle="$(git -C "$ROOT" show "$commit:app/build.gradle" 2>/dev/null)"; then
+        echo "the recipe names commit $commit, which this repository does not hold" >&2
+        exit 1
+    fi
+    want_code="$(printf '%s\n' "$gradle" | sed -n 's/^ *versionCode \([0-9]*\).*/\1/p')"
+    want_name="$(printf '%s\n' "$gradle" | sed -n 's/^ *versionName "\(.*\)".*/\1/p')"
+    if [ "$want_code" != "$(field versionCode)" ] || [ "$want_name" != "$(field versionName)" ]; then
+        echo "commit $commit builds $want_name ($want_code), the recipe says" \
+            "$(field versionName) ($(field versionCode))" >&2
+        exit 1
+    fi
+    echo "commit $commit builds $want_name ($want_code)"
 }
 
 check_ndk() {
@@ -129,6 +152,7 @@ run_list() {
 case "${1-}" in
 ndk | subdir) field "$1" ;;
 check-ndk) check_ndk ;;
+check-commit) check_commit ;;
 scan) scan ;;
 run-sudo) run_list sudo "$ROOT" ;;
 run-build) run_list build "$ROOT/$(field subdir)" ;;

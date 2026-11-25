@@ -156,9 +156,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: recursive          # MUST be recursive: coucal is nested in httrack
+          fetch-depth: 0                 # check-commit reads an older commit than HEAD
       - run: tools/ci/fdroid-recipe-test.sh
       - name: The recipe names the NDK app/build.gradle pins
         run: tools/ci/fdroid-recipe.sh check-ndk
+      - name: The commit the recipe names builds the version beside it
+        run: tools/ci/fdroid-recipe.sh check-commit
       # fdroidserver scans a fresh clone before it builds and rejects a binary it finds,
       # so an engine bump that adds one needs a scandelete path.
       - name: Nothing the F-Droid scanner rejects
