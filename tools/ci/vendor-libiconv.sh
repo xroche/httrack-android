@@ -53,18 +53,20 @@ fi
 echo "${SHA256}  ${tarball}" | sha256sum -c -
 tar xf "$tarball"
 
-# Either ABI the app ships gives the same answers, so one stands for both.
-TRIPLE="aarch64-linux-android$(sed -n 's/^APP_PLATFORM *:= *android-//p' "$JNI_DIR/Application.mk")"
+# Either ABI the app ships answers the same, so one of them stands for both.
+HOST=aarch64-linux-android
+API="$(sed -n 's/^APP_PLATFORM *:= *android-//p' "$JNI_DIR/Application.mk")"
 BIN="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin"
-echo "=== configure for $TRIPLE to generate iconv.h + config.h ==="
+echo "=== configure for ${HOST}${API} to generate iconv.h + config.h ==="
 (cd "libiconv-${VERSION}" &&
-  CC="$BIN/clang --target=$TRIPLE" AR="$BIN/llvm-ar" RANLIB="$BIN/llvm-ranlib" \
-    ./configure --host=aarch64-linux-android --enable-static --disable-shared >/dev/null)
+  CC="$BIN/clang --target=${HOST}${API}" AR="$BIN/llvm-ar" RANLIB="$BIN/llvm-ranlib" \
+    ./configure --host="$HOST" --enable-static --disable-shared >/dev/null)
 
-# bionic has no iconv below API 28 and glibc has one, so this says which configure
-# ran. Without it a missing $ANDROID_NDK_ROOT would silently fall back to the host.
-grep -q '^/\* #undef HAVE_ICONV' "libiconv-${VERSION}/lib/config.h" || {
-  echo "libiconv was configured for the host, not for Android" >&2
+# Drop CC and configure finds the host gcc, then answers for the host while it
+# believes it cross-compiles, which is the bug this script had. So read back the
+# compiler it used.
+grep -q "^ac_cv_env_CC_value=.*--target=${HOST}${API}'" "libiconv-${VERSION}/config.log" || {
+  echo "libiconv was configured for the host, not for ${HOST}${API}" >&2
   exit 1
 }
 
