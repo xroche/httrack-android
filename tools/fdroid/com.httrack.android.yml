@@ -28,8 +28,9 @@ Repo: https://github.com/xroche/httrack-android.git
 Builds:
   - versionName: 3.51.0.111
     versionCode: 111
-    # F-Droid wants the full hash here, because a tag can be moved.
-    commit: ce138349b1b2747ad7db06b8f0cdca6a5a20ca7e
+    # The hash of v3.51.0.111, because F-Droid refuses a tag, which can be moved.
+    # fdroid-recipe.sh check-commit holds it against the two fields above.
+    commit: 004f1298a9356b34039ba4765ed784cf3f19951e
     subdir: app
     # the engine, coffeecatch, and coucal nested inside the engine
     submodules: true

@@ -84,4 +84,22 @@ sed -i '\|^      - app/src/main/jni/httrack/gone$|d' "$RECIPE"
 rm "$tree/app/src/main/jni/httrack/src/htsglobal.h"
 check "a scan that would see nothing" 1 bash "$SCRIPT" scan
 
+# check-commit reads app/build.gradle out of the commit the recipe names, so the tree
+# needs a real commit rather than an index.
+printf '        versionCode 111\n        versionName "3.51.0.111"\n        ndkVersion "27.3.13750724"\n' \
+    >"$tree/app/build.gradle"
+git -C "$tree" -c user.email=t@t -c user.name=t commit -qam "versions" || true
+head="$(git -C "$tree" rev-parse HEAD)"
+printf 'Builds:\n  - versionName: 3.51.0.111\n    versionCode: 111\n    commit: %s\n' "$head" >"$RECIPE"
+check "control: the commit builds the version the recipe names" 0 bash "$SCRIPT" check-commit
+
+sed -i "s/^    commit: .*/    commit: v3.51.0.111/" "$RECIPE"
+check "a tag where the commit hash belongs" 1 bash "$SCRIPT" check-commit
+sed -i "s/^    commit: .*/    commit: ${head:0:8}/" "$RECIPE"
+check "a short hash" 1 bash "$SCRIPT" check-commit
+sed -i "s/^    commit: .*/    commit: 0000000000000000000000000000000000000000/" "$RECIPE"
+check "a hash the repository does not hold" 1 bash "$SCRIPT" check-commit
+sed -i -e "s/^    commit: .*/    commit: $head/" -e "s/^    versionCode: 111/    versionCode: 112/" "$RECIPE"
+check "a versionCode the commit does not build" 1 bash "$SCRIPT" check-commit
+
 exit "$fail"
