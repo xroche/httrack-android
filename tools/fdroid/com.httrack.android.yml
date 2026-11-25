@@ -12,9 +12,10 @@ Categories:
   - Internet
 License: GPL-3.0-or-later
 AuthorName: Xavier Roche
+AuthorWebSite: https://www.httrack.com/
 WebSite: https://www.httrack.com/
 SourceCode: https://github.com/xroche/httrack-android
-IssueTracker: https://github.com/xroche/httrack/issues
+IssueTracker: https://github.com/xroche/httrack-android/issues
 
 # fdroid checkupdates fills this from the manifest, and fails the file without it.
 AutoName: HTTrack Website Copier
@@ -27,7 +28,8 @@ Repo: https://github.com/xroche/httrack-android.git
 Builds:
   - versionName: 3.51.0.111
     versionCode: 111
-    commit: v3.51.0.111
+    # F-Droid wants the full hash here, because a tag can be moved.
+    commit: ce138349b1b2747ad7db06b8f0cdca6a5a20ca7e
     subdir: app
     # the engine, coffeecatch, and coucal nested inside the engine
     submodules: true
@@ -54,6 +56,6 @@ Builds:
     ndk: 27.3.13750724
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags ^v[0-9]
+UpdateCheckMode: Tags ^v[0-9.]+$
 CurrentVersion: 3.51.0.111
 CurrentVersionCode: 111
