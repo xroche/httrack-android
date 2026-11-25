@@ -188,6 +188,36 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
+  # F-Droid signs with their own key unless they can reproduce our APK, and their
+  # buildserver is neither our image nor a bare runner. These two jobs share only the
+  # sources, so comparing what they built is the closest test we can run ourselves.
+  apk-parity:
+    name: both builds give one APK
+    needs: [assemble, fdroid]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: apk
+          path: image
+      - uses: actions/download-artifact@v7
+        with:
+          name: fdroid-apk
+          path: debian
+      - name: Compare the unsigned release APKs
+        run: |
+          a="$(find image -name '*release*.apk')"
+          b="$(find debian -name '*release*.apk')"
+          [ -f "$a" ] && [ -f "$b" ] || { echo "no release APK in $a / $b"; exit 1; }
+          if cmp -s "$a" "$b"; then
+            echo "identical: $(sha256sum "$a" | cut -d' ' -f1)"
+            exit 0
+          fi
+          echo "the two builds differ. unzip -v prints a CRC per entry, so this names them:"
+          diff <(unzip -v "$a" | awk '{print $8, $1, $7}') \
+               <(unzip -v "$b" | awk '{print $8, $1, $7}') || true
+          exit 1
+
   # play-promote.yml only runs by hand against the live Play API; this is its only guard.
   play-tools:
     name: play tooling
