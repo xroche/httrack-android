@@ -209,14 +209,23 @@ jobs:
           a="$(find image -name '*release*.apk')"
           b="$(find debian -name '*release*.apk')"
           [ -f "$a" ] && [ -f "$b" ] || { echo "no release APK in $a / $b"; exit 1; }
-          if cmp -s "$a" "$b"; then
+          # unzip -v prints a CRC per entry, so this compares them entry by entry.
+          entries() { unzip -v "$1" | awk 'NF > 7 { print $8, $1, $7 }' | sort; }
+          moved="$(diff <(entries "$a") <(entries "$b") | awk '/^[<>]/ { print $2 }' | sort -u)"
+          if [ -z "$moved" ]; then
             echo "identical: $(sha256sum "$a" | cut -d' ' -f1)"
             exit 0
           fi
-          echo "the two builds differ. unzip -v prints a CRC per entry, so this names them:"
-          diff <(unzip -v "$a" | awk '{print $8, $1, $7}') \
-               <(unzip -v "$b" | awk '{print $8, $1, $7}') || true
-          exit 1
+          # The two jobs carry different JDKs, so javac emits a different dex and AGP
+          # derives different profiles from it. Everything else must match. See #282.
+          unexpected="$(echo "$moved" | grep -vE '^(classes\.dex|assets/dexopt/baseline\.profm?)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "these entries differ and must not:"
+            echo "$unexpected"
+            exit 1
+          fi
+          echo "only the dex and the profiles AGP derives from it differ:"
+          echo "$moved"
 
   # play-promote.yml only runs by hand against the live Play API; this is its only guard.
   play-tools:
