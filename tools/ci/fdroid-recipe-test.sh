@@ -97,6 +97,8 @@ sed -i "s/^    commit: .*/    commit: v3.51.0.111/" "$RECIPE"
 check "a tag where the commit hash belongs" 1 bash "$SCRIPT" check-commit
 sed -i "s/^    commit: .*/    commit: ${head:0:8}/" "$RECIPE"
 check "a short hash" 1 bash "$SCRIPT" check-commit
+sed -i "s/^    commit: .*/    commit: zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz/" "$RECIPE"
+check "forty characters that are not a hash" 1 bash "$SCRIPT" check-commit
 sed -i "s/^    commit: .*/    commit: 0000000000000000000000000000000000000000/" "$RECIPE"
 check "a hash the repository does not hold" 1 bash "$SCRIPT" check-commit
 sed -i -e "s/^    commit: .*/    commit: $head/" -e "s/^    versionCode: 111/    versionCode: 112/" "$RECIPE"

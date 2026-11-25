@@ -34,12 +34,8 @@ gradle_field() {
 check_commit() {
     local commit want_code want_name gradle
     commit="$(field commit)"
-    case "$commit" in
-    [0-9a-f]*) [ ${#commit} -eq 40 ] || commit="" ;;
-    *) commit="" ;;
-    esac
-    if [ -z "$commit" ]; then
-        echo "the recipe's commit is not a full 40-character hash: $(field commit)" >&2
+    if [ "${#commit}" -ne 40 ] || [ -n "${commit//[0-9a-f]/}" ]; then
+        echo "the recipe's commit is not a full 40-character hash: $commit" >&2
         exit 1
     fi
     if ! gradle="$(git -C "$ROOT" show "$commit:app/build.gradle" 2>/dev/null)"; then
