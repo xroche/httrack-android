@@ -68,12 +68,17 @@ jobs:
       # The test runs here, not beside the other tool tests, because only this job
       # and assemble are required checks, and it guards the gate below it.
       - run: tools/ci/check-branch-protection-test.sh
+      - run: tools/ci/check-reproducible-test.sh
       # This runs here too: the string generator has no other check.
       - run: tools/build_strings-test.sh
       - name: Check arm64 branch protection
         env:
           ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: tools/ci/check-branch-protection.sh app/src/main/libs
+      # A library that carries its build path cannot be reproduced elsewhere, which
+      # is what the F-Droid reproducible build needs.
+      - name: Check nothing embeds the build path
+        run: tools/ci/check-reproducible.sh app/src/main/libs /tmp/openssl-android
       - uses: actions/upload-artifact@v7
         if: always()                     # a failed check is when the libraries are worth reading
         with:

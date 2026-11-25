@@ -25,6 +25,13 @@ if [ "$OPENSSL_VERSION" != "$DEFAULT_VERSION" ] && [ "$OPENSSL_SHA256" = "$DEFAU
   exit 1
 fi
 MIN_API="${MIN_API:-21}"
+# Constant on purpose: OpenSSL compiles the prefix in as string literals, so
+# deriving it from $OUT would make the libraries depend on who built them.
+RB_PREFIX=/openssl-android
+# OpenSSL stamps a build date into cversion.o. Its mkbuildinf.pl honours
+# SOURCE_DATE_EPOCH, so pin it to the pinned release date and the libraries stop
+# depending on when they were built.
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1787616000}"
 OUT="${OUT:-/opt/openssl-android}"
 ABIS="${ABIS:-arm64-v8a x86_64}"
 
@@ -66,9 +73,14 @@ for abi in $ABIS; do
     ./Configure "$target" "-D__ANDROID_API__=${MIN_API}" "${harden[@]}" \
         -DOPENSSL_TLS_SECURITY_LEVEL=1 \
         no-shared no-tests no-ui-console no-engine no-comp no-dso no-legacy \
-        --prefix="$OUT/$abi" --libdir=lib
+        --prefix="$RB_PREFIX" --libdir=lib
     make -j"$(nproc)" build_libs
-    make install_dev
+    # A reproducible build needs the baked OPENSSLDIR/ENGINESDIR/MODULESDIR strings
+    # to be the same wherever we stage, so Configure gets a constant prefix and the
+    # install is redirected here instead.
+    make install_dev DESTDIR="$builddir/stage"
+    mkdir -p "$OUT/$abi"
+    cp -a "$builddir/stage$RB_PREFIX/." "$OUT/$abi/"
   )
 done
 
