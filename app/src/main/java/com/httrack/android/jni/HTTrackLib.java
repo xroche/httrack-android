@@ -193,12 +193,16 @@ public class HTTrackLib {
   /** The engine's HTS_EXIT_MIRROR_ABORTED: a mirror started, and the engine gave up on it. */
   public static final int EXIT_MIRROR_ABORTED = 3;
 
+  /** The engine's HTS_EXIT_WARC_INCOMPLETE: the mirror ended, and its WARC archive did not. */
+  public static final int EXIT_WARC_INCOMPLETE = 4;
+
   /**
    * Start the engine.
    *
    * @param args main() arguments.
    * @return 0 once the mirror ended, including one the caller stopped, EXIT_MIRROR_ABORTED for
-   * one the engine gave up on, and -1 or 1 for a command line it refused before mirroring
+   * one the engine gave up on, EXIT_WARC_INCOMPLETE for one whose WARC archive is short or
+   * missing, and -1 or 1 for a command line it refused before mirroring
    * @throws IOException upon error
    */
   public native int main(String[] args) throws IOException;

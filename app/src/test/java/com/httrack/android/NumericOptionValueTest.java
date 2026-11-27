@@ -147,10 +147,10 @@ public class NumericOptionValueTest {
   private static final String MAX_RATE =
       "340282346638528859811704183484516925440";
 
-  /* The engine panics on a rate between zero and the floor, and on one above a
-     float, where it used to cast whatever it read. */
+  /* The engine raises a rate between zero and the floor, and drops one above a
+     float, so send neither. */
   @Test
-  public void aRateTheEngineWouldPanicOnIsClampedToTheBound() {
+  public void aRateTheEngineWouldNotTakeIsClampedToTheBound() {
     final OptionMapper mapper = new SimpleOption(FLOAT_OPTION, true);
     for (final String value : new String[] { "0.0000001", "0.0000000001",
         "0.00000099" }) {
@@ -171,17 +171,22 @@ public class NumericOptionValueTest {
   }
 
   /* The bounds live in the engine, so read them back: a moved floor must fail
-     here rather than ship a rate the engine panics on. */
+     here rather than ship a rate the engine raises or drops. The two ends sit in
+     different files, and the option handler reads the floor out of the parser. */
   @Test
   public void theClampedBoundsAreTheOnesTheEngineChecks() throws IOException {
     final String main = TestSources
         .read(TestSources.engineFile("src/htscoremain.c"));
     final String gate = TestSources.balancedBlock(main,
         TestSources.indexOf(main, "case 'c': {"));
-    assertTrue("the engine no longer bounds -" + FLOAT_OPTION + " at 1e-6",
-        gate.contains("v >= 1e-6f"));
+    assertTrue("the engine no longer raises -" + FLOAT_OPTION + " to 1e-6",
+        gate.contains("v < 1e-6"));
+    final String alias = TestSources
+        .read(TestSources.engineFile("src/htsalias.c"));
+    final String parse = TestSources.balancedBlock(alias,
+        TestSources.indexOf(alias, "size_t optrate_read("));
     assertTrue("the engine no longer bounds -" + FLOAT_OPTION + " at FLT_MAX",
-        gate.contains("v <= FLT_MAX"));
+        parse.contains("v <= FLT_MAX"));
     assertEquals(1e-6, Double.parseDouble(MIN_RATE), 0.0);
     assertEquals(Float.MAX_VALUE, Double.parseDouble(MAX_RATE), 0.0);
   }

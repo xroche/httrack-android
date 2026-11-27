@@ -45,11 +45,14 @@ public class EngineAbortReportedTest {
   public void theExitCodeMatchesThePinnedEngine() throws Exception {
     final String header = TestSources.withoutCommentsAndStrings(
         TestSources.read(TestSources.engineFile("src/httrack-library.h")));
-    final Matcher define = Pattern.compile(
-        "#define\\s+HTS_EXIT_MIRROR_ABORTED\\s+(\\d+)").matcher(header);
-    assertTrue("the engine no longer defines HTS_EXIT_MIRROR_ABORTED", define.find());
-    assertEquals("the engine renumbered its aborted exit code", define.group(1),
-        String.valueOf(HTTrackLib.EXIT_MIRROR_ABORTED));
+    pinned(header, "HTS_EXIT_MIRROR_ABORTED", HTTrackLib.EXIT_MIRROR_ABORTED);
+    pinned(header, "HTS_EXIT_WARC_INCOMPLETE", HTTrackLib.EXIT_WARC_INCOMPLETE);
+  }
+
+  private static void pinned(final String header, final String name, final int java) {
+    final Matcher define = Pattern.compile("#define\\s+" + name + "\\s+(\\d+)").matcher(header);
+    assertTrue("the engine no longer defines " + name, define.find());
+    assertEquals("the engine renumbered " + name, define.group(1), String.valueOf(java));
   }
 
   /** MirrorOutcomeTest owns the text and the link; only the folder the link points at is here. */

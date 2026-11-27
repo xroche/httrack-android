@@ -17,6 +17,8 @@ public class MirrorOutcomeTest {
   private static final int ABORT_UNKNOWN = 3;
   private static final boolean FINISHED = false;
   private static final boolean GAVE_UP = true;
+  private static final boolean ARCHIVE_WHOLE = false;
+  private static final boolean ARCHIVE_SHORT = true;
 
   private static HTTrackStats stats(final long errorsCount, final long filesWritten,
       final long transportFailures) {
@@ -38,8 +40,17 @@ public class MirrorOutcomeTest {
       final long filesWritten, final long transportFailures) {
     assertEquals("stop=" + stop + " engineAborted=" + engineAborted + " abortCode=" + abortCode
         + " errors=" + errorsCount + " written=" + filesWritten + " failed=" + transportFailures,
-        expected, MirrorOutcome.of(stop, engineAborted, abortCode,
+        expected, MirrorOutcome.of(stop, engineAborted, ARCHIVE_WHOLE, abortCode,
             stats(errorsCount, filesWritten, transportFailures)));
+  }
+
+  /** The archive cases vary only what can outrank them, over a mirror that did write files. */
+  private static void checkArchive(final MirrorOutcome expected, final MirrorOutcome.Stop stop,
+      final boolean engineAborted, final int abortCode, final long transportFailures) {
+    assertEquals("stop=" + stop + " engineAborted=" + engineAborted + " abortCode=" + abortCode
+        + " failed=" + transportFailures, expected,
+        MirrorOutcome.of(stop, engineAborted, ARCHIVE_SHORT, abortCode,
+            stats(0, 40, transportFailures)));
   }
 
   /**
@@ -153,11 +164,13 @@ public class MirrorOutcomeTest {
         MirrorOutcome.ABORT_NONE, 5, 40);
   }
 
-  /** Only these two codes mean a mirror ran; anything else is a command line the engine refused. */
+  /** Only these three codes mean a mirror ran; anything else is a command line the engine
+   * refused. */
   @Test
   public void theCodesThatMeanAMirrorRanAreTheOnlyOnes() {
     assertTrue(MirrorOutcome.mirrorRan(0));
     assertTrue(MirrorOutcome.mirrorRan(HTTrackLib.EXIT_MIRROR_ABORTED));
+    assertTrue(MirrorOutcome.mirrorRan(HTTrackLib.EXIT_WARC_INCOMPLETE));
     assertFalse(MirrorOutcome.mirrorRan(-1));
     assertFalse(MirrorOutcome.mirrorRan(1));
     assertFalse(MirrorOutcome.mirrorRan(2));
@@ -168,6 +181,43 @@ public class MirrorOutcomeTest {
     assertFalse(MirrorOutcome.mirrorAborted(1));
     assertFalse(MirrorOutcome.mirrorAborted(2));
     assertFalse(MirrorOutcome.mirrorAborted(255));
+    assertFalse("a short archive is not an abort",
+        MirrorOutcome.mirrorAborted(HTTrackLib.EXIT_WARC_INCOMPLETE));
+    assertTrue(MirrorOutcome.warcIncomplete(HTTrackLib.EXIT_WARC_INCOMPLETE));
+    assertFalse(MirrorOutcome.warcIncomplete(0));
+    assertFalse(MirrorOutcome.warcIncomplete(HTTrackLib.EXIT_MIRROR_ABORTED));
+    assertFalse(MirrorOutcome.warcIncomplete(255));
+  }
+
+  /**
+   * The engine returns this code for a mirror that reached its end, so the files are on disk and
+   * the verdict has to name the archive rather than the run.
+   */
+  @Test
+  public void aShortArchiveIsReportedOverACapAndOverAFailedTransfer() {
+    checkArchive(MirrorOutcome.WARC_INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED,
+        MirrorOutcome.ABORT_NONE, 0);
+    checkArchive(MirrorOutcome.WARC_INCOMPLETE, MirrorOutcome.Stop.ENGINE, FINISHED,
+        MirrorOutcome.ABORT_NONE, 0);
+    checkArchive(MirrorOutcome.WARC_INCOMPLETE, MirrorOutcome.Stop.NONE, FINISHED,
+        MirrorOutcome.ABORT_NONE, 3);
+    // The engine never pairs this code with either, and the verdict must not depend on that.
+    checkArchive(MirrorOutcome.INTERRUPTED, MirrorOutcome.Stop.USER, FINISHED,
+        MirrorOutcome.ABORT_NONE, 0);
+    checkArchive(MirrorOutcome.ABORTED_FATAL, MirrorOutcome.Stop.ENGINE, FINISHED,
+        MirrorOutcome.ABORT_FATAL, 0);
+    checkArchive(MirrorOutcome.ABORTED_OTHER, MirrorOutcome.Stop.NONE, GAVE_UP,
+        MirrorOutcome.ABORT_NONE, 0);
+  }
+
+  /** A short archive leaves a folder worth opening, so the verdict keeps its link. */
+  @Test
+  public void aShortArchiveNamesTheArchiveAndKeepsItsFolderLink() {
+    verdict("<b>Incomplete archive</b>! (the WARC file is missing or short)", true,
+        HTTrackLib.EXIT_WARC_INCOMPLETE, MirrorOutcome.Stop.NONE, MirrorOutcome.ABORT_NONE, 0, 40);
+    verdict("<b>Incomplete archive</b>! (the WARC file is missing or short)", true,
+        HTTrackLib.EXIT_WARC_INCOMPLETE, MirrorOutcome.Stop.ENGINE, MirrorOutcome.ABORT_NONE,
+        5, 40, 3);
   }
 
   private static void verdict(final String expectedText, final boolean expectedLink,

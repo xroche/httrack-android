@@ -731,8 +731,8 @@ JNICALL jobject Java_com_httrack_android_jni_HTTrackLib_writeLoginBundle(JNIEnv*
     memset(&result, 0, sizeof(result));
     result.size = sizeof(result);
     /* 0u: no HTS_PASTE_* flag. */
-    if (hts_bundle_from_paste_hosts(paste, folder, agent, url, hosts, 0u,
-                                    &result)) {
+    if (hts_bundle_from_paste_hosts_checked(paste, folder, agent, url, hosts, 0u,
+                                            &result)) {
       jstring written = (*env)->NewStringUTF(env, result.url);
 
       if (written != NULL) {

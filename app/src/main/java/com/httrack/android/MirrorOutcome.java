@@ -22,6 +22,8 @@ enum MirrorOutcome {
   SUCCESS_WITH_ERRORS,
   /** A failed transfer left a hole a later run can fill. */
   INCOMPLETE,
+  /** The mirror reached its end, and the WARC archive it was asked for did not. */
+  WARC_INCOMPLETE,
   /** Errors, and no file written. */
   FAILED;
 
@@ -67,8 +69,9 @@ enum MirrorOutcome {
     if (!mirrorRan(engineCode)) {
       return new Verdict("<b>Error</b> (<i>code " + engineCode + "</i>)", false);
     }
-    return new Verdict(
-        describe(of(stop, mirrorAborted(engineCode), abortCode, stats), stats), true);
+    return new Verdict(describe(
+        of(stop, mirrorAborted(engineCode), warcIncomplete(engineCode), abortCode, stats), stats),
+        true);
   }
 
   private static String describe(final MirrorOutcome outcome, final HTTrackStats stats) {
@@ -90,6 +93,8 @@ enum MirrorOutcome {
     case INCOMPLETE:
       // Only the transport count belongs here, because stat_errors also counts answered errors.
       return "<b>Incomplete</b>! (" + stats.transportFailures + " links failed to transfer)";
+    case WARC_INCOMPLETE:
+      return "<b>Incomplete archive</b>! (the WARC file is missing or short)";
     case FAILED:
       return "<b>Failed</b>! (" + stats.errorsCount + " errors, no files written)";
     default:
@@ -100,7 +105,13 @@ enum MirrorOutcome {
 
   /** Whether the engine ran a mirror at all, rather than refusing the command line. */
   static boolean mirrorRan(final int engineCode) {
-    return engineCode == 0 || engineCode == HTTrackLib.EXIT_MIRROR_ABORTED;
+    return engineCode == 0 || engineCode == HTTrackLib.EXIT_MIRROR_ABORTED
+        || engineCode == HTTrackLib.EXIT_WARC_INCOMPLETE;
+  }
+
+  /** Whether the mirror ended but its WARC archive is short or was never created. */
+  static boolean warcIncomplete(final int engineCode) {
+    return engineCode == HTTrackLib.EXIT_WARC_INCOMPLETE;
   }
 
   /** Whether the engine gave up on a mirror it had started. */
@@ -109,13 +120,13 @@ enum MirrorOutcome {
   }
 
   /**
-   * Weigh STOP, ENGINEABORTED from mirrorAborted() and ABORTCODE from HTTrackLib.abortCode()
-   * against what the run recorded. A user stop must come first: it sets the engine's abort flag
+   * Weigh STOP, ENGINEABORTED and WARCINCOMPLETE from the engine code, and ABORTCODE from
+   * HTTrackLib.abortCode(), against what the run recorded. A user stop must come first: it sets the engine's abort flag
    * two ways of its own, so the verdict alone reads it as an abort nobody asked for. An abort
    * outranks a cap, because reaching a cap also makes the engine report itself stopped.
    */
-  static MirrorOutcome of(final Stop stop, final boolean engineAborted, final int abortCode,
-      final HTTrackStats stats) {
+  static MirrorOutcome of(final Stop stop, final boolean engineAborted,
+      final boolean warcIncomplete, final int abortCode, final HTTrackStats stats) {
     if (stop == Stop.USER) {
       return INTERRUPTED;
     }
@@ -132,6 +143,10 @@ enum MirrorOutcome {
     // A few engine guards give up without setting a cause; only the exit code shows it.
     if (engineAborted) {
       return ABORTED_OTHER;
+    }
+    // Ahead of the cap, because a cap is what the user asked for and a short archive is not.
+    if (warcIncomplete) {
+      return WARC_INCOMPLETE;
     }
     if (stop == Stop.ENGINE) {
       return STOPPED_AT_LIMIT;
