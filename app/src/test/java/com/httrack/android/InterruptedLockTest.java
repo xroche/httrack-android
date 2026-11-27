@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.httrack.android.jni.HTTrackLib;
 import java.io.File;
 import java.io.IOException;
 import org.junit.Before;
@@ -44,6 +45,17 @@ public class InterruptedLockTest {
   public void anEngineThatGaveUpIsResumable() {
     assertTrue(HTTrackActivity.leavesPendingWork(false, -1, 0));
     assertTrue(HTTrackActivity.leavesPendingWork(false, 1, 0));
+  }
+
+  /** A resume reads the cache, so it cannot rebuild an archive the mirror lost. */
+  @Test
+  public void aShortArchiveAloneIsNotResumable() {
+    assertFalse("a mirror that ran to the end has nothing to continue",
+        HTTrackActivity.leavesPendingWork(false, HTTrackLib.EXIT_WARC_INCOMPLETE, 0));
+    assertTrue("the cap still counts",
+        HTTrackActivity.leavesPendingWork(true, HTTrackLib.EXIT_WARC_INCOMPLETE, 0));
+    assertTrue("a failed transfer still counts",
+        HTTrackActivity.leavesPendingWork(false, HTTrackLib.EXIT_WARC_INCOMPLETE, 1));
   }
 
   @Test

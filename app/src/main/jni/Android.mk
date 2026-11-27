@@ -77,7 +77,7 @@ LOCAL_BRANCH_PROTECTION := standard
 LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsback.c httrack/src/htscache.c httrack/src/htscatchurl.c 	\
 	httrack/src/htsfilters.c httrack/src/htsftp.c httrack/src/htshash.c 	\
-	httrack/src/coucal/coucal.c httrack/src/htshelp.c httrack/src/htslib.c 	\
+	httrack/src/htscoucal.c httrack/src/htshelp.c httrack/src/htslib.c 	\
 	httrack/src/htscoremain.c httrack/src/htsname.c httrack/src/htsrobots.c	\
 	httrack/src/htstools.c httrack/src/htswizard.c httrack/src/htsalias.c 	\
 	httrack/src/htsthread.c httrack/src/htsindex.c httrack/src/htsbauth.c 	\
@@ -98,6 +98,10 @@ LOCAL_SRC_FILES := httrack/src/htscore.c httrack/src/htsparse.c 			\
 	httrack/src/htsfetch.c						\
 	httrack/src/htspsl.c httrack/src/htspsl_data.c					\
 	httrack/src/htscrashtest.c												\
+	httrack/src/htsusercmd.c httrack/src/htsmhtml.c							\
+	httrack/src/htsmirror.c httrack/src/htsdns.c								\
+	httrack/src/htsmime.c httrack/src/htssecret.c							\
+	httrack/src/htsshared.c httrack/src/htscookiefile.c						\
 	httrack/src/minizip/ioapi.c												\
 	httrack/src/minizip/mztools.c httrack/src/minizip/unzip.c				\
 	httrack/src/minizip/zip.c

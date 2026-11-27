@@ -1787,7 +1787,7 @@ public class HTTrackActivity extends FragmentActivity {
    * @param stopped
    *          Was the crawl cut short, by the user or by a cap the engine enforces itself ?
    * @param engineCode
-   *          The engine return code; nonzero means it gave up rather than finished.
+   *          The engine return code.
    * @param transportFailures
    *          See HTTrackStats.transportFailures.
    * @return true if the project should reopen offering "Continue an interrupted download"
@@ -1796,7 +1796,9 @@ public class HTTrackActivity extends FragmentActivity {
       final long transportFailures) {
     // The error count is not a criterion, because the engine returns 0 once its queue is drained
     // and a server's error leaves nothing to fetch. A failed transfer does leave something.
-    return stopped || engineCode != 0 || transportFailures != 0;
+    // A short archive does not, because a resume reads the cache and cannot rebuild one.
+    final boolean gaveUp = engineCode != 0 && engineCode != HTTrackLib.EXIT_WARC_INCOMPLETE;
+    return stopped || gaveUp || transportFailures != 0;
   }
 
   /**

@@ -112,15 +112,19 @@ public class BrowserLoginEngineLimitsTest {
     final String jni = TestSources.withoutCommentsAndStrings(
         TestSources.read(TestSources.mainFile("jni/htslibjni.c"))).replaceAll("\\s+", " ");
     assertTrue(jni, jni.contains(
-        "hts_bundle_from_paste_hosts(paste, folder, agent, url, hosts, 0u, &result)"));
+        "hts_bundle_from_paste_hosts_checked(paste, folder, agent, url, hosts, 0u, &result)"));
     assertFalse("the entry point without a hosts list keeps no intermediate cookies",
         jni.contains("hts_bundle_from_paste(paste,"));
-    assertTrue("hts_bundle_from_paste_hosts is no longer exported",
+    // The engine deprecated the unchecked names, and htslibjni builds with -Werror.
+    assertFalse("the deprecated name fails the native build",
+        jni.contains("hts_bundle_from_paste_hosts(paste,"));
+    assertTrue("hts_bundle_from_paste_hosts_checked is no longer exported",
         source("httrack-library.h").contains(
-            "HTSEXT_API hts_boolean hts_bundle_from_paste_hosts("));
+            "HTSEXT_API hts_boolean hts_bundle_from_paste_hosts_checked("));
     final String paste = source("htsbundle.c");
     final String body = TestSources.balancedBlock(paste,
-        TestSources.indexOf(paste, "HTSEXT_API hts_boolean hts_bundle_from_paste_hosts("));
+        TestSources.indexOf(paste,
+            "HTSEXT_API hts_boolean hts_bundle_from_paste_hosts_checked("));
     // Failing has to be the guard's whole statement, or a bundle the read-back rejected still
     // reaches the folder.
     final int read = TestSources.indexOf(body, "!bundle_load_src(");
