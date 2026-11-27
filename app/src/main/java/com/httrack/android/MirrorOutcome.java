@@ -69,9 +69,7 @@ enum MirrorOutcome {
     if (!mirrorRan(engineCode)) {
       return new Verdict("<b>Error</b> (<i>code " + engineCode + "</i>)", false);
     }
-    return new Verdict(describe(
-        of(stop, mirrorAborted(engineCode), warcIncomplete(engineCode), abortCode, stats), stats),
-        true);
+    return new Verdict(describe(of(stop, engineCode, abortCode, stats), stats), true);
   }
 
   private static String describe(final MirrorOutcome outcome, final HTTrackStats stats) {
@@ -109,7 +107,7 @@ enum MirrorOutcome {
         || engineCode == HTTrackLib.EXIT_WARC_INCOMPLETE;
   }
 
-  /** Whether the mirror ended but its WARC archive is short or was never created. */
+  /** Whether the engine ended a mirror whose WARC archive is short or was never created. */
   static boolean warcIncomplete(final int engineCode) {
     return engineCode == HTTrackLib.EXIT_WARC_INCOMPLETE;
   }
@@ -120,13 +118,14 @@ enum MirrorOutcome {
   }
 
   /**
-   * Weigh STOP, ENGINEABORTED and WARCINCOMPLETE from the engine code, and ABORTCODE from
-   * HTTrackLib.abortCode(), against what the run recorded. A user stop must come first: it sets the engine's abort flag
-   * two ways of its own, so the verdict alone reads it as an abort nobody asked for. An abort
-   * outranks a cap, because reaching a cap also makes the engine report itself stopped.
+   * Weigh STOP, ENGINECODE as mirrorAborted() and warcIncomplete() read it, and ABORTCODE from
+   * HTTrackLib.abortCode(), against what the run recorded. A user stop must come first: it
+   * sets the engine's abort flag two ways of its own, so the verdict alone reads it as an abort
+   * nobody asked for. An abort outranks a cap, because reaching a cap also makes the engine
+   * report itself stopped.
    */
-  static MirrorOutcome of(final Stop stop, final boolean engineAborted,
-      final boolean warcIncomplete, final int abortCode, final HTTrackStats stats) {
+  static MirrorOutcome of(final Stop stop, final int engineCode, final int abortCode,
+      final HTTrackStats stats) {
     if (stop == Stop.USER) {
       return INTERRUPTED;
     }
@@ -141,11 +140,11 @@ enum MirrorOutcome {
         return ABORTED_OTHER;
     }
     // A few engine guards give up without setting a cause; only the exit code shows it.
-    if (engineAborted) {
+    if (mirrorAborted(engineCode)) {
       return ABORTED_OTHER;
     }
     // Ahead of the cap, because a cap is what the user asked for and a short archive is not.
-    if (warcIncomplete) {
+    if (warcIncomplete(engineCode)) {
       return WARC_INCOMPLETE;
     }
     if (stop == Stop.ENGINE) {
